@@ -325,7 +325,8 @@ TruePlayed is built to be invisible in your frame rate:
   them, and hidden parts stop listening to events;
 - FPS and latency are measured only while you display them;
 - saved data is bounded (30 sessions, pruned small zones, top 10 zones per level);
-- only the active theme is kept in memory, in a compact form (7 to 36 KB); the 13 themes
+- only the active theme is kept in memory, in a compact form (about 11 to 55 KB in the
+  game, Futuristic about 52 KB); the 13 themes
   wait as short texts (66 KB in all) that are turned into a theme only when one is
   applied; its textures, colours and fonts are set once when it is applied, never on the
   timer, and the bar's textures are reused from one theme to the next (once every theme

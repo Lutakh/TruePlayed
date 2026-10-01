@@ -667,7 +667,7 @@ Themes.FONTS, Themes.COMMON_MEDIA, Themes.DISPLAY_KEYS, Themes.GAME_FONT_FALLBAC
 | field | default | meaning |
 |---|---|---|
 | `native` | false | true = GameTooltip, every other field ignored (actuel only) |
-| `width` | `{ 280, 440 }` | min / max outer width. The widest XP rows (the warm-up note, a days-long estimated ETA, a 6-digit estimated rate) must fit `width[2]` with 16 px to spare, measured with the real fonts in enUS and frFR (test_round4_regress) |
+| `width` | `{ 280, 440 }` | min / max outer width. The widest XP rows (the warm-up note, a days-long estimated ETA, a 6-digit estimated rate, and the mobs to kill row `~1,234 (average: 12,345 XP, last: 12,345 XP)`, the widest of all and binding in frFR) must fit `width[2]` with 16 px to spare, measured with the real fonts in enUS and frFR (test_round4_regress) |
 | `pad` | `{ 12, 12, 10, 10 }` | l, r, t, b |
 | `gap` | 8 | min px between left and right texts (and around the leader) |
 | `lineGap` | 3 | added to the font size for a row's height |
