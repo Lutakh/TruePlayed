@@ -430,9 +430,10 @@ end)
 -- private frame or GameTooltip, and Tooltip.Fill), the graph, the statistics window (3
 -- tabs and the account view), the options panel (every FontString and every dropdown
 -- label), the context menu, the chat (login, /tpl help, theme, lang, played, lock,
--- unlock, an unknown command), the erase popup (its text and its buttons), the broker,
--- every token (Tokens.Render, with its short form) and Tokens.PercentText. On a frFR
--- client the game's YES / NO are French, as in the game (the stub's are English).
+-- unlock, an unknown command, sync twice and its /played answer), the erase popup (its
+-- text and its buttons), the broker, every token (Tokens.Render, with its short form),
+-- Tokens.PercentText, and the graph without data. On a frFR client the game's YES / NO
+-- are French, as in the game (the stub's are English).
 local function Snapshot(opts)
   Stub.Reset()
   local p = Stub.player
@@ -525,10 +526,12 @@ local function Snapshot(opts)
   ns.Options.ShowContextMenu(bar)
   menu("context menu", Stub.ui.lastMenu)
   -- "lang auto" first: the listing names the setting, the same in both runs from there
+  -- "sync" twice: requested, then throttled; the /played answer 0.1 s later: synced
   for _, cmd in ipairs({ "help", "theme", "lang auto", "lang", "played", "lock", "unlock", "nonsense",
-                         "reset char" }) do
+                         "reset char", "sync", "sync" }) do
     Stub.RunSlash(cmd)
   end
+  Stub.Advance(1)
   for i = 1, #Stub.printed do add("chat " .. i, Stub.printed[i]) end
   local dialogs = rawget(_G, "StaticPopupDialogs")
   for i = 1, #Stub.popups do
@@ -553,6 +556,16 @@ local function Snapshot(opts)
     add("token label " .. id, Tokens.Label(id))
   end
   for _, t in ipairs({ 0, 5, 423, 999, 1000 }) do add("percent " .. t, Tokens.PercentText(t)) end
+  -- last, the graph without a sample in its window: the bar samples from login on, so
+  -- it is hidden (nothing sampled) for longer than the window and the latency hold first
+  ns.Core.SetSetting("widget.shown", false)
+  Stub.Advance(ns.Core.GetSetting("graph.window") + 30)
+  ns.Graph.ShowFor(bar)
+  local tp = ns.Graph.frame.tp
+  add("graph empty readout", tp.readout:GetText())
+  add("graph empty fps", tp.fpsStats:GetText())
+  add("graph empty latency", tp.latStats:GetText())
+  ns.Graph.Hide()
   T.eq(Stub.errors, {}, "no error in the " .. opts.client .. " / " .. tostring(opts.language) .. " run")
   return out
 end
@@ -583,10 +596,13 @@ T.test("language: no English left in French mode (enUS client, language frFR = a
     SameTexts(chosen, native, english, "frFR mode, " .. tag)
     local all = concat(chosen, "\n")
     for _, s in ipairs({ "monstres", "Niveau", "Th\195\168me : ", "Langue : Auto", "Commandes :",
-                         "Langue (Language)", "Recharger l'interface", "buttons: Oui / Non" }) do
+                         "Langue (Language)", "Recharger l'interface", "Collecte des mesures...",
+                         "Demande du /played au serveur...", "Patientez quelques secondes",
+                         "/played synchronis\195\169.", "buttons: Oui / Non" }) do
       T.ok(find(all, s, 1, true) ~= nil, tag .. ": shows " .. s)
     end
     for _, s in ipairs({ " mobs", "Level ", "XP to go", "Theme: ", "Commands:", "Reload UI",
+                         "Collecting samples", "Asking the server", "Please wait", "/played synced",
                          "Yes / No" }) do
       T.ok(find(all, s, 1, true) == nil, tag .. ": no English " .. s)
     end
@@ -607,10 +623,13 @@ T.test("language: English mode on a frFR client = an enUS client", function()
     SameTexts(chosen, native, french, "enUS mode, " .. tag)
     local all = concat(chosen, "\n")
     for _, s in ipairs({ "monstres", "Niveau ", "XP restants", "Th\195\168me", "Commandes", "Recharger",
-                         "Oui / Non" }) do
+                         "Collecte", "Demande du", "Patientez", "synchronis", "Oui / Non" }) do
       T.ok(find(all, s, 1, true) == nil, tag .. ": no French " .. s)
     end
-    T.ok(find(all, "buttons: Yes / No", 1, true) ~= nil, tag .. ": shows buttons: Yes / No")
+    for _, s in ipairs({ "Collecting samples...", "Asking the server for /played...", "Please wait a few seconds",
+                         "/played synced.", "buttons: Yes / No" }) do
+      T.ok(find(all, s, 1, true) ~= nil, tag .. ": shows " .. s)
+    end
   end
 end)
 
