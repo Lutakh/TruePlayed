@@ -271,14 +271,18 @@ publication (étape 10), vérifiez dans l'onglet **Files** que le fichier porte 
 
 1. Sur https://authors.curseforge.com, ouvrez les réglages de votre compte, rubrique
    **API tokens**, et créez un jeton (nom : `GitHub TruePlayed`). Copiez-le.
-2. Enregistrez-le comme secret du dépôt GitHub. La commande demande la valeur : collez-la
-   à l'invite et validez. Elle n'apparaît ni dans un fichier ni dans l'historique.
+2. Enregistrez-le comme secret du dépôt GitHub. La commande marche depuis n'importe quel
+   dossier (`--repo` désigne le dépôt) ; elle demande la valeur : collez-la à l'invite et
+   validez. Elle n'apparaît ni à l'écran, ni dans un fichier, ni dans l'historique.
 
    ```
-   cd ~/Code/TruePlayed
-   gh secret set CF_API_KEY
-   gh secret list
+   gh auth status
+   gh secret set CF_API_KEY --repo Lutakh/TruePlayed
+   gh secret list --repo Lutakh/TruePlayed
    ```
+
+   Ou sur le site : https://github.com/Lutakh/TruePlayed/settings/secrets/actions, bouton
+   **New repository secret**, nom `CF_API_KEY`, valeur : le jeton.
 
 Ne collez jamais cette clé dans un fichier, un message ou une conversation.
 
@@ -309,7 +313,7 @@ simplement ignorée.
 3. Créez une clé sur https://addons.wago.io/account/apikeys, puis :
 
    ```
-   gh secret set WAGO_API_TOKEN
+   gh secret set WAGO_API_TOKEN --repo Lutakh/TruePlayed
    git commit -am "Add the Wago project ID"
    git push
    ```
