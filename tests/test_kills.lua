@@ -151,6 +151,22 @@ T.test("ring: a batch settled at once records one entry per mob (at most 10), a 
   T.eq(ring, { 30, 30, 30, 30, 30, 30, 130, 130, 130, 160 })
 end)
 
+T.test("ring: a gain validated by its late marker records one entry", function()
+  local ns = KillLogin()
+  Stub.Kill(50)
+  Stub.Advance(5)
+  Stub.Kill(75, { marker = false })        -- the XP first, no marker yet: the gain waits
+  Stub.Advance(0.5)
+  T.eq(ns.char.killRing, { 50 }, "waits for its marker")
+  T.eq(ns.Tracker.loadKills, 1)
+  Stub.Fire("CHAT_MSG_COMBAT_XP_GAIN", "late")
+  T.eq(ns.char.killRing, { 50, 75 }, "the late marker commits it once")
+  T.eq(ns.char.lastKill.xp, 75)
+  T.eq(ns.Tracker.loadKills, 2)
+  Stub.Advance(5)
+  T.eq(ns.char.killRing, { 50, 75 }, "not committed again when the window ends")
+end)
+
 T.test("ring: quests, discoveries and grey mobs never enter it", function()
   local ns = KillLogin()
   Stub.Kill(80)
