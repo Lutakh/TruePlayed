@@ -1717,10 +1717,10 @@ T.test("tooltip: mobs to kill right under the next level line, from the last kil
   lines = FillTip(ns, false)
   _, iNext = FindLine(lines, L.TT_NEXT_LEVEL)
   kills, iKills = FindLine(lines, L.TT_KILLS)
-  T.eq(kills[2], "~38 (dernier : 610 XP)")
+  T.eq(kills[2], "~38 (moyenne : 610 XP, dernier : 610 XP)", "no ring: average = last kill")
   T.eq(iKills, iNext + 1)
   local det = FillTip(ns, true)
-  T.eq(FindLine(det, L.TT_KILLS)[2], "~38 (dernier : 610 XP)", "same line in the detailed view")
+  T.eq(FindLine(det, L.TT_KILLS)[2], "~38 (moyenne : 610 XP, dernier : 610 XP)", "same line in the detailed view")
   -- rested: kills give more XP, so fewer mobs (the count follows Stats.KillsToLevel)
   Stub.Reset()
   Stub.player.xp, Stub.player.rest = 58, 11600
@@ -1729,7 +1729,8 @@ T.test("tooltip: mobs to kill right under the next level line, from the last kil
   ns.char.lastKill = { xp = 610, level = 20, at = time() }
   local n = ns.Stats.KillsToLevel(ns.char, 58, 23200, 11600)
   T.ok(type(n) == "number" and n < 38, "rest-aware count: " .. tostring(n))
-  T.eq(FindLine(FillTip(ns, false), L.TT_KILLS)[2], format(L.TT_KILLS_FMT, Fmt.Number(n), Fmt.Number(610)))
+  T.eq(FindLine(FillTip(ns, false), L.TT_KILLS)[2],
+       format(L.TT_KILLS_FMT, Fmt.Number(n), Fmt.Number(610), Fmt.Number(610)))
 end)
 
 T.test("tooltip: no mobs line at max level", function()

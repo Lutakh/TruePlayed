@@ -100,7 +100,7 @@ ns.Themes.Register("pixel", function()
     },
     tooltip = {
       -- max width: the widest French XP rows (estimate and warm-up notes) fit uncut
-      width = { 340, 560 }, pad = { 22, 22, 17, 16 }, gap = 12, lineGap = 6,
+      width = { 340, 566 }, pad = { 22, 22, 17, 16 }, gap = 12, lineGap = 6,
       fonts = { title = { "display", 8 }, body = { "body", 16 }, value = { "body", 16 },
                 note = { "body", 14 }, hint = { "body", 12 } },
       colors = { title = "yellow", mode = "dim", label = "label", value = "value", dim = "dim",

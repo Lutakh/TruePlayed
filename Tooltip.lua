@@ -290,12 +290,12 @@ local function FillXP(tt, ctx, char, session, mask, detailed)
     PairDim(tt, L.TT_NEXT_LEVEL, L.TT_NO_RATE)
   end
 
-  -- mobs to kill, from the XP of the last mob killed (rest-aware); until a kill is
-  -- known, a dimmed line says when it will show
+  -- mobs to kill, from the average XP of the last C.KILL_RING mobs killed (rest-aware),
+  -- with the last one's XP; until a kill is known, a dimmed line says when it will show
   if ctx.valid then
-    local n, base = Stats.KillsToLevel(char, ctx.xp, ctx.max, ctx.rested)
-    if n and base then
-      Pair(tt, L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(n), Fmt.Number(base)))
+    local n, avg, last = Stats.KillsToLevel(char, ctx.xp, ctx.max, ctx.rested)
+    if n and avg then
+      Pair(tt, L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(n), Fmt.Number(avg), Fmt.Number(last or avg)))
     else
       PairDim(tt, L.TT_KILLS, L.TT_KILLS_NODATA)
     end

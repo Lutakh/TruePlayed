@@ -121,7 +121,7 @@ ns.Themes.Register("priest", function()
     },
     tooltip = {
       -- max width: the widest French XP rows (estimate and warm-up notes) fit uncut
-      width = { 300, 480 }, pad = { 20, 20, 15, 14 }, gap = 12, lineGap = 4,
+      width = { 300, 488 }, pad = { 20, 20, 15, 14 }, gap = 12, lineGap = 4,
       fonts = { title = { "display", 20 }, body = { "body", 14 }, value = { "body", 14 },
                 note = { "body", 13 }, hint = { "body", 12 } },
       colors = { title = "#ffffff", mode = "dim", label = "label", value = "bright", dim = "dim",

@@ -140,7 +140,9 @@ C.TAXI_RECHECK_DELAY  = 0.5
 -- within DISCOVERY_WINDOW of it.
 C.KILL_WINDOW         = 1.5
 C.DISCOVERY_WINDOW    = 3
-C.KILL_XP_MAX         = 1000000   -- sanity bound when repairing a saved char.lastKill
+C.KILL_XP_MAX         = 1000000   -- sanity bound when repairing a saved kill (lastKill, killRing)
+C.KILL_RING           = 10        -- char.killRing: base XP of the last kills (their average
+                                  -- gives the mobs to go)
 
 -- UI cadence
 C.NET_INTERVAL        = 5      -- GetNetStats at most every 5 s (value changes every ~30 s)
@@ -813,6 +815,47 @@ local function RepairSessions(char)
   end
 end
 
+-- char.killRing = { xp, ... } (Tracker): the base XP of the last C.KILL_RING kills,
+-- oldest first. Bad entries (not a finite number, below 0.5 or above C.KILL_XP_MAX)
+-- and non-array keys are dropped, the rest compacted in key order, rounded, and only
+-- the newest C.KILL_RING kept; an empty ring is dropped (nil).
+local function RepairKillRing(char)
+  local ring = char.killRing
+  if ring == nil then return end
+  if type(ring) ~= "table" then
+    char.killRing = nil
+    return
+  end
+  local max, n, count, clean = C.KILL_XP_MAX, #ring, 0, true
+  for k, v in pairs(ring) do
+    count = count + 1
+    if not (type(k) == "number" and k >= 1 and k <= n and k % 1 == 0
+            and IsNum(v) and v >= 0.5 and v <= max) then
+      clean = false
+    end
+  end
+  if not clean or count ~= n then
+    -- holes, junk keys or bad values: rebuild in key order (load time only)
+    local keep = {}
+    for k, v in pairs(ring) do
+      if type(k) == "number" and k >= 1 and k % 1 == 0 and IsNum(v) and v >= 0.5 and v <= max then
+        keep[#keep + 1] = k
+      end
+    end
+    table_sort(keep)
+    for i = 1, #keep do keep[i] = ring[keep[i]] end
+    for k in pairs(ring) do ring[k] = nil end
+    for i = 1, #keep do ring[i] = keep[i] end
+  end
+  while #ring > C.KILL_RING do table.remove(ring, 1) end
+  n = #ring
+  if n == 0 then
+    char.killRing = nil
+    return
+  end
+  for i = 1, n do ring[i] = math_floor(ring[i] + 0.5) end
+end
+
 local function RepairEma(char)
   local ema = char.ema
   if type(ema) ~= "table" then
@@ -916,6 +959,11 @@ function Core.RepairChar(char)
       if lk.at ~= nil and not IsNum(lk.at) then lk.at = nil end
     end
   end
+  -- killRing: base XP of the last kills (Tracker, the average gives the mobs to go); a
+  -- record from before it (or whose ring held no valid entry) starts from its last kill
+  RepairKillRing(char)
+  lk = char.lastKill
+  if char.killRing == nil and lk ~= nil and lk.xp >= 1 then char.killRing = { lk.xp } end
   return char
 end
 

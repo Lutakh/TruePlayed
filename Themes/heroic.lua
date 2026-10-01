@@ -118,7 +118,7 @@ ns.Themes.Register("heroic", function()
       shadow = { color = "#000000@.85", x = 1, y = -1 },
     },
     tooltip = {
-      width = { 320, 480 }, pad = { 28, 28, 22, 18 }, gap = 14, lineGap = 5,
+      width = { 320, 484 }, pad = { 28, 28, 22, 18 }, gap = 14, lineGap = 5,
       fonts = { title = { "display", 19 }, body = { "body", 15 }, value = { "body", 15 },
                 note = { "body", 14 }, hint = { "body", 13 } },
       colors = { title = "goldHi", mode = "mode", label = "label", value = "value", dim = "dim",
