@@ -7,11 +7,13 @@ the addon zip. See `docs/PUBLISHING-fr.md` for where each text goes.
 
 - **Name**: TruePlayed (exactly this: CurseForge forbids game or version names in the
   project name, so "Forever" goes in the summary, the description and the logo).
-- **Summary** (one sentence, "WoW Forever" first, 137 characters): WoW Forever: your real
-  /played - XP per hour, time to level, mobs to kill and time per zone, without AFK, inn or
-  city time, in 13 themes.
-  Shorter (102 characters), if the field refuses it: WoW Forever: your real /played - XP
-  per hour, time to level and mobs to kill, without AFK or inn time.
+- **Summary** (one sentence, "WoW Forever" first; the field takes at most 256 characters,
+  this one has 137): paste only the line below.
+
+  ```
+  WoW Forever: your real /played - XP per hour, time to level, mobs to kill and time per zone, without AFK, inn or city time, in 13 themes.
+  ```
+
 - **Game version of the files**: Forever 1.60.1 (set by the packager from
   `## Interface: 16001`; choose it by hand only for a manual upload).
 - **Main category**: Quests & Leveling. **Additional category**: Miscellaneous.
