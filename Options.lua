@@ -16,7 +16,9 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- The language of the addon (setting "language", C.LANGUAGES) is chosen in Display
 -- (after "Hide at max level") or with /tpl lang [auto | en | fr]: either one only
 -- changes the setting, which Core applies into L at the next UI load (the "Reload UI"
--- button under the dropdown calls ReloadUI). Localized strings are read from L at use
+-- button under the dropdown calls ReloadUI). In read-only mode both refuse a change
+-- (READONLY_ACTION, like the data actions): nothing would be saved for the reload. The
+-- Reload UI button stays a plain reload. Localized strings are read from L at use
 -- time, never copied at file load (the language is applied after the files load).
 
 local math_floor, math_abs = math.floor, math.abs
@@ -318,7 +320,9 @@ end
 -- /tpl lang [auto | en | fr]: without a value, prints the current setting and the
 -- accepted values (built from C.LANGUAGES and LANG_ALIAS); with a valid one, sets it
 -- (the message says a /reload applies it, even when the value did not change: the
--- language may still be pending). false = not a language (the caller prints Unknown).
+-- language may still be pending). Read-only mode refuses a value: nothing is saved, so
+-- the next UI load would come back to the stored language. false = not a language (the
+-- caller prints Unknown).
 local function LanguageCommand(arg)
   local codes = C.LANGUAGES
   if arg == nil then
@@ -334,6 +338,7 @@ local function LanguageCommand(arg)
     if arg == LANG_ALIAS[v] or arg == v:lower() then value = v end
   end
   if not value then return false end
+  if ReadOnlyRefused() then return true end
   SetSetting("language", value)
   Util.Print(L.LANG_SET_FMT, LanguageLabel(value) or value)
   return true
@@ -471,8 +476,16 @@ local function IsChoiceSelected(choice)
   return GetSetting(choice.path) == choice.value
 end
 
+-- Every dropdown and cycle button writes through here. The language applies only at
+-- the next UI load, which a read-only session saves nothing for: refused like the
+-- data actions (the message of /tpl lang), the control keeps showing the setting.
+local function WriteChoice(path, value)
+  if path == "language" and ReadOnlyRefused() then return end
+  SetSetting(path, value)
+end
+
 local function SetChoiceSelected(choice)
-  SetSetting(choice.path, choice.value)
+  WriteChoice(choice.path, choice.value)
 end
 
 -- The menu description is rebuilt only when the value changed (a slider drag sends
@@ -491,7 +504,7 @@ local function OnCycleClick(self, button)
   local n = #rec.choices
   local i = ChoiceIndex(rec) + ((button == "RightButton") and -1 or 1)
   if i < 1 then i = n elseif i > n then i = 1 end
-  SetSetting(rec.path, rec.choices[i].value)
+  WriteChoice(rec.path, rec.choices[i].value)
   rec.Sync(rec)
 end
 

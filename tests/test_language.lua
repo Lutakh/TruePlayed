@@ -271,6 +271,65 @@ T.test("language: read-only mode (newer schema) reads the language and writes no
   T.eq(sv, snapshot, "nothing written")
 end)
 
+T.test("language: read-only mode refuses a new language (/tpl lang, the dropdown, the cycle button)", function()
+  local sv = { schema = 99, settings = {}, chars = {} }
+  local snapshot = Stub.DeepCopy(sv)
+  local ns = Start({ db = sv, ui = { modern = true } })
+  local L, ui = ns.L, Stub.ui
+  T.ok(ns.readOnly)
+  -- /tpl lang <value>: the read-only message, nothing else, the setting unchanged
+  for _, cmd in ipairs({ "lang fr", "lang en", "lang auto", "lang FRFR", "lang enus" }) do
+    local n = #Stub.printed
+    Stub.RunSlash(cmd)
+    T.eq(#Stub.printed, n + 1, cmd .. ": one line")
+    T.ok(Printed(L.READONLY_ACTION, n + 1), cmd .. ": refused")
+    T.eq(ns.Core.GetSetting("language"), "auto", cmd .. ": unchanged")
+  end
+  -- an unknown value is still unknown; the listing still works
+  local n = #Stub.printed
+  Stub.RunSlash("lang xx")
+  T.ok(Printed(format(L.UNKNOWN_CMD_FMT, "lang xx"), n + 1), "unknown value")
+  n = #Stub.printed
+  Stub.RunSlash("lang")
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr"), n + 1), "the listing")
+  -- the dropdown: the same message, it keeps showing the setting
+  ns.Options.Open()
+  local controls = Controls()
+  local rec = controls.language
+  n = #Stub.printed
+  ui.ClickMenuItem(ui.FindMenuItem(rawget(rec.widget, "_root"), "Fran\195\167ais"))
+  T.eq(ns.Core.GetSetting("language"), "auto", "dropdown: unchanged")
+  T.ok(Printed(L.READONLY_ACTION, n + 1), "dropdown: refused")
+  local root = rawget(rec.widget, "_root")
+  T.ok(ui.IsChecked(ui.FindMenuItem(root, "Auto")), "Auto still checked")
+  T.no(ui.IsChecked(ui.FindMenuItem(root, "Fran\195\167ais")))
+  -- only the language: the other dropdowns still change their setting for the session
+  ui.ClickMenuItem(ui.FindMenuItem(rawget(controls["widget.style"].widget, "_root"), L.STYLE_BOX))
+  T.eq(ns.Core.GetSetting("widget.style"), "box", "another dropdown still applies")
+  -- Reload UI stays a plain reload (it writes nothing and promises nothing)
+  Stub.RunScript(controls["language.reload"].widget, "OnClick", "LeftButton")
+  T.eq(ui.reloads, 1)
+  rawset(_G, "TruePlayedDB", sv)
+  Stub.Fire("PLAYER_LOGOUT")
+  T.eq(sv, snapshot, "nothing written")
+
+  -- the fallback cycle button (no modern dropdown): refused both ways, still "Auto"
+  Stub.Reset()
+  ns = Start({ db = { schema = 99, settings = {}, chars = {} }, ui = { modern = false } })
+  L = ns.L
+  ns.Options.Open()
+  local b = Controls().language.widget
+  for _, button in ipairs({ "LeftButton", "RightButton" }) do
+    n = #Stub.printed
+    b:GetScript("OnClick")(b, button)
+    T.eq(ns.Core.GetSetting("language"), "auto", button .. ": unchanged")
+    T.ok(Printed(L.READONLY_ACTION, n + 1), button .. ": refused")
+  end
+  T.ok(FindRegion("Auto") ~= nil, "the button shows the setting")
+  T.eq(FindRegion("English"), nil)
+  T.eq(FindRegion("Fran\195\167ais"), nil)
+end)
+
 ---------------------------------------------------------------------------
 -- Unknown values and fallbacks
 ---------------------------------------------------------------------------
