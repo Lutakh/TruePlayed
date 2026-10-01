@@ -2562,15 +2562,22 @@ function Tracker.ReplayDelta(newChar)
   if type(ms) == "table" and (type(nsrv) ~= "table" or (ms.at or 0) > (nsrv.at or 0)) then
     newChar.srv = Util.DeepCopy(ms)
   end
-  -- the last kill of this load (the newer one wins)
+  -- the last kill (the newer one wins)
   local mk, nk = oldChar and oldChar.lastKill, newChar.lastKill
+  local mr, nkills = oldChar and oldChar.killRing, Tracker.loadKills
   if type(mk) == "table" and (type(nk) ~= "table" or (mk.at or 0) >= (nk.at or 0)) then
+    -- no kill in this load and a strictly newer live kill: the new record is an older copy
+    -- (WTFix) whose ring predates that kill too; the live ring follows, so the last kill
+    -- shown stays among the averaged ones (same kill on both sides: the new ring is kept)
+    if nkills == 0 and type(mr) == "table" and #mr > 0
+       and (type(nk) ~= "table" or (mk.at or 0) > (nk.at or 0)) then
+      newChar.killRing = Util.DeepCopy(mr)
+    end
     newChar.lastKill = Util.DeepCopy(mk)
   end
   -- the kills of this load (the newest entries of the live ring) follow the new record's
   -- own: neither its saved history (a fresh provisional record) nor duplicates (an older
   -- copy of the same record) are lost or added
-  local mr, nkills = oldChar and oldChar.killRing, Tracker.loadKills
   if type(mr) == "table" and nkills > 0 then
     local n, size = #mr, C.KILL_RING
     if nkills > n then nkills = n end
