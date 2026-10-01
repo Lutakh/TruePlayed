@@ -282,21 +282,15 @@ publication (étape 10), vérifiez dans l'onglet **Files** que le fichier porte 
 
 Ne collez jamais cette clé dans un fichier, un message ou une conversation.
 
-## 7. Ajouter le numéro du projet dans le `.toc`
+## 7. Le numéro du projet dans le `.toc` (déjà fait)
 
-Remplacez `123456` par votre Project ID. La commande ajoute la ligne juste après
-`## X-Website:` :
+Le projet CurseForge porte le numéro **1721055** (il figure dans l'adresse du portail auteur,
+`authors.curseforge.com/#/projects/1721055/...`, et dans l'encadré « About Project » de la
+page publique). La ligne `## X-Curse-Project-ID: 1721055` est dans le `.toc`, juste après
+`## X-Website:` ; `lua tests/check_toc.lua` vérifie que c'est bien un nombre.
 
-```
-cd ~/Code/TruePlayed
-perl -0pi -e 's/(## X-Website: [^\n]*\n)/$1## X-Curse-Project-ID: 123456\n/' TruePlayed_Camelot.toc
-git diff
-lua tests/check_toc.lua
-git commit -am "Add the CurseForge project ID"
-git push
-```
-
-N'écrivez jamais un faux numéro : l'outil de publication s'en sert pour envoyer le fichier.
+Ne la changez jamais pour un autre numéro : l'outil de publication s'en sert pour envoyer le
+fichier.
 
 ## 8. Wago (facultatif)
 
