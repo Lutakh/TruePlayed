@@ -187,7 +187,8 @@ end
 local function Acquire(R, defLayer, defSub)
   local L = R.L
   local layer, sub = L.layer or defLayer, L.sub or defSub
-  local spec, blend, kind = L.tex, L.blend, R.kind
+  local spec, kind = L.tex, R.kind
+  local blend = spec and spec.blend
   if kind == "tex" then
     R.t = Get(L, layer, sub, false)
     Setup(R.t, spec, blend)
@@ -288,31 +289,83 @@ local function EachGrad(R, pair, flat)
   end
 end
 
--- Colour index of a layer: c[k + 1] for the layers that follow the fill state, else c[1].
-local function ColorIndex(R)
-  return R.stateful and (state + 1) or 1
+-- Fill state whose colours a layer shows: the current one for the layers that follow the
+-- fill state (`base` used, or a fill span), else 0.
+local function StateOf(R)
+  return R.stateful and state or 0
+end
+
+-- Alpha factor of state 2 over state 0 (SPEC-themes 2.8): the layer's own (m), else the
+-- bar's maxAlpha on a fill span, else none.
+local function MaxAlpha(R)
+  local m = R.L.m
+  if m == nil and FILL_SPAN[R.span] then m = th.bar.maxAlpha end
+  return m
+end
+
+-- Compiled colours of state k (SPEC-themes 2.8): an entry is one colour (or one gradient
+-- pair { from, to, dir = }) for every state, or a per-state list; a state 2 without an
+-- entry of its own is state 0 with its alpha scaled by MaxAlpha, written into tables of
+-- the record (created once, at the first use: never on a steady tick).
+local function StateColor(R, x, k, key)
+  local c = x
+  if type(x[1]) == "table" then
+    c = x[k + 1]
+    if c then return c end
+    c = x[1]
+  end
+  local m = k == 2 and MaxAlpha(R)
+  if not m then return c end
+  local own = R[key]
+  if not own then
+    own = { 0, 0, 0, 0 }
+    R[key] = own
+  end
+  own[1], own[2], own[3], own[4] = c[1], c[2], c[3], c[4] * m
+  return own
+end
+
+local function StatePair(R, g, k)
+  local p = g
+  if type(g[1][1]) == "table" then
+    p = g[k + 1]
+    if p then return p end
+    p = g[1]
+  end
+  local m = k == 2 and MaxAlpha(R)
+  if not m then return p end
+  local own = R.ownPair
+  if not own then
+    own = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }
+    R.ownPair = own
+  end
+  local f, t, of, ot = p[1], p[2], own[1], own[2]
+  of[1], of[2], of[3], of[4] = f[1], f[2], f[3], f[4] * m
+  ot[1], ot[2], ot[3], ot[4] = t[1], t[2], t[3], t[4] * m
+  own.dir = p.dir
+  return own
 end
 
 local function ApplyGradient(R)
   R.gdirty = false
   local L = R.L
-  local k = ColorIndex(R)
-  local pair = L.g[k]
+  local k = StateOf(R)
+  local pair = StatePair(R, L.g, k)
   if pair.dir == nil then pair = R.gpair end    -- (a pair without its direction)
-  EachGrad(R, pair, L.f and (L.f[k] or L.f[1]) or pair[1])
+  EachGrad(R, pair, L.f and StateColor(R, L.f, k, "ownFlat") or pair[1])
 end
 
 -- Vertex colour (or gradient) of the current state, set only when its values changed;
 -- a changed gradient waits until the layer is shown (L5).
 local function ApplyColor(R)
   local L = R.L
-  local k = ColorIndex(R)
+  local k = StateOf(R)
   if L.g then
-    local pair = L.g[k]
+    local pair = StatePair(R, L.g, k)
     local f, t, v = pair[1], pair[2], R.gv
-    if v[1] ~= f.r or v[2] ~= f.g or v[3] ~= f.b or v[4] ~= f.a
-        or v[5] ~= t.r or v[6] ~= t.g or v[7] ~= t.b or v[8] ~= t.a then
-      v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8] = f.r, f.g, f.b, f.a, t.r, t.g, t.b, t.a
+    if v[1] ~= f[1] or v[2] ~= f[2] or v[3] ~= f[3] or v[4] ~= f[4]
+        or v[5] ~= t[1] or v[6] ~= t[2] or v[7] ~= t[3] or v[8] ~= t[4] then
+      v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8] = f[1], f[2], f[3], f[4], t[1], t[2], t[3], t[4]
       R.gdirty = true
       if pair.dir == nil then
         local gp = R.gpair
@@ -322,7 +375,7 @@ local function ApplyColor(R)
     if R.gdirty and R.shown then ApplyGradient(R) end
     return
   end
-  local c = L.c and L.c[k]
+  local c = L.c and StateColor(R, L.c, k, "ownColor")
   if not c then return end
   local r, g, b, a = c[1], c[2], c[3], c[4] or 1
   if r ~= R.cr or g ~= R.cg or b ~= R.cb or a ~= R.ca then
@@ -523,23 +576,23 @@ end
 local function PartColor(R, a)
   local P = R.L
   local f = PartAlpha(P, a)
-  if P.g then
-    local pair = P.g[1]
-    local from, to, gp = pair[1], pair[2], R.gpair
+  local g = P.g
+  if g then
+    local from, to, gp = g[1], g[2], R.gpair
     local gf, gt = gp[1], gp[2]
-    gf.r, gf.g, gf.b, gf.a = from.r, from.g, from.b, from.a * f
-    gt.r, gt.g, gt.b, gt.a = to.r, to.g, to.b, to.a * f
-    gp.dir = P.g.dir
-    local fl, flat = P.f and P.f[1], R.gflat
+    gf[1], gf[2], gf[3], gf[4] = from[1], from[2], from[3], from[4] * f
+    gt[1], gt[2], gt[3], gt[4] = to[1], to[2], to[3], to[4] * f
+    gp.dir = g.dir
+    local fl, flat = P.f, R.gflat
     if fl then
       flat[1], flat[2], flat[3], flat[4] = fl[1], fl[2], fl[3], (fl[4] or 1) * f
     else
-      flat[1], flat[2], flat[3], flat[4] = gf.r, gf.g, gf.b, gf.a
+      flat[1], flat[2], flat[3], flat[4] = gf[1], gf[2], gf[3], gf[4]
     end
     EachGrad(R, gp, flat)
     return
   end
-  local c = P.c and P.c[1]
+  local c = P.c
   if c then EachVertex(R, c[1], c[2], c[3], (c[4] or 1) * f) end
 end
 
@@ -600,7 +653,7 @@ local function BuildPanel()
       local R = partOf[P]
       if not R then
         R = NewRec(P)
-        R.gpair[1], R.gpair[2] = { r = 0, g = 0, b = 0, a = 0 }, { r = 0, g = 0, b = 0, a = 0 }
+        R.gpair[1], R.gpair[2] = { 0, 0, 0, 0 }, { 0, 0, 0, 0 }
         R.gflat = { 0, 0, 0, 0 }
         partOf[P] = R
       end

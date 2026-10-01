@@ -146,7 +146,7 @@ end
 
 local function PartColor(th, id)
   for _, P in ipairs(th.bar.panel.parts) do
-    if P.id == id then return P.c[1] end
+    if P.id == id then return P.c end         -- (a part does not follow the fill state)
   end
 end
 

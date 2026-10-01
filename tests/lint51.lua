@@ -26,6 +26,8 @@
 --   * globals: reads outside the SPEC 2.3 allowlist, writes outside the SPEC 2.2 whitelist
 --     (a missing `local` is the classic addon bug), os/io/print/load/setfenv...;
 --   * "OnUpdate" scripts, forbidden templates, C_Timer.NewTicker outside Core.lua.
+-- One explicit exception: Themes.lua reads loadstring, setfenv and load (LOADERS_OK below),
+-- to compile the theme source texts in an empty environment (design/NEXT-LOT.md M3).
 --
 -- A finding on a line that carries the comment `lint51-ignore` is suppressed.
 
@@ -126,6 +128,13 @@ local ADDON_BANNED = {
   loadstring = "loadstring() is forbidden in addon code (SPEC 2.3)",
   setfenv = "setfenv() is forbidden in addon code (SPEC 2.3)",
   getfenv = "getfenv() is forbidden in addon code (SPEC 2.3)",
+}
+
+-- Addon files allowed to read some of the banned globals: Themes.lua compiles the theme
+-- source texts in an empty environment (loadstring + setfenv on Lua 5.1, the game; load
+-- with an environment on 5.2+, the offline tests).
+local LOADERS_OK = {
+  ["Themes.lua"] = { loadstring = true, setfenv = true, load = true },
 }
 
 local FORBIDDEN_WOW = {
@@ -638,9 +647,14 @@ local function analyze(T, isAddon, report, tickers, rel)
     end
   end
 
+  local loadersOk = isAddon and LOADERS_OK[rel] or nil
+
   local function checkGlobal(i)
     local v = val[i]
     local line = lin[i]
+    if loadersOk and loadersOk[v] and not isAssignTarget(i) then
+      return                              -- read only (an assignment is still reported)
+    end
     if v == "global" then
       local nt, nv = typ[i + 1], val[i + 1]
       if nt == "name" or (nt == "kw" and nv == "function") or (nt == "op" and (nv == "*" or nv == "<")) then

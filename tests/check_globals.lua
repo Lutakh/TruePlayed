@@ -101,6 +101,13 @@ local READ_OK = Set({
 })
 for k in pairs(WRITE_OK) do READ_OK[k] = true end
 
+-- Globals one file only may read: Themes.lua compiles the theme source texts in an empty
+-- environment (loadstring + setfenv on Lua 5.1, the game; load with an environment on
+-- 5.2+, design/NEXT-LOT.md M3). A read from any other file is reported.
+local READ_OK_IN = {
+  loadstring = "Themes.lua", setfenv = "Themes.lua", load = "Themes.lua",
+}
+
 ---------------------------------------------------------------------------
 -- The addon environment
 ---------------------------------------------------------------------------
@@ -117,6 +124,7 @@ local function Problem(msg)
 end
 
 local reads, readWhere = {}, {}
+local readOutside = {}   -- [name] = where a file other than its READ_OK_IN file read it
 local badWrites = {}
 
 local function Where(level)
@@ -125,11 +133,20 @@ local function Where(level)
   return (info.short_src or "?") .. ":" .. tostring(info.currentline or 0)
 end
 
+local function FileOf(where)
+  return (where:gsub(":%d+$", ""):gsub("\\", "/"):match("([^/]+)$")) or where
+end
+
 local env = setmetatable({}, {
   __index = function(_, k)
     if not reads[k] then
       reads[k] = true
       readWhere[k] = Where(3)
+    end
+    local only = READ_OK_IN[k]
+    if only and not readOutside[k] then
+      local where = Where(3)
+      if FileOf(where) ~= only then readOutside[k] = where end
     end
     return _G[k]
   end,
@@ -810,7 +827,11 @@ table.sort(names)
 local nRead = #names
 for i = 1, nRead do
   local k = names[i]
-  if not READ_OK[k] then
+  if READ_OK_IN[k] then
+    if readOutside[k] then
+      Problem(string.format("%s: reads the global '%s' (allowed in %s only)", readOutside[k], k, READ_OK_IN[k]))
+    end
+  elseif not READ_OK[k] then
     Problem(string.format("%s: reads the global '%s' (not in the SPEC 2.3 allowlist)", readWhere[k] or "?", k))
   end
 end

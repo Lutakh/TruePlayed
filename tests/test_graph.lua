@@ -338,8 +338,18 @@ end)
 
 -- Same measure as T.alloc, with one unmeasured call after the full collect (the
 -- collect shrinks the Lua stack; its regrowth is not garbage).
+-- As T.alloc: the collect shrinks the Lua stack (Lua 5.1 halves it), and a step deeper
+-- than the warm call (the latency re-read every 5 ticks) would count its re-growth (not
+-- garbage, and depending on how large earlier tests left the stack): it is grown first.
+local function WarmStack(depth)
+  if depth <= 0 then return 0 end
+  local a, b, c, d, e, f, g, h = depth, depth, depth, depth, depth, depth, depth, depth
+  return WarmStack(depth - 1) + a + b + c + d + e + f + g + h
+end
+
 local function Alloc(fn, n)
   collectgarbage("collect")
+  WarmStack(200)
   fn(0)
   collectgarbage("stop")
   local before = collectgarbage("count")

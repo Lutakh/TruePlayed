@@ -106,9 +106,9 @@ local Themes = ns.Themes
 local sources = {}
 do
   local register = Themes.Register
-  Themes.Register = function(key, builder)
-    register(key, builder)
-    local ok, src = pcall(builder)
+  Themes.Register = function(key, source)
+    register(key, source)
+    local ok, src = Themes.Source(key)            -- the table of the registered source
     if ok and type(src) == "table" then sources[key] = src
     else fail("theme %s: builder failed: %s", tostring(key), tostring(src)) end
   end

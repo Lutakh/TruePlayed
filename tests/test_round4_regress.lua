@@ -3,8 +3,10 @@
 -- private tooltip of a hidden owner, the truncated tooltip label after a rebuild, what a
 -- theme switch keeps of the previous compiled theme (P5), the work done by a user colour
 -- change, the colour of a gradient layer on a client that ignores SetGradient.
--- The stub measures 6 px per character (colour codes left out).
+-- The stub measures 6 px per character (colour codes left out). Themes.Compile returns the
+-- warnings of the test-only validator (tests/theme_validate.lua).
 local Stub, T = ...
+local TV = dofile(Stub.ROOT .. "tests/theme_validate.lua")
 
 local format = string.format
 
@@ -23,6 +25,7 @@ local function Start(theme, opts)
   if opts.rest then Stub.player.rest = opts.rest end
   if opts.locale then Stub.locale = opts.locale end
   local ns = Stub.LoadAddon()
+  TV.Install(ns)
   Stub.LoginSequence({ settle = 3 })
   return ns, ns.Bar.frame
 end
@@ -652,6 +655,7 @@ end)
 T.test("compile: ui roles must not follow the user colours; sep center and ticks mid are checked", function()
   Stub.theme = nil
   local ns = Stub.LoadAddon({ files = { "Locales/enUS.lua", "Locales/frFR.lua", "Core.lua", "Themes.lua" } })
+  TV.Install(ns)
   Stub.LoginSequence()
   local function Fixture(ui, seps, ticks)
     return {

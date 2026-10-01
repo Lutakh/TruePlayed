@@ -16,8 +16,8 @@
 --     only when they changed, anchors only when a row moved or changed kind, and no
 --     table is created.
 -- Texture specs are the compiled ones of SPEC-themes 2.8 ({ path, w, h, tc, tc8, tile,
--- slice }); gradients follow L6 (SetGradient with colour tables, then SetGradientAlpha,
--- then the flat colour).
+-- slice }, defaults from their metatable); gradients follow L6 (SetGradient with colour
+-- tables, then SetGradientAlpha, then the flat colour).
 local ADDON, ns = ...
 local C = ns.C
 
@@ -68,8 +68,8 @@ local lineBufL, lineBufR = { 1, 1, 1, 1 }, { 1, 1, 1, 1 }   -- AddLine / AddDoub
 
 ---------------------------------------------------------------------------
 -- Compiled theme data (read at Build only; allocations allowed there). Colours are the
--- compiled hybrid tables (rgba array + r, g, b, a fields); gradients are the compiled
--- per-state form, applied with Themes.Gradient.
+-- compiled rgba arrays; a gradient is one compiled pair { from, to, dir = }, applied with
+-- Themes.Gradient (the tooltip has no fill state).
 ---------------------------------------------------------------------------
 
 -- An rgba array: a compiled colour as it is; a per-state list gives its first entry.
@@ -109,14 +109,15 @@ local function FontSlot(f, role, size)
   return { role, size, eff }
 end
 
--- Colour of an item into `out`: c (flat rgba), g / f (gradient and its fallback) and gm
--- (the same gradient reversed, for the right half of a mirrored separator).
+-- Colour of an item into `out`: c (flat rgba), g / f (gradient and its fallback colour:
+-- the from colour when the item has none) and gm (the same gradient reversed, for the
+-- right half of a mirrored separator: same fallback colour).
 local function Paint(out, item)
-  out.c = RGBA(item.color) or RGBA(item.c) or DEFAULT_TEXT
+  out.c = RGBA(item.c) or DEFAULT_TEXT
   local g = item.g
-  if type(g) == "table" and type(g[1]) == "table" and g[1][1] and g[1][2] then
-    out.g, out.f = g, item.f
-    out.gm = { g.dir or g[1].dir, g[1][2], g[1][1] }
+  if type(g) == "table" and type(g[1]) == "table" and type(g[2]) == "table" then
+    out.g, out.f = g, item.f or g[1]
+    out.gm = { g.dir, g[2], g[1] }
   end
   return out
 end
@@ -174,7 +175,7 @@ local function Normalize(th)
     end
   else
     local bg = C.COLORS.bg
-    s.parts[1] = NormPart({ id = "bg", color = { bg[1], bg[2], bg[3], 0.92 } }, 1)
+    s.parts[1] = NormPart({ id = "bg", c = { bg[1], bg[2], bg[3], 0.92 } }, 1)
   end
   local ti = tt.titleIcon
   if type(ti) == "table" then

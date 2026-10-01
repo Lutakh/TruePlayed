@@ -218,7 +218,7 @@ T.test("box style: the outermost FILL panel part fits the box; bar style keeps t
           local m = { math.huge, math.huge, math.huge, math.huge }
           for _, P in ipairs(parts) do
             if P.anchor == "FILL" then
-              for i = 1, 4 do m[i] = math.min(m[i], P.inset[i]) end
+              for i = 1, 4 do m[i] = math.min(m[i], P.inset and P.inset[i] or 0) end   -- (no inset: 0)
             end
           end
           T.eq({ minL, minB, maxR, maxT }, { m[1], m[4], fw - m[2], fh - m[3] }, key .. ": bar insets")
@@ -240,7 +240,7 @@ T.test("sliced gradients: one ramp over the 9 pieces of a panel (bar and tooltip
   end
   T.ok(P and P.kind == "nine" and P.g and P.g.dir == "VERTICAL", "mage panelFill: vertical gradient on a 9-slice")
   local pieces = frame.tp.panel.panelFill
-  local from, to = Rgba(P.g[1][1]), Rgba(P.g[1][2])
+  local from, to = Rgba(P.g[1]), Rgba(P.g[2])           -- (a part: one pair { from, to })
   from[4], to[4] = from[4] * 0.6, to[4] * 0.6                -- alpha "bg"
   local f7, t7 = Grad(pieces[7])
   local f4, t4 = Grad(pieces[4])

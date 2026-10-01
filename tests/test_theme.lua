@@ -4,7 +4,11 @@
 -- substitutions and the texture helpers.
 -- Most tests load the foundation and the theme engine only (no Bar / Tooltip / Options),
 -- and register their own fixture themes under keys whose file is not loaded.
+-- Themes.Compile is wrapped by the test-only validator (tests/theme_validate.lua): it
+-- returns the warnings of the source, and checks that every compile draws what the
+-- round-4 compiler compiled.
 local Stub, T = ...
+local TV = dofile(Stub.ROOT .. "tests/theme_validate.lua")
 
 local CORE = { "Locales/enUS.lua", "Locales/frFR.lua", "Core.lua" }
 local ENGINE = { "Locales/enUS.lua", "Locales/frFR.lua", "Core.lua", "Themes.lua", "Themes/actuel.lua" }
@@ -31,7 +35,9 @@ end
 
 local function Load(files, theme)
   Stub.theme = theme
-  return Stub.LoadAddon({ files = files })
+  local ns = Stub.LoadAddon({ files = files })
+  if ns.Themes then TV.Install(ns) end
+  return ns
 end
 
 local function Messages(ns)
@@ -345,26 +351,27 @@ T.test("Recolor: xpColor / restedColor give 'colors', gen + 1 and the same table
   local got = Messages(ns)
   local th = Th.Active()
   local fill, glow, marker, rested = Layer(th, "fill"), Layer(th, "glow"), Layer(th, "marker"), Layer(th, "rested")
-  local c1, c2, c3 = fill.c[1], fill.c[2], fill.c[3]
-  local hot, layers, g1 = th.text.colors.marker, th.bar.layers, rested.g[1]
+  local c1, c2 = fill.c[1], fill.c[2]
+  local hot, layers, g1 = th.text.colors.marker, th.bar.layers, rested.g
   local gen = th.gen
   T.eq(R3(c1), R3(Hex("#ff2bd6")), "theme xp")
   T.eq(R3(c2), R3(Hex("#22d3ee")), "theme rested")
-  T.eq(R3(c3), R3({ c1[1], c1[2], c1[3], 0.35 }), "max level: dimmed")
+  T.eq(fill.c[3], nil, "state 2 has no colour of its own: state 0 with bar.maxAlpha")
+  T.eq(R3(TV.Color(th, fill, 2)), R3({ c1[1], c1[2], c1[3], 0.35 }), "max level: dimmed")
 
   T.ok(Core.SetSetting("widget.xpColor", { 0, 1, 0 }))
   T.eq(got, { { "futuriste", "futuriste", "colors" } })
   T.eq(th.gen, gen + 1)
   T.ok(Th.Active() == th, "same compiled theme")
-  T.ok(fill.c[1] == c1 and fill.c[2] == c2 and fill.c[3] == c3 and th.bar.layers == layers, "same tables")
-  T.ok(th.text.colors.marker == hot and rested.g[1] == g1)
+  T.ok(fill.c[1] == c1 and fill.c[2] == c2 and fill.c[3] == nil and th.bar.layers == layers, "same tables")
+  T.ok(th.text.colors.marker == hot and rested.g == g1)
   T.eq(R3(c1), { 0, 1000, 0, 1000 })
-  T.eq(c1.r, 0); T.eq(c1.g, 1); T.eq(c1.a, 1)
-  T.eq(R3(c3), { 0, 1000, 0, 350 })
+  T.eq(c1[1], 0); T.eq(c1[2], 1); T.eq(c1[4], 1)
+  T.eq(R3(TV.Color(th, fill, 2)), { 0, 1000, 0, 350 })
   T.eq(R3(c2), R3(Hex("#22d3ee")), "rested state unchanged")
   T.eq(R3(hot), R3(Lighten({ 0, 1, 0, 1 }, 0.45)), "named colour using xp follows")
   T.eq(R3(glow.c[1]), { 0, 1000, 0, 550 })
-  T.eq(R3(glow.c[3]), { 0, 1000, 0, math.floor(0.55 * 0.35 * 1000 + 0.5) })
+  T.eq(R3(TV.Color(th, glow, 2)), { 0, 1000, 0, math.floor(0.55 * 0.35 * 1000 + 0.5) })
   T.eq(R3(marker.c[1]), R3(Lighten({ 0, 1, 0, 1 }, 0.85)))
   T.eq(R3(th.text.colors.label), R3(Hex("#a3bfcf")), "a static colour keeps its value (written once)")
   T.eq(R3(th.colors.xp), R3(Hex("#ff2bd6")), "th.colors: the theme default, before the override")
@@ -374,8 +381,9 @@ T.test("Recolor: xpColor / restedColor give 'colors', gen + 1 and the same table
   T.eq(got[2], { "futuriste", "futuriste", "colors" })
   T.eq(th.gen, gen + 2)
   T.eq(R3(c2), { 1000, 0, 0, 1000 })
-  T.eq(R3(rested.g[2][1]), R3({ 1, 0.5, 0.5, 0.62 }), "rested+.5@.62")
-  T.eq(R3(rested.g[2][2]), R3({ 1, 0.5, 0.5, 0 }))
+  local from1, to1 = TV.Pair(th, rested, 1)
+  T.eq(R3(from1), R3({ 1, 0.5, 0.5, 0.62 }), "rested+.5@.62")
+  T.eq(R3(to1), R3({ 1, 0.5, 0.5, 0 }))
   -- a sub-path (a single component written by another version) is a colour path too
   ns.SendMessage("SETTINGS_CHANGED", "widget.restedColor.2", 0.5)
   T.eq(#got, 3)
@@ -408,23 +416,24 @@ T.test("def: the hand-tuned colour while the user keeps the theme's own (actuel 
   local th = Th.Active()
   T.eq(th.key, "actuel")
   local rested, tick = Layer(th, "rested"), Layer(th, "restTick")
-  T.eq(R3(rested.g[1][1]), R3({ 0.35, 0.62, 1.0, 0.65 }))
-  T.eq(R3(rested.g[1][2]), R3({ 0.35, 0.62, 1.0, 0.20 }))
-  T.eq(R3(rested.f[1]), R3({ 0.35, 0.62, 1.0, 0.40 }))
-  T.eq(R3(tick.c[1]), R3(C.COLORS.restTick))
+  -- the rested part does not follow the fill state: one pair { from, to } and one flat colour
+  T.eq(R3(rested.g[1]), R3({ 0.35, 0.62, 1.0, 0.65 }))
+  T.eq(R3(rested.g[2]), R3({ 0.35, 0.62, 1.0, 0.20 }))
+  T.eq(R3(rested.f), R3({ 0.35, 0.62, 1.0, 0.40 }))
+  T.eq(R3(tick.c), R3(C.COLORS.restTick))
   T.ok(Core.SetSetting("widget.restedColor", { 0.1, 0.7, 0.2 }))
   local u = { 0.1, 0.7, 0.2, 1 }
   local function L(k, a) local c = Lighten(u, k); c[4] = a; return R3(c) end
-  T.eq(R3(rested.g[1][1]), L(0.35, 0.65), "rested+.35@.65")
-  T.eq(R3(rested.g[1][2]), L(0.35, 0.20))
-  T.eq(R3(rested.f[1]), L(0.35, 0.40))
-  T.eq(R3(tick.c[1]), L(0.6, 0.9))
+  T.eq(R3(rested.g[1]), L(0.35, 0.65), "rested+.35@.65")
+  T.eq(R3(rested.g[2]), L(0.35, 0.20))
+  T.eq(R3(rested.f), L(0.35, 0.40))
+  T.eq(R3(tick.c), L(0.6, 0.9))
   -- exactly the legacy arithmetic (Bar.lua Lighten): x + (1 - x) * k
-  T.eq(rested.g[1][1][2], 0.7 + (1 - 0.7) * 0.35)
+  T.eq(rested.g[1][2], 0.7 + (1 - 0.7) * 0.35)
   T.ok(Core.SetSetting("widget.xpColor", { 0.9, 0.9, 0.1 }))
-  T.eq(R3(rested.g[1][1]), L(0.35, 0.65), "the xp colour does not matter to the rested part")
+  T.eq(R3(rested.g[1]), L(0.35, 0.65), "the xp colour does not matter to the rested part")
   T.ok(Core.SetSetting("widget.restedColor", false))
-  T.eq(R3(rested.g[1][1]), R3({ 0.35, 0.62, 1.0, 0.65 }), "def again")
+  T.eq(R3(rested.g[1]), R3({ 0.35, 0.62, 1.0, 0.65 }), "def again")
 end)
 
 ---------------------------------------------------------------------------
@@ -442,7 +451,8 @@ T.test("Compile is pure and gives the 2.8 form (kinds, spans, dyn, per-state col
   T.eq(th.key, "actuel")
   T.ok(th.native)
   T.ok(th.tt.native and th.tt.colors == Th.CLASSIC_TT, "native tooltip: the classic palette itself")
-  T.eq(th.fonts, { display = "game", body = "game", num = "game" })
+  T.eq({ th.fonts.display, th.fonts.body, th.fonts.num }, { "game", "game", "game" })
+  T.eq(rawget(th.fonts, "num"), nil, "num = body: not stored (the default)")
   T.eq(th.bar.panel, "backdrop")
   T.eq({ th.bar.pad, th.bar.gap, th.bar.hAdd, th.bar.hMin }, { 8, 3, 0, 4 })
   local ids = {}
@@ -450,19 +460,24 @@ T.test("Compile is pure and gives the 2.8 form (kinds, spans, dyn, per-state col
   T.eq(ids, { "track:caps:track", "rested:tex:rested", "fill:caps:fill", "fillHi:tex:fill", "restTick:tex:restEnd" })
   local fill, hi, track = Layer(th, "fill"), Layer(th, "fillHi"), Layer(th, "track")
   T.ok(fill.dyn and not hi.dyn and not track.dyn)
-  T.ok(track.c[1] == track.c[2] and track.c[1] == track.c[3], "static, maxAlpha 1: one table")
-  T.ok(hi.c[1] == hi.c[2] and hi.c[3] ~= hi.c[1], "static fill layer: state 2 differs (maxAlpha)")
-  T.eq(R3(hi.c[3]), { 1000, 1000, 1000, 35 })
-  T.ok(fill.c[1] ~= fill.c[2] and fill.c[2] ~= fill.c[3])
+  T.ok(type(track.c[1]) == "number", "static, maxAlpha 1: one colour")
+  T.ok(TV.Color(th, track, 1) == track.c and TV.Color(th, track, 2) == track.c, "the same table in every state")
+  T.ok(type(hi.c[1]) == "number" and TV.Color(th, hi, 1) == hi.c, "static fill layer: one colour, states 0 and 1")
+  T.no(TV.Same(R3(TV.Color(th, hi, 2)), R3(hi.c), ""), "static fill layer: state 2 differs (maxAlpha)")
+  T.eq(R3(TV.Color(th, hi, 2)), { 1000, 1000, 1000, 35 })
+  T.ok(fill.c[1] ~= fill.c[2] and not TV.Same(R3(fill.c[2]), R3(TV.Color(th, fill, 2)), ""), "three states")
   T.eq(fill.tex.path, ns.C.TEX_WHITE)
-  T.eq({ fill.layer, fill.sub, fill.blend }, { "ARTWORK", 2, "BLEND" })
+  T.eq({ fill.layer, fill.sub, fill.tex.blend }, { "ARTWORK", 2, "BLEND" })
   T.eq({ hi.top, hi.h, hi.bottom, hi.capInset, hi.when }, { 0, 1, 0, true, "bar" })
   local tick = Layer(th, "restTick")
   T.eq({ tick.w, tick.align, tick.dx }, { 1, "right", 0 })
   T.eq(th.text.font.s1, "body")
-  T.eq(th.text.size, { s1 = 2, s2 = 0, s3 = -1, level = 0, levelValue = 0, xpLabel = 0, xp = 0, sep = 0,
-                       marker = -1, hint = -1 })
-  T.eq(th.text.boxSize, { s1 = 2, s2 = -1, s3 = -1 })
+  local size = { s1 = 2, s2 = 0, s3 = -1, level = 0, levelValue = 0, xpLabel = 0, xp = 0, sep = 0,
+                 marker = -1, hint = -1 }
+  for e, v in pairs(size) do T.eq(th.text.size[e], v, "text.size." .. e) end
+  T.eq(next(th.text.size), nil, "the defaults: nothing stored")
+  for e, v in pairs({ s1 = 2, s2 = -1, s3 = -1 }) do T.eq(th.text.boxSize[e], v, "text.boxSize." .. e) end
+  T.eq(next(th.text.boxSize), nil)
   T.eq({ th.text.split, th.text.splitGap, th.text.levelFmt }, { false, 4, "upper" })
   T.eq(R3(th.text.shadow.c), { 0, 0, 0, 800 })
   T.eq({ th.text.shadow.x, th.text.shadow.y }, { 1, -1 })
@@ -473,9 +488,13 @@ T.test("Compile is pure and gives the 2.8 form (kinds, spans, dyn, per-state col
   T.eq(R3(th.ui.bg), R3(K.bg)); T.eq(R3(th.ui.border), R3(K.border)); T.eq(R3(th.ui.title), R3(K.value))
   T.eq(R3(th.colors.xp), R3(K.fill)); T.eq(R3(th.colors.rested), R3(K.restedFill))
   T.eq(R3(th.colors.bg), R3(K.bg), "the whole palette is exposed (backdrop colours)")
-  -- compiled colours are hybrid: rgba array and r/g/b/a fields
-  local c = th.text.colors.label
-  T.eq({ c[1], c[2], c[3], c[4] }, { c.r, c.g, c.b, c.a })
+  -- compiled colours are plain rgba arrays: the 4 numbers and nothing else
+  for _, c in ipairs({ th.text.colors.label, th.accent, th.ui.bg, Layer(th, "track").c }) do
+    local keys = 0
+    for _ in pairs(c) do keys = keys + 1 end
+    T.eq(keys, 4)
+    for i = 1, 4 do T.eq(type(c[i]), "number") end
+  end
 end)
 
 T.test("Compile: fixture features (three, nine, tile, ticks, anchors, panel parts, tooltip, text)", function()
@@ -484,46 +503,58 @@ T.test("Compile: fixture features (three, nine, tile, ticks, anchors, panel part
   local th, warnings = Th.Compile("futuriste")
   T.eq(warnings, {})
   T.eq({ th.bar.pad, th.bar.gap, th.bar.hAdd, th.bar.hMin }, { 10, 4, 6, 10 })
-  T.eq(th.fonts, { display = "Orbitron", body = "Rajdhani", num = "Rajdhani" })
+  T.eq({ th.fonts.display, th.fonts.body, th.fonts.num }, { "Orbitron", "Rajdhani", "Rajdhani" })
+  T.eq(rawget(th.fonts, "num"), nil, "num = body: not stored")
   local glow = Layer(th, "glow")
   T.eq(glow.kind, "three")
   T.eq(glow.tex.slice, { 16, 8 })
   T.eq(glow.tex.path, "Interface\\AddOns\\TruePlayed\\Media\\Themes\\common\\glow.tga")
-  T.eq({ glow.tex.w, glow.tex.h, glow.blend, glow.tex.blend }, { 64, 32, "ADD", "ADD" })
+  T.eq({ glow.tex.w, glow.tex.h, glow.tex.blend }, { 64, 32, "ADD" })
+  T.eq(rawget(glow, "blend"), nil, "the blend mode lives in the texture spec only")
   T.eq(glow.pad, { 8, 8 })
   T.ok(glow.dyn)
   local frame = Layer(th, "frame")
   T.eq(frame.kind, "nine")
   T.eq(frame.tex.path, "Interface\\AddOns\\TruePlayed\\Media\\Themes\\futuriste\\frame.tga")
   local line = Layer(th, "line")
-  T.eq({ line.tex.tile, line.tex.wrapH, line.tex.wrapV }, { "H", "REPEAT", "CLAMP" })
+  T.eq(line.tex.tile, "H")
+  local probe = CreateFrame("Frame"):CreateTexture()
+  Th.SetTex(probe, line.tex)
+  T.eq({ probe._wrapH, probe._wrapV }, { "REPEAT", "CLAMP" }, "wrap modes of tile H")
   local ticks, segs = Layer(th, "ticks"), Layer(th, "segs")
-  T.eq(ticks.ticks, { n = 10, w = 1 })
-  T.eq(segs.ticks, { n = 10, w = 1, clip = "fill" })
-  T.eq(R3(segs.c[1]), { 4, 16, 43, 250 }, "colour alpha x layer alpha")
-  T.ok(segs.c[3] == segs.c[1], "span track: no maxAlpha")
+  T.eq({ ticks.ticks.n, ticks.ticks.w, ticks.ticks.clip, ticks.ticks.mid }, { 10, 1 })
+  T.eq({ segs.ticks.n, segs.ticks.w, segs.ticks.clip, segs.ticks.mid }, { 10, 1, "fill" })
+  T.eq(R3(segs.c), { 4, 16, 43, 250 }, "colour alpha x layer alpha")
+  T.ok(TV.Color(th, segs, 2) == segs.c, "span track: no maxAlpha")
   local bracket = Layer(th, "bracket")
-  T.eq(bracket.tex.tc, { 1, 0, 0, 1 }, "flipX")
+  T.ok(bracket.tex.flipX)
+  probe = CreateFrame("Frame"):CreateTexture()
+  Th.SetTex(probe, bracket.tex)
+  T.eq(probe._tc, { 1, 0, 0, 1 }, "flipX")
   T.eq({ bracket.w, bracket.align, bracket.dx, bracket.span }, { 8, "left", 2, "trackEnd" })
   local marker = Layer(th, "marker")
   local m3 = Lighten(Hex("#ff2bd6"), 0.85)
   m3[4] = 0.35
-  T.eq(R3(marker.c[3]), R3(m3), "fillEnd: bar.maxAlpha in state 2")
+  T.eq(R3(TV.Color(th, marker, 2)), R3(m3), "fillEnd: bar.maxAlpha in state 2")
   local band = Layer(th, "band")
   T.eq(band.band, { 0, 0.28 })
   T.eq(band.g.dir, "VERTICAL")
-  T.ok(band.g[1] == band.g[2] and band.g[2] ~= band.g[3], "static pair; state 2 dimmed")
-  T.ok(band.f[1] ~= nil and R3(band.f[1])[4] == 120, "flat defaults to from")
+  local f0, t0 = TV.Pair(th, band, 0)
+  local f1, t1 = TV.Pair(th, band, 1)
+  local f2 = TV.Pair(th, band, 2)
+  T.ok(f0 == band.g[1] and t0 == band.g[2] and f1 == f0 and t1 == t0 and R3(f2)[4] ~= R3(f0)[4],
+    "static pair; state 2 dimmed")
+  T.ok(band.f == nil and R3(TV.Flat(th, band, 0))[4] == 120, "flat defaults to from")
   local track = Layer(th, "track")
-  T.eq(R3(track.f[1]), R3({ 7 / 255, 13 / 255, 26 / 255, 0.9 }))
+  T.eq(R3(track.f), R3({ 7 / 255, 13 / 255, 26 / 255, 0.9 }))
   local rested = Layer(th, "rested")
-  T.ok(rested.g[1][1].r ~= nil and rested.g[1].dir == "HORIZONTAL", "pairs carry dir, colours r/g/b/a")
+  T.ok(#rested.g[1] == 4 and rested.g.dir == "HORIZONTAL", "pairs carry dir, colours are rgba arrays")
   -- panel parts: a numeric alpha folded into c, "bg" kept
   local parts = th.bar.panel.parts
-  T.eq({ parts[1].id, parts[1].alpha, parts[1].sub, parts[1].anchor, parts[1].layer }, { "panelFill", "bg", -8, "FILL", "BACKGROUND" })
-  T.eq(parts[1].inset, { 0, 0, 0, 0, l = 0, r = 0, t = 0, b = 0 })
-  T.eq({ parts[2].alpha, parts[2].sub, parts[2].x, parts[2].y, parts[2].w, parts[2].h }, { 1, -7, 15, 0, 96, 2 })
-  T.eq(R3(parts[2].c[1])[4], 500)
+  T.eq({ parts[1].id, parts[1].alpha, TV.PartSub(parts[1], 1), parts[1].anchor, parts[1].layer }, { "panelFill", "bg", -8, "FILL", "BACKGROUND" })
+  T.eq(parts[1].inset, nil, "no inset: 0 on every side (the readers' default)")
+  T.eq({ parts[2].alpha, TV.PartSub(parts[2], 2), parts[2].x, parts[2].y, parts[2].w, parts[2].h }, { 1, -7, 15, 0, 96, 2 })
+  T.eq(R3(parts[2].c)[4], 500)
   -- text
   T.eq(th.text.font.level, "display"); T.eq(th.text.font.xp, "num"); T.eq(th.text.font.s2, "body")
   T.eq(th.text.size.s1, 3); T.eq(th.text.size.s2, 0); T.eq(th.text.size.hint, 0)
@@ -532,18 +563,19 @@ T.test("Compile: fixture features (three, nine, tile, ticks, anchors, panel part
   -- tooltip
   local tt = th.tt
   T.no(tt.native)
-  T.eq(tt.width, { 280, 440, min = 280, max = 440 })
-  T.eq(tt.pad, { 12, 12, 10, 10, l = 12, r = 12, t = 10, b = 10 })
+  T.eq({ tt.width[1], tt.width[2] }, { 280, 440 })
+  T.eq({ tt.pad[1], tt.pad[2], tt.pad[3], tt.pad[4] }, { 12, 12, 10, 10 })
   T.eq({ tt.gap, tt.lineGap }, { 8, 3 })
-  T.eq(tt.fonts.value, { "body", 15, role = "body", size = 15 }, "value defaults to body")
-  T.eq(tt.fonts.title, { "display", 13, role = "display", size = 13 })
+  T.eq(tt.fonts.value, nil, "value defaults to body (readers: fonts.value or fonts.body)")
+  T.eq(tt.fonts.body, { "body", 15 })
+  T.eq(tt.fonts.title, { "display", 13 })
   T.eq(R3(tt.colors.mode), R3(Hex("#a3bfcf")), "mode defaults to label")
   T.eq(R3(tt.colors.header), R3(Hex("#22d3ee")), "header defaults to accent")
   T.eq(R3(tt.colors.pause), R3(ns.C.COLORS.pause), "pause defaults to C.COLORS.pause")
   T.eq(tt.colors.ccDim, "|cff7f96a9")
   T.eq(R3(tt.colors.levelValue), R3(Lighten(Hex("#ff2bd6"), 0.45)))
   T.eq(#tt.panel.parts, 2)
-  T.eq(R3(tt.panel.parts[2].c[1])[4], 500)
+  T.eq(R3(tt.panel.parts[2].c)[4], 500)
   T.eq({ tt.titleIcon.w, tt.titleIcon.h, tt.titleIcon.gap }, { 12, 12, 8 })
   T.eq(tt.sep.header.g.dir, "HORIZONTAL")
   T.eq({ tt.sep.header.h, tt.sep.header.above, tt.sep.header.below, tt.sep.header.mirror }, { 1, 6, 5, false })
@@ -630,7 +662,9 @@ T.test("CLASSIC_TT: the classic palette from C.COLORS, ccDim = C.CC.dim exactly"
                    levelValue = K.value, levelValueRested = K.value, rested = K.value }
   for role, c in pairs(expect) do
     T.eq({ P[role][1], P[role][2], P[role][3], P[role][4] }, { c[1], c[2], c[3], c[4] or 1 }, role)
-    T.eq(P[role].r, c[1], role)
+    local keys = 0
+    for _ in pairs(P[role]) do keys = keys + 1 end
+    T.eq(keys, 4, role .. ": a plain rgba array")
   end
 end)
 
@@ -827,7 +861,7 @@ T.test("SetTex: path, wrap modes when tiled, rect / flip / rot coordinates, blen
   local f = CreateFrame("Frame")
   local t = f:CreateTexture()
   local spec = Spec(ns, { rect = { 16, 8, 32, 16 }, flipY = true })
-  T.eq(spec.tc, { 0.25, 0.75, 0.75, 0.25 })
+  T.eq({ spec.l, spec.r, spec.t, spec.b, spec.flipY }, { 0.25, 0.75, 0.25, 0.75, true }, "the rect, unflipped")
   Th.SetTex(t, spec)
   T.eq(t._texture, "Interface\\AddOns\\TruePlayed\\Media\\Themes\\futuriste\\tex64.tga")
   T.eq({ t._wrapH, t._wrapV }, { nil, nil }, "not tiled: SetTexture(path) only")
@@ -947,19 +981,24 @@ T.test("Gradient: SetGradient, else SetGradientAlpha, else the flat colour; any 
   local th = Th.Compile("futuriste")
   local rested = Layer(th, "rested")
   local t = CreateFrame("Frame"):CreateTexture()
-  T.eq(Th.Gradient(t, rested.g, rested.f, 1), 1)
-  local from, to = rested.g[2][1], rested.g[2][2]
-  T.eq(t._grad, { "HORIZONTAL", from.r, from.g, from.b, from.a, to.r, to.g, to.b, to.a })
-  T.eq(Th.Gradient(t, rested.g[1], rested.f[1]), 1, "one pair")
+  -- a per-state list of pairs (the form of a `base` layer): k picks the pair
+  local band = Layer(th, "band")
+  local states = { rested.g, band.g }
+  T.eq(Th.Gradient(t, states, nil, 1), 1)
+  local from, to = band.g[1], band.g[2]
+  T.eq(t._grad, { "VERTICAL", from[1], from[2], from[3], from[4], to[1], to[2], to[3], to[4] })
+  T.eq(Th.Gradient(t, rested.g, rested.f, 1), 1, "one pair")
+  from, to = rested.g[1], rested.g[2]
+  T.eq(t._grad, { "HORIZONTAL", from[1], from[2], from[3], from[4], to[1], to[2], to[3], to[4] })
   T.eq(Th.Gradient(t, { "VERTICAL", from, to }, from), 1, "{ dir, from, to }")
   T.eq(t._grad[1], "VERTICAL")
   rawset(t, "SetGradient", function() error("no colour tables here") end)
-  T.eq(Th.Gradient(t, rested.g, rested.f, 0), 2)
-  T.eq(t._gradA, { "HORIZONTAL", rested.g[1][1].r, rested.g[1][1].g, rested.g[1][1].b, rested.g[1][1].a,
-                   rested.g[1][2].r, rested.g[1][2].g, rested.g[1][2].b, rested.g[1][2].a })
+  T.eq(Th.Gradient(t, states, nil, 0), 2)
+  T.eq(t._gradA, { "HORIZONTAL", rested.g[1][1], rested.g[1][2], rested.g[1][3], rested.g[1][4],
+                   rested.g[2][1], rested.g[2][2], rested.g[2][3], rested.g[2][4] })
   rawset(t, "SetGradientAlpha", function() error("old client") end)
   T.eq(Th.Gradient(t, rested.g, rested.f, 0), 3)
-  local fl = rested.f[1]
+  local fl = rested.f or rested.g[1]                -- no flat colour: the from colour
   T.eq({ t:GetVertexColor() }, { fl[1], fl[2], fl[3], fl[4] })
   local t2 = CreateFrame("Frame"):CreateTexture()
   Th.Gradient(t2, rested.g, rested.f, 1)

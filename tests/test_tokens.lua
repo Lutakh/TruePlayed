@@ -853,8 +853,18 @@ end)
 -- and CallInfo list; without the warm call, re-growing them on the first deep tick
 -- (Tick -> SafeCall -> Tokens -> Stats) is counted: a constant 0.4-1.7 KB that is not
 -- garbage and does not depend on the number of ticks.
+-- The warm call may take a shallower path than some ticks: the stack is also grown first,
+-- as T.alloc does (how large earlier tests left it decides whether the collect shrinks it
+-- below the deepest tick).
+local function WarmStack(depth)
+  if depth <= 0 then return 0 end
+  local a, b, c, d, e, f, g, h = depth, depth, depth, depth, depth, depth, depth, depth
+  return WarmStack(depth - 1) + a + b + c + d + e + f + g + h
+end
+
 local function Alloc(fn, n)
   collectgarbage("collect")
+  WarmStack(200)
   fn(0)
   collectgarbage("stop")
   local before = collectgarbage("count")

@@ -97,6 +97,12 @@ read_globals = {
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
 }
 
+-- Themes.lua alone reads the chunk loaders: it compiles the theme source texts in an empty
+-- environment (loadstring + setfenv on Lua 5.1, the game; load on 5.2+; NEXT-LOT M3).
+files["Themes.lua"] = {
+  read_globals = { "loadstring", "setfenv", "load" },
+}
+
 -- Offline tests: the stubs define the whole WoW API as globals, so global checks are
 -- off there; the other checks (unused values, shadowing, unreachable code) still apply.
 files["tests"] = {
