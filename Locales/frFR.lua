@@ -428,7 +428,8 @@ L.GRAPH_MIN_AVG_MAX_FMT   = "min %s · moy. %s · max %s"  -- [fmt] values
 L.GRAPH_LAT_NOTE          = "Le jeu ne rafraîchit la latence qu'environ toutes les 30 s : elle est tracée en paliers."
 L.GRAPH_NO_DATA           = "Collecte des mesures..."
 
--- Registration for Core's language switch.
+-- Registration for Core's language switch. Keep this block LAST: a string defined
+-- below it would miss the file-load copy into ns.L on a French client.
 local reg = ns.LOCALES
 if type(reg) ~= "table" then
   reg = {}

@@ -434,6 +434,7 @@ L.GRAPH_NO_DATA           = "Collecting samples..."
 
 -- English copy for Core's language switch (frFR.lua may overwrite L on a French
 -- client before the settings are known). Dropped by Core at PLAYER_LOGIN.
+-- Keep this block LAST: a string defined below it would be missing from the copy.
 do
   local en = {}
   for k, v in pairs(L) do en[k] = v end
