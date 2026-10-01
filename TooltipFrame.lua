@@ -115,7 +115,7 @@ end
 local function Paint(out, item)
   out.c = RGBA(item.c) or DEFAULT_TEXT
   local g = item.g
-  if type(g) == "table" and type(g[1]) == "table" and type(g[2]) == "table" then
+  if type(g) == "table" and type(g[1]) == "table" and type(g[1][1]) == "number" and type(g[2]) == "table" then
     out.g, out.f = g, item.f or g[1]
     out.gm = { g.dir, g[2], g[1] }
   end

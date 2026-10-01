@@ -4,16 +4,16 @@
 -- leafo/gh-actions-lua, hence the margins.
 --
 -- Method (every figure is KB of collectgarbage("count"), after GC() = 4 full collects, the
--- smallest of 3 runs, with the string table grown beforehand (Room) so that its doubling
--- - up to 16 KB on 5.5, depending on what the process holds - never falls in a measure):
+-- smallest of 3 runs: a doubling of the string table, which stays doubled, falls in one run
+-- at most):
 --   * compiled theme: login with "actuel" (Stub.InstallUI({ ldb = false }),
 --     LoginSequence({ settle = 3 }), Advance(2)), then for each key
 --     a = GC(); keep = Themes.Compile(key); b = GC(): b - a, which includes the colour
 --     program of the theme (programs[th], weak-keyed, alive with keep);
---   * theme sources: the bytes of the 13 source texts the registry keeps (exact on every
---     version: Lua 5.5 does not count strings built in a buffer, as Register's compaction
---     does, in collectgarbage("count")), and the GC delta of loading the 13 theme files
---     after Themes.lua; the registry holds no builder function for them;
+--   * theme sources: the bytes of the 13 source texts the registry keeps, exact on every
+--     version (a GC delta is not: Lua 5.5 does not count strings built in a buffer, as
+--     Register's compaction does, and the parse of the files may double the string table,
+--     32 KB on 5.4, that stays doubled); the registry holds no builder function for them;
 --   * Themes.lua resident: Locales + Core loaded, a = GC(), Themes.lua loaded and run,
 --     b = GC(): b - a (code, constants and the tables it builds at load: fonts, palette);
 --   * after login: Stub.Reset(), Stub.InstallUI({ ldb = false }), Stub.theme = key,
@@ -52,24 +52,13 @@ local function GC()
   return collectgarbage("count")
 end
 
--- Room in the string table: 30000 strings held while measuring (the table only grows
--- when it is full and only shrinks below a quarter full; these are created, and the
--- table resized, before the first GC() of a measure).
-local function Room()
-  local hold = {}
-  for i = 1, 30000 do hold[i] = "theme memory room " .. i end
-  return hold
-end
-
 -- The smallest of 3 measures of fn() -> KB.
 local function Min3(fn)
-  local hold = Room()
   local best = math.huge
   for _ = 1, 3 do
     local kb = fn()
     if kb < best then best = kb end
   end
-  hold[1] = nil
   return best
 end
 
@@ -109,22 +98,18 @@ T.test("memory: the theme sources are compact texts, 80 KB in total, no builder 
   Budget()
   Stub.theme = nil
   local ns = Stub.LoadAddon({ files = BASE })
-  local hold = Room()
-  local a = GC()
   for _, key in ipairs(KEYS) do
-    assert(loadfile(Stub.ROOT .. "Themes/" .. key .. ".lua"))("TruePlayed", ns)   -- (the chunk is dropped)
+    assert(loadfile(Stub.ROOT .. "Themes/" .. key .. ".lua"))("TruePlayed", ns)
   end
-  local loaded = GC() - a
-  hold[1] = nil
   local registry = Upvalue(ns.Themes.IsRegistered, "registry")
-  local bytes = 0
-  for _, key in ipairs(KEYS) do
-    local entry = registry[key]
+  local bytes, n = 0, 0
+  for key, entry in pairs(registry) do
+    n = n + 1
     T.eq(type(entry), "string", key .. ": a source text, not a builder function")
     bytes = bytes + (type(entry) == "string" and #entry or 0)
   end
+  T.eq(n, #KEYS, "the 13 themes, nothing else")
   T.ok(bytes <= SOURCES_KB * 1024, string.format("source texts: %d bytes", bytes))
-  T.ok(loaded <= SOURCES_KB, string.format("13 theme files resident: %.1f KB", loaded))
 end)
 
 T.test("memory: Themes.lua resident (code and load-time tables) fits its budget", function()
