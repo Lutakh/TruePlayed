@@ -3,8 +3,10 @@
 -- ids, sublevels, bands, overlapping layers, required colours and roles, `base` only in
 -- bar layers, and the display role kept away from arbitrary text.
 -- The checks read the source table AND the compiled theme, so a compiler slip that would
--- swallow a problem without a warning still shows up here.
+-- swallow a problem without a warning still shows up here. The warnings come from the
+-- test-only validator (tests/theme_validate.lua, installed on Themes.Compile).
 local Stub, T = ...
+local TV = dofile(Stub.ROOT .. "tests/theme_validate.lua")
 
 local BASE = { "Locales/enUS.lua", "Locales/frFR.lua", "Core.lua", "Themes.lua" }
 local DRAW_LAYERS = { BACKGROUND = true, BORDER = true, ARTWORK = true, OVERLAY = true }
@@ -24,7 +26,7 @@ local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "afk", "inn", "c
 
 ---------------------------------------------------------------------------
 -- Loading: the engine, then every Themes\*.lua of the TOC with Register wrapped so that
--- the builders (the source tables) can be read too.
+-- the source tables can be read too (builders[key]() builds the registered source).
 ---------------------------------------------------------------------------
 local function ReadFile(path)
   local f = io.open(path, "rb")
@@ -54,11 +56,12 @@ end
 local function LoadAll()
   Stub.theme = nil
   local ns = Stub.LoadAddon({ files = BASE })
+  TV.Install(ns)
   local builders, missing, problems = {}, {}, {}
   local register = ns.Themes.Register
-  ns.Themes.Register = function(key, builder)
-    register(key, builder)
-    builders[key] = builder
+  ns.Themes.Register = function(key, source)
+    register(key, source)
+    builders[key] = TV.Builder(ns, key)
   end
   for _, e in ipairs((TocThemeFiles())) do
     local path = Stub.ROOT .. e.file
@@ -252,8 +255,16 @@ local function CheckLayers(th, out)
     if Lc.when ~= nil and Lc.when ~= "bar" and Lc.when ~= "box" then
       Add(out, "%s: when %s", tostring(id), tostring(Lc.when))
     end
-    if type(Lc.c) ~= "table" or not (IsRGBA(Lc.c[1]) and IsRGBA(Lc.c[2]) and IsRGBA(Lc.c[3])) then
-      Add(out, "%s: compiled colours are not three rgba tables in 0..1", tostring(id))
+    -- what is drawn in each fill state: the vertex colour, or the gradient and its flat colour
+    for k = 0, 2 do
+      local ok
+      if Lc.g then
+        local from, to = TV.Pair(th, Lc, k)
+        ok = IsRGBA(from) and IsRGBA(to) and IsRGBA(TV.Flat(th, Lc, k))
+      else
+        ok = IsRGBA(TV.Color(th, Lc, k))
+      end
+      if not ok then Add(out, "%s: compiled colours of state %d are not rgba tables in 0..1", tostring(id), k) end
     end
   end
 end
@@ -265,8 +276,9 @@ local function CheckParts(parts, where, out)
     if P.id and ids[P.id] then Add(out, "%s[%d]: duplicate id %s", where, i, P.id) end
     if P.id then ids[P.id] = true end
     if not DRAW_LAYERS[P.layer] then Add(out, "%s.%s: draw layer %s", where, tostring(P.id), tostring(P.layer)) end
-    if type(P.sub) ~= "number" or P.sub % 1 ~= 0 or P.sub < -8 or P.sub > 7 then
-      Add(out, "%s.%s: sub %s outside -8..7", where, tostring(P.id), tostring(P.sub))
+    local sub = TV.PartSub(P, i)
+    if type(sub) ~= "number" or sub % 1 ~= 0 or sub < -8 or sub > 7 then
+      Add(out, "%s.%s: sub %s outside -8..7", where, tostring(P.id), tostring(sub))
     end
   end
 end
@@ -323,8 +335,8 @@ local function CheckFonts(ns, th, out)
   end
   if not th.native then
     for _, name in ipairs(TT_FONTS) do
-      local f = th.tt.fonts[name]
-      local role = f and f.role
+      local f = th.tt.fonts[name] or (name == "value" and th.tt.fonts.body)   -- (the readers' rule)
+      local role = f and f[1]
       if not FONT_ROLES[role] then Add(out, "tooltip.fonts.%s: role %s", name, tostring(role)) end
       if name ~= "title" and role == "display" then Add(out, "tooltip.fonts.%s uses the display role", name) end
     end
@@ -449,6 +461,7 @@ end
 T.test("theme data: the checks above catch broken data (fixture)", function()
   Stub.theme = nil
   local ns = Stub.LoadAddon({ files = BASE })   -- engine only: "hunter" is free for the fixture
+  TV.Install(ns)
   Stub.LoginSequence()
   local src = {
     name = "THEME_HUNTER",

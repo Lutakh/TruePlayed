@@ -3,6 +3,69 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## Mise à jour du 1er octobre (lot 5) : langue, moyenne des monstres, mémoire
+
+Cette mise à jour n'ajoute aucun fichier : recopiez le dossier comme d'habitude, puis un
+`/reload` suffit. Si vous n'aviez pas encore la version avec les thèmes, faites d'abord la
+section « Thèmes » plus bas (redémarrage complet du jeu).
+
+### La langue de TruePlayed
+
+- **L'option** : Options > Affichage, juste après « Masquer au niveau max », une liste
+  « Langue (Language) » avec « Auto », « English » et « Français » (chaque langue écrite
+  dans sa propre langue), une note, puis un bouton « Recharger l'interface ». « Auto »
+  est coché : TruePlayed suit la langue du jeu, comme avant.
+- **Passer en anglais** : choisissez « English ». Rien ne change tout de suite, c'est
+  normal. Cliquez « Recharger l'interface » : la barre (`LEVEL 20`, `XP:`), l'infobulle
+  (survol simple et Maj), la fenêtre `/tpl stats` (les trois onglets), les options, le
+  menu du clic droit et les messages du chat (`/tpl help`, `/tpl played`) sont en
+  anglais. Les noms de zones et d'instances restent en français : ils viennent du jeu.
+  Notez tout texte resté en français qui ne vient pas du jeu.
+- **Revenir** : `/tpl lang fr` (le chat dit qu'il faut recharger), puis `/reload` : tout
+  est de nouveau en français. `/tpl lang auto` fait de même en suivant la langue du jeu ;
+  `/tpl lang` seul affiche le choix en cours ; `/tpl lang xx` répond « Commande
+  inconnue ». `/tpl help` affiche la ligne de `/tpl lang`.
+- **Mémorisé** : en anglais, déconnectez-vous puis reconnectez-vous (et changez de
+  personnage) : l'anglais est gardé, pour tous vos personnages.
+- **Infobulle jamais coupée en anglais** : en English, survolez la barre (simple et Maj)
+  dans quelques thèmes (Futuriste, Pixel rétro, Démoniste) : aucune ligne ne finit par
+  « ... ».
+
+### Monstres à tuer : la moyenne des 10 derniers
+
+- **La ligne de l'infobulle** devient `Monstres à tuer : ~38 (moyenne : 47 XP, dernier :
+  30 XP)`. Juste après la mise à jour, la moyenne part de votre dernier monstre connu
+  (moyenne = dernier).
+- **Le nombre bouge moins** : tuez des monstres de niveaux différents (un plus bas, un
+  plus haut). « dernier » suit chaque monstre ; « moyenne » ne bouge que d'un dixième de
+  l'écart, et le nombre de monstres (infobulle et `~5 h 05 · 38 monstres` sur la barre)
+  saute beaucoup moins qu'avant.
+- **Plusieurs monstres d'un coup** (dégâts de zone, ou en groupe) : chacun compte dans la
+  moyenne.
+- **Quêtes et découvertes** : rendre une quête ou découvrir un lieu ne change ni
+  « moyenne » ni « dernier ».
+- **Gardé par personnage** : `/reload`, puis déconnexion et reconnexion : mêmes moyenne et
+  dernier. Sur un autre personnage, sa propre moyenne (ou « calculé dès votre prochain
+  monstre tué » s'il n'a encore rien tué).
+- **Reposé** : avec de l'XP de repos, le nombre reste plus petit qu'hors repos, comme
+  avant.
+- **Jamais coupée** : en français, dans chaque thème, la ligne « Monstres à tuer » tient
+  en entier (l'infobulle peut s'élargir de quelques pixels si les nombres sont très
+  grands).
+
+### Mémoire
+
+- **Avant de mettre à jour**, si vous le pouvez : `/tpl perf` avec le thème Futuriste et
+  notez la ligne « Mémoire ». **Après la mise à jour** et un `/reload`, même personnage,
+  même thème : `/tpl perf` doit afficher environ 0,15 à 0,2 Mo de moins.
+- **Aucun changement visible** : la mémoire gagnée ne change rien à l'aspect. Passez par
+  les 14 choix du clic droit > Thème : chaque thème est exactement comme avant (barre,
+  infobulle simple et Maj, graphique des FPS, fenêtre). Classique reste identique à
+  l'ancien aspect.
+- **Changer de thème** : 10 changements de suite, attendez une minute, `/tpl perf` : la
+  mémoire ne grimpe pas d'une série à l'autre, et la ligne « Tic » reste sous 0,05 ms.
+- Aucune erreur Lua au chargement ni en changeant de thème.
+
 ## Thèmes : la nouvelle mise à jour, à tester en premier
 
 TruePlayed a maintenant 13 thèmes : ils changent la barre, son infobulle, le graphique des
@@ -19,7 +82,8 @@ Cette mise à jour ajoute des dossiers (`Media`, `Themes`) et des fichiers. Reco
 dossier, en laissant de côté ce qui ne sert qu'au développement :
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+git pull
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
 rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
@@ -223,9 +287,10 @@ Sur votre druide (barre en haut de l'écran, trois exclusions activées) :
 - **Monstres à tuer** : tuez un monstre. En haut à droite, la barre affiche maintenant le
   temps avant le niveau **et** le nombre de monstres, par exemple `~5 h 05 · 38 monstres`
   (si la barre est trop étroite, seulement le temps). L'infobulle a une ligne
-  `Monstres à tuer : ~38 (dernier : 610 XP)` juste sous « Prochain niveau ». Avant le
-  premier monstre tué, elle indique « calculé dès votre prochain monstre tué ». Rendre une
-  quête ne change pas le « dernier ». Quand vous êtes reposé, le nombre est plus petit
+  `Monstres à tuer : ~38 (moyenne : 610 XP, dernier : 610 XP)` juste sous « Prochain
+  niveau » (depuis le lot 5 : moyenne des 10 derniers monstres). Avant le premier monstre
+  tué, elle indique « calculé dès votre prochain monstre tué ». Rendre une quête ne change
+  ni la « moyenne » ni le « dernier ». Quand vous êtes reposé, le nombre est plus petit
   (chaque monstre rapporte le double).
 - **L'XP de repos, comme la barre du jeu** : après une déconnexion à l'auberge, la barre est
   **bleue**, avec une partie bleu clair jusqu'à la fin de votre XP de repos. L'infobulle
@@ -269,9 +334,10 @@ passe pas comme décrit) :
 - **Le dégradé** : la zone bleu clair s'estompe vers la droite. Si elle est d'un bleu uni,
   ce n'est pas grave, mais signalez-le.
 - **Les découvertes et les quêtes** : découvrir un lieu (message jaune et XP) ou rendre une
-  quête ne change pas le « dernier » de la ligne « Monstres à tuer ».
+  quête ne change ni la « moyenne » ni le « dernier » de la ligne « Monstres à tuer ».
 - **En donjon** : après quelques monstres, la ligne « Monstres à tuer » se met à jour
-  (« dernier » = l'XP du dernier monstre tué, sans le bonus de repos).
+  (« dernier » = l'XP du dernier monstre tué, « moyenne » = celle des 10 derniers, sans
+  le bonus de repos).
 - **Le survol** : passer la souris des FPS au graphique ne le ferme pas ; le quitter le
   ferme. Après avoir déplacé la barre (déverrouillée), son infobulle revient au survol
   sans avoir à cliquer.
@@ -323,10 +389,12 @@ L'addon est le dossier `TruePlayed`. Il doit arriver dans le dossier des addons 
 Le plus simple, dans le Terminal (depuis le dossier de l'addon, voir `PUBLISHING-fr.md`) :
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+git pull
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
-rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' ./ "$DEST/"
+rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
+  --exclude 'tools' --exclude 'media-src' ./ "$DEST/"
 ```
 
 Vérifiez que le fichier `TruePlayed_Camelot.toc` se trouve **directement** dans

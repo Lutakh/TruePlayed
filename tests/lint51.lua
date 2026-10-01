@@ -26,6 +26,8 @@
 --   * globals: reads outside the SPEC 2.3 allowlist, writes outside the SPEC 2.2 whitelist
 --     (a missing `local` is the classic addon bug), os/io/print/load/setfenv...;
 --   * "OnUpdate" scripts, forbidden templates, C_Timer.NewTicker outside Core.lua.
+-- One explicit exception: Themes.lua reads loadstring, setfenv and load (LOADERS_OK below),
+-- to compile the theme source texts in an empty environment (design/NEXT-LOT.md M3).
 --
 -- A finding on a line that carries the comment `lint51-ignore` is suppressed.
 
@@ -128,6 +130,13 @@ local ADDON_BANNED = {
   getfenv = "getfenv() is forbidden in addon code (SPEC 2.3)",
 }
 
+-- Addon files allowed to read some of the banned globals: Themes.lua compiles the theme
+-- source texts in an empty environment (loadstring + setfenv on Lua 5.1, the game; load
+-- with an environment on 5.2+, the offline tests).
+local LOADERS_OK = {
+  ["Themes.lua"] = { loadstring = true, setfenv = true, load = true },
+}
+
 local FORBIDDEN_WOW = {
   WOW_PROJECT_ID = "WOW_PROJECT_ID reports Mainline on Forever: use ns.isForever / ns.isEra (SPEC 2.5)",
   MAX_PLAYER_LEVEL_TABLE = "MAX_PLAYER_LEVEL_TABLE is forbidden: use Util.IsMaxLevel() (SPEC 2.3)",
@@ -169,6 +178,7 @@ for _, name in ipairs({
   "AddonCompartmentFrame",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
+  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read
@@ -638,9 +648,14 @@ local function analyze(T, isAddon, report, tickers, rel)
     end
   end
 
+  local loadersOk = isAddon and LOADERS_OK[rel] or nil
+
   local function checkGlobal(i)
     local v = val[i]
     local line = lin[i]
+    if loadersOk and loadersOk[v] and not isAssignTarget(i) then
+      return                              -- read only (an assignment is still reported)
+    end
     if v == "global" then
       local nt, nv = typ[i + 1], val[i + 1]
       if nt == "name" or (nt == "kw" and nv == "function") or (nt == "op" and (nv == "*" or nv == "<")) then
@@ -900,12 +915,12 @@ local function analyze(T, isAddon, report, tickers, rel)
           if isOp(j, "=") then
             -- The new locals are visible only after their expression list.
             local at = findExprListEnd(j + 1)
-            local acts = activations[at]
-            if not acts then
-              acts = {}
-              activations[at] = acts
+            local queued = activations[at]
+            if not queued then
+              queued = {}
+              activations[at] = queued
             end
-            acts[#acts + 1] = { blk = blocks[nb], names = names }
+            queued[#queued + 1] = { blk = blocks[nb], names = names }
           else
             for k = 1, #names do
               local nj = names[k]

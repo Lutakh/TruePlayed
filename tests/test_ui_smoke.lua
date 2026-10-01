@@ -352,7 +352,7 @@ T.test("bar and box styles, slot 3 position and % marker", function()
 end)
 
 T.test("frFR widget texts", function()
-  local ns = Start({ ui = { ldb = false }, locale = "frFR" })
+  Start({ ui = { ldb = false }, locale = "frFR" })
   Stub.Advance(5)
   local tp = Widget().tp
   T.match(tp.bl:GetText(), "^NIVEAU 10")
@@ -925,10 +925,10 @@ T.test("window: hovering a level row lists that level's zones, exclusions applie
   local lines = TipLines()
   T.eq(lines[1][1], format(L.TT_LEVEL_ROW_FMT, 29))
   T.ok(FindLine(lines, format(L.ROW_ZONES_FMT, 29)) ~= nil, "zones header")
-  local tanaris, iT = FindLine(lines, "Tanaris")
+  local tanaris = FindLine(lines, "Tanaris")
   T.ok(tanaris ~= nil, "Tanaris listed")
   T.eq(tanaris[2], Fmt.Duration(8000))
-  local org, iO = FindLine(lines, "Orgrimmar " .. L.CITY_MARK)
+  local org = FindLine(lines, "Orgrimmar " .. L.CITY_MARK)
   T.ok(org ~= nil, "the capital is listed with the city mark")
   T.eq(org[2], Fmt.Duration(700))
   row:GetScript("OnLeave")(row)
@@ -938,8 +938,10 @@ T.test("window: hovering a level row lists that level's zones, exclusions applie
   row = RowWith(tp, "29")
   row:GetScript("OnEnter")(row)
   lines = TipLines()
-  tanaris, iT = FindLine(lines, "Tanaris")
+  local _, iT = FindLine(lines, "Tanaris")
+  local iO
   org, iO = FindLine(lines, "Orgrimmar " .. L.CITY_MARK)
+  T.ok(iT ~= nil, "Tanaris still listed")
   T.eq(org[2], "-", "excluded time shows a dash")
   T.ok(iO > iT, "the excluded capital comes last")
   row:GetScript("OnLeave")(row)
@@ -1715,10 +1717,10 @@ T.test("tooltip: mobs to kill right under the next level line, from the last kil
   lines = FillTip(ns, false)
   _, iNext = FindLine(lines, L.TT_NEXT_LEVEL)
   kills, iKills = FindLine(lines, L.TT_KILLS)
-  T.eq(kills[2], "~38 (dernier : 610 XP)")
+  T.eq(kills[2], "~38 (moyenne : 610 XP, dernier : 610 XP)", "no ring: average = last kill")
   T.eq(iKills, iNext + 1)
   local det = FillTip(ns, true)
-  T.eq(FindLine(det, L.TT_KILLS)[2], "~38 (dernier : 610 XP)", "same line in the detailed view")
+  T.eq(FindLine(det, L.TT_KILLS)[2], "~38 (moyenne : 610 XP, dernier : 610 XP)", "same line in the detailed view")
   -- rested: kills give more XP, so fewer mobs (the count follows Stats.KillsToLevel)
   Stub.Reset()
   Stub.player.xp, Stub.player.rest = 58, 11600
@@ -1727,7 +1729,8 @@ T.test("tooltip: mobs to kill right under the next level line, from the last kil
   ns.char.lastKill = { xp = 610, level = 20, at = time() }
   local n = ns.Stats.KillsToLevel(ns.char, 58, 23200, 11600)
   T.ok(type(n) == "number" and n < 38, "rest-aware count: " .. tostring(n))
-  T.eq(FindLine(FillTip(ns, false), L.TT_KILLS)[2], format(L.TT_KILLS_FMT, Fmt.Number(n), Fmt.Number(610)))
+  T.eq(FindLine(FillTip(ns, false), L.TT_KILLS)[2],
+       format(L.TT_KILLS_FMT, Fmt.Number(n), Fmt.Number(610), Fmt.Number(610)))
 end)
 
 T.test("tooltip: no mobs line at max level", function()

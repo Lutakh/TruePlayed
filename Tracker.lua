@@ -109,14 +109,15 @@ local pendingQuest, questExpiry, poolDrop, poolExpiry = 0, 0, 0, 0
 local batchScheduled, retryArmed, regenRegistered = false, false, false
 local baselineTries, baselineScheduled, baselineDone = 0, false, false
 
--- Kill detection (char.lastKill, mobs to the next level). CHAT_MSG_COMBAT_XP_GAIN is
--- only an occurrence marker: its text is never read (secret in instances on 12.x
--- clients, and parsing it is not allowed, SPEC 2.3). Markers and quest turn-ins form
--- a balance: each marker +1, each quest reward -1 (its own "You gain..." marker is
--- due), so the kills of a batch = the positive balance. A non-quest gain without a
--- marker waits up to C.KILL_WINDOW for a late one; it is also accepted without any
--- marker when the client never sent one in this load or inside an instance, unless a
--- subzone change (discovery XP) came within C.DISCOVERY_WINDOW of it.
+-- Kill detection (char.lastKill and char.killRing, mobs to the next level).
+-- CHAT_MSG_COMBAT_XP_GAIN is only an occurrence marker: its text is never read (secret
+-- in instances on 12.x clients, and parsing it is not allowed, SPEC 2.3). Markers and
+-- quest turn-ins form a balance: each marker +1, each quest reward -1 (its own "You
+-- gain..." marker is due), so the kills of a batch = the positive balance (one ring
+-- entry each). A non-quest gain without a marker waits up to C.KILL_WINDOW for a late
+-- one; it is also accepted without any marker when the client never sent one in this
+-- load or inside an instance, unless a subzone change (discovery XP) came within
+-- C.DISCOVERY_WINDOW of it.
 local markSeen = false                  -- a marker arrived in this load
 local marks, marksG = 0, 0              -- marker balance and the time of its last change
 local xpDeferred = false                -- the XP read waits for the end of combat (secret):
@@ -256,8 +257,8 @@ end
 -- capped follows char.capLevel and the current level.
 local function SyncCap()
   local char = ns.char
-  local cap = char and char.capLevel
-  capped = type(cap) == "number" and cap == seg.level
+  local capLevel = char and char.capLevel
+  capped = type(capLevel) == "number" and capLevel == seg.level
 end
 
 ---------------------------------------------------------------------------
@@ -823,12 +824,20 @@ function Tracker.OnLevelUp(newLevel)
 end
 
 ---------------------------------------------------------------------------
--- Kills (char.lastKill = { xp, level, at }): base XP of the last mob killed
+-- Kills: char.lastKill = { xp, level, at }, base XP of the last mob killed (shown);
+-- char.killRing = { xp, ... }, base XP of the last C.KILL_RING mobs killed, oldest
+-- first (their average gives the mobs to go, Stats.KillsToLevel)
 ---------------------------------------------------------------------------
 
--- Stores the base XP (rested bonus excluded) of one kill made at level lvl. The
--- record's table is created once; later kills only overwrite its fields.
-local function CommitKill(xp, lvl)
+-- Kills recorded in this load (capped at C.KILL_RING): the newest entries of
+-- char.killRing that a late SavedVariables swap carries over (ReplayDelta). A field,
+-- not a local: the main chunk is at the Lua 5.1 limit of 200 locals.
+Tracker.loadKills = 0
+
+-- Stores the base XP (rested bonus excluded) of `count` kills (default 1) of xp each,
+-- made at level lvl. Both tables are created once; later kills only overwrite the
+-- fields of lastKill and shift the ring (no allocation once it holds C.KILL_RING).
+local function CommitKill(xp, lvl, count)
   local char = ns.char
   if ns.readOnly or not char then return false end
   xp = math_floor(xp + 0.5)
@@ -839,6 +848,20 @@ local function CommitKill(xp, lvl)
     char.lastKill = lk
   end
   lk.xp, lk.level, lk.at = xp, lvl, time()
+  local size = C.KILL_RING
+  local ring = char.killRing
+  if type(ring) ~= "table" then
+    ring = {}
+    char.killRing = ring
+  end
+  count = math_floor(count or 1)
+  if count < 1 then count = 1 elseif count > size then count = size end
+  for _ = 1, count do
+    while #ring >= size do table_remove(ring, 1) end
+    ring[#ring + 1] = xp
+  end
+  count = Tracker.loadKills + count
+  Tracker.loadKills = count > size and size or count
   return true
 end
 
@@ -867,7 +890,7 @@ local function OnKillGain(a, lvl, now, deferred)
   if not deferred and now - marksG > C.KILL_WINDOW then marks = 0 end
   if a <= 0 then return end
   if marks >= 1 then
-    CommitKill(a / marks, lvl)   -- several kills in one batch (area damage): per kill
+    CommitKill(a / marks, lvl, marks)   -- several kills in one batch (area damage): per kill
     marks = 0
     return
   end
@@ -1757,16 +1780,16 @@ local function WriteXP(lOld, lNew, gOld, gain, a, r, q, withMid)
   if sess then Add(sess, "xp", gain) end
 
   local ra, rr, rq = a, r, q
-  local l, cap = lOld, gOld
+  local l, room = lOld, gOld
   while l < lNew do
-    local tq = rq < cap and rq or cap; cap = cap - tq
-    local tr = rr < cap and rr or cap; cap = cap - tr
-    local ta = ra < cap and ra or cap
+    local tq = rq < room and rq or room; room = room - tq
+    local tr = rr < room and rr or room; room = room - tr
+    local ta = ra < room and ra or room
     WriteLevelXP(char, l, zone, ta, tr, tq)
     ra, rr, rq = ra - ta, rr - tr, rq - tq
     l = l + 1
     if withMid and l < lNew then
-      cap = MaxOf(char, l) or 0
+      room = MaxOf(char, l) or 0
     else
       l = lNew
     end
@@ -2407,6 +2430,7 @@ function Tracker.Start()
   pendingQuest, poolDrop, retryArmed = 0, 0, false
   baselineTries, baselineDone = 0, false
   markSeen, marks, marksG, pendXP, zoneEvtG, xpDeferred = false, 0, 0, 0, -1e9, false
+  Tracker.loadKills = 0
   started = true
 
   if not ro and type(char.zones) == "table" and char.zones[zone] then StoreName(char.zones[zone], zone) end
@@ -2454,6 +2478,7 @@ function Tracker.OnCharReset()
   Tracker.recLevel = seg.level
   anchored = false
   pendXP, marks = 0, 0      -- a kill waiting for its marker predates the reset
+  Tracker.loadKills = 0     -- the kills of this load went with the old record
   -- the new record has no time without XP and no cap yet
   capped, xsFrac, cap.misses, cap.missLevel, cap.tgtOK = false, 0, 0, 0, false
   PrepareStallMaps()
@@ -2541,6 +2566,23 @@ function Tracker.ReplayDelta(newChar)
   local mk, nk = oldChar and oldChar.lastKill, newChar.lastKill
   if type(mk) == "table" and (type(nk) ~= "table" or (mk.at or 0) >= (nk.at or 0)) then
     newChar.lastKill = Util.DeepCopy(mk)
+  end
+  -- the kills of this load (the newest entries of the live ring) follow the new record's
+  -- own: neither its saved history (a fresh provisional record) nor duplicates (an older
+  -- copy of the same record) are lost or added
+  local mr, nkills = oldChar and oldChar.killRing, Tracker.loadKills
+  if type(mr) == "table" and nkills > 0 then
+    local n, size = #mr, C.KILL_RING
+    if nkills > n then nkills = n end
+    local nr = newChar.killRing
+    if type(nr) ~= "table" then
+      nr = {}
+      newChar.killRing = nr
+    end
+    for i = n - nkills + 1, n do
+      while #nr >= size do table_remove(nr, 1) end
+      nr[#nr + 1] = mr[i]
+    end
   end
 
   -- time without XP and server cap: this load's state continues the saved one (the

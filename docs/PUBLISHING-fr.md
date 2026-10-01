@@ -4,15 +4,24 @@ Ce guide part de zéro. Suivez les étapes dans l'ordre. Chaque commande se tape
 l'application **Terminal** du Mac. Une ligne qui commence par `#` est un commentaire :
 inutile de la taper.
 
-Le dossier `TruePlayed` est à la fois l'addon et le dépôt git. Rangez-le dans un endroit
-stable, par exemple `~/Code/TruePlayed` (le reste du guide utilise ce chemin) :
+Votre copie de travail est le dépôt git cloné depuis GitHub, à la fois l'addon et le dépôt :
+`~/Documents/claude/TruePlayed/TruePlayed_on_github` (le reste du guide utilise ce chemin).
+Elle a été créée ainsi, une seule fois :
 
 ```
-mkdir -p ~/Code
-# glissez le dossier TruePlayed dans ~/Code avec le Finder, ou utilisez mv :
-# mv "/chemin/actuel/TruePlayed" ~/Code/TruePlayed
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed
+gh repo clone Lutakh/TruePlayed TruePlayed_on_github
 ```
+
+Pour récupérer les dernières modifications publiées sur GitHub, dans ce dossier :
+
+```
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+git pull
+```
+
+Le dossier voisin `~/Documents/claude/TruePlayed/TruePlayed` est une ancienne copie sans git :
+ne le modifiez plus (sauvegarde seulement).
 
 ---
 
@@ -44,30 +53,12 @@ cd ~/Code/TruePlayed
    git config --global user.email "COLLEZ-ICI-L-ADRESSE-NOREPLY"
    ```
 
-## 2. Remplacer `<ACCOUNT>`
+## 2. Remplacer `<ACCOUNT>` (déjà fait)
 
-L'auteur est déjà renseigné : **Lutak** (ligne `## Author:` du `.toc` et fichier
-`LICENSE`). Il reste un seul repère, `<ACCOUNT>` : c'est votre **nom d'utilisateur
-GitHub**, celui qui apparaît dans l'adresse de votre profil (`https://github.com/NOM`).
-Il n'est connu qu'une fois le compte créé (étape 1), c'est pourquoi il reste à remplacer.
-Il sert dans les liens du `.toc` (`## X-Website:`), du README et des pages CurseForge.
-
-**Quand ?** Après l'étape 1 (compte GitHub créé et `gh auth login` fait), avant l'étape 4.
-Tant que `<ACCOUNT>` est présent, `lua tests/check_toc.lua` affiche un avertissement et la
-publication (étape 9) refuse de partir (étape « Refuse placeholders »).
-
-Remplacez-le **uniquement** dans ces fichiers (pas dans `.github/workflows/release.yml`,
-ni dans `tests/check_toc.lua`, ni dans ce guide, qui le citent exprès) :
-
-```
-cd ~/Code/TruePlayed
-gh api user --jq .login
-# la ligne affichée est votre nom d'utilisateur GitHub ; la suite l'utilise directement :
-ACCOUNT=$(gh api user --jq .login)
-sed -i '' "s/<ACCOUNT>/$ACCOUNT/g" TruePlayed_Camelot.toc README.md docs/curseforge-en.md docs/curseforge-fr.md
-```
-
-Vérification : la commande suivante ne doit plus rien afficher.
+L'auteur (**Lutak**, ligne `## Author:` du `.toc` et fichier `LICENSE`) et le nom
+d'utilisateur GitHub (**Lutakh**, dans `## X-Website:` du `.toc`, le README et les pages
+CurseForge) sont en place. Il ne reste aucun repère `<ACCOUNT>` : la commande suivante ne
+doit rien afficher (la publication, étape 9, refuse de partir sinon).
 
 ```
 grep -n -e '<AUTHOR>' -e '<ACCOUNT>' TruePlayed_Camelot.toc LICENSE README.md docs/curseforge-*.md
@@ -78,15 +69,17 @@ grep -n -e '<AUTHOR>' -e '<ACCOUNT>' TruePlayed_Camelot.toc LICENSE README.md do
 ### Tests hors jeu (à lancer avant chaque commit)
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
 lua tests/run.lua
 lua tests/check_toc.lua
 lua tests/check_encoding.lua
 lua tests/lint51.lua
 lua tests/check_globals.lua
+lua tests/check_media.lua
 ```
 
-Chaque commande doit se terminer sans « FAIL ».
+Chaque commande doit se terminer sans « FAIL ». La vérification automatique de GitHub
+(CI) lance en plus `luacheck`, qui refuse le moindre avertissement.
 
 ### Installer l'addon dans le jeu
 
@@ -95,10 +88,11 @@ chaque modification). Vérifiez bien que `DEST` se termine par `/TruePlayed` : l
 `--delete` supprime dans ce dossier les fichiers qui n'existent plus dans le dépôt.
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
-rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' ./ "$DEST/"
+rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
+  --exclude 'tools' --exclude 'media-src' ./ "$DEST/"
 ```
 
 (`_classic_beta_` est le dossier du client WoW Forever sur votre Mac ; adaptez-le si le
@@ -159,9 +153,10 @@ est la vérification complète à refaire avant chaque version.
    - donjon, raid ou champ de bataille : l'infobulle affiche « En instance » et la
      répartition cite « Donjons », « Raids » ou « JcJ » ; `/tpl stats zones` montre le
      bloc « Instances les plus jouées » avec le type après le nom ;
-   - un monstre tué (aussi dans un donjon) : « Monstres à tuer : ~N (dernier : X XP) »
-     dans l'infobulle et `~temps · N monstres` en haut à droite ; une quête rendue ne
-     change pas « dernier » ;
+   - un monstre tué (aussi dans un donjon) : « Monstres à tuer : ~N (moyenne : M XP,
+     dernier : X XP) » dans l'infobulle (M = moyenne des 10 derniers) et
+     `~temps · N monstres` en haut à droite ; une quête rendue ne change ni « moyenne » ni
+     « dernier » ;
    - personnage reposé : barre bleue avec une partie bleu clair, ligne « Reposé » ; le
      repos consommé, la barre redevient violette ;
    - survol des FPS ou de la latence : le graphique s'affiche, le survol d'un point donne
@@ -170,6 +165,10 @@ est la vérification complète à refaire avant chaque version.
    - Options > Textes : couleur du texte (« Annuler » puis « Couleurs d'origine »),
      contour Aucun / Fin / Épais, opacité du fond de 0 à 100 % ;
    - accents, `·`, `«`, `»` et `~` s'affichent sans carrés ;
+   - Options > Affichage > « Langue (Language) » : choisissez English, cliquez
+     « Recharger l'interface » : tous les textes de TruePlayed (barre, infobulle, fenêtre,
+     options, menu du clic droit, chat) sont en anglais, les noms de zones restent en
+     français ; `/tpl lang auto` puis `/reload` ramène le français ;
    - `/tpl perf` : notez la ligne « Mémoire », rejouez une heure, retapez `/tpl perf` : le
      chiffre doit rester **stable** (il compte le code de l'addon, environ 0,5 Mo, plus les
      données de tous vos personnages : il grandit avec le nombre de personnages, ce n'est
@@ -209,30 +208,26 @@ Les données enregistrées par l'addon se trouvent dans
 `/Applications/World of Warcraft/_classic_beta_/WTF/Account/<VOTRE_COMPTE>/SavedVariables/TruePlayed.lua`
 (copiez ce fichier si vous voulez en garder une sauvegarde).
 
-## 4. Créer le dépôt GitHub public et y envoyer le code
+## 4. Le dépôt GitHub (déjà fait) et la branche `main`
 
-```
-cd ~/Code/TruePlayed
-git status
-# Si git répond "not a git repository", créez le dépôt :
-git init -b main
-git add -A
-git status
-git commit -m "TruePlayed 0.1.0-beta.1"
-gh repo create TruePlayed --public --source=. --remote=origin --push
-```
+Le dépôt public existe : https://github.com/Lutakh/TruePlayed, et sa vérification
+automatique (CI : tests en Lua 5.1 et 5.5, vérifications et luacheck) tourne à chaque
+envoi. Les évolutions arrivent sur des branches de travail : **la version publiée part
+toujours de `main`**. Avant de publier :
 
-Vérifiez ensuite l'onglet **Actions** du dépôt (`https://github.com/NOM/TruePlayed/actions`,
-NOM étant votre nom d'utilisateur GitHub)
-ou suivez la vérification automatique depuis le Terminal :
+1. Fusionnez la branche de travail dans `main` par une *pull request* sur GitHub (bouton
+   **Merge**), une fois sa CI verte.
+2. Récupérez `main` sur le Mac et vérifiez que sa CI est verte :
 
-```
-gh run list --limit 3
-gh run watch
-```
+   ```
+   cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+   git checkout main
+   git pull
+   gh run list --branch main --limit 3
+   ```
 
-La ligne « CI » doit passer au vert (tests en Lua 5.1 et 5.5, vérifications et luacheck).
-Si elle est rouge, voir l'étape 13.
+La ligne « CI » la plus récente doit être `completed success`. Si elle est rouge, voir
+l'étape 13.
 
 ## 5. Créer le projet CurseForge
 
@@ -285,32 +280,30 @@ publication (étape 10), vérifiez dans l'onglet **Files** que le fichier porte 
 
 1. Sur https://authors.curseforge.com, ouvrez les réglages de votre compte, rubrique
    **API tokens**, et créez un jeton (nom : `GitHub TruePlayed`). Copiez-le.
-2. Enregistrez-le comme secret du dépôt GitHub. La commande demande la valeur : collez-la
-   à l'invite et validez. Elle n'apparaît ni dans un fichier ni dans l'historique.
+2. Enregistrez-le comme secret du dépôt GitHub. La commande marche depuis n'importe quel
+   dossier (`--repo` désigne le dépôt) ; elle demande la valeur : collez-la à l'invite et
+   validez. Elle n'apparaît ni à l'écran, ni dans un fichier, ni dans l'historique.
 
    ```
-   cd ~/Code/TruePlayed
-   gh secret set CF_API_KEY
-   gh secret list
+   gh auth status
+   gh secret set CF_API_KEY --repo Lutakh/TruePlayed
+   gh secret list --repo Lutakh/TruePlayed
    ```
+
+   Ou sur le site : https://github.com/Lutakh/TruePlayed/settings/secrets/actions, bouton
+   **New repository secret**, nom `CF_API_KEY`, valeur : le jeton.
 
 Ne collez jamais cette clé dans un fichier, un message ou une conversation.
 
-## 7. Ajouter le numéro du projet dans le `.toc`
+## 7. Le numéro du projet dans le `.toc` (déjà fait)
 
-Remplacez `123456` par votre Project ID. La commande ajoute la ligne juste après
-`## X-Website:` :
+Le projet CurseForge porte le numéro **1721055** (il figure dans l'adresse du portail auteur,
+`authors.curseforge.com/#/projects/1721055/...`, et dans l'encadré « About Project » de la
+page publique). La ligne `## X-Curse-Project-ID: 1721055` est dans le `.toc`, juste après
+`## X-Website:` ; `lua tests/check_toc.lua` vérifie que c'est bien un nombre.
 
-```
-cd ~/Code/TruePlayed
-perl -0pi -e 's/(## X-Website: [^\n]*\n)/$1## X-Curse-Project-ID: 123456\n/' TruePlayed_Camelot.toc
-git diff
-lua tests/check_toc.lua
-git commit -am "Add the CurseForge project ID"
-git push
-```
-
-N'écrivez jamais un faux numéro : l'outil de publication s'en sert pour envoyer le fichier.
+Ne la changez jamais pour un autre numéro : l'outil de publication s'en sert pour envoyer le
+fichier.
 
 ## 8. Wago (facultatif)
 
@@ -329,23 +322,42 @@ simplement ignorée.
 3. Créez une clé sur https://addons.wago.io/account/apikeys, puis :
 
    ```
-   gh secret set WAGO_API_TOKEN
+   gh secret set WAGO_API_TOKEN --repo Lutakh/TruePlayed
    git commit -am "Add the Wago project ID"
    git push
    ```
 
-## 9. Publier la version 0.1.0-beta.1
+## 9. Publier la version 1.0.0
 
-1. Ouvrez `CHANGELOG.md` et remplacez `YYYY-MM-DD` du titre `## [0.1.0-beta.1]` par la
-   date du jour (par exemple `2026-10-05`). Relisez la liste « Added » : c'est le texte
-   que verront les joueurs.
-2. Lancez les tests hors jeu (étape 3), puis :
+1. **Aperçu du zip (conseillé)** : sur GitHub, onglet **Actions** > **Package preview** >
+   **Run workflow**, branche `main`. En une minute ou deux, la page du run propose en bas
+   (« Artifacts ») le fichier `TruePlayed-....zip` : c'est exactement le zip que recevra
+   CurseForge, mais rien n'est publié. Ou depuis le Terminal :
 
    ```
-   cd ~/Code/TruePlayed
-   git commit -am "Release 0.1.0-beta.1"
+   gh workflow run package-preview.yml --ref main
+   sleep 5; gh run watch
+   RUN=$(gh run list --workflow package-preview.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+   gh run download "$RUN" --dir ~/Downloads/tp-preview
+   ```
+
+   Pour l'essayer en jeu : jeu fermé, mettez de côté votre dossier
+   `Interface/AddOns/TruePlayed`, décompressez le zip dans `Interface/AddOns` (il contient
+   le dossier `TruePlayed`), lancez le jeu et faites un tour rapide (barre, infobulle,
+   `/tpl stats`, `/tpl perf`, aucune erreur Lua). Le zip ne contient ni `tests`, ni `docs`,
+   ni `design`, ni `tools`, ni `media-src`.
+2. Sur `main` (étape 4), ouvrez `CHANGELOG.md` : le titre `## [1.0.0] - 2026-10-01` porte
+   la date de préparation ; si vous publiez un autre jour, mettez la date du jour. Relisez la
+   section entière : c'est le texte que verront les joueurs sur CurseForge. L'étiquette
+   `v1.0.0`, sans suffixe, publie un fichier de type **Release** (proposé à tous les joueurs).
+3. Lancez les tests hors jeu (étape 3), puis :
+
+   ```
+   cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+   git checkout main
+   git commit -am "Release 1.0.0"      # seulement si vous avez changé la date
    git push
-   git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1
+   git tag v1.0.0 && git push origin v1.0.0
    ```
 
 L'étiquette (tag) déclenche la publication : tests, contrôle des repères, notes de
@@ -367,15 +379,15 @@ fichier apparaît dans l'onglet « Files » du projet, d'abord « Under review �
 
 ## 11. Les versions suivantes
 
-- Numérotation SemVer :
-  - `0.1.1` : correctif ;
-  - `0.2.0` : nouvelle fonction ;
-  - `1.0.0` puis `2.0.0` : changement incompatible des données ou des options.
-- Le type de fichier dépend de l'étiquette : `v0.2.0-beta.1` donne une Beta, une
-  étiquette contenant `alpha` une Alpha, `v1.0.0` une Release. **Attention : `-rc.1`
+- Numérotation SemVer (depuis la 1.0.0) :
+  - `1.0.1` : correctif ;
+  - `1.1.0` : nouvelle fonction ;
+  - `2.0.0` : changement incompatible des données ou des options.
+- Le type de fichier dépend de l'étiquette : `v1.1.0-beta.1` donne une Beta, une
+  étiquette contenant `alpha` une Alpha, `v1.1.0` une Release. **Attention : `-rc.1`
   part en Release.**
 - Ne réutilisez jamais une étiquette : en cas d'erreur, passez au numéro suivant
-  (`v0.1.0-beta.2`).
+  (`v1.0.1`).
 - Pour chaque version, ajoutez dans `CHANGELOG.md` une section `## [x.y.z] - AAAA-MM-JJ`
   écrite pour les joueurs (la publication refuse de partir sans elle).
 - Quand WoW Forever change de version, `/dump select(4, GetBuildInfo())` donne le nouveau

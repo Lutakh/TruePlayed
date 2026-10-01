@@ -7,37 +7,14 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
-**Restart the game completely after installing this version** (quit and launch it again):
-it adds fonts, textures and files, which the game loads only at start. After a `/reload`
-alone, theme textures can be missing and the theme fonts are replaced by the game font
-(TruePlayed says so once in the chat).
+## [1.0.0] - 2026-10-01
 
-### Added
+First public release, for WoW Forever.
 
-- **Themes**: 13 looks for the bar, its tooltip, the FPS graph and the statistics window,
-  each with its own track, fill, ornaments, background panel, fonts, tooltip panel and
-  palette: **Futuristic**, **Classic**, **Heroic fantasy**, **Pixel (old school)**, and
-  one per class: **Warrior**, **Paladin**, **Hunter**, **Rogue**, **Priest**, **Shaman**,
-  **Mage**, **Warlock**, **Druid**. **Class (automatic)** gives each character the theme of
-  its class.
-- Choose the theme in Options > Display > **Theme** (the first setting), right-click the
-  bar > **Theme**, or `/tpl theme <name>` (`/tpl theme` alone shows the current theme and
-  the names). The change is immediate.
-- 23 fonts under the SIL Open Font License 1.1, with their licences in
-  `Media/Fonts/LICENSES` (credits in the README).
-
-### Changed
-
-- **The default look is now Futuristic, for everyone**, existing installations included.
-  **`/tpl theme actuel`** (or "Classic" in the options or the right-click menu) brings back
-  the previous look, identical to the one before themes.
-- The XP bar, rested and text colours you pick still replace the theme's. The reset
-  buttons are now called **Theme colours** and bring back the colours of the active
-  theme.
-
-## [0.1.0-beta.1] - YYYY-MM-DD
-
-First public beta, for WoW Forever.
+**Install it with the game closed, or restart the game completely after installing**
+(quit and launch it again): the game loads new fonts, textures and files only at start.
+After a `/reload` alone, theme textures can be missing and the theme fonts are replaced
+by the game font (TruePlayed says so once in the chat).
 
 ### Added
 
@@ -51,17 +28,29 @@ First public beta, for WoW Forever.
   instance column in the Levels and Sessions tabs, and two bar infos: instance time this
   session and in total. Time spent in instances before this version stays counted as
   open world.
-- **Mobs to kill**: how many mobs like the last one you killed you still need to level up,
-  aware of your rested XP (rested kills give double XP). In the tooltip under the time to
-  next level ("Mobs to kill: ~38 (last: 610 XP)"), and on the bar: the top right info now
-  reads "~5h 05m · 38 mobs" by default (only the time when the bar is too narrow).
-- **Rested XP like the game's XP bar**: the bar turns blue while you are rested, with a
-  lighter blue part showing how far your rested XP goes; the tooltip shows
-  "Rested: 11,600 XP (50%)".
+- **13 themes** for the bar, its tooltip, the FPS graph and the statistics window, each
+  with its own track, fill, ornaments, background panel, fonts, tooltip panel and
+  palette: **Futuristic** (the default), **Classic**, **Heroic fantasy**, **Pixel (old
+  school)**, and one per class: **Warrior**, **Paladin**, **Hunter**, **Rogue**,
+  **Priest**, **Shaman**, **Mage**, **Warlock**, **Druid**. **Class (automatic)** gives
+  each character the theme of its class. Choose it in Options > Display > **Theme** (the
+  first setting), right-click the bar > **Theme**, or `/tpl theme <name>` (`/tpl theme`
+  alone shows the current theme and the names); the change is immediate. 23 bundled fonts
+  under the SIL Open Font License 1.1, with their licences in `Media/Fonts/LICENSES`
+  (credits in the README).
+- **Mobs to kill**: how many mobs like your last 10 kills (their average XP, without the
+  rested bonus) you still need to level up, aware of your rested XP (rested kills give
+  double XP). The average keeps the number steady when the mobs around you are not all
+  of the same level. In the tooltip under the time to next level ("Mobs to kill: ~38
+  (average: 47 XP, last: 30 XP)"), and on the bar: the top right info reads
+  "~5h 05m · 38 mobs" by default (only the time when the bar is too narrow).
+- **Rested XP like the game's XP bar**: the bar takes the rested colour while you are
+  rested (the game's blue in the Classic theme), with a lighter part showing how far your
+  rested XP goes; the tooltip shows "Rested: 11,600 XP (50%)".
 - **Bar colours of your choice**: the XP bar colour and the rested colour (the bar while
   rested, and the lighter part showing your rested XP) through the game's colour picker,
-  in Options > Bar colours, with a "Default colours" button back to the game's purple
-  and blue.
+  in Options > Bar colours, over any theme, with a "Theme colours" button back to the
+  colours of the active theme.
 - **Leave out AFK, inn or city time** whenever you like (right-click menu, options or
   `/tpl afk`, `/tpl inn`, `/tpl city`). Nothing is deleted: totals, level times,
   averages, XP per hour and time to level are recalculated instantly, and switching the
@@ -99,7 +88,8 @@ First public beta, for WoW Forever.
   numbers get shorter first ("58 / 23.2k"), then the least useful text makes room.
 - **Readable texts without a background**: a thin outline and a shadow by default
   (outline none / thin / thick and shadow in the options), and a **text colour** of your
-  choice through the game's colour picker, with a button back to the default colours.
+  choice through the game's colour picker, with a "Theme colours" button back to the
+  theme's.
 - **FPS and latency** display, measured only while it is visible, in green / yellow / red
   (or in your text colour, option). **Hover it for a graph** of the last 30 s, 1 min or
   5 min (option) with min / average / max, and hover the graph to read the value at any
@@ -117,9 +107,14 @@ First public beta, for WoW Forever.
 - **Works with RXPGuides** (its /played answers are reused: no second /played line at
   level-up) and warns you once per load when WTFix would roll TruePlayed's data back.
 - Each character has its own data; settings are shared by the whole account.
-- `/tpl perf` shows the memory (code plus the saved data of all characters) and CPU used
-  by TruePlayed.
-- English and French.
+- **Light on your frame rate**: no per-frame code, a single 1-second timer, and only the
+  active theme kept in memory, in a compact form. `/tpl perf` shows the memory (code plus
+  the saved data of all characters) and CPU used by TruePlayed.
+- **English and French**, following the game's language. To use the other one: Options >
+  Display > **Language (Langue)** (Auto, English, Français), or `/tpl lang en|fr|auto`,
+  then reload the interface (the **Reload UI** button under the option, or `/reload`).
+  Names that come from the game (zones, mobs, instances, characters) stay in the game's
+  language.
 
 ### Changed since the test build (0.1.0-test)
 
@@ -151,5 +146,12 @@ First public beta, for WoW Forever.
 - New: XP per hour and time to level freeze (`*`) instead of drifting after 20 minutes
   without XP; the beta's level 20 cap is detected and shown ("LEVEL 20 · CAP"); XP bar
   and rested colours in the options.
-- Updating from the test build adds a file (`Graph.lua`): quit and restart the game
-  after copying the new version (a `/reload` is not enough).
+- New: the 13 themes. **The default look is now Futuristic**, settings saved by the test
+  build included; **`/tpl theme actuel`** (or "Classic" in the options or the right-click
+  menu) brings back the look of the test build, unchanged. The colour reset buttons are
+  now called **Theme colours** and bring back the colours of the active theme.
+- New: the language option.
+- Mobs to kill now comes from the average of your last 10 kills instead of the last kill
+  alone; the last kill saved by the test build starts the average.
+- Updating from the test build adds files and folders (`Graph.lua`, `Media`, `Themes`):
+  quit and restart the game after copying the new version (a `/reload` is not enough).

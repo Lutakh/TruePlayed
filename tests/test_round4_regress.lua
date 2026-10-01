@@ -3,8 +3,10 @@
 -- private tooltip of a hidden owner, the truncated tooltip label after a rebuild, what a
 -- theme switch keeps of the previous compiled theme (P5), the work done by a user colour
 -- change, the colour of a gradient layer on a client that ignores SetGradient.
--- The stub measures 6 px per character (colour codes left out).
+-- The stub measures 6 px per character (colour codes left out). Themes.Compile returns the
+-- warnings of the test-only validator (tests/theme_validate.lua).
 local Stub, T = ...
+local TV = dofile(Stub.ROOT .. "tests/theme_validate.lua")
 
 local format = string.format
 
@@ -23,6 +25,7 @@ local function Start(theme, opts)
   if opts.rest then Stub.player.rest = opts.rest end
   if opts.locale then Stub.locale = opts.locale end
   local ns = Stub.LoadAddon()
+  TV.Install(ns)
   Stub.LoginSequence({ settle = 3 })
   return ns, ns.Bar.frame
 end
@@ -322,7 +325,7 @@ end)
 
 T.test("F2-parity: Classic's rested part is not white when SetGradient silently does nothing", function()
   WithMethod("SetGradient", function() end, function()
-    local ns, frame = Start("actuel", { xp = 2000, rest = 3000 })
+    local _, frame = Start("actuel", { xp = 2000, rest = 3000 })
     Stub.Advance(3)
     local t = frame.tp.tex.rested
     T.ok(t:IsShown(), "rested part shown")
@@ -337,7 +340,7 @@ T.test("F2-parity: Classic's rested part is not white when SetGradient silently 
 end)
 
 T.test("F2-parity: the flat colour comes before the gradient (the gradient is the last colour call)", function()
-  local ns, frame = Start("actuel", { xp = 2000, rest = 3000 })
+  local _, frame = Start("actuel", { xp = 2000, rest = 3000 })
   Stub.Advance(3)
   local t = frame.tp.tex.rested
   T.ok(rawget(t, "_grad") ~= nil, "gradient applied")
@@ -386,7 +389,7 @@ end
 
 -- Rows of the shown private tooltip that do not fit: a cut label (a pair whose label and
 -- value do not fit the inner width) or a single-line row wider than the inner width.
-local function CutRows(ns, Width)
+local function CutRows(ns)
   local tf = ns.TooltipFrame.frame
   local tt = ns.Themes.Active().tt
   local inner = tf:GetWidth() - tt.pad[1] - tt.pad[2]
@@ -408,7 +411,7 @@ local function CutRows(ns, Width)
 end
 
 T.test("F1-fidelity: no tooltip row is cut with the real fonts (every theme, enUS / frFR, short / Shift)", function()
-  RealWidths(function(Width)
+  RealWidths(function()
     local bad = {}
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
@@ -420,7 +423,7 @@ T.test("F1-fidelity: no tooltip row is cut with the real fonts (every theme, enU
               Stub.SetShift(shift)
               ns.Tooltip.ShowFor(frame)
               Stub.Advance(1)
-              for _, s in ipairs(CutRows(ns, Width)) do
+              for _, s in ipairs(CutRows(ns)) do
                 bad[#bad + 1] = format("%s %s %s %s: %s", key, locale, play, shift and "Shift" or "short", s)
               end
               ns.Tooltip.Hide()
@@ -455,7 +458,7 @@ T.test("F1-fidelity: the widest XP rows fit every theme's widest tooltip with a 
       { L.TT_NEXT_LEVEL, Estimated(Fmt.ETA(2 * 86400 + 5 * 3600)) },
       { L.TT_XPH, Estimated(Fmt.Rate(123456)) },
       { L.TT_KILLS, L.TT_KILLS_NODATA },
-      { L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(1234), Fmt.Number(12345)) },
+      { L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(1234), Fmt.Number(12345), Fmt.Number(12345)) },
       { L.TT_NEXT_LEVEL, format(L.TT_WARMING_FMT, Fmt.Duration(ns.C.WARMUP_FULL)) },
     }
     for _, key in ipairs(KEYS) do
@@ -483,7 +486,7 @@ end)
 ---------------------------------------------------------------------------
 
 T.test("F2-fidelity: the warlock XP label is soulHi #a3a4f6 (Demoniste board)", function()
-  local ns, frame = Start("warlock", { xp = 2000 })
+  local _, frame = Start("warlock", { xp = 2000 })
   local xpl = frame.tp.xpl
   T.ok(xpl and xpl:IsShown(), "split XP label shown")
   local r, g, b = xpl:GetTextColor()
@@ -652,6 +655,7 @@ end)
 T.test("compile: ui roles must not follow the user colours; sep center and ticks mid are checked", function()
   Stub.theme = nil
   local ns = Stub.LoadAddon({ files = { "Locales/enUS.lua", "Locales/frFR.lua", "Core.lua", "Themes.lua" } })
+  TV.Install(ns)
   Stub.LoginSequence()
   local function Fixture(ui, seps, ticks)
     return {

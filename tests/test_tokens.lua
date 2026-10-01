@@ -33,6 +33,7 @@ local function Record(opts)
     srv = opts.srv,
     prior = opts.prior,
     lastKill = opts.lastKill,
+    killRing = opts.killRing,                -- round 5: base XP of the last kills
     noXP = opts.noXP,                        -- C1: counted seconds since the last XP gain
     capLevel = opts.capLevel,                -- C2: detected server level cap
   }
@@ -242,7 +243,7 @@ end
 
 T.test("estimate from /played: '~' on the rate tokens, not dimmed, kept while paused", function()
   local ns = EstimateStart()
-  local Tokens, Fmt, L = ns.Tokens, ns.Fmt, ns.L
+  local Tokens, Fmt = ns.Tokens, ns.Fmt
   Tokens.Acquire("test", 3)
   local ctx = Tokens.ctx
   T.eq(ctx.rateStatus, "estimate")
@@ -688,6 +689,7 @@ T.test("kills and eta_kills: '~38 mobs', '~ETA · 38 mobs' and its short form (e
     local eta = Fmt.ETA(ctx.eta)
     text, dim, paused, alt = Tokens.Render("eta_kills")
     T.eq(text, eta .. L.SEP .. format(L.KILLS_FMT, "38"), locale)
+    T.no(paused)
     T.eq(alt, eta, "short form = the ETA alone")
     T.no(dim)
     T.eq(text:sub(1, 1), "~")
@@ -719,9 +721,10 @@ T.test("eta_kills falls back to either part; kills is dim dots without a kill, m
   Tokens.Acquire("test", 3)
   local ctx = Tokens.ctx
   T.eq(ctx.kills, nil)
-  local text, dim, _, alt = Tokens.Render("kills")
+  local text, dim = Tokens.Render("kills")
   T.eq(text, L.DOTS)
   T.ok(dim, "no kill yet: dim")
+  local alt
   text, dim, _, alt = Tokens.Render("eta_kills")
   T.eq(text, Fmt.ETA(ctx.eta), "no kill: the ETA alone")
   T.eq(alt, nil)
@@ -851,8 +854,18 @@ end)
 -- and CallInfo list; without the warm call, re-growing them on the first deep tick
 -- (Tick -> SafeCall -> Tokens -> Stats) is counted: a constant 0.4-1.7 KB that is not
 -- garbage and does not depend on the number of ticks.
+-- The warm call may take a shallower path than some ticks: the stack is also grown first,
+-- as T.alloc does (how large earlier tests left it decides whether the collect shrinks it
+-- below the deepest tick).
+local function WarmStack(depth)
+  if depth <= 0 then return 0 end
+  local a, b, c, d, e, f, g, h = depth, depth, depth, depth, depth, depth, depth, depth
+  return WarmStack(depth - 1) + a + b + c + d + e + f + g + h
+end
+
 local function Alloc(fn, n)
   collectgarbage("collect")
+  WarmStack(200)
   fn(0)
   collectgarbage("stop")
   local before = collectgarbage("count")
@@ -868,6 +881,28 @@ T.test("allocation: nothing at all in a steady state (AFK excluded, default slot
   ns.Core.SetSetting("exclude.afk", true)
   Stub.SetAFK(true)                          -- excluded time: the rate clock does not move
   Tokens.Acquire("test", 3)
+  local function Step()
+    Stub.Advance(1)
+    for i = 1, 3 do Tokens.Render(Tokens.Resolve(i)) end
+  end
+  for _ = 1, 300 do Step() end
+  local kb = Alloc(Step, 600)
+  T.ok(kb < 0.1, format("allocated %.3f KB", kb))
+end)
+
+T.test("allocation: nothing at all in a steady state with a full kill ring (kills tokens shown)", function()
+  local ns = Start({ lastKill = { xp = 330, level = 10, at = 1789990000 },
+                     killRing = { 300, 310, 290, 305, 315, 320, 280, 300, 312, 330 } })
+  local Tokens = ns.Tokens
+  ns.Core.SetSetting("widget.slots.1", "kills")
+  ns.Core.SetSetting("widget.slots.2", "eta_kills")
+  ns.Core.SetSetting("exclude.afk", true)
+  Stub.SetAFK(true)                          -- excluded time: the rate clock does not move
+  Tokens.Acquire("test", 3)
+  T.eq({ Tokens.Resolve(1), Tokens.Resolve(2) }, { "kills", "eta_kills" })
+  T.eq(Tokens.ctx.killXP, 306, "the rounded average of the ring")
+  T.ok(type(Tokens.ctx.kills) == "number" and Tokens.ctx.kills > 0)
+  T.eq(Tokens.ctx.kills, ns.Stats.KillsToLevel(ns.char, Tokens.ctx.xp, Tokens.ctx.max, Tokens.ctx.rested))
   local function Step()
     Stub.Advance(1)
     for i = 1, 3 do Tokens.Render(Tokens.Resolve(i)) end

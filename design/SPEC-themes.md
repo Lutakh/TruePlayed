@@ -58,8 +58,8 @@ user-facing strings live in `Locales/enUS.lua` and `Locales/frFR.lua` only.
 
 ### 0.3 Glossary
 - **theme key**: one of the 13 lowercase keys. "class" is a setting value, not a theme key.
-- **source theme**: the table returned by a theme's builder (section 2). It is written by theme
-  authors.
+- **source theme**: the table a theme's source text returns (section 2; a test may register a
+  builder function instead). It is written by theme authors.
 - **compiled theme** (`th`): what engines read (section 2.8). It is produced by
   `Themes.Compile`.
 - **fill state** `k`: 0 = normal XP, 1 = rested (the fill takes the rested colour, as the
@@ -124,25 +124,37 @@ user-facing strings live in `Locales/enUS.lua` and `Locales/frFR.lua` only.
 
 ### 2.1 Files and registration
 - One file per theme: `Themes/<key>.lua`, listed in the TOC (section 5.1).
-- Each file only registers a builder:
+- Each file only registers its source text (round 5, design/NEXT-LOT.md M3):
   ```lua
+  -- Notes on the source text below (it carries no comment): its comments, keyed by the
+  -- section and id they annotate.
   local ADDON, ns = ...
-  ns.Themes.Register("<key>", function()
-    return { ... }   -- the source theme: plain data, no functions, no metatables
-  end)
+  ns.Themes.Register("<key>", [[
+  return { ... }
+  ]])
   ```
-- The builder is called only when the theme is compiled, which happens when it becomes active
-  or when a test or check calls `Themes.Compile`. Its result is not kept after compilation.
-  Memory at rest is therefore one compiled theme plus the 13 builder closures. These are not
-  small: their table-constructor bytecode is about 130 KB on Lua 5.5 (more on the client's
-  Lua 5.1, whose line info costs 4 bytes per instruction), more than one compiled theme
-  (20 KB for actuel, 75 to 145 KB for the others). This is a fixed cost of the design, not
-  a leak: it never grows. Keeping the sources as strings would save little (the 13 files
-  hold about 140 KB of text). Round 4 measured it and accepted it.
-- Builders must be pure. They must not call WoW APIs, read settings or read `ns.char`. They
-  may read `ns.C`.
-- `Register` errors (a load-time developer error) on: an unknown key, a duplicate key, or a key
-  equal to `"class"`.
+- The text is plain data: the source theme as one table constructor, with no comment, no
+  function, no metatable and no reference to anything (a test checks that no `--` and no
+  `function` appear in the 13 texts). Notes on the data stay in Lua comments above the
+  `Register` call, keyed by section and layer / part id. `actuel` writes the `C.COLORS`
+  literals out (the same decimal text, hence the same numbers; a test checks the equality).
+- `Register` keeps the text compact: once, at registration, it removes the indentation and the
+  blanks around `=`, `,`, `{` and `}` outside string literals (`Themes.CompactSource`; a test
+  checks that the compact text evaluates to a table deep-equal to the full one, for the 13
+  themes).
+- The text is turned into its table only when the theme is compiled (activation, a theme
+  switch, tests): `loadstring` then `setfenv(fn, {})` on Lua 5.1 (the game), `load(text,
+  name, "t", {})` on 5.2+ (the offline tests), in an empty environment; the function and the
+  table are dropped right after the compile (`Themes.Source`). Themes.lua is the only file
+  allowed to read these loaders (`tests/lint51.lua`, `.luacheckrc`, `tests/check_globals.lua`).
+- Memory at rest is therefore one compiled theme plus the 13 compact texts, about 64 KiB in
+  all, and no builder function. Round 4 kept 13 builder closures instead: about 104 KB of
+  table-constructor bytecode at rest on Lua 5.5 and 126 KB on the client's 5.1 (whose line info
+  costs 4 bytes per instruction).
+- `Register` also takes a builder function returning the source table (test fixtures).
+  Builders must be pure: no WoW API, no settings, no `ns.char`.
+- `Register` errors (a load-time developer error) on: an unknown key, a duplicate key, a key
+  equal to `"class"`, or anything but a builder function or a text starting with `return {`.
 
 ### 2.2 Source theme: top level
 | field | req | type | meaning |
@@ -156,7 +168,9 @@ user-facing strings live in `Locales/enUS.lua` and `Locales/frFR.lua` only.
 | `tooltip` | yes | table | section 4.2, or `{ native = true }` |
 | `ui` | yes | table | Graph/Window roles: `bg, border, title, accent, label, value, dim` (colours; the alpha is ignored, because the modules keep their own alphas) |
 
-Unknown fields produce a compile warning. `test_theme_data` requires zero warnings.
+Unknown fields produce a warning. Since round 5 the warnings come from the test-only validator
+(`tests/theme_validate.lua`, design/NEXT-LOT.md M2): the shipped compiler falls back on the
+defaults and says nothing. `test_theme_data` requires zero warnings.
 
 ### 2.3 Colours
 A **colour** is one of the following:
@@ -184,7 +198,7 @@ Semantics:
   - `xp` is the user's `widget.xpColor` when set (alpha 1), else `colors.xp`.
   - `rested` is the user's `widget.restedColor` when set (alpha 1), else `colors.rested`.
   - `base` is the fill-state colour: `xp` in states 0 and 2, `rested` in state 1. `base` is
-    valid ONLY in `bar.layers`. Anywhere else it is a compile warning.
+    valid ONLY in `bar.layers`. Anywhere else it is a warning (white is used).
   - Entries of `colors` may use `xp` and `rested` but not `base`.
 - `def`: when every dynamic source used by the expression comes from the THEME (the user
   setting is `false`), the colour is `def` instead of the expression. It exists so that
@@ -439,48 +453,100 @@ Theme authors (T1..T7):
   their structure.
 
 ### 2.8 Compiled theme (`th`): the engine contract
-Engines read ONLY this form and never mutate it. E1 produces it.
+Engines read ONLY this form and never mutate it. E1 produces it. Since round 5 it is compact
+(design/NEXT-LOT.md M1):
+- Colours are plain `{ r, g, b, a }` arrays, alpha factors folded in. A static colour (it reads
+  no user colour) is one array per value within a compile, shared by its uses; a dynamic colour
+  (it reads `xp`, `rested` or `base`) has an array of its own, rewritten in place by every
+  recolour (a shared array would recolour another use). No table is shared by two compiles
+  (P5: only the active compiled theme stays alive).
+- A field equal to its default is not stored. Every compiled record has a metatable whose
+  `__index` holds its defaults (the values shown below), so readers index fields as usual:
+  `L.layer` is `"ARTWORK"` for a layer that has none; `pairs` and `rawget` see the stored fields
+  only.
+- Texture specs, gradient pairs and small lists (band, pad, inset, slice, font slot) are one
+  table per value within a compile.
 ```lua
 th = {
   key = "futuriste", gen = 7,          -- gen: +1 on every compile and every recolour
-  native = false,                      -- tooltip uses the shared GameTooltip (actuel)
-  fonts = { display = "Orbitron", body = "Rajdhani", num = "Rajdhani" },   -- names (resolution via Themes.Font)
-  colors = { xp = {r,g,b,a}, rested = {r,g,b,a} },  -- theme defaults BEFORE user override (Themes.DefaultColor)
+  native = nil | true,                 -- tooltip uses the shared GameTooltip (actuel)
+  fonts = { display = "Orbitron", body = "Rajdhani", num = <body> },   -- names (Themes.Font)
+  colors = { xp, rested, label, value, dim, accent, pause, [bg, border] },  -- the theme's own
+                                       -- colours BEFORE user override: Themes.DefaultColor (xp,
+                                       -- rested), the classic backdrop (bg, border)
   accent = {r,g,b,a},                  -- veil colour source
   bar = {
-    pad = 10, gap = 4, hAdd = 6, hMin = 10,
+    pad = 8, gap = 3, hAdd = 0, hMin = 4, maxAlpha = 0.35,
     panel = "backdrop" | { parts = { P1, ... } },
     layers = { Lc1, Lc2, ... },       -- source order; `when` kept, Bar filters by style
   },
-  text = { font = { s1 = "body", ... }, size = { ... }, boxSize = { ... }, split = true,
-           splitGap = 5, levelFmt = "upper", shadow = { c = {r,g,b,a}, x = 1, y = -1 },
-           colors = { label = {r,g,b,a}, value = ..., levelLabel = ..., levelValue = ..., xpText = ...,
-                      sep = ..., marker = ..., hint = ..., slot2 = ..., slot3 = ..., dimmed = ... } },
-  tt = { ... },                        -- section 4.2, compiled (colours as rgba arrays, ccDim string)
-  ui = { bg = {r,g,b,a}, border = ..., title = ..., accent = ..., label = ..., value = ..., dim = ... },
+  text = { font = { s1 = "body", ... }, size = { s1 = 2, s2 = 0, s3 = -1, level = 0,
+           levelValue = 0, xpLabel = 0, xp = 0, sep = 0, marker = -1, hint = -1 },
+           boxSize = { s1 = 2, s2 = -1, s3 = -1 }, split = false, splitGap = 4, levelFmt = "upper",
+           shadow = { c = { 0, 0, 0, 0.8 }, x = 1, y = -1 },
+           colors = { label, value, levelLabel, levelValue, xpText, sep, marker, hint, slot2,
+                      slot3, dimmed } },                     -- every role stored
+  tt = { native = true, colors = Themes.CLASSIC_TT }        -- native (every other field ignored)
+     | { width = { 280, 440 }, pad = { 12, 12, 10, 10 }, gap = 8, lineGap = 3,
+         fonts = { title = { role, size }, body = ..., value = <body>, note = ..., hint = ... },
+         colors = { <the 12 roles of 4.3>, ccDim = "|cffrrggbb" },  -- every role stored
+         panel = { parts = { P1, ... } },  -- none: the readers' plain dark panel
+         titleIcon = nil | { tex, w, h, gap = 6 },
+         sep = { header = S | nil, block = S | nil, footer = S | nil },
+         leader = nil | { tex, h = 1, y = 3, min = 12, c | g / f },
+         gauge = nil | { w = 176, h = 6, gap = 2, outline = nil | rgba, colors = { <8 keys> } } },
+  ui = { bg, border, title, accent, label, value, dim },    -- every role stored
 }
--- compiled layer (Lc) / panel part:
-{ id = "fill", kind = "tex" | "caps" | "three" | "nine" | "ticks",
-  span = "fill", layer = "ARTWORK", sub = 3, blend = "BLEND", when = nil,
-  tex = { path = "Interface\\Buttons\\WHITE8X8", w = 8, h = 8, tc = nil | {l,r,t,b}, tc8 = nil | {8 numbers},
-          tile = nil | "H" | "V" | "HV", slice = nil | { texels, px } },
-  top = 0, bottom = 0, h = nil, band = nil | { f0, f1 }, pad = { 0, 0 }, capInset = false,
-  w = nil, align = "center", dx = 0, ticks = nil | { n = 10, w = 1, clip = nil | "fill" },
-  dyn = false,                          -- true when any colour uses `base` (depends on the fill state)
-  c = { rgba0, rgba1, rgba2 },          -- vertex colour per fill state (index k + 1), alpha factors included;
-                                        -- the three entries are the same table when not dyn
-  g = nil | { dir = "HORIZONTAL", { from0, to0 }, { from1, to1 }, { from2, to2 } },  -- from/to = { r=, g=, b=, a= }
-  f = nil | { flat0, flat1, flat2 },    -- gradient fallback colours
+-- compiled layer (Lc), defaults shown:
+{ id = "fill", kind = "tex" | "caps" | "three" | "nine" | "ticks", span = "track",
+  layer = "ARTWORK", sub = 0, when = nil | "bar" | "box", tex = <the white 8 x 8 spec>,
+  top = 0, bottom = 0, h = nil, band = nil | { f0, f1 }, pad = nil | { left, right },
+  capInset = false, w = <stored for anchor spans>, align = "center", dx = 0,
+  ticks = nil | { n = <stored>, w = 1, clip = nil | "fill", mid = nil | true },
+  dyn = false,       -- true when a colour uses `base`
+  c = { 1, 1, 1, 1 },  -- vertex colour (an item without gradient)
+  g = nil,           -- gradient: one pair { from, to, dir = "HORIZONTAL" | "VERTICAL" }
+  f = nil,           -- flat colour of the gradient (L6); none: its from colour
+  m = nil,           -- state-2 alpha factor, stored when it is not the reader's default
 }
+-- panel part (P): { id, kind = "tex" | "nine", tex, layer = "BACKGROUND",
+--   sub = -8 + n - 1 (n: its position in the compiled list), anchor = "FILL",
+--   inset = nil | { l, r, t, b } (FILL), x = 0, y = 0, w, h (point anchors),
+--   alpha = 1 | "bg" | "line" (bar panel), c | g / f }
+-- separator (S): { h = 1, above = 6, below = 5, mirror = false, center = nil, tex, c | g / f }
+-- texture spec: { path = <white>, w = 8, h = 8, blend = "BLEND", l = 0, r = 1, t = 0, b = 1
+--   (the rect, unflipped), flipX, flipY, tile = nil | "H" | "V" | "HV", tc8 = nil | { 8 } (rot),
+--   slice = nil | { texels, px } }: SetTex sets the wrap modes of a tiled spec, and the
+--   coordinates of the rect (flipped) of a spec neither tiled nor sliced.
 ```
+Fill states. A layer follows the fill state (BarSkin) when it is `dyn` or its span is `fill` or
+`fillEnd`; every other item (other layers, panel parts, separators, leader) is drawn in state 0.
+A colour entry (`c`, `f`: a colour; `g`: a pair) is one value for every state or a per-state
+list `{ state 0, state 1 [, state 2] }` (readers tell them apart with `type(c[1]) == "table"`
+and `type(g[1][1]) == "table"`):
+- state 1 differs from state 0 only for `base`: a `dyn` layer has lists;
+- state 2 is state 0 with its alpha times `m`: `L.m`, else `bar.maxAlpha` on a fill span, else
+  1. A layer with an alpha of its own (besides maxAlpha) has its own state-2 entries instead,
+  folded at compile time (`a * (alpha * maxAlpha)`): the drawn numbers are the round-4 ones bit
+  for bit.
+
+The colour program (`programs[th]`, weak-keyed, never referencing `th`): the dynamic colours
+only, 5 entries each (out, node, def or false, fill state, alpha factor), the theme's xp and
+rested nodes, the user colours of its last run, and the tooltip palette when its dim is
+dynamic (ccDim follows). `SetGradient` takes tables with r, g, b, a fields: two scratch tables
+of Themes carry the values, and no colour of a caller stays referenced after a call.
 
 ## 3. Engine (E1: `Themes.lua`; E2: `BarSkin.lua`)
 
 ### 3.1 Public API of `ns.Themes`
 Everything here is implemented by E1 and frozen by this SPEC.
 ```lua
-Themes.Register(key, builder)
-Themes.Compile(key) -> th, warnings      -- pure: does not change the active theme; warnings = list of strings
+Themes.Register(key, source)            -- source text "return { ... }" (2.1) or builder function
+Themes.Compile(key) -> th | nil, reason  -- pure: does not change the active theme; silent (round 5:
+                                         -- the warnings come from tests/theme_validate.lua)
+Themes.Source(key) -> true, src | false, err | nil   -- the source table, built afresh (2.1)
+Themes.CompactSource(text) -> text       -- the compaction Register applies (tests)
+Themes.IsRegistered(key) -> bool
 Themes.Resolve(value, classFile) -> key  -- S5, pure
 Themes.Active() -> th                    -- the compiled active theme (lazy, S6)
 Themes.ActiveKey() -> key
@@ -554,8 +620,9 @@ Themes.FONTS, Themes.COMMON_MEDIA, Themes.DISPLAY_KEYS, Themes.GAME_FONT_FALLBAC
   - B3. Layout (`Bar.ApplyLayout`) computes the geometry of 2.4. It positions the static
     layers and draws dynamic ones once (all caches set to -1, as today).
   - B4. `Bar.UpdateXP` calls the skin only when `px`, `rpx` or the state change:
-    `SetState(k)` sets the vertex colours of the layers with `dyn` from `c[k+1]`, and those of
-    every fill/fillEnd layer (maxAlpha); `Draw(px, rpx)` places the dynamic spans.
+    `SetState(k)` sets the vertex colours of the layers with `dyn` and those of every
+    fill/fillEnd layer, for state k (2.8: per-state entries, state 2 scaled by maxAlpha into
+    tables of the layer's record); `Draw(px, rpx)` places the dynamic spans.
     - Legacy counts must hold. For example, `tex.fillM:SetVertexColor` is called exactly once
       per state change; see the test_bar rested tests.
   - B5. `THEME_CHANGED "colors"`: Recolor re-applies `c`. Gradients are re-applied lazily (L5).
@@ -600,7 +667,7 @@ Themes.FONTS, Themes.COMMON_MEDIA, Themes.DISPLAY_KEYS, Themes.GAME_FONT_FALLBAC
 | field | default | meaning |
 |---|---|---|
 | `native` | false | true = GameTooltip, every other field ignored (actuel only) |
-| `width` | `{ 280, 440 }` | min / max outer width. The widest XP rows (the warm-up note, a days-long estimated ETA, a 6-digit estimated rate) must fit `width[2]` with 16 px to spare, measured with the real fonts in enUS and frFR (test_round4_regress) |
+| `width` | `{ 280, 440 }` | min / max outer width. The widest XP rows (the warm-up note, a days-long estimated ETA, a 6-digit estimated rate, and the mobs to kill row `~1,234 (average: 12,345 XP, last: 12,345 XP)`, the widest of all and binding in frFR) must fit `width[2]` with 16 px to spare, measured with the real fonts in enUS and frFR (test_round4_regress) |
 | `pad` | `{ 12, 12, 10, 10 }` | l, r, t, b |
 | `gap` | 8 | min px between left and right texts (and around the leader) |
 | `lineGap` | 3 | added to the font size for a row's height |
@@ -726,7 +793,7 @@ configuration) and `.b` (right).
   - each row is `{ kind = , left = , right = , leader = }`.
 
 ### 4.6 Graph and Window (E3, light theming)
-- The `ui` roles must not depend on the user's xp / rested colours (a compile warning,
+- The `ui` roles must not depend on the user's xp / rested colours (a validator warning,
   so test_theme_data refuses it). Graph and Window therefore ignore `THEME_CHANGED "colors"`
   and restyle at a theme switch only (round 4: a colour-picker step used to rebuild the
   shown statistics window).
@@ -1016,7 +1083,8 @@ the test.
   - `Subst` returns the same string when nothing matches; with `T.alloc` it allocates 0
     over 1000 calls.
 - **`test_theme_data.lua`**: for every registered key:
-  - `Compile` gives zero warnings;
+  - the validator (`tests/theme_validate.lua`, installed on `Themes.Compile`) gives zero
+    warnings;
   - every font name is in FONTS and every media reference is declared;
   - ids are unique, sub is in -8..7, bands are valid;
   - required colours and tooltip roles are present;
@@ -1125,6 +1193,25 @@ lua tests/check_globals.lua && lua tests/check_media.lua
   private tooltip and the GameTooltip lines are identical to a fresh load in the new
   theme, two-point anchors resolved as the game does).
 
+### 8.7 Memory pass (round 5, design/NEXT-LOT.md A)
+- `tests/theme_validate.lua` (test-only): the round-4 compiler, moved out of Themes.lua
+  unchanged (same parse, same fallbacks, the same warning texts). `TV.Install(ns)` makes
+  `Themes.Compile(key)` return `th, warnings` and checks on every call that the compiled theme
+  draws exactly what the round-4 compiler compiled (`TV.Canon`: the values the engines read,
+  numbers compared with `==`). `TV.Color`, `TV.Pair`, `TV.Flat`, `TV.PartSub` read a compiled
+  item as the engines do.
+- `tests/test_theme_compact.lua`: plain rgba arrays (one per static value, one per dynamic
+  colour), no stored default, equality with the round-4 compiler for the 13 themes with and
+  without user colours, recolour in place, no table shared by two compiles, the silent
+  fallback on bad data (the same values as round 4), the 13 compact source texts (no comment,
+  no function, lossless compaction, an empty environment, `actuel` = `C.COLORS`).
+- `tests/test_theme_memory.lua` (Lua 5.4 and 5.5 only): budgets of the compiled themes, the
+  source texts (80 KB or less), Themes.lua and the addon after login; the method is written
+  in its header.
+- `tests/render_snapshot.lua` (a tool, not run by `tests/run.lua`): what the addon draws for
+  the 13 themes in 8 scenarios (loaded and switched to), every view; two checkouts are
+  compared with `diff` (the proof that the memory pass changed nothing on screen).
+
 ## 9. Docs (E4)
 - **README.md**: a "Themes" section covering:
   - the list of themes with one line each;
@@ -1211,45 +1298,54 @@ lua tests/check_globals.lua && lua tests/check_media.lua
 ## Appendix A: `Themes/actuel.lua` (E1), complete
 ```lua
 -- Themes/actuel.lua - "Classic": the look of TruePlayed before themes, pixel-identical
--- (tests/test_actuel_golden.lua). Every colour comes from the classic palette C.COLORS.
+-- (tests/test_actuel_golden.lua). Every colour is the classic palette C.COLORS (Core.lua),
+-- written out with the same decimal literals, hence the same numbers (the source text is
+-- compiled in an empty environment: it cannot read ns.C; a test checks the equality).
+-- Plain data only (SPEC-themes section 2): a source text, turned into its table only when the
+-- theme is compiled (Themes.Register keeps it compact; M3).
+-- Notes on the source text below (it carries no comment): its comments, keyed by the
+-- section and id they annotate ("> id": the layers or parts from that one on).
+--   colors: C.COLORS fill, restedFill, label, value, dim, accent, pause, track, bg, border.
+--   bar.layers > rested: rested part: the rested colour 35 % lighter, fading out to the right;
+--     the hand-tuned blue when the user kept the built-in rested colour.
+--   bar.layers > fillHi: color = C.COLORS.fillHi.
+--   bar.layers > restTick: def = C.COLORS.restTick.
+--   text: every default: game font, legacy sizes and colours.
 local ADDON, ns = ...
-local C = ns.C
 
-ns.Themes.Register("actuel", function()
-  local K = C.COLORS
-  return {
-    name = "THEME_ACTUEL",
-    fonts = { display = "game", body = "game" },
-    colors = {
-      xp = K.fill, rested = K.restedFill,
-      label = K.label, value = K.value, dim = K.dim, accent = K.accent, pause = K.pause,
-      track = K.track, bg = K.bg, border = K.border,
+ns.Themes.Register("actuel", [[
+return {
+  name = "THEME_ACTUEL",
+  fonts = { display = "game", body = "game" },
+  colors = {
+    xp = { 0.545, 0.361, 0.965, 1 }, rested = { 0.0, 0.39, 0.88, 1 },
+    label = { 0.6, 0.6, 0.6 }, value = { 1, 1, 1 }, dim = { 0.5, 0.5, 0.55 },
+    accent = { 0.545, 0.361, 0.965 }, pause = { 1, 0.6, 0.2 },
+    track = { 0.106, 0.118, 0.141, 1 }, bg = { 0.059, 0.067, 0.082, 0.85 }, border = { 1, 1, 1, 0.10 },
+  },
+  bar = {
+    pad = 8, gap = 3, height = { add = 0, min = 4 }, maxAlpha = 0.35,
+    layers = {
+      { id = "track", span = "track", caps = true, layer = "BORDER", sub = 0, color = "track" },
+      { id = "rested", span = "rested", layer = "ARTWORK", sub = 1,
+        grad = { "HORIZONTAL",
+                 { "rested+.35@.65", def = { 0.35, 0.62, 1.0, 0.65 } },
+                 { "rested+.35@.20", def = { 0.35, 0.62, 1.0, 0.20 } } },
+        flat = { "rested+.35@.40", def = { 0.35, 0.62, 1.0, 0.40 } } },
+      { id = "fill", span = "fill", caps = true, layer = "ARTWORK", sub = 2, color = "base" },
+      { id = "fillHi", span = "fill", capInset = true, top = 0, h = 1,
+        layer = "ARTWORK", sub = 3, color = { 1, 1, 1, 0.10 }, when = "bar" },
+      { id = "restTick", span = "restEnd", w = 1, align = "right",
+        layer = "ARTWORK", sub = 4, color = { "rested+.6@.9", def = { 0.6, 0.75, 1, 0.9 } } },
     },
-    bar = {
-      pad = 8, gap = 3, height = { add = 0, min = 4 }, maxAlpha = 0.35,
-      layers = {
-        { id = "track", span = "track", caps = true, layer = "BORDER", sub = 0, color = "track" },
-        -- rested part: the rested colour 35 % lighter, fading out to the right; the
-        -- hand-tuned blue when the user kept the built-in rested colour
-        { id = "rested", span = "rested", layer = "ARTWORK", sub = 1,
-          grad = { "HORIZONTAL",
-                   { "rested+.35@.65", def = { 0.35, 0.62, 1.0, 0.65 } },
-                   { "rested+.35@.20", def = { 0.35, 0.62, 1.0, 0.20 } } },
-          flat = { "rested+.35@.40", def = { 0.35, 0.62, 1.0, 0.40 } } },
-        { id = "fill", span = "fill", caps = true, layer = "ARTWORK", sub = 2, color = "base" },
-        { id = "fillHi", span = "fill", capInset = true, top = 0, h = 1,
-          layer = "ARTWORK", sub = 3, color = K.fillHi, when = "bar" },
-        { id = "restTick", span = "restEnd", w = 1, align = "right",
-          layer = "ARTWORK", sub = 4, color = { "rested+.6@.9", def = K.restTick } },
-      },
-      panel = "backdrop",
-    },
-    text = {},                                   -- every default: game font, legacy sizes and colours
-    tooltip = { native = true },
-    ui = { bg = "bg", border = "border", title = "value", accent = "accent",
-           label = "label", value = "value", dim = "dim" },
-  }
-end)
+    panel = "backdrop",
+  },
+  text = {},
+  tooltip = { native = true },
+  ui = { bg = "bg", border = "border", title = "value", accent = "accent",
+         label = "label", value = "value", dim = "dim" },
+}
+]])
 ```
 Equivalence notes (E2 must preserve them):
 - `fill` in state 2 = xp colour × 0.35.
@@ -1260,6 +1356,10 @@ Equivalence notes (E2 must preserve them):
   rested again.
 
 ## Appendix B: `Themes/futuriste.lua` (T1), complete
+The round-4 design source, kept as the reference the theme was built from (the shipped file
+has since been tuned in game). It is written as a builder with comments inside, as round 4
+registered it; since round 5 the file registers the same table as a source text without
+comment (2.1), the comments moved to a notes block above the `Register` call.
 ```lua
 -- Themes/futuriste.lua - "Futuristic" (default theme): neon HUD from the Futuriste board.
 -- Orbitron (display, upper-case labels) + Rajdhani (numbers and text), magenta XP,

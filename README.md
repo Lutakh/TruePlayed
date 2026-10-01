@@ -31,9 +31,10 @@ records every played second, knows what you were doing, and lets you decide what
   you there. The bar takes its max-level look ("LEVEL 20 · CAP"), the tooltip says
   "Level 20: current server level cap (no XP from the last 3 mobs)", and everything goes
   back to normal by itself as soon as the server gives XP again.
-- **Mobs to kill**: how many mobs like the last one you killed you still need to level
-  up, aware of your rested XP (rested kills give double XP). In the tooltip under the time
-  to next level, and on the bar ("~5h 05m · 38 mobs", the default top right info).
+- **Mobs to kill**: how many mobs like your last 10 kills (their average XP) you still
+  need to level up, aware of your rested XP (rested kills give double XP). In the tooltip
+  under the time to next level ("~38 (average: 47 XP, last: 30 XP)"), and on the bar
+  ("~5h 05m · 38 mobs", the default top right info).
 - **Rested XP like the game's XP bar**: the bar takes the rested colour while you are
   rested (the game's blue in the Classic theme), with a lighter part up to where your
   rested XP ends, and the tooltip shows "Rested: 11,600 XP (50%)". Both bar colours can
@@ -201,6 +202,7 @@ choose **Lock**.
 | `/tpl show` / `/tpl hide` | Show or hide the bar |
 | `/tpl style bar\|box` | Full XP bar or compact box |
 | `/tpl theme [name]` | Show the theme and the theme names, or change the theme (see [Themes](#themes)) |
+| `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`, see [Languages](#languages)) |
 | `/tpl afk [on\|off]` | Exclude AFK time (no argument: toggle) |
 | `/tpl inn [on\|off]` | Exclude inn / rest area time (no argument: toggle) |
 | `/tpl city [on\|off]` | Exclude city time (no argument: toggle) |
@@ -245,10 +247,12 @@ infos you chose for max level, and returns to normal by itself at your next XP g
 example when the cap is raised. "Hide at max level" does not hide the bar at such a cap.
 
 **How is "mobs to kill" counted?**
-From the XP of the last mob you killed (without its rested bonus), your XP to go and your
-rested XP: while you are rested a kill gives double XP, so fewer mobs are needed. Quest,
-exploration and discovery XP are not kills. The number shows after your first kill and
-follows the mobs you are fighting.
+From the average XP of your last 10 kills (without their rested bonus), your XP to go and
+your rested XP: while you are rested a kill gives double XP, so fewer mobs are needed.
+The average keeps the number steady when the mobs around you are not all of the same
+level; the tooltip also shows the XP of the last kill. Quest, exploration and discovery
+XP are not kills. The number shows after your first kill, and each character keeps its
+own last 10 kills.
 
 **My old dungeon time shows as open world.**
 Dungeons, raids and PvP are recorded apart from this version on. Time spent in instances
@@ -298,8 +302,17 @@ RXPGuides once.
 
 ## Languages
 
-English and French. Translations are welcome: copy `Locales/frFR.lua`, translate the
-values (keep the keys), and open a pull request.
+English and French. TruePlayed follows the game's language by default. To use another
+one, choose it in Options > Display > **Language (Langue)** (Auto, English, Français) or
+type `/tpl lang en`, `/tpl lang fr` or `/tpl lang auto`, then reload the interface (the
+**Reload UI** button under the option, or `/reload`). Names that come from the game
+(zones, mobs, instances, characters, the `/played` lines) stay in the game's language,
+and so do the AddOns list texts.
+
+Translations are welcome: copy `Locales/frFR.lua`, translate the values (keep the keys
+and the registration block at the end of the file), add the language code to
+`C.LANGUAGES` in `Core.lua` and its name and `/tpl lang` alias in `Options.lua`, and open
+a pull request.
 
 ## Performance
 
@@ -312,9 +325,12 @@ TruePlayed is built to be invisible in your frame rate:
   them, and hidden parts stop listening to events;
 - FPS and latency are measured only while you display them;
 - saved data is bounded (30 sessions, pruned small zones, top 10 zones per level);
-- only the active theme is kept in memory; its textures, colours and fonts are set once
-  when it is applied, never on the timer, and the bar's textures are reused from one
-  theme to the next (once every theme has been shown, switching creates none).
+- only the active theme is kept in memory, in a compact form (about 11 to 55 KB in the
+  game, Futuristic about 52 KB); the 13 themes
+  wait as short texts (66 KB in all) that are turned into a theme only when one is
+  applied; its textures, colours and fonts are set once when it is applied, never on the
+  timer, and the bar's textures are reused from one theme to the next (once every theme
+  has been shown, switching creates none).
 - memory grows with the number of characters tracked (about 0.1-0.3 MB each); use
   "Erase this character's data" in the options (or `/tpl reset char`) for abandoned alts.
 
@@ -344,6 +360,18 @@ lua tests/check_globals.lua  # no accidental global read or write, at run time
 lua tests/check_media.lua    # theme fonts (glyph coverage, licences) and textures
 ```
 
+`tests/test_theme_memory.lua` (part of the unit tests, on Lua 5.4 and 5.5 only) holds the
+memory budgets of the themes. `tests/render_snapshot.lua` writes everything the bar, its
+tooltip, the graph, the statistics window and the options draw, for the 13 themes in 8
+situations; run it on two versions and compare the files to prove that a change draws
+exactly the same thing:
+
+```
+TZ=UTC lua tests/render_snapshot.lua /tmp/new.txt                 # this checkout
+TZ=UTC lua tests/render_snapshot.lua /tmp/old.txt ../old-checkout/ # the addon files of another one
+diff /tmp/old.txt /tmp/new.txt
+```
+
 GitHub Actions runs them on Lua 5.1 and 5.5, plus luacheck, on every push. Pushing a tag
 `vX.Y.Z` publishes the release with the BigWigs packager.
 
@@ -361,7 +389,8 @@ MIT, see [LICENSE](LICENSE). Author: Lutak.
 selon ce que vous faisiez : monde, donjons, raids, JcJ, AFK, auberge ou zone de repos,
 capitale, vol. Il affiche l'XP par heure et le temps avant le prochain niveau (qui ne
 repartent pas de zéro après un `/reload`, un redémarrage ou un plantage), le nombre de
-monstres à tuer (d'après le dernier monstre tué, en tenant compte du repos), le temps par
+monstres à tuer (d'après la moyenne de vos 10 derniers monstres tués, en tenant compte du
+repos), le temps par
 niveau, par zone et en instance (« Instances les plus jouées » dans l'onglet Zones), les
 moyennes par niveau, le temps de session et le /played du serveur.
 
@@ -392,7 +421,10 @@ aussi (Options > Couleurs de la barre, bouton « Couleurs du thème »). Survole
 graphique (30 s, 1 min ou 5 min).
 La barre affiche trois infos au choix parmi 19. Tapez `/tpl` pour les options,
 `/tpl stats` pour la fenêtre de statistiques et `/tpl help` pour la liste des
-commandes. L'addon est entièrement traduit en français.
+commandes. L'addon est entièrement traduit en français et suit la langue du jeu ; pour en
+choisir une autre : Options > Affichage > « Langue (Language) » ou `/tpl lang fr|en|auto`,
+puis rechargez l'interface (bouton « Recharger l'interface » ou `/reload`). Les noms
+fournis par le jeu (zones, monstres) restent dans la langue du jeu.
 
 **Thèmes** : 13 thèmes changent l'aspect de la barre, de son infobulle, du graphique et
 de la fenêtre de statistiques : Futuriste (par défaut, pour tout le monde), Classique

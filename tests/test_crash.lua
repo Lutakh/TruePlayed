@@ -477,9 +477,9 @@ T.test("15. crash, then /reload before the login sync: the next sync does not cr
     Stub.Advance(60)
     Stub.GrantXP(20)                        -- 1200 XP/h
   end
-  local ns = Stub.Restart({ crash = true })  -- session 3 starts from the save of session 1
+  Stub.Restart({ crash = true })            -- session 3 starts from the save of session 1
   Stub.Advance(5)                           -- XP baseline read, login /played not sent yet
-  ns = Stub.Restart({ reload = true, online = 1 })
+  local ns = Stub.Restart({ reload = true, online = 1 })
   for _ = 1, 60 do
     Stub.Advance(60)
     Stub.GrantXP(20)
@@ -526,11 +526,11 @@ T.test("16. login request off: crash, two sessions without a sync, then /played 
 end)
 
 T.test("17. /reload after a synced load keeps the XP snapshot chain", function()
-  local ns = History()                      -- session 2, login requests off
+  History()                                 -- session 2, login requests off
   Stub.Advance(3)
   Sync()                                    -- session 2 meets the server
   Stub.Advance(60)
-  ns = Stub.Restart({ reload = true, online = 3 })
+  local ns = Stub.Restart({ reload = true, online = 3 })
   local sync = ns.Tracker.GetSync()
   T.ok(sync and sync.restored, "sync restored")
   Stub.Advance(60)
@@ -550,10 +550,10 @@ T.test("18. /reload before the first sync: a local total is not restored as a se
   History(function(n) n.settings.requestPlayedAtLogin = true end)
   Stub.Advance(15)
   for _ = 1, 180 do Stub.Advance(60) end
-  local ns = Stub.Restart({ crash = true })
+  Stub.Restart({ crash = true })
   Stub.Advance(5)
   T.eq(Stub.requests, 0, "login request not sent yet")
-  ns = Stub.Restart({ reload = true, online = 1 })
+  local ns = Stub.Restart({ reload = true, online = 1 })
   T.ok(Saved().srv.loc, "saved as a local lower bound")
   T.eq(ns.Tracker.GetSync(), nil, "not restored as a server sync")
   Stub.Advance(11)

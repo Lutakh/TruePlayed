@@ -63,18 +63,15 @@ local NET_INTERVAL = C.NET_INTERVAL
 local RECENT_LEVELS = C.RECENT_LEVELS
 local MAX_KILLS = 1000000          -- sanity bound on the mobs-to-go count
 
--- Localized patterns (the locale is fixed for the whole UI load).
-local DOTS, MAX_LEVEL, CAP_SHORT, STALL_MARK = L.DOTS, L.MAX_LEVEL, L.CAP_SHORT, L.STALL_MARK
-local PFX_LEVEL, PFX_SESSION, PFX_PLAYED = L.PFX_LEVEL_FMT, L.PFX_SESSION_FMT, L.PFX_PLAYED_FMT
-local PFX_SERVER, PFX_AFK, PFX_AVG, PFX_ZONE = L.PFX_SERVER_FMT, L.PFX_AFK_FMT, L.PFX_AVG_FMT, L.PFX_ZONE_FMT
-local XPLEFT_FMT, RESTED_FMT, PCTH_FMT, PERCENT_FMT = L.XPLEFT_FMT, L.RESTED_FMT, L.PCTH_FMT, L.PERCENT_FMT
-local KILLS_FMT, KILLS_ONE_FMT, SEP = L.KILLS_FMT, L.KILLS_ONE_FMT, L.SEP
-local PFX_INST_SESSION, PFX_INST_TOTAL = L.PFX_INST_SESSION_FMT, L.PFX_INST_TOTAL_FMT
+-- Localized strings are read from L at use time, never copied at file load: Core
+-- writes the language chosen by the "language" setting into L when the settings are
+-- adopted, after this file ran (a copy would keep the client's language). A read of
+-- an existing key allocates nothing.
 
 ---------------------------------------------------------------------------
 -- Context (reused table; fields listed in 3.11, plus hasChar, valid, zoneKey, stateKey,
--- kills / killXP (mobs to the next level and the base XP of the last kill, nil when
--- unknown), instSession / instTotal (instance seconds under the mask, nil without a
+-- kills / killXP (mobs to the next level and the average base XP of the last 10 kills,
+-- nil when unknown), instSession / instTotal (instance seconds under the mask, nil without a
 -- character), stalled / stallSecs (rate status "stalled" and the counted seconds since
 -- the last XP gain) and isServerCap / capLevel / capMisses (max level because of a
 -- detected server level cap, Tracker.GetCapInfo))
@@ -332,7 +329,8 @@ function Tokens.UpdateContext(now)
   c.instSession = Stats.InstanceTime(session, mask)
   c.instTotal = Stats.InstanceTime(char.life, mask)
 
-  -- mobs to the next level from the last kill (rest-aware; nil without a kill or at max)
+  -- mobs to the next level from the average of the last 10 kills (rest-aware; nil without
+  -- a kill or at max)
   local kills, killXP
   if c.valid and not isMax then
     kills, killXP = Stats.KillsToLevel(char, c.xp, c.max, c.rested)
@@ -383,7 +381,7 @@ function Tokens.PercentText(tenths)
   local s = pctText[t]
   if not s then
     local whole = floor(t / 10)
-    s = format(PERCENT_FMT, format("%d%s%d", whole, L.DECIMAL_SEP, t - whole * 10))
+    s = format(L.PERCENT_FMT, format("%d%s%d", whole, L.DECIMAL_SEP, t - whole * 10))
     pctText[t] = s
   end
   return s
@@ -409,8 +407,8 @@ R.none = function() return "", false end
 -- Text of the XP tokens at max level: "Max level", or "Server cap" for a detected
 -- server level cap (the character is only stopped for now).
 local function MaxText()
-  if ctx.isServerCap then return CAP_SHORT end
-  return MAX_LEVEL
+  if ctx.isServerCap then return L.CAP_SHORT end
+  return L.MAX_LEVEL
 end
 
 -- Display mode of a rate text: 1 = estimate from /played ("~" prefix), 2 = frozen
@@ -430,14 +428,14 @@ R.eta = function()
   local status = ctx.etaStatus
   if status == "max" then return MaxText(), true end
   local sec = ctx.eta
-  if sec == nil then return DOTS, true end
+  if sec == nil then return L.DOTS, true end
   local k = Fmt.ETAKey(sec)
   local mode = RateMode(status)
   if k ~= lastKey.eta or mode ~= lastEst.eta then
     lastKey.eta, lastEst.eta = k, mode
     local text = Fmt.ETA(sec)
     if mode % 2 == 1 then text = Approx(text) end
-    if mode >= 2 then text = text .. STALL_MARK end
+    if mode >= 2 then text = text .. L.STALL_MARK end
     lastText.eta = text
   end
   return lastText.eta, status == "warming" or status == "stalled"
@@ -446,7 +444,7 @@ end
 R.xph = function()
   if ctx.isMax then return MaxText(), true end
   local xph = ctx.xph
-  if xph == nil then return DOTS, true end
+  if xph == nil then return L.DOTS, true end
   local k = Fmt.ShortKey(xph)
   local status = ctx.rateStatus
   local mode = RateMode(status)
@@ -454,7 +452,7 @@ R.xph = function()
     lastKey.xph, lastEst.xph = k, mode
     local text = Fmt.Rate(xph)
     if mode % 2 == 1 then text = APPROX .. text end
-    if mode >= 2 then text = text .. STALL_MARK end
+    if mode >= 2 then text = text .. L.STALL_MARK end
     lastText.xph = text
   end
   return lastText.xph, status == "warming" or status == "stalled"
@@ -464,7 +462,7 @@ end
 R.pcth = function()
   if ctx.isMax then return MaxText(), true end
   local xph = ctx.xph
-  if xph == nil or not ctx.valid then return DOTS, true end
+  if xph == nil or not ctx.valid then return L.DOTS, true end
   local v = xph * 100 / ctx.max
   local tenths = floor(v * 10 + 0.5)
   local k
@@ -475,9 +473,9 @@ R.pcth = function()
     lastKey.pcth, lastEst.pcth = k, mode
     local num
     if k < 1000 then num = Fmt.Decimal(tenths / 10, 1) else num = format("%d", k - 1000) end
-    local text = format(PCTH_FMT, num)
+    local text = format(L.PCTH_FMT, num)
     if mode % 2 == 1 then text = APPROX .. text end
-    if mode >= 2 then text = text .. STALL_MARK end
+    if mode >= 2 then text = text .. L.STALL_MARK end
     lastText.pcth = text
   end
   return lastText.pcth, status == "warming" or status == "stalled"
@@ -485,12 +483,12 @@ end
 
 R.xpleft = function()
   if ctx.isMax then return MaxText(), true end
-  if not ctx.valid then return DOTS, true end
+  if not ctx.valid then return L.DOTS, true end
   local left = floor(ctx.max - ctx.xp)
   if left < 0 then left = 0 end
   if left ~= lastKey.xpleft then
     lastKey.xpleft = left
-    lastText.xpleft = format(XPLEFT_FMT, Fmt.Number(left))
+    lastText.xpleft = format(L.XPLEFT_FMT, Fmt.Number(left))
   end
   return lastText.xpleft, false
 end
@@ -498,66 +496,66 @@ end
 -- Rested pool in percent of the level (the pool can exceed 100 %: 150 % in Classic).
 R.rested = function()
   if ctx.isMax then return MaxText(), true end
-  if not ctx.valid then return DOTS, true end
+  if not ctx.valid then return L.DOTS, true end
   local n = floor(ctx.rested * 100 / ctx.max + 0.5)
   if n < 0 then n = 0 end
   if n ~= lastKey.rested then
     lastKey.rested = n
     local pct
-    if n <= 100 then pct = Fmt.PercentInt(n) else pct = format(PERCENT_FMT, format("%d", n)) end
-    lastText.rested = format(RESTED_FMT, pct)
+    if n <= 100 then pct = Fmt.PercentInt(n) else pct = format(L.PERCENT_FMT, format("%d", n)) end
+    lastText.rested = format(L.RESTED_FMT, pct)
   end
   return lastText.rested, false
 end
 
 R.level_time = function()
-  if not ctx.hasChar then return DOTS, true end
-  return TimeText("level_time", PFX_LEVEL, ctx.levelTime), false
+  if not ctx.hasChar then return L.DOTS, true end
+  return TimeText("level_time", L.PFX_LEVEL_FMT, ctx.levelTime), false
 end
 
 R.session = function()
-  if not ctx.hasChar then return DOTS, true end
-  return TimeText("session", PFX_SESSION, ctx.sessionTime), false
+  if not ctx.hasChar then return L.DOTS, true end
+  return TimeText("session", L.PFX_SESSION_FMT, ctx.sessionTime), false
 end
 
 R.played = function()
-  if not ctx.hasChar then return DOTS, true end
-  return TimeText("played", PFX_PLAYED, ctx.played), false
+  if not ctx.hasChar then return L.DOTS, true end
+  return TimeText("played", L.PFX_PLAYED_FMT, ctx.played), false
 end
 
 -- Live server /played; the last saved snapshot (dim) when no sync arrived yet.
 R.played_server = function()
   local v = ctx.playedServer
-  if v == nil then return DOTS, true end
-  return TimeText("played_server", PFX_SERVER, v), not ctx.playedLive
+  if v == nil then return L.DOTS, true end
+  return TimeText("played_server", L.PFX_SERVER_FMT, v), not ctx.playedLive
 end
 
 R.afk_session = function()
-  if not ctx.hasChar then return DOTS, true end
-  return TimeText("afk_session", PFX_AFK, ctx.afkSession), false
+  if not ctx.hasChar then return L.DOTS, true end
+  return TimeText("afk_session", L.PFX_AFK_FMT, ctx.afkSession), false
 end
 
 R.avg_level = function()
   local v = ctx.avgLevel
-  if v == nil then return DOTS, true end
-  return TimeText("avg_level", PFX_AVG, v), false
+  if v == nil then return L.DOTS, true end
+  return TimeText("avg_level", L.PFX_AVG_FMT, v), false
 end
 
 R.zone_time = function()
-  if not ctx.hasChar then return DOTS, true end
-  return TimeText("zone_time", PFX_ZONE, ctx.zoneTime), false
+  if not ctx.hasChar then return L.DOTS, true end
+  return TimeText("zone_time", L.PFX_ZONE_FMT, ctx.zoneTime), false
 end
 
 R.instance_session = function()
   local v = ctx.instSession
-  if v == nil then return DOTS, true end
-  return TimeText("instance_session", PFX_INST_SESSION, v), false
+  if v == nil then return L.DOTS, true end
+  return TimeText("instance_session", L.PFX_INST_SESSION_FMT, v), false
 end
 
 R.instance_total = function()
   local v = ctx.instTotal
-  if v == nil then return DOTS, true end
-  return TimeText("instance_total", PFX_INST_TOTAL, v), false
+  if v == nil then return L.DOTS, true end
+  return TimeText("instance_total", L.PFX_INST_TOTAL_FMT, v), false
 end
 
 -- "38 mobs", "1 mob" (no "~": the callers add it where the count stands alone).
@@ -565,16 +563,16 @@ local killsN, killsText = nil, nil
 local function KillsPart(n)
   if n ~= killsN then
     killsN = n
-    killsText = format((n == 1) and KILLS_ONE_FMT or KILLS_FMT, Fmt.Number(n))
+    killsText = format((n == 1) and L.KILLS_ONE_FMT or L.KILLS_FMT, Fmt.Number(n))
   end
   return killsText
 end
 
--- Mobs to the next level, an estimate from the last kill: "~38 mobs".
+-- Mobs to the next level, an estimate from the average of the last 10 kills: "~38 mobs".
 R.kills = function()
   if ctx.isMax then return MaxText(), true end
   local n = ctx.kills
-  if n == nil then return DOTS, true end
+  if n == nil then return L.DOTS, true end
   local part = KillsPart(n)
   if part ~= lastKey.kills then
     lastKey.kills = part
@@ -594,7 +592,7 @@ R.eta_kills = function()
   local part = KillsPart(ctx.kills)
   if eta ~= ekEta or part ~= ekPart then
     ekEta, ekPart = eta, part
-    lastText.eta_kills = format("%s%s%s", eta, SEP, part)
+    lastText.eta_kills = format("%s%s%s", eta, L.SEP, part)
   end
   return lastText.eta_kills, dim, eta
 end

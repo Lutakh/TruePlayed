@@ -1,6 +1,13 @@
 -- Locales/enUS.lua - base (English) strings of TruePlayed.
--- Creates ns.L. A key missing in another locale falls back to this English text;
--- a key missing everywhere shows its own name (visible bug, never an error).
+-- Creates ns.L, the one locale table every module captures at file load (never
+-- replaced). A key missing in another locale falls back to this English text; a key
+-- missing everywhere shows its own name (visible bug, never an error).
+-- Also registers an English copy of the strings as ns.LOCALES.enUS (outside L): Core
+-- applies the language chosen by the "language" setting into L when the settings are
+-- adopted (English first, then the chosen locale over it), then drops ns.LOCALES at
+-- PLAYER_LOGIN. A new locale file registers ns.LOCALES.<code> the way frFR.lua does,
+-- and its code joins C.LANGUAGES (Core), the LANG_* names and the /tpl lang aliases
+-- (Options).
 -- Keys marked [fmt] are format patterns: %s / %d arguments, literal percent as %%.
 -- Latin-1 characters only (see SPEC-FINAL 2.6).
 local _, ns = ...
@@ -33,6 +40,8 @@ L.UNLOCKED                = "Bar unlocked: drag it to move it."
 L.STYLE_SET_FMT           = "Style: %s"  -- [fmt] STYLE_BAR / STYLE_BOX
 L.THEME_SET_FMT           = "Theme: %s"  -- [fmt] THEME_* name
 L.THEME_LIST_FMT          = "Theme: %s. Available: %s"  -- [fmt] THEME_* name of the setting, theme keys (/tpl theme <key>)
+L.LANG_SET_FMT            = "Language: %s. Type /reload to apply it."  -- [fmt] LANG_* name
+L.LANG_LIST_FMT           = "Language: %s. Available: %s. A change applies after /reload."  -- [fmt] LANG_* name of the setting, accepted values (/tpl lang <value>)
 L.DEBUG_ON                = "Debug messages on."
 L.DEBUG_OFF               = "Debug messages off."
 L.SCHEMA_NEWER            = "Your data was saved by a newer TruePlayed. Please update the addon; tracking is paused."
@@ -51,6 +60,7 @@ L.HELP_LOCK               = "/tpl lock | unlock - lock or move the bar"
 L.HELP_SHOW               = "/tpl show | hide - show or hide the bar"
 L.HELP_STYLE              = "/tpl style bar | box - bar or compact box"
 L.HELP_THEME              = "/tpl theme [name] - show or change the theme"
+L.HELP_LANG               = "/tpl lang [auto | en | fr] - show or change the language of TruePlayed (after /reload)"
 L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - exclusions (no argument: toggle)"
 L.HELP_CITY               = "/tpl citytoggle - count the current zone as a city (or not)"
 L.HELP_PLAYED             = "/tpl played - summary in chat"
@@ -166,7 +176,7 @@ L.TT_RESTED_FMT           = "%s XP (%s)"  -- [fmt] number, percent of the level
 L.TT_NEXT_LEVEL           = "Next level"
 L.TT_XPH                  = "XP per hour"
 L.TT_KILLS                = "Mobs to kill"
-L.TT_KILLS_FMT            = "~%s (last: %s XP)"  -- [fmt] count, XP of the last kill (without rested bonus)
+L.TT_KILLS_FMT            = "~%s (average: %s XP, last: %s XP)"  -- [fmt] count, average XP of the last 10 kills, XP of the last kill (both without rested bonus)
 L.TT_KILLS_NODATA         = "shown after your next kill"
 L.TT_RATES_FMT            = "session %s · level %s"  -- [fmt] rates
 L.TT_WARMING_FMT          = "estimate in ~%s"  -- [fmt] duration
@@ -281,6 +291,12 @@ L.OPT_LOCK                = "Lock position"
 L.OPT_COMBAT_HIDE         = "Hide in combat"
 L.OPT_FADE                = "Fade when the mouse is away"
 L.OPT_HIDE_MAX            = "Hide at max level"
+L.OPT_LANGUAGE            = "Language (Langue)"
+L.OPT_LANGUAGE_NOTE       = "The language of TruePlayed changes after a UI reload (button below or /reload). Names provided by the game (zones, mobs, instances, characters) stay in the language of the game client."
+L.OPT_RELOAD              = "Reload UI"
+L.LANG_AUTO               = "Auto"
+L.LANG_ENUS               = "English"
+L.LANG_FRFR               = "Français"
 L.OPT_TEXTS               = "Texts"
 L.OPT_TEXT_COLOR          = "Text colour"
 L.OPT_TEXT_COLOR_RESET    = "Theme colours"
@@ -415,3 +431,17 @@ L.GRAPH_AGE_MS_FMT        = "%d min %02d s"  -- [fmt] minutes, seconds
 L.GRAPH_MIN_AVG_MAX_FMT   = "min %s · avg %s · max %s"  -- [fmt] values
 L.GRAPH_LAT_NOTE          = "The game refreshes latency only about every 30 s: it is drawn as steps."
 L.GRAPH_NO_DATA           = "Collecting samples..."
+
+-- English copy for Core's language switch (frFR.lua may overwrite L on a French
+-- client before the settings are known). Dropped by Core at PLAYER_LOGIN.
+-- Keep this block LAST: a string defined below it would be missing from the copy.
+do
+  local en = {}
+  for k, v in pairs(L) do en[k] = v end
+  local reg = ns.LOCALES
+  if type(reg) ~= "table" then
+    reg = {}
+    ns.LOCALES = reg
+  end
+  reg.enUS = en
+end

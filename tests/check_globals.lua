@@ -19,8 +19,10 @@
 -- functions, the experimental /played hide, combat hide, crash and /reload restarts,
 -- a late SavedVariables swap, a WTFix-style late table, a table applied at logout,
 -- read-only mode, frFR and max level, the server level cap of the Forever beta and a frozen
--- rate (round 3), and every theme (design/SPEC-themes.md 8.3: the 14 setting values with
--- the tooltip, graph and window shown in each, the options, /tpl theme). The other
+-- rate (round 3), the language option (French chosen on an enUS client, English on a
+-- frFR client through a late table), and every theme (design/SPEC-themes.md 8.3: the 14
+-- setting values with the tooltip, graph and window shown in each, the options, /tpl
+-- theme). The other
 -- scenarios keep the stub's default theme (Stub.theme = "actuel"). Any error reported
 -- through geterrorhandler also fails the check.
 
@@ -88,6 +90,7 @@ local READ_OK = Set({
   "AddonCompartmentFrame",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
+  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read
@@ -100,6 +103,13 @@ local READ_OK = Set({
   "xpcall", "math", "string", "table", "coroutine", "_VERSION",
 })
 for k in pairs(WRITE_OK) do READ_OK[k] = true end
+
+-- Globals one file only may read: Themes.lua compiles the theme source texts in an empty
+-- environment (loadstring + setfenv on Lua 5.1, the game; load with an environment on
+-- 5.2+, design/NEXT-LOT.md M3). A read from any other file is reported.
+local READ_OK_IN = {
+  loadstring = "Themes.lua", setfenv = "Themes.lua", load = "Themes.lua",
+}
 
 ---------------------------------------------------------------------------
 -- The addon environment
@@ -117,6 +127,7 @@ local function Problem(msg)
 end
 
 local reads, readWhere = {}, {}
+local readOutside = {}   -- [name] = where a file other than its READ_OK_IN file read it
 local badWrites = {}
 
 local function Where(level)
@@ -125,11 +136,20 @@ local function Where(level)
   return (info.short_src or "?") .. ":" .. tostring(info.currentline or 0)
 end
 
+local function FileOf(where)
+  return (where:gsub(":%d+$", ""):gsub("\\", "/"):match("([^/]+)$")) or where
+end
+
 local env = setmetatable({}, {
   __index = function(_, k)
     if not reads[k] then
       reads[k] = true
       readWhere[k] = Where(3)
+    end
+    local only = READ_OK_IN[k]
+    if only and not readOutside[k] then
+      local where = Where(3)
+      if FileOf(where) ~= only then readOutside[k] = where end
     end
     return _G[k]
   end,
@@ -308,6 +328,7 @@ local SETTINGS = {
   { "widget.xpColor", { 1, 0.5, 0 } }, { "widget.restedColor", { r = 0, g = 0.8, b = 0.2 } },
   { "widget.xpColor", false }, { "widget.restedColor", false },
   { "widget.slots.1", "eta_kills" }, { "widget.slots.2", "xph" }, { "widget.slots.3", "fps_latency" },
+  { "language", "frFR" }, { "language", "enUS" }, { "language", "auto" },
 }
 
 local function ApplyAllSettings(ns)
@@ -321,6 +342,7 @@ local SLASH = {
   "afk", "inn", "inn", "city on", "city off", "citytoggle", "citytoggle", "played",
   "sync", "reset pos", "reset session", "reset rate", "reset nothing", "debug", "played",
   "debug", "perf", "bogus command",
+  "lang", "lang fr", "lang FR", "lang en", "lang enus", "lang frfr", "lang", "lang xx", "lang auto",
 }
 
 local function RunAllSlash()
@@ -448,6 +470,8 @@ local function Exercise(ns)
         w:GenerateMenu(); ClickAll(w._root)
       elseif rec.kind == "slider" and w.SetValue then
         w:SetValue(rec.min); w:SetValue(rec.max)
+      elseif rec.kind == "button" then
+        Stub.RunScript(w, "OnClick", "LeftButton")    -- the bar colours reset, "Reload UI"
       elseif rec.kind == "color" then
         -- the game's colour picker: open, move, cancel, open, move, reset
         local ui = Stub.ui
@@ -690,6 +714,37 @@ Scenario("server level cap, frozen rate and bar colours, frFR", function()
   Stub.Logout()
 end)
 
+-- Language option (design/NEXT-LOT.md B): French chosen on an enUS client (applied at
+-- ADDON_LOADED), then English chosen on a frFR client through a late table (WTFix) and
+-- a reload, with everything exercised.
+Scenario("language option: frFR on an enUS client, enUS on a frFR client", function()
+  Stub.InstallUI()
+  _G.TruePlayedDB = { schema = 1, settings = { language = "frFR" },
+                      chars = { [OTHER_GUID] = OtherRecord() } }
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.Advance(15)
+  if ns.L.ON ~= "activ\195\169" or ns.LOCALES ~= nil then error("frFR not applied, or tables kept") end
+  Exercise(ns)
+  Stub.Logout()
+  Stub.Reset({ keepWorld = true })
+  Stub.InstallUI()
+  Stub.locale = "frFR"
+  ns = Stub.LoadAddon()
+  Stub.Fire("ADDON_LOADED", "TruePlayed")
+  _G.TruePlayedDB = { schema = 1, settings = { language = "enUS" } }
+  Stub.Fire("PLAYER_LOGIN")
+  Stub.Fire("PLAYER_ENTERING_WORLD", true, false)
+  Stub.Advance(15)
+  if ns.L.ON ~= "on" then error("enUS not applied on the frFR client") end
+  Exercise(ns)
+  ns = Stub.Restart({ reload = true, settle = 3 })
+  Stub.Advance(5)
+  -- Exercise ends on "auto" (its settings and slash lists): French again on this client
+  if ns.L.ON ~= "activ\195\169" then error("auto not applied after the reload") end
+  Stub.Logout()
+end)
+
 -- Themes (SPEC-themes 8.3): the shipped default (no Stub.theme hook), then every setting
 -- value, each with the tooltip (short and Shift), the graph and the window; both styles,
 -- custom bar colours and a recolour while shown; the options and /tpl theme.
@@ -810,7 +865,11 @@ table.sort(names)
 local nRead = #names
 for i = 1, nRead do
   local k = names[i]
-  if not READ_OK[k] then
+  if READ_OK_IN[k] then
+    if readOutside[k] then
+      Problem(string.format("%s: reads the global '%s' (allowed in %s only)", readOutside[k], k, READ_OK_IN[k]))
+    end
+  elseif not READ_OK[k] then
     Problem(string.format("%s: reads the global '%s' (not in the SPEC 2.3 allowlist)", readWhere[k] or "?", k))
   end
 end

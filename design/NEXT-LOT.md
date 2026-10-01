@@ -109,3 +109,26 @@ Targets and approach:
 - Update `CHANGELOG.md`, `README.md` and `docs/TEST-EN-JEU-fr.md` (French).
 - The author installs into the game locally. New files need a full game restart; Lua changes
   in existing files only need a `/reload`.
+
+## Outcome (implementation notes, 2026-10-01)
+- **A. Memory pass**: done, with one open point.
+  - Render identity: `tests/render_snapshot.lua` (13 themes x 8 scenarios: bar, private
+    tooltip short and Shift, GameTooltip, graph, window 3 tabs, options; fresh load and theme
+    switch) gives an empty diff against f427da9 on Lua 5.5, 5.4 and 5.1. The only later
+    difference is the options panel, where part B adds the language controls.
+  - M2, M3: met (silent shipped compiler, the round-4 compiler kept as `tests/theme_validate.lua`;
+    13 source texts, 65.6 KB, no builder resident).
+  - **M1 not met**: compiled themes went down by 68 to 70 % but stay above 25 KB except
+    actuel, pixel and shaman. Lua 5.5: actuel 7.3, pixel 23.0, shaman 24.7, futuriste 34.0,
+    warlock 35.7 KB (5.4: +8 to 12 %; 5.1: futuriste 51.6 KB). With named-field records the
+    floor is about 28 KB for warlock; packed positional records would save about 3 KB on 5.5
+    and nothing on 5.4. `tests/test_theme_memory.lua` holds per-theme budgets of the measured
+    sizes; **decision pending**: accept these sizes as the target, or ask for packed records.
+  - After login (offline, Lua 5.5): futuriste 1410 -> 1201 KB, actuel 1222 -> 1073 KB.
+- **B. Language option**: done (setting `language`, applied at ADDON_LOADED and again at
+  PLAYER_LOGIN, locale tables dropped after login, options dropdown + Reload UI button,
+  `/tpl lang`). A SavedVariables swap later in the session applies its language at the next
+  reload.
+- **C. Kill average**: done (`char.killRing`, 10 entries, seeded from `lastKill`). The exact
+  French tooltip string is wider than the old one: `tooltip.width[2]` of 10 themes grew by 4 to
+  36 px so that the widest row still fits; normal tooltips do not change.

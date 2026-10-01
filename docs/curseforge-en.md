@@ -7,9 +7,13 @@ the addon zip. See `docs/PUBLISHING-fr.md` for where each text goes.
 
 - **Name**: TruePlayed (exactly this: CurseForge forbids game or version names in the
   project name, so "Forever" goes in the summary, the description and the logo).
-- **Summary** (one sentence, "WoW Forever" first): WoW Forever: your real /played - XP per
-  hour, time to next level, time per level and per zone, without AFK, inn or city time if
-  you want.
+- **Summary** (one sentence, "WoW Forever" first; the field takes at most 256 characters,
+  this one has 137): paste only the line below.
+
+  ```
+  WoW Forever: your real /played - XP per hour, time to level, mobs to kill and time per zone, without AFK, inn or city time, in 13 themes.
+  ```
+
 - **Game version of the files**: Forever 1.60.1 (set by the packager from
   `## Interface: 16001`; choose it by hand only for a manual upload).
 - **Main category**: Quests & Leveling. **Additional category**: Miscellaneous.
@@ -72,9 +76,9 @@ zone** and, at any level, **your time in dungeons, raids and PvP**.
 - **Temporary level caps** (the WoW Forever beta): after 3 mobs in a row that give no XP,
   the bar reads "LEVEL 20 · CAP", the tooltip explains it, and everything goes back to
   normal by itself when XP comes again.
-- **Mobs to kill**: how many mobs like the last one you killed you still need to level up,
-  aware of rested XP (rested kills give double XP): "~5h 05m · 38 mobs" on the bar,
-  "Mobs to kill: ~38 (last: 610 XP)" in the tooltip.
+- **Mobs to kill**: how many mobs like your last 10 kills (their average XP) you still
+  need to level up, aware of rested XP (rested kills give double XP): "~5h 05m · 38 mobs"
+  on the bar, "Mobs to kill: ~38 (average: 47 XP, last: 30 XP)" in the tooltip.
 - **Rested XP like the game's XP bar**: the bar takes the rested colour while you are
   rested, with a lighter part up to where your rested XP ends; "Rested: 11,600 XP (50%)"
   in the tooltip.
@@ -132,6 +136,7 @@ zone** and, at any level, **your time in dungeons, raids and PvP**.
 | `/tpl show` / `hide` | Show or hide the bar |
 | `/tpl style bar` / `box` | Full bar or compact box |
 | `/tpl theme [name]` | Show or change the theme (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
+| `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (no argument: toggle) |
 | `/tpl citytoggle` | Count the current zone as a city (or not) |
 | `/tpl played` | Summary in the chat |
@@ -162,11 +167,12 @@ on `/reload`.
 /played, used right after installing until TruePlayed has measured about ten minutes of
 your own play. The tooltip says so.
 
-**How are the mobs to kill counted?** From the XP of the last mob you killed (without its
-rested bonus), your XP to go and your rested XP. Quest and exploration XP are not kills.
+**How are the mobs to kill counted?** From the average XP of your last 10 kills (without
+their rested bonus), your XP to go and your rested XP. Quest and exploration XP are not
+kills.
 
 **Why does my old dungeon time show as open world?** Dungeons, raids and PvP are recorded
-apart from version 0.1.0-beta.1 on; earlier instance time cannot be told apart.
+apart from version 1.0.0 on; earlier instance time cannot be told apart.
 
 **Why do a few AFK minutes count as active?** The game sets the AFK flag only after about
 5 minutes without input; those minutes count as active.
@@ -194,7 +200,10 @@ hidden by RXPGuides once.
 
 ## Languages
 
-English and French. Translations are welcome on GitHub.
+English and French. TruePlayed follows the game's language by default; choose another one
+in Options > Display > Language (Langue) or with `/tpl lang en|fr|auto`, then reload the
+interface. Names that come from the game (zones, mobs) stay in the game's language.
+Translations are welcome on GitHub.
 
 ## Issues and suggestions
 

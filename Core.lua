@@ -140,7 +140,9 @@ C.TAXI_RECHECK_DELAY  = 0.5
 -- within DISCOVERY_WINDOW of it.
 C.KILL_WINDOW         = 1.5
 C.DISCOVERY_WINDOW    = 3
-C.KILL_XP_MAX         = 1000000   -- sanity bound when repairing a saved char.lastKill
+C.KILL_XP_MAX         = 1000000   -- sanity bound when repairing a saved kill (lastKill, killRing)
+C.KILL_RING           = 10        -- char.killRing: base XP of the last kills (their average
+                                  -- gives the mobs to go)
 
 -- UI cadence
 C.NET_INTERVAL        = 5      -- GetNetStats at most every 5 s (value changes every ~30 s)
@@ -157,6 +159,12 @@ C.THEME_CHOICES = { "futuriste", "actuel", "heroic", "pixel", "class", "warrior"
 C.CLASS_THEMES  = { WARRIOR = "warrior", PALADIN = "paladin", HUNTER = "hunter", ROGUE = "rogue",
                     PRIEST = "priest", SHAMAN = "shaman", MAGE = "mage", WARLOCK = "warlock",
                     DRUID = "druid" }
+
+-- language of the addon (setting "language", the order of the options dropdown): "auto"
+-- follows GetLocale(); every other value is a locale code with a Locales/<code>.lua that
+-- registers ns.LOCALES[code] (a new one also needs its LANG_* name and its /tpl lang
+-- aliases in Options.lua)
+C.LANGUAGES = { "auto", "enUS", "frFR" }
 
 -- state keys. Lowercase = active, uppercase = AFK. d / r / p (dungeon or scenario,
 -- raid, battleground or arena) apply only inside an instance, where inn and city
@@ -272,6 +280,7 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
   },
   graph = { window = 60 },                  -- FPS / latency history shown: 30 | 60 | 300 s
   theme = "futuriste",                      -- a C.THEME_CHOICES value (Themes.lua resolves it)
+  language = "auto",                        -- a C.LANGUAGES value, applied at the next UI load
   rateTau = 3600,                           -- 5400 | 3600 | 1200
   requestPlayedAtLogin = true,              -- one visible /played at login if none arrives within 10 s
   hidePlayedMsg = false,                    -- EXPERIMENTAL, default OFF (5.13)
@@ -813,6 +822,47 @@ local function RepairSessions(char)
   end
 end
 
+-- char.killRing = { xp, ... } (Tracker): the base XP of the last C.KILL_RING kills,
+-- oldest first. Bad entries (not a finite number, below 0.5 or above C.KILL_XP_MAX)
+-- and non-array keys are dropped, the rest compacted in key order, rounded, and only
+-- the newest C.KILL_RING kept; an empty ring is dropped (nil).
+local function RepairKillRing(char)
+  local ring = char.killRing
+  if ring == nil then return end
+  if type(ring) ~= "table" then
+    char.killRing = nil
+    return
+  end
+  local max, n, count, clean = C.KILL_XP_MAX, #ring, 0, true
+  for k, v in pairs(ring) do
+    count = count + 1
+    if not (type(k) == "number" and k >= 1 and k <= n and k % 1 == 0
+            and IsNum(v) and v >= 0.5 and v <= max) then
+      clean = false
+    end
+  end
+  if not clean or count ~= n then
+    -- holes, junk keys or bad values: rebuild in key order (load time only)
+    local keep = {}
+    for k, v in pairs(ring) do
+      if type(k) == "number" and k >= 1 and k % 1 == 0 and IsNum(v) and v >= 0.5 and v <= max then
+        keep[#keep + 1] = k
+      end
+    end
+    table_sort(keep)
+    for i = 1, #keep do keep[i] = ring[keep[i]] end
+    for k in pairs(ring) do ring[k] = nil end
+    for i = 1, #keep do ring[i] = keep[i] end
+  end
+  while #ring > C.KILL_RING do table.remove(ring, 1) end
+  n = #ring
+  if n == 0 then
+    char.killRing = nil
+    return
+  end
+  for i = 1, n do ring[i] = math_floor(ring[i] + 0.5) end
+end
+
 local function RepairEma(char)
   local ema = char.ema
   if type(ema) ~= "table" then
@@ -916,6 +966,11 @@ function Core.RepairChar(char)
       if lk.at ~= nil and not IsNum(lk.at) then lk.at = nil end
     end
   end
+  -- killRing: base XP of the last kills (Tracker, the average gives the mobs to go); a
+  -- record from before it (or whose ring held no valid entry) starts from its last kill
+  RepairKillRing(char)
+  lk = char.lastKill
+  if char.killRing == nil and lk ~= nil and lk.xp >= 1 then char.killRing = { lk.xp } end
   return char
 end
 
@@ -983,6 +1038,7 @@ DefineSetting("widget.slot3Pos", "enum", { values = { center = true, left = true
 DefineSetting("widget.pctPos", "enum", { values = { follow = true, level = true } })
 DefineSetting("graph.window", "choice", { values = SetOf(C.GRAPH_WINDOWS) })
 DefineSetting("theme", "theme", { values = SetOf(C.THEME_CHOICES) })
+DefineSetting("language", "enum", { values = SetOf(C.LANGUAGES) })
 DefineSetting("rateTau", "choice", { values = { [5400] = true, [3600] = true, [1200] = true } })
 DefineSetting("requestPlayedAtLogin", "bool")
 DefineSetting("hidePlayedMsg", "bool")
@@ -1443,6 +1499,8 @@ local function ReapplySync(Tracker)
   SafeCall(Tracker.ReconcileServer, total, levelPlayed)
 end
 
+-- The language of the new table is not applied here: ns.L was set once at login (the UI
+-- is built and its strings memoized), so it takes effect at the next UI load.
 local function DoSwap(g)
   local guid = CurrentGuid()
   local Tracker = ns.Tracker
@@ -1590,6 +1648,35 @@ local ticker
 local loginDone, loginAttempts = false, 0
 local LOGIN_MAX_ATTEMPTS = 10
 
+-- Language of the addon (setting "language"). The locale files leave ns.L in the
+-- client's language and register their tables in ns.LOCALES (enUS: an English copy).
+-- Every module captured the ns.L table at file load, so the chosen language is written
+-- INTO that same table: English first, then the chosen locale over it (a key it lacks
+-- stays English; the metatable fallback is kept). "auto" (or an invalid value) follows
+-- GetLocale(); a code without a locale table falls back to English. Applied when the
+-- settings are adopted (ADDON_LOADED, again at PLAYER_LOGIN where a late table wins),
+-- before anything is built or rendered (DB_READY); ns.LOCALES is then dropped, so the
+-- unused strings are collected. Any later change (options, /tpl lang, a late
+-- SavedVariables swap) takes effect at the next UI load: built texts and the memoized
+-- strings (Format, Tokens, Stats, Graph) are never translated live.
+-- db.settings is only read (a read-only table keeps its raw settings).
+local function ApplyLanguage(db)
+  local reg = ns.LOCALES
+  if type(reg) ~= "table" or type(L) ~= "table" then return end
+  local s = type(db) == "table" and db.settings
+  local code = type(s) == "table" and s.language
+  if Normalize(SETTINGS.language, code, true) == nil or code == "auto" then
+    code = type(GetLocale) == "function" and GetLocale() or nil
+  end
+  local en, chosen = reg.enUS, reg[code]
+  if type(en) == "table" then
+    for k, v in pairs(en) do L[k] = v end
+  end
+  if type(chosen) == "table" and chosen ~= en then
+    for k, v in pairs(chosen) do L[k] = v end
+  end
+end
+
 -- ADDON_LOADED adoption; also re-run at PLAYER_LOGIN for WTFix (critique #2).
 local function Adopt(db)
   ns.readOnly = false
@@ -1605,7 +1692,10 @@ local function OnAddonLoaded(_, name)
   if name ~= ns.ADDON then return end
   ns.UnregisterEvent("ADDON_LOADED", Core)
   local db = TruePlayedDB
-  if type(db) == "table" then Adopt(db) end   -- never created here
+  if type(db) == "table" then                 -- never created here
+    Adopt(db)
+    ApplyLanguage(db)
+  end
 end
 
 -- WTFix (Forever launcher) protects every addon with SavedVariables by default and
@@ -1677,6 +1767,10 @@ local function OnPlayerLogin()
     ns.db = Core.NewDB()
     ns.readOnly = false
   end
+  -- the language of the table adopted last, before DB_READY builds anything; then the
+  -- locale tables go (LoginRetry does not re-adopt)
+  ApplyLanguage(ns.db)
+  ns.LOCALES = nil
   if not FinishLogin() then C_Timer.After(1, LoginRetry) end
 end
 

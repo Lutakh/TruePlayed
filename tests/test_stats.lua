@@ -785,6 +785,8 @@ T.test("no Stats function reads ns.char, ns.session or the Tracker", function()
     end
     char.lastKill = { xp = 50, level = 10, at = 1 }
     Stats.KillsToLevel(char, 100, 1000, 50)
+    char.killRing = { 40, 50, 60 }        -- round 5: the average of the last kills
+    Stats.KillsToLevel(char, 100, 1000, 50)
     Stats.ResetCaches()
   end)
   setmetatable(ns, oldMeta)
@@ -803,6 +805,9 @@ T.test("non-alloc Stats functions allocate nothing", function()
   local sync = { valid = true, total = 50500, g = 0, level = 10, levelValid = true, levelPlayed = 500 }
   local out = {}
   local AFK = ns.C.AFK_KEYS
+  -- round 5: a full ring of the last kills (their average is the base)
+  local ringChar = { lastKill = { xp = 330, level = 10, at = 1 },
+                     killRing = { 300, 310, 290, 305, 315, 320, 280, 300, 312, 330 } }
   local function Work(i)
     local m = i % 8
     Stats.Sum(char.life, m)
@@ -828,6 +833,7 @@ T.test("non-alloc Stats functions allocate nothing", function()
     Stats.MaskLabel(m)
     Stats.InstanceTime(char.life, m)
     Stats.KillsToLevel(char, 100 + i, 23200, (i % 3) * 700)
+    Stats.KillsToLevel(ringChar, 100 + i, 23200, (i % 3) * 700)
     Stats.AccountInstanceTime(db, m)
   end
   char.lastKill = { xp = 312, level = 10, at = 1 }
@@ -898,7 +904,7 @@ T.test("Rate: the prior blends with a short EMA and a short level, then fades ou
   T.eq(src, "prior"); T.eq(status, "estimate"); T.eq(left, FULL - 300)
   -- with a prior the provisional EMA is used from its first second (no WARMUP_MIN gap)
   char.ema = Ema(10, 0, 0, 5)
-  xph, _, _, _, src, status = Stats.Rate(char, 0)
+  xph, _, _, _, _, status = Stats.Rate(char, 0)
   w = W * (1 - 5 / FULL)
   T.near(xph, 3600 * (10 + w) / (5 + w), 1e-9); T.eq(status, "estimate")
   -- settled EMA: the prior is ignored
@@ -1309,9 +1315,9 @@ T.test("Rate: a stalled character keeps its rate with status 'stalled' and the s
   T.eq(select(6, Stats.Rate(char, 0)), "nodata")
   -- ETA: the status and the seconds passed through
   char.ema = Ema(1200, 300, 300, 3600)
-  local sec, status, esrc, eleft, stall = Stats.ETA(char, 0, 100, 1000, 0, false)
+  local sec, estatus, esrc, eleft, stall = Stats.ETA(char, 0, 100, 1000, 0, false)
   T.near(sec, 900 / (1500 / 3600), 1e-6)
-  T.eq(status, "stalled"); T.eq(esrc, "ema"); T.eq(eleft, 0); T.eq(stall, C.XP_STALL + 1)
+  T.eq(estatus, "stalled"); T.eq(esrc, "ema"); T.eq(eleft, 0); T.eq(stall, C.XP_STALL + 1)
   T.eq(select(2, Stats.ETA(char, 0, 100, 1000, 0, true)), "max", "max level wins")
   -- a bad noXP is ignored
   char.noXP = "x"
@@ -1319,8 +1325,7 @@ T.test("Rate: a stalled character keeps its rate with status 'stalled' and the s
 end)
 
 T.test("Rate fallbacks and level rates leave out stalled time (levels[L].xs), under every mask", function()
-  local ns, Stats = Load()
-  local C = ns.C
+  local _, Stats = Load()
   -- level 10: 1000 s of play for 3000 XP, then 2 days capped (w, W, c) held in xs
   local days = 2 * 86400
   local lb = { s = { w = 1000 + days, W = 3600, c = 7200, u = 500 }, xp = 3000, xa = 3000, xr = 0, xq = 0,
