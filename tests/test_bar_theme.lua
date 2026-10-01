@@ -150,6 +150,25 @@ local function PartColor(th, id)
   end
 end
 
+-- An upvalue of a BarSkin function (test-only introspection of its records).
+local function Upvalue(fn, name)
+  local i = 1
+  while true do
+    local n, v = debug.getupvalue(fn, i)
+    if not n then return nil end
+    if n == name then return v end
+    i = i + 1
+  end
+end
+
+-- What the game draws on a texture: "grad" with the SetGradient values (dir, from r g b a,
+-- to r g b a) when SetGradient was its last colour call, else "vertex".
+local function DrawnGrad(t)
+  local vs, gs, gas = rawget(t, "_vSeq") or 0, rawget(t, "_gSeq") or 0, rawget(t, "_gaSeq") or 0
+  if gs > vs and gs > gas then return "grad", rawget(t, "_grad") end
+  return "vertex"
+end
+
 -- Sorted description of what is drawn under the widget: every shown, non-transparent
 -- region whose parents are shown (meters, alpha 0, are left out; mask textures draw
 -- nothing themselves: a masked texture says "mask"), with its geometry, texture, colour
@@ -379,6 +398,87 @@ T.test("futuriste at max level: full fill at 0.35 alpha, no rested part, no end-
   for i = 1, 9 do T.ok(tp.tex.fillSegs[i]:IsShown(), "every segment under a full fill") end
 end)
 
+-- SPEC-themes 2.8: a state 2 without colours of its own is drawn by BarSkin (StatePair) as
+-- state 0 with its alphas times bar.maxAlpha. The values below are the drawn ones, read
+-- from the textures, against the source (Themes/futuriste.lua), not a re-derivation.
+T.test("futuriste at max level: the fill bands draw their gradients at the source alphas x bar.maxAlpha", function()
+  Stub.player.xp, Stub.player.max, Stub.player.rest = 0, 0, 0
+  local ns, _, tp = Start({ level = 60 })
+  T.ok(ns.Tracker.IsMax())
+  T.eq(ns.Themes.Active().bar.maxAlpha, 0.35)
+  -- id = { grey of both ends, from alpha, to alpha } (VERTICAL "#ffffff@.12" -> "#ffffff@.72", ...)
+  local bands = { fillTop = { 1, 0.12, 0.72 }, fillUpper = { 1, 0, 0.12 }, fillLower = { 0, 0.22, 0 },
+                  fillBottom = { 0, 0.58, 0.22 } }
+  for id, want in pairs(bands) do
+    local t = tp.tex[id]
+    T.ok(t:IsShown(), id .. " shown under the full fill")
+    local how, g = DrawnGrad(t)
+    T.eq(how, "grad", id .. ": drawn with its gradient")
+    T.eq(g[1], "VERTICAL", id)
+    local v = want[1]
+    T.eq({ g[2], g[3], g[4], g[6], g[7], g[8] }, { v, v, v, v, v, v }, id .. " rgb")
+    T.near(g[5], want[2] * 0.35, 1e-6, id .. ": from alpha x maxAlpha")
+    T.near(g[9], want[3] * 0.35, 1e-6, id .. ": to alpha x maxAlpha")
+  end
+  T.eq(#Stub.errors, 0)
+end)
+
+-- SPEC-themes 2.8: only a fill span is dimmed at max level; a layer that follows the state
+-- because it uses `base` (heroic's gems at both track ends) keeps its own alpha.
+T.test("heroic at max level: the gems (base colour, track ends) keep alpha 1; the fill is dimmed", function()
+  Stub.player.xp, Stub.player.max, Stub.player.rest = 0, 0, 0
+  local ns, _, tp = Start({ theme = "heroic", level = 60 })
+  T.ok(ns.Tracker.IsMax())
+  T.eq(ns.Themes.ActiveKey(), "heroic")
+  local xp = Hex("b3122e")                     -- heroic colors.xp
+  local lighter = Rgb(0xb3 / 255 + (1 - 0xb3 / 255) * 0.15, 0x12 / 255 + (1 - 0x12 / 255) * 0.15,
+                      0x2e / 255 + (1 - 0x2e / 255) * 0.15)
+  for _, id in ipairs({ "gemL", "gemR" }) do
+    local t = tp.tex[id]
+    T.ok(t:IsShown(), id .. " shown")
+    T.eq(DrawnGrad(t), "vertex", id)
+    T.match(tostring(t:GetTexture()), "heroic\\gem%.tga$", id .. " art")
+    local rgb, a = Vertex(t)
+    T.eq(rgb, lighter, id .. ": base+.15")
+    T.near(a, 1, 1e-9, id .. ": not dimmed")
+  end
+  local rgb, a = Vertex(tp.tex.fill)
+  T.eq(rgb, xp)
+  T.near(a, 0.35, 1e-6, "the fill (a fill span) is dimmed")
+  T.eq(#Stub.errors, 0)
+end)
+
+-- The derived state-2 colours are written into tables of the layer's record, created once
+-- (BarSkin StateColor / StatePair): never a table per call.
+T.test("futuriste at max level: Recolor and SetState(2) allocate nothing; the state-2 tables are made once", function()
+  Stub.player.xp, Stub.player.max, Stub.player.rest = 0, 0, 0
+  local ns = Start({ level = 60 })
+  T.ok(ns.Tracker.IsMax())
+  local Skin = ns.BarSkin
+  local recs = Upvalue(Skin.Recolor, "recs")
+  T.eq(type(recs), "table", "BarSkin records")
+  for _ = 1, 3 do
+    Skin.Recolor()
+    Skin.SetState(2)
+  end
+  local kept, nColor, nPair = {}, 0, 0
+  for i, R in ipairs(recs) do
+    kept[i] = { R.ownColor or false, R.ownPair or false, R.ownFlat or false }
+    if R.ownColor then nColor = nColor + 1 end
+    if R.ownPair then nPair = nPair + 1 end
+  end
+  T.ok(nColor > 0 and nPair > 0, format("derived state-2 colours (%d) and pairs (%d) in use", nColor, nPair))
+  local kb = T.alloc(function() Skin.Recolor() end, 1000)
+  T.ok(kb <= 0.1, format("Recolor x1000 at max level: %.2f KB", kb))
+  kb = T.alloc(function() Skin.SetState(2) end, 1000)
+  T.ok(kb <= 0.1, format("SetState(2) x1000 at max level: %.2f KB", kb))
+  for i, R in ipairs(recs) do
+    T.ok(kept[i][1] == (R.ownColor or false) and kept[i][2] == (R.ownPair or false)
+      and kept[i][3] == (R.ownFlat or false), "record " .. i .. ": the same state-2 tables")
+  end
+  T.eq(#Stub.errors, 0)
+end)
+
 T.test("futuriste split texts: level label + value, XP label + XP value, cap tag", function()
   local ns, f, tp = Start({ xp = 2000 })
   local L, Fmt, Tokens = ns.L, ns.Fmt, ns.Tokens
@@ -466,6 +566,31 @@ T.test("futuriste panel: hidden at bgAlpha 0, parts at bgAlpha (bg) and twice it
   T.near(a, 0.5 * lineA, 1e-6, "line: twice the background alpha")
   Set(ns, "widget.bgAlpha", 0)
   EachPart(panel, function(id, t) T.no(t:IsShown(), id .. " hidden again") end)
+  T.eq(#Stub.errors, 0)
+end)
+
+-- SPEC-themes 2.4.2: a part without `sub` is drawn at BACKGROUND -8 + n - 1 (n: its place
+-- in the list), the z-order of the panel art. The compact form leaves that default out, so
+-- BarSkin's own default is what draws it. Expected values: the source's (Themes/futuriste.lua).
+T.test("futuriste panel: every part drawn at its sublevel (-8, -7, -6, -5, -5), at login and after switches", function()
+  local ns, _, tp = Start()
+  Set(ns, "widget.bgAlpha", 0.5)
+  local want = { panelFill = -8, panelScan = -7, panelLine = -6, accentTop = -5, accentBottom = -5 }
+  local function Check(when)
+    local seen = {}
+    EachPart(tp.panel, function(id, t)
+      local layer, sub = t:GetDrawLayer()
+      T.eq({ layer, sub }, { "BACKGROUND", want[id] }, when .. ": " .. id .. " draw layer")
+      T.ok(t:IsShown(), when .. ": " .. id .. " shown")
+      seen[id] = true
+    end)
+    for id in pairs(want) do T.ok(seen[id], when .. ": part " .. id) end
+  end
+  Check("login")
+  Set(ns, "theme", "warlock")                  -- the pooled textures go to other parts
+  Set(ns, "theme", "actuel")
+  Set(ns, "theme", "futuriste")
+  Check("after switches")
   T.eq(#Stub.errors, 0)
 end)
 

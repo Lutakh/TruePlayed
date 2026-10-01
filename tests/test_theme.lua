@@ -316,6 +316,31 @@ T.test("Active before DB_READY: resolved without a class and not kept; silent at
   T.eq(#Stub.errors, 0)
 end)
 
+-- Themes.Active(): the same key, but user colours that changed without SETTINGS_CHANGED
+-- (here: the saved settings adopted at ADDON_LOADED, after an early Active() call): the
+-- active theme is recoloured in place, silently.
+T.test("Active: user colours changed behind Themes' back are applied silently, in place (same table, gen up)", function()
+  local ns = LoadEngine({ theme = "actuel" })
+  local Th = ns.Themes
+  local got = Messages(ns)
+  local th = Th.Active()                            -- before ADDON_LOADED: the defaults
+  T.eq(th.key, "actuel")
+  local fill = Layer(th, "fill")
+  local c1, gen = fill.c[1], th.gen
+  T.eq(R3(c1), R3(ns.C.COLORS.fill), "the theme's own XP colour")
+  _G.TruePlayedDB = { schema = 1, sparseSettings = true,
+                      settings = { theme = "actuel", widget = { xpColor = { 0, 1, 0 } } } }
+  Stub.LoginSequence()
+  T.ok(Th.Active() == th, "the same compiled theme")
+  T.ok(fill.c[1] == c1, "the same colour array")
+  T.eq(R3(c1), { 0, 1000, 0, 1000 }, "rewritten with the saved XP colour")
+  T.ok(th.gen > gen, "a higher gen (the engines redraw)")
+  local gen2 = th.gen
+  T.ok(Th.Active() == th and th.gen == gen2, "kept: no second recolour")
+  T.eq(#got, 0, "silent: no THEME_CHANGED")
+  T.eq(#Stub.errors, 0)
+end)
+
 T.test("DB_SWAPPED: another theme sends THEME_CHANGED once; other user colours a recolour", function()
   local ns = LoadEngine()
   local Th = ns.Themes
@@ -407,6 +432,38 @@ T.test("Recolor allocates nothing (numbers rewritten in place)", function()
   Th.Recolor()
   local kb = T.alloc(function() Th.Recolor() end, 200)
   T.ok(kb < 0.01, string.format("Recolor allocated %.3f KB over 200 calls", kb))
+end)
+
+-- tt.colors.ccDim (the colour code of the tooltip's estimate tag) follows a recolour
+-- whenever tt.colors.dim does: also for a static colour whose `def` reads a user colour
+-- (the def is what is drawn while the colour itself never reads one).
+T.test("Recolor: ccDim follows a tooltip dim that changes through its def", function()
+  local src = Fixture()
+  src.tooltip.colors.dim = { "#d02f0a", def = "rested+.5" }
+  local ns = LoadEngine({ register = { futuriste = Fixture(), mage = src } })
+  local Th, Core = ns.Themes, ns.Core
+  Stub.LoginSequence()
+  Core.SetSetting("theme", "mage")
+  local th = Th.Active()
+  T.eq(th.key, "mage")
+  local P = th.tt.colors
+  local function Code(c)
+    local function B(x) return math.floor(x * 255 + 0.5) end
+    return string.format("|cff%02x%02x%02x", B(c[1]), B(c[2]), B(c[3]))
+  end
+  local theme = Code(Lighten(Hex("#22d3ee"), 0.5))
+  T.eq(P.ccDim, theme, "the def with the theme's rested colour")
+  T.ok(Core.SetSetting("widget.restedColor", { 1, 0, 0 }))
+  T.eq(R3(P.dim), { 1000, 500, 500, 1000 }, "dim rewritten (rested+.5)")
+  T.eq(P.ccDim, "|cffff8080", "ccDim follows")
+  T.ok(Core.SetSetting("widget.restedColor", false))
+  T.eq(P.ccDim, theme, "back to the theme's")
+  -- a dim that never changes is left alone
+  Core.SetSetting("theme", "futuriste")
+  local cc = Th.Active().tt.colors.ccDim
+  T.ok(Core.SetSetting("widget.restedColor", { 1, 0, 0 }))
+  T.eq(Th.Active().tt.colors.ccDim, cc)
+  T.eq(#Stub.errors, 0)
 end)
 
 T.test("def: the hand-tuned colour while the user keeps the theme's own (actuel rested part)", function()

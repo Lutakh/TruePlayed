@@ -190,6 +190,10 @@ local function BadSource()
         { id = "g", span = "rested", grad = { "DIAGONAL", "#fff", "#000" }, flat = "#ffffff" },
         { id = "g2", span = "fill", grad = { "VERTICAL", "base", "xp@0" }, flat = "rested", alpha = 0.6 },
         { id = "g3", span = "track", grad = { "HORIZONTAL", { "rested", def = "#102030" }, "base-.5" } },
+        -- a static fill-span gradient with an alpha and a maxAlpha of its own: an explicit
+        -- state 2 (alpha x maxAlpha folded at compile time), not state 0 x bar.maxAlpha
+        { id = "g4", span = "fill", grad = { "VERTICAL", "#ffffff@.4", "#000000@.8" }, flat = "#808080@.6",
+          alpha = 0.5, maxAlpha = 0.5 },
         { id = "caps", caps = "yes", file = "ok" },
         { id = "anchor", span = "trackEnd", w = 0.5, align = "middle", dx = "x", capInset = 1 },
         { id = "rot", file = "ok", rot = 90, rect = { 0, 0, 8, 8 }, flipY = true },
@@ -413,6 +417,32 @@ T.test("sources: 13 compact texts, no builder function resident, no comment and 
     T.no(registry[key]:find("\n[ \t]"), key .. ": no indentation kept")
     T.ok(#registry[key] < #raw[key], key .. ": compacted")
   end
+end)
+
+-- The backslash escapes of a source text other than those Lua 5.1 (the game) and 5.2+ read
+-- the same way: \ddd, \n, \\, \" and \' (a \x.., \z or \u{..} is 5.2+ only and reads as
+-- plain letters in 5.1). lint51 sees a source text as one long-bracket string: this is
+-- its check of the string literals inside.
+local function BadEscapes(text)
+  local bad, i = {}, 1
+  while true do
+    local j = string.find(text, "\\", i, true)
+    if not j then return bad end
+    local c = string.sub(text, j + 1, j + 1)
+    if not string.find(c, "^[%dn\\\"']$") then bad[#bad + 1] = "\\" .. c end
+    i = j + 2
+  end
+end
+
+T.test("sources: only escapes that Lua 5.1 reads the same way, no long bracket inside (13 themes)", function()
+  local _, raw = LoadAll()
+  for _, key in ipairs(KEYS) do
+    T.eq(BadEscapes(raw[key]), {}, key .. ": escapes that Lua 5.1 reads differently")
+    T.no(raw[key]:find("%[=*%["), key .. ": no long bracket inside the source")
+  end
+  T.eq(BadEscapes("a = \"\\065\\n\\\\\\\"\", b = '\\''"), {}, "the kept escapes")
+  T.eq(BadEscapes("c = \"#\\x33\\x38b000\", d = \"\\z \\u{41}\\t\""), { "\\x", "\\x", "\\z", "\\u", "\\t" },
+    "5.2+ escapes (and the ones the list does not keep) found")
 end)
 
 T.test("sources: the compaction is lossless (13 themes), strings kept as they are", function()
