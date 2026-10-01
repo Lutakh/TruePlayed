@@ -198,6 +198,8 @@ local FILES = {
   "test_language",
   -- mobs to kill from the average of the last 10 kills (design/NEXT-LOT.md C)
   "test_kills",
+  -- translations into every locale of the game (design/NEXT-LOT.md, backlog 1)
+  "test_locales",
 }
 
 local passed, failed, skipped = 0, 0, 0

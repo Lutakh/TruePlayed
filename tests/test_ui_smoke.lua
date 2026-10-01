@@ -1179,7 +1179,8 @@ local SLOT_SETS = {
   { "none", "played", "session", "center" },
 }
 
-for _, locale in ipairs({ "frFR", "enUS" }) do
+-- Every locale of the game (the native-only ones on their own client, the others too).
+for _, locale in ipairs({ "frFR", "enUS", "deDE", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }) do
   T.test("bar geometry: no overlap at any width, font size and pause state (" .. locale .. ")", function()
     local ns = Start({ ui = { ldb = false }, locale = locale, level = 42 })
     Stub.GrantXP(math.floor(Stub.player.max * 0.12) + 7)

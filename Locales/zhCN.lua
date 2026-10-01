@@ -1,0 +1,452 @@
+-- Locales/zhCN.lua - Simplified Chinese strings of TruePlayed (complete translation).
+-- A copy of frFR.lua (see the recipe at the top of enUS.lua): it builds its own table and
+-- registers it as ns.LOCALES[CODE]; Core applies it into ns.L when the "language" setting
+-- resolves to this language (at ADDON_LOADED, again at PLAYER_LOGIN), then drops
+-- ns.LOCALES. On a client in this language it also fills ns.L at file load (the default
+-- "auto"). Values are strings only, with the same keys and the same format arguments, in
+-- the same order, as enUS.lua (tests/test_locales.lua). Short words: the bar, the tooltip
+-- rows, option labels, buttons and menu entries must fit.
+-- Any UTF-8 character (the client of this language draws its script: see
+-- C.LANGUAGES_NATIVE_ONLY and tests/check_encoding.lua NATIVE_LOCALES).
+local _, ns = ...
+local CODE = "zhCN"
+local L = {}
+
+-- General and chat
+L.ADDON_TITLE             = "TruePlayed"
+L.CHAT_PREFIX             = "|cff8b5cf6TruePlayed|r: "
+L.FIRST_RUN               = "把经验条拖到你想要的位置，然后右键 > 锁定。鼠标悬停查看详情（Shift：更多），点击查看统计。设置：/tpl"
+L.ON                      = "开"
+L.OFF                     = "关"
+L.EXCL_STATE_FMT          = "%s：%s"  -- [fmt] exclusion label (MENU_EXCLUDE_*), ON/OFF
+L.CITY_ADDED_FMT          = "%s 现在计为城市。"  -- [fmt] zone name
+L.CITY_REMOVED_FMT        = "%s 不再计为城市。"  -- [fmt] zone name
+L.NO_ZONE                 = "当前区域未知，请稍后再试。"
+L.CITY_INSTANCE           = "副本永远不计为城市。"
+L.UNKNOWN_CMD_FMT         = "未知命令“%s”。请输入 /tpl help。"  -- [fmt] command
+L.SYNC_REQUESTED          = "正在向服务器请求 /played..."
+L.SYNCED                  = "/played 已同步。"
+L.SYNC_THROTTLED          = "请等几秒后再请求。"
+L.RESET_POS_DONE          = "位置已重置。"
+L.RESET_SESSION_DONE      = "本次在线已重置。"
+L.RESET_RATE_DONE         = "每小时经验已重置。"
+L.RESET_CHAR_DONE_FMT     = "已清除 %s 的数据。"  -- [fmt] character name
+L.WIDGET_SHOWN            = "经验条已显示。"
+L.WIDGET_HIDDEN           = "经验条已隐藏。输入 /tpl show 重新显示。"
+L.LOCKED                  = "经验条已锁定。"
+L.UNLOCKED                = "经验条已解锁：拖动即可移动。"
+L.THEME_SET_FMT           = "主题：%s"  -- [fmt] THEME_* name
+L.THEME_LIST_FMT          = "主题：%s。可选：%s"  -- [fmt] THEME_* name of the setting, theme keys (/tpl theme <key>)
+L.LANG_SET_FMT            = "语言：%s。输入 /reload 生效。"  -- [fmt] LANG_* name
+L.LANG_LIST_FMT           = "语言：%s。可选：%s。更改在 /reload 后生效。"  -- [fmt] LANG_* name of the setting, accepted values (/tpl lang <value>)
+L.DEBUG_ON                = "调试信息已开启。"
+L.DEBUG_OFF               = "调试信息已关闭。"
+L.SCHEMA_NEWER            = "你的数据由更新版本的 TruePlayed 保存。请更新插件；记录已暂停。"
+L.READONLY_ACTION         = "不可用：你的数据来自更新版本的 TruePlayed（只读模式）。"
+L.NOT_READY               = "TruePlayed 未完成加载（见错误窗口）。"
+L.COMBAT_DEFERRED         = "设置将在战斗结束后打开。"
+L.EST_RECOVERED_FMT       = "已找回自上次保存以来缺失的游戏时间 %s（崩溃或未用 TruePlayed 游戏）。其分布根据你的习惯估算。"  -- [fmt] duration
+L.THEME_FONT_MISSING      = "无法加载主题字体（%s）；改用游戏字体。更新后请重启游戏。"  -- [fmt] font file name (printed once per session, after CHAT_PREFIX)
+L.WTFIX_PROTECTED         = "WTFix 每次加载都会把 TruePlayed 的数据还原成旧副本，你最近的游戏记录会丢失。输入 /wtfix 并取消勾选 TruePlayed：这样 TruePlayed 会保留自己的数据，并与服务器的 /played 重新同步。"
+
+-- Help
+L.HELP_HEADER             = "命令："
+L.HELP_OPTIONS            = "/tpl - 设置"
+L.HELP_STATS              = "/tpl stats [levels | zones | sessions] - 统计窗口"
+L.HELP_LOCK               = "/tpl lock | unlock - 锁定或移动经验条"
+L.HELP_SHOW               = "/tpl show | hide - 显示或隐藏经验条"
+L.HELP_THEME              = "/tpl theme [名称] - 查看或更改主题"
+L.HELP_LANG               = "/tpl lang [%s] - 查看或更改 TruePlayed 的语言（/reload 后生效）"
+L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - 排除设置（无参数：切换）"
+L.HELP_CITY               = "/tpl citytoggle - 将当前区域计为城市（或取消）"
+L.HELP_PLAYED             = "/tpl played - 在聊天框显示摘要"
+L.HELP_SYNC               = "/tpl sync - 刷新服务器 /played"
+L.HELP_RESET              = "/tpl reset pos | session | rate | char - 重置经验条位置、本次在线或每小时经验，或清除此角色（需确认）"
+L.HELP_DEBUG              = "/tpl debug - 调试信息"
+L.HELP_PERF               = "/tpl perf - TruePlayed 占用的内存和 CPU"
+
+-- /tpl played summary
+L.SUM_HEADER_FMT          = "%s - %d 级"  -- [fmt] name, level
+L.SUM_PLAYED_FMT          = "游戏时间：%s（服务器 /played：%s）"  -- [fmt] filtered, server
+L.SUM_EXCLUDED_FMT        = "已排除：%s（%s）"  -- [fmt] duration, mask label
+L.SUM_LEVEL_FMT           = "本级：%s · 每级平均：%s"  -- [fmt] durations
+L.SUM_ETA_FMT             = "%s 后升级，速度 %s"  -- [fmt] ETA, rate
+L.SUM_ETA_NONE            = "下一级：数据不足。"
+L.SUM_MAX                 = "已达到满级。"
+L.SUM_CAP_FMT             = "%d 级：服务器当前等级上限。经验记录会自动恢复。"  -- [fmt] level (detected server level cap)
+
+-- /tpl perf
+L.PERF_HEADER_FMT         = "TruePlayed %s - 性能（客户端 %d）："  -- [fmt] version, interface
+L.PERF_MEM_FMT            = "内存（代码 + 所有角色的保存数据）：%s KB"  -- [fmt] number
+L.PERF_MEM_NA             = "内存：此客户端不可用。"
+L.PERF_CPU_FMT            = "CPU：加载后 %s 毫秒（每分钟 %s 毫秒）"  -- [fmt] numbers
+L.PERF_CPU_OFF            = "CPU：输入 /console scriptProfile 1 然后 /reload 进行测量。这会拖慢游戏：测完请改回 0。"
+L.PERF_PROFILER_FMT       = "性能分析：平均每帧 %s 毫秒，峰值 %s 毫秒"  -- [fmt] numbers
+L.PERF_DATA_FMT           = "此角色数据：等级 %d，区域 %d，在线记录 %d。角色：%d"  -- [fmt] counts (label form: no plural agreement)
+L.PERF_TICK_ARMED_FMT     = "正在测量接下来的 %d 秒..."  -- [fmt] ticks
+L.PERF_TICK_FMT           = "Tick：平均 %s 毫秒，最多 %s 毫秒（共 %d 次）"  -- [fmt] numbers, count
+
+-- Formats
+L.DUR_D_H                 = "%d天%02d时"  -- [fmt] days, hours
+L.DUR_H_M                 = "%d时%02d分"  -- [fmt] hours, minutes
+L.DUR_H                   = "%d小时"  -- [fmt] hours
+L.DUR_M                   = "%d分"  -- [fmt] minutes
+L.DUR_LT_1M               = "<1分"
+L.DUR_LONG_DHM            = "%d天%d时%02d分"  -- [fmt]
+L.DUR_LONG_HM             = "%d时%02d分"  -- [fmt]
+L.DUR_LONG_M              = "%d分钟"  -- [fmt]
+L.ETA_FMT                 = "~%s"  -- [fmt] duration
+L.ETA_LT_1M               = "<1分"
+L.AGO_FMT                 = "%s前"  -- [fmt] duration
+L.DECIMAL_SEP             = "."
+L.THOUSANDS_SEP           = ","
+L.NUM_K                   = "%sk"  -- [fmt] number text
+L.NUM_M                   = "%sM"  -- [fmt] number text
+L.PERCENT_FMT             = "%s%%"  -- [fmt] number text
+L.PER_HOUR                = "/时"
+L.FPS_FMT                 = "%s fps"  -- [fmt] coloured number
+L.MS_FMT                  = "%s ms"  -- [fmt] coloured number
+L.DATE_FMT                = "%Y/%m/%d"  -- date() pattern
+L.DATETIME_FMT            = "%m/%d %H:%M"  -- date() pattern
+L.DOTS                    = "..."
+L.SEP                     = " · "
+L.RANGE_FMT               = "%s » %s"  -- [fmt] from, to
+
+-- Tokens (option labels) and token texts
+L.TOKEN_NONE              = "无"
+L.TOKEN_ETA               = "升级所需时间"
+L.TOKEN_XPH               = "每小时经验"
+L.TOKEN_PCTH              = "每小时升级百分比"
+L.TOKEN_XPLEFT            = "剩余经验"
+L.TOKEN_RESTED            = "休息经验"
+L.TOKEN_LEVEL_TIME        = "本级用时"
+L.TOKEN_SESSION           = "本次在线时间"
+L.TOKEN_PLAYED            = "游戏时间（已过滤）"
+L.TOKEN_PLAYED_SERVER     = "服务器 /played"
+L.TOKEN_AFK_SESSION       = "本次暂离时间"
+L.TOKEN_AVG_LEVEL         = "每级平均用时"
+L.TOKEN_ZONE_TIME         = "当前区域时间"
+L.TOKEN_FPS               = "FPS"
+L.TOKEN_LATENCY           = "延迟"
+L.TOKEN_FPS_LATENCY       = "FPS + 延迟"
+L.TOKEN_KILLS             = "升级需杀怪数"
+L.TOKEN_ETA_KILLS         = "升级时间 + 杀怪数"
+L.TOKEN_INSTANCE_SESSION  = "本次副本时间"
+L.TOKEN_INSTANCE_TOTAL    = "副本总时间"
+L.PFX_LEVEL_FMT           = "本级 %s"  -- [fmt] duration
+L.PFX_SESSION_FMT         = "本次 %s"  -- [fmt] duration
+L.PFX_PLAYED_FMT          = "总计 %s"  -- [fmt] duration
+L.PFX_SERVER_FMT          = "/played %s"  -- [fmt] duration
+L.PFX_AFK_FMT             = "暂离 %s"  -- [fmt] duration
+L.PFX_AVG_FMT             = "平均 %s/级"  -- [fmt] duration
+L.PFX_ZONE_FMT            = "区域 %s"  -- [fmt] duration
+L.PFX_INST_SESSION_FMT    = "副本 %s"  -- [fmt] duration (instances this session)
+L.PFX_INST_TOTAL_FMT      = "副本总计 %s"  -- [fmt] duration (instances, whole character)
+L.XPLEFT_FMT              = "还需 %s 经验"  -- [fmt] number
+L.RESTED_FMT              = "休息 %s"  -- [fmt] percent text
+L.PCTH_FMT                = "%s%%/时"  -- [fmt] number text
+L.KILLS_FMT               = "%s只怪"  -- [fmt] number text
+L.KILLS_ONE_FMT           = "%s只怪"  -- [fmt] number text (exactly 1)
+L.STALL_MARK              = "*"  -- after a frozen XP per hour / time to level (no XP for a while)
+L.CAP_SHORT               = "服务器上限"  -- XP infos at a detected server level cap
+
+-- Widget
+L.LEVEL_SHORT_FMT         = "等级 %d"  -- [fmt] level
+L.LEVEL_PCT_FMT           = "等级 %d · %s"  -- [fmt] level, percent text
+L.LEVEL_CAP_FMT           = "等级 %d · 上限"  -- [fmt] level (detected server level cap)
+L.XP_FMT                  = "经验：%s / %s"  -- [fmt] numbers
+L.XP_BARE_FMT             = "%s / %s"  -- [fmt] numbers (narrow bar: the XP label is dropped)
+L.XP_LABEL                = "经验："  -- themes with split texts: label before the XP numbers (XP_BARE_FMT)
+L.LEVEL_TITLE_FMT         = "等级 %d"  -- [fmt] level (themes with title-case level texts)
+L.LEVEL_CAP_TAG           = "上限"  -- themes: detected server level cap, after the level (upper case)
+L.LEVEL_CAP_TAG_TITLE     = "上限"  -- themes: detected server level cap, after LEVEL_TITLE_FMT
+L.UNLOCKED_HINT           = "拖动以移动 · 右键：菜单"
+L.MAX_LEVEL               = "满级"
+
+-- Tooltip
+L.TT_LEVEL_FMT            = "等级 %d » %d"  -- [fmt] level, next level
+L.TT_XP                   = "经验"
+L.TT_REMAINING            = "剩余"
+L.TT_RESTED               = "休息"
+L.TT_RESTED_FMT           = "%s 经验（%s）"  -- [fmt] number, percent of the level
+L.TT_NEXT_LEVEL           = "下一级"
+L.TT_XPH                  = "每小时经验"
+L.TT_KILLS                = "需杀怪数"
+L.TT_KILLS_FMT            = "~%s（平均 %s，最近 %s 经验）"  -- [fmt] count, average XP of the last 10 kills, XP of the last kill (both without rested bonus)
+L.TT_KILLS_NODATA         = "下次击杀后显示"
+L.TT_RATES_FMT            = "本次 %s · 本级 %s"  -- [fmt] rates
+L.TT_WARMING_FMT          = "~%s 后给出估算"  -- [fmt] duration
+L.TT_NO_RATE              = "数据不足"
+L.TT_NODATA_FMT           = "计入游戏约 %s 后可用"  -- [fmt] duration
+L.TT_NODATA_XP            = "首次获得经验后可用"
+L.RATE_ESTIMATE           = "根据你的 /played 估算"
+L.TT_SRC_LEVEL            = "基于本级至今"
+L.TT_SRC_RECENT           = "基于最近几级"
+L.TT_PAUSED_FMT           = "计时暂停：已排除%s"  -- [fmt] PAUSE_*
+L.PAUSE_AFK               = "暂离时间"
+L.PAUSE_INN               = "旅店时间"
+L.PAUSE_CITY              = "城市时间"
+L.MASK_AFK                = "暂离"
+L.MASK_INN                = "旅店"
+L.MASK_CITY               = "城市"
+L.TT_READONLY             = "只读：来自更新版本的数据"
+L.TT_EXCL_FMT             = "不含%s"  -- [fmt] mask label
+L.TT_SESSION              = "本次在线"
+L.TT_THIS_LEVEL           = "本级"
+L.TT_ZONE_FMT             = "区域：%s"  -- [fmt] zone name
+L.TT_PLAYED               = "游戏时间"
+L.TT_PLAYED_EXCL_FMT      = "游戏时间（不含%s）"  -- [fmt] mask label
+L.TT_PREINSTALL_FMT       = "含安装前 %s，未过滤"  -- [fmt] duration
+L.TT_EST_FMT              = "含崩溃后重建的 %s"  -- [fmt] duration
+L.TT_SERVER               = "服务器 /played"
+L.TT_SERVER_AGE_FMT       = "%s（%s）"  -- [fmt] duration, AGO text
+L.TT_AVG_LEVEL            = "每级平均"
+L.TT_AVG_RECENT_FMT       = "最近 %d 级平均"  -- [fmt] count (always >= 2)
+L.TT_BREAKDOWN            = "分布"
+L.BD_PART_FMT             = "%s %s"  -- [fmt] part label (BD_*), percent
+L.BD_WORLD                = "野外"
+L.BD_DUNGEON              = "地下城"
+L.BD_RAID                 = "团队副本"
+L.BD_PVP                  = "PvP"
+L.BD_TAXI                 = "飞行"
+L.BD_AFK                  = "暂离"
+L.BD_INN                  = "旅店"
+L.BD_CITY                 = "城市"
+L.TT_INSTANCES            = "副本中"
+L.TT_HINT                 = "Shift：详情 · 点击：统计 · 右键：菜单"
+L.TT_HINT_COMPARTMENT     = "Shift：详情 · 点击：设置 · 右键：统计"
+L.TT_MAX_LEVEL            = "已达到满级"
+L.TT_CAP_FMT              = "%d 级：服务器当前等级上限（最近 %d 只怪没有经验）"  -- [fmt] level, mobs killed without XP (3 or more)
+L.TT_CAP_RESUME           = "服务器重新给予经验后，经验记录会自动恢复。"
+L.TT_STALLED_FMT          = "%s 每小时经验已冻结：已有 %s 游戏时间未获得经验"  -- [fmt] STALL_MARK, duration of counted play
+L.TT_STALLED_RESUME       = "下次获得经验时恢复；无经验的时间不计入。"
+L.TT_TOP_ZONES            = "本级主要区域"
+L.TT_TOP_CITIES           = "常去主城"
+L.SECTION_CONTINENTS      = "大陆"
+L.CONT_INSTANCES          = "副本"
+L.CONT_OTHER              = "其他"
+L.TT_OF_WHICH_AFK_FMT     = "%s（暂离 %s）"  -- [fmt] durations
+L.TT_LAST_LEVELS          = "最近等级"
+L.TT_LEVEL_ROW_FMT        = "等级 %d"  -- [fmt] level
+L.TT_INN                  = "旅店 / 休息区"
+L.TT_CITY                 = "城市"
+L.TT_AFK                  = "暂离"
+L.TT_TAXI                 = "飞行"
+L.TT_DEATHS               = "死亡"
+L.TT_UNTRACKED            = "安装前 / 未记录"
+L.TT_UNTRACKED_NOTE       = "未细分"
+L.TT_EST_TOTAL            = "崩溃后重建"
+L.TT_EST_NOTE             = "估算分布"
+L.TT_ACCOUNT_FMT          = "账号（%d 个角色）"  -- [fmt] count (2 or more)
+L.TT_ACCOUNT_ONE_FMT      = "账号（%d 个角色）"  -- [fmt] count (1)
+L.TT_ACCOUNT_INST         = "账号，副本中"
+L.TT_NET                  = "FPS · 本地 · 世界"
+L.TT_NET_FMT              = "%s · %s · %s"  -- [fmt] fps, home, world
+
+-- Context menu
+L.MENU_EXCLUDE_AFK        = "排除暂离时间"
+L.MENU_EXCLUDE_INN        = "排除旅店 / 休息区时间"
+L.MENU_EXCLUDE_CITY       = "排除城市时间"
+L.MENU_LOCK               = "锁定"
+L.MENU_THEME              = "主题"
+L.MENU_STATS              = "统计..."
+L.MENU_RESET_SESSION      = "重置本次在线"
+L.MENU_HIDE               = "隐藏"
+L.MENU_OPTIONS            = "设置..."
+
+-- Options panel
+L.OPT_EXCLUSIONS          = "排除"
+L.OPT_EXCLUSIONS_HELP     = "排除只改变显示：不会删除任何数据，一切都会立即重新计算。"
+L.OPT_CITY_HELP           = "城市：暴风城、铁炉堡、达纳苏斯、奥格瑞玛、雷霆崖、幽暗城（/tpl citytoggle 可添加或移除当前区域）。旅店 / 休息区：其他任何休息区。"
+L.OPT_DISPLAY             = "显示"
+L.OPT_THEME               = "主题"
+L.OPT_THEME_NOTE          = "改变经验条、其提示框、图表和统计窗口的外观。下方选择的颜色会替代主题自带的颜色。"
+L.OPT_THEME_RESTART_NOTE  = "安装或更新 TruePlayed 后，请重启游戏（仅 /reload 不够），以加载主题的字体和材质。"
+L.OPT_SHOW                = "显示经验条"
+L.OPT_SLOT1               = "信息 1（大）"
+L.OPT_SLOT2               = "信息 2"
+L.OPT_SLOT3               = "信息 3"
+L.OPT_SLOT3_POS           = "信息 3 位置"
+L.OPT_SLOTS_NOTE          = "信息 1 在右上，信息 2 在经验之后，信息 3 在上方。"
+L.POS_CENTER              = "上方居中"
+L.POS_LEFT                = "上方靠左"
+L.OPT_PCT_POS             = "等级百分比"
+L.PCT_FOLLOW              = "跟随经验条"
+L.PCT_LEVEL               = "在等级旁"
+L.OPT_MAX_SLOTS           = "满级时，将经验信息替换为："
+L.OPT_MAX_SLOT_FMT        = "满级信息 %d"  -- [fmt] slot index
+L.OPT_WIDTH               = "宽度"
+L.OPT_HEIGHT              = "经验条高度"
+L.OPT_SCALE               = "缩放"
+L.OPT_FONT_SIZE           = "文字大小"
+L.OPT_LOCK                = "锁定位置"
+L.OPT_COMBAT_HIDE         = "战斗中隐藏"
+L.OPT_FADE                = "鼠标移开时淡出"
+L.OPT_HIDE_MAX            = "满级时隐藏"
+L.OPT_LANGUAGE            = "语言 (Language)"
+L.OPT_LANGUAGE_NOTE       = "TruePlayed 的语言在重载界面后更改（下方按钮或 /reload）。游戏提供的名称（区域、怪物、副本、角色）保持游戏客户端的语言。"
+L.OPT_RELOAD              = "重载界面"
+L.LANG_AUTO               = "自动"
+L.LANG_ENUS               = "English"
+L.LANG_FRFR               = "Français"
+L.LANG_DEDE               = "Deutsch"
+L.LANG_ESES               = "Español (EU)"
+L.LANG_ESMX               = "Español (AL)"
+L.LANG_ITIT               = "Italiano"
+L.LANG_PTBR               = "Português (BR)"
+L.LANG_RURU               = "\208\160\209\131\209\129\209\129\208\186\208\184\208\185"  -- Russian, in Cyrillic (escaped: this file is Latin-1)
+L.LANG_KOKR               = "\237\149\156\234\181\173\236\150\180"  -- Korean, in Hangul (escaped)
+L.LANG_ZHCN               = "\231\174\128\228\189\147\228\184\173\230\150\135"  -- Simplified Chinese (escaped)
+L.LANG_ZHTW               = "\231\185\129\233\171\148\228\184\173\230\150\135"  -- Traditional Chinese (escaped)
+L.OPT_TEXTS               = "文字"
+L.OPT_TEXT_COLOR          = "文字颜色"
+L.OPT_TEXT_COLOR_RESET    = "主题颜色"
+L.OPT_TEXT_COLOR_NOTE     = "适用于经验条上的所有文字。经验条本身的颜色在下方设置。"
+L.OPT_OUTLINE             = "文字描边"
+L.OUTLINE_NONE            = "无"
+L.OUTLINE_THIN            = "细"
+L.OUTLINE_THICK           = "粗"
+L.OPT_SHADOW              = "文字阴影"
+L.OPT_BG_ALPHA            = "背景不透明度"
+L.OPT_BAR_COLORS          = "经验条配色"
+L.OPT_XP_COLOR            = "经验颜色"
+L.OPT_RESTED_COLOR        = "休息经验颜色"
+L.OPT_BAR_COLORS_RESET    = "主题颜色"
+L.OPT_BAR_COLORS_NOTE     = "在你自选颜色之前，经验条使用主题的颜色。处于休息状态时，经验条变为休息经验颜色，较浅的色调显示休息经验能延伸到哪里。满级时经验条以经验颜色填满并变暗。"
+L.OPT_NET                 = "FPS 和延迟"
+L.OPT_QUALITY_COLORS      = "质量颜色（绿、黄、红）"
+L.OPT_QUALITY_COLORS_NOTE = "取消勾选后，FPS 和延迟使用文字颜色。"
+L.OPT_GRAPH_WINDOW        = "图表时长"
+L.OPT_GRAPH_NOTE          = "将鼠标悬停在经验条上的 FPS 或延迟上可查看图表，再悬停在图表上读取数值。游戏大约每 30 秒才刷新一次延迟。"
+L.OPT_CALC                = "计算"
+L.OPT_REACTIVITY          = "每小时经验反应速度"
+L.OPT_REACTIVITY_HELP     = "每小时经验跟随你近期节奏的快慢。"
+L.REACT_SLOW              = "慢（90分钟）"
+L.REACT_NORMAL            = "正常（60分钟）"
+L.REACT_FAST              = "快（20分钟）"
+L.OPT_REQUEST_PLAYED      = "登录时向服务器请求 /played"
+L.OPT_REQUEST_PLAYED_HELP = "崩溃后找回时间需要此项。只有当其他插件在 10 秒内没有请求时，常规的 /played 信息才会在聊天框出现一次。"
+L.OPT_HIDE_PLAYED         = "TruePlayed 请求时隐藏 /played 信息（实验性）"
+L.OPT_HIDE_PLAYED_HELP    = "在 TruePlayed 自己的请求进行期间，短暂拦截聊天框中的 /played 显示。你自己输入的 /played 始终会显示。可能在地下城中干扰聊天：如果看到聊天错误，请关闭此项。"
+L.OPT_HIDE_PLAYED_NA      = "此客户端不可用。"
+L.OPT_CITIES              = "城市"
+L.OPT_CITY_CURRENT_FMT    = "当前区域：%s（%s）"  -- [fmt] zone name, CITY_YES/CITY_NO
+L.CITY_YES                = "计为城市"
+L.CITY_NO                 = "不是城市"
+L.OPT_CITY_TOGGLE         = "将此区域计为城市 / 取消"
+L.OPT_DATA                = "数据"
+L.OPT_OPEN_STATS          = "统计..."
+L.OPT_RESET_POS           = "重置位置"
+L.OPT_RESET_SESSION       = "重置本次在线"
+L.OPT_RESET_RATE          = "重置每小时经验"
+L.OPT_RESET_CHAR          = "清除此角色的数据"
+L.CONFIRM_ERASE_CHAR_FMT  = "清除 %s 的所有 TruePlayed 数据？此操作无法撤销。"  -- [fmt] name
+L.ERASE_YES               = "是"  -- the erase popup's buttons (the game's YES / NO follow the client)
+L.ERASE_NO                = "否"
+L.OPT_NOTE_PREINSTALL     = "安装 TruePlayed 之前的游戏时间无法细分，也永远不会被排除。"
+L.OPT_NOTE_IDLE           = "游戏自动将你标记为暂离之前的几分钟仍计为活跃时间。"
+L.OPT_NOTE_CRASH          = "游戏崩溃后（或未用 TruePlayed 游戏后），缺失的时间会从服务器 /played 找回，并按你自己的习惯分配；它会被标记为重建。"
+L.OPT_NOTE_CITY           = "城市时间按地图计算：整个主城都计为城市，而不只是旅店。"
+L.OPT_NOTE_STALL_FMT      = "连续 %d 分钟游戏没有任何经验后（等级上限、在城里长时间休息...），每小时经验和升级时间会冻结：这段时间不计入，下次获得经验时恢复。"  -- [fmt] minutes
+L.OPT_NOTE_CAP_FMT        = "当连续 %d 只怪不给经验时，会识别为有临时等级上限的服务器（测试服）：经验条会显示为满级样式，经验恢复后自动恢复正常。"  -- [fmt] mobs
+L.OPT_NOTE_READONLY       = "只读：你的数据由更新版本的 TruePlayed 保存。请更新插件；在此之前不会记录任何内容。"
+L.OPT_VERSION_FMT         = "版本 %s"  -- [fmt] version
+L.SLIDER_PX_FMT           = "%d px"  -- [fmt] value
+L.SLIDER_PCT_FMT          = "%d%%"  -- [fmt] value
+
+-- Themes (display names: options dropdown, context menu, /tpl theme)
+L.THEME_FUTURISTE         = "未来"
+L.THEME_ACTUEL            = "经典"
+L.THEME_HEROIC            = "英雄奇幻"
+L.THEME_PIXEL             = "像素（复古）"
+L.THEME_CLASS             = "职业（自动）"
+L.THEME_WARRIOR           = "战士"
+L.THEME_PALADIN           = "圣骑士"
+L.THEME_HUNTER            = "猎人"
+L.THEME_ROGUE             = "潜行者"
+L.THEME_PRIEST            = "牧师"
+L.THEME_SHAMAN            = "萨满祭司"
+L.THEME_MAGE              = "法师"
+L.THEME_WARLOCK           = "术士"
+L.THEME_DRUID             = "德鲁伊"
+
+-- Statistics window
+L.WIN_TITLE               = "TruePlayed - 统计"
+L.VIEW_ACCOUNT            = "账号（所有角色）"
+L.WIN_ERASE               = "清除..."
+L.WIN_FILTER_FMT          = "显示时间不含%s"  -- [fmt] mask label
+L.TAB_LEVELS              = "等级"
+L.TAB_ZONES               = "区域"
+L.TAB_SESSIONS            = "在线记录"
+L.COL_LEVEL               = "等级"
+L.COL_TIME                = "时间"
+L.COL_SERVER              = "服务器"
+L.COL_XPH                 = "经验/时"
+L.COL_AFK                 = "暂离"
+L.COL_INN                 = "旅店"
+L.COL_CITY                = "城市"
+L.COL_INST                = "副本"
+L.COL_MAIN_ZONE           = "主要区域"
+L.COL_REACHED             = "达成"
+L.COL_ZONE                = "区域"
+L.COL_RAW                 = "原始"
+L.COL_XP                  = "经验"
+L.COL_DATE                = "日期"
+L.COL_DURATION            = "时长"
+L.COL_LEVELS              = "等级"
+L.COL_DEATHS              = "死亡"
+L.COL_CHARS               = "角色"
+L.COL_AVG                 = "平均"
+L.ROW_IN_PROGRESS         = "进行中"
+L.ROW_PARTIAL_TIP         = "该等级开始于安装 TruePlayed 之前。"
+L.ROW_REC_TIP             = "在崩溃期间或未启用 TruePlayed 时达成：时间根据服务器 /played 和你的经验估算。"
+L.ROW_EST_TIP_FMT         = "含崩溃后重建的 %s（估算分布）。"  -- [fmt] duration
+L.ROW_GAP_TIP_FMT         = "服务器时间比记录时间多 %s（未细分）。"  -- [fmt] duration
+L.ROW_ZONES_FMT           = "%d 级时的区域"  -- [fmt] level
+L.ROW_ZONES_EMPTY         = "此等级没有记录区域。"
+L.LEVELS_HOVER_HINT       = "鼠标悬停在等级上可查看其区域。"
+L.FOOTER_FMT              = "每级平均：%s · 最近 %d 级：%s · 总计：%s"  -- [fmt] dur, count, dur, dur
+L.FOOTER_ACCOUNT_FMT      = "账号每级平均：%s（%d 个角色）"  -- [fmt] dur, count (2 or more)
+L.FOOTER_ACCOUNT_ONE_FMT  = "账号每级平均：%s（%d 个角色）"  -- [fmt] dur, count (1)
+L.FOOTER_ACCOUNT_NONE     = "账号每级平均：数据不足"
+L.CITIES_HEADER           = "常去主城"
+L.INSTANCES_HEADER        = "最常进入的副本"
+L.INST_ROW_FMT            = "%s（%s）"  -- [fmt] instance name, KIND_*
+L.KIND_DUNGEON            = "地下城"
+L.KIND_RAID               = "团队副本"
+L.KIND_PVP                = "PvP"
+L.FOOTER_INST_FMT         = "副本中：%s"  -- [fmt] duration
+L.NO_DATA                 = "暂无数据。"
+L.NO_SESSIONS_ACCOUNT     = "在线记录按角色列出。"
+L.CITY_MARK               = "（城市）"
+L.CHAR_FMT                = "%s - %d 级"  -- [fmt] name, level
+L.ZONE_UNKNOWN            = "未知区域"
+L.ZONE_OTHER              = "其他区域"
+
+-- FPS / latency graph (Graph.lua)
+L.GRAPH_TITLE_FMT         = "FPS 和延迟（%s）"  -- [fmt] GRAPH_WINDOW_*
+L.GRAPH_WINDOW_30         = "30秒"
+L.GRAPH_WINDOW_60         = "1分钟"
+L.GRAPH_WINDOW_300        = "5分钟"
+L.GRAPH_AGO_FMT           = "%s前：%s · %s"  -- [fmt] age (GRAPH_AGE_*), FPS text, latency text
+L.GRAPH_AGE_S_FMT         = "%d秒"  -- [fmt] seconds (age below one minute)
+L.GRAPH_AGE_MS_FMT        = "%d分%02d秒"  -- [fmt] minutes, seconds
+L.GRAPH_MIN_AVG_MAX_FMT   = "最低 %s · 平均 %s · 最高 %s"  -- [fmt] values
+L.GRAPH_LAT_NOTE          = "游戏大约每 30 秒才刷新一次延迟：因此画成阶梯状。"
+L.GRAPH_NO_DATA           = "正在采集数据..."
+
+-- Registration for Core's language switch. Keep this block LAST: a string defined
+-- below it would miss the file-load copy into ns.L on a client in this language.
+local reg = ns.LOCALES
+if type(reg) ~= "table" then
+  reg = {}
+  ns.LOCALES = reg
+end
+reg[CODE] = L
+-- The default ("auto") on a client in this language: this language from file load on.
+if GetLocale() == CODE then
+  local dst = ns.L
+  if type(dst) == "table" then
+    for k, v in pairs(L) do dst[k] = v end
+  end
+end

@@ -8,7 +8,8 @@
 -- are strings only, with the same keys as enUS.lua. CODE is the only line of code that
 -- names the language: a copy for another language changes it and the values (see the
 -- recipe at the top of enUS.lua).
--- Latin-1 characters only (see SPEC-FINAL 2.6).
+-- Latin-1 characters only (see SPEC-FINAL 2.6); the names of the native-only languages
+-- are decimal escapes.
 local _, ns = ...
 local CODE = "frFR"
 local L = {}
@@ -57,7 +58,7 @@ L.HELP_STATS              = "/tpl stats [levels | zones | sessions] - fenêtre d
 L.HELP_LOCK               = "/tpl lock | unlock - verrouiller ou déplacer la barre"
 L.HELP_SHOW               = "/tpl show | hide - afficher ou masquer la barre"
 L.HELP_THEME              = "/tpl theme [nom] - affiche ou change le thème"
-L.HELP_LANG               = "/tpl lang [auto | en | fr] - affiche ou change la langue de TruePlayed (après /reload)"
+L.HELP_LANG               = "/tpl lang [%s] - affiche ou change la langue de TruePlayed (après /reload)"  -- [fmt] the offered /tpl lang values, joined by " | "
 L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - exclusions (sans argument : bascule)"
 L.HELP_CITY               = "/tpl citytoggle - compter la zone actuelle comme une ville (ou non)"
 L.HELP_PLAYED             = "/tpl played - récapitulatif dans le chat"
@@ -131,7 +132,7 @@ L.TOKEN_FPS               = "FPS"
 L.TOKEN_LATENCY           = "Latence"
 L.TOKEN_FPS_LATENCY       = "FPS + latence"
 L.TOKEN_KILLS             = "Monstres à tuer"
-L.TOKEN_ETA_KILLS         = "Temps avant le niveau + monstres à tuer"
+L.TOKEN_ETA_KILLS         = "Temps avant le niveau + monstres"
 L.TOKEN_INSTANCE_SESSION  = "Temps en instance (session)"
 L.TOKEN_INSTANCE_TOTAL    = "Temps total en instance"
 L.PFX_LEVEL_FMT           = "Niveau %s"  -- [fmt] duration
@@ -290,6 +291,15 @@ L.OPT_RELOAD              = "Recharger l'interface"
 L.LANG_AUTO               = "Auto"
 L.LANG_ENUS               = "English"
 L.LANG_FRFR               = "Français"
+L.LANG_DEDE               = "Deutsch"
+L.LANG_ESES               = "Español (EU)"
+L.LANG_ESMX               = "Español (AL)"
+L.LANG_ITIT               = "Italiano"
+L.LANG_PTBR               = "Português (BR)"
+L.LANG_RURU               = "\208\160\209\131\209\129\209\129\208\186\208\184\208\185"  -- Russian, in Cyrillic (escaped: this file is Latin-1)
+L.LANG_KOKR               = "\237\149\156\234\181\173\236\150\180"  -- Korean, in Hangul (escaped)
+L.LANG_ZHCN               = "\231\174\128\228\189\147\228\184\173\230\150\135"  -- Simplified Chinese (escaped)
+L.LANG_ZHTW               = "\231\185\129\233\171\148\228\184\173\230\150\135"  -- Traditional Chinese (escaped)
 L.OPT_TEXTS               = "Textes"
 L.OPT_TEXT_COLOR          = "Couleur du texte"
 L.OPT_TEXT_COLOR_RESET    = "Couleurs du thème"

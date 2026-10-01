@@ -7,10 +7,18 @@
 --     the `cyr` flag equals the real coverage of U+0410-U+044F (TTF cmap formats 4 and 12);
 --   * glyph coverage per theme, after the font's `subst`:
 --       - body and num fonts: BODY_SET (U+0020-U+007E, U+00A0, U+00AB, U+00B7, U+00BB,
---         U+00C0-U+00FF minus U+00D7 and U+00F7) plus every character of Locales/enUS.lua and
---         Locales/frFR.lua (file text and string values);
---       - display fonts: the texts of Themes.DISPLAY_KEYS in both locales (format specifiers
---         and colour codes removed), plus "0123456789%.,:/-()~ " and U+00A0;
+--         U+00C0-U+00FF minus U+00D7 and U+00F7) plus every character of the Latin-1 locale
+--         files (LATIN_LOCALES: file text and string values, the names of the native-only
+--         languages aside: the options and the chat draw them in the game font);
+--       - display fonts: the texts of Themes.DISPLAY_KEYS in those locales (format
+--         specifiers and colour codes removed), plus "0123456789%.,:/-()~ " and U+00A0;
+--       - Cyrillic: on a ruRU client a theme keeps only its fonts flagged `cyr` (the others
+--         fall back to the game font, Themes RoleEntry), so every `cyr` font of a theme
+--         covers the ruRU strings in its roles (body / num: every value; display: the
+--         DISPLAY_KEYS texts); a font without `cyr` is not checked against them;
+--       - koKR, zhCN, zhTW: no theme font is used on those clients (the game font draws
+--         every text, Themes RoleEntry), so their strings are not checked against theme
+--         fonts (tests/test_theme.lua checks the fallback);
 --   * TGA files (6.2): uncompressed type 2, no colour map, 32 bpp, descriptor 0x08, straight
 --     alpha (judged on grey media), power-of-two sizes up to 256 equal to the declared { w, h }, R = G = B for
 --     grey media; every declared media exists, no undeclared .tga, lowercase [a-z0-9_]
@@ -131,18 +139,30 @@ for _, key in ipairs(Themes.KEYS) do
   if not sources[key] then fail("theme %s is not registered", key) end
 end
 
--- String values of the locale tables (enUS, then frFR on a French client).
+-- The locale files whose strings the theme fonts draw on any client (Latin-1 script),
+-- and the Cyrillic one (theme fonts flagged `cyr` only).
+local LATIN_LOCALES = { "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR" }
+local CYRILLIC_LOCALES = { "ruRU" }
+-- Names of the native-only languages (Cyrillic, Hangul, Han), in every locale file: only
+-- the options dropdown and the chat show them, in the game font, on their own client.
+local NATIVE_NAMES = { LANG_RURU = true, LANG_KOKR = true, LANG_ZHCN = true, LANG_ZHTW = true }
+
+-- String values of a locale table (on a client in that language).
 local function localeTable(locale)
   Stub.Reset()
   Stub.locale = locale
-  local lns = Stub.LoadAddon({ files = { "Locales/enUS.lua", "Locales/frFR.lua" } })
+  local files = { "Locales/enUS.lua" }
+  if locale ~= "enUS" then files[2] = "Locales/" .. locale .. ".lua" end
+  local lns = Stub.LoadAddon({ files = files })
   local out = {}
   for k, v in pairs(lns.L) do
-    if type(k) == "string" and type(v) == "string" then out[k] = v end
+    if type(k) == "string" and type(v) == "string" and not NATIVE_NAMES[k] then out[k] = v end
   end
   return out
 end
-local LOCALES = { enUS = localeTable("enUS"), frFR = localeTable("frFR") }
+local LOCALES = {}
+for _, loc in ipairs(LATIN_LOCALES) do LOCALES[loc] = localeTable(loc) end
+for _, loc in ipairs(CYRILLIC_LOCALES) do LOCALES[loc] = localeTable(loc) end
 
 ---------------------------------------------------------------------------
 -- UTF-8
@@ -322,6 +342,7 @@ end
 -- Glyph coverage per theme
 ---------------------------------------------------------------------------
 local BODY_TEXTS, DISPLAY_TEXTS = {}, {}
+local CYR_BODY_TEXTS, CYR_DISPLAY_TEXTS = {}, {}
 do
   local function addRange(a, b)
     for cp = a, b do BODY_TEXTS[#BODY_TEXTS + 1] = utf8Char(cp) end
@@ -331,23 +352,28 @@ do
   for cp = 0xC0, 0xFF do
     if cp ~= 0xD7 and cp ~= 0xF7 then addRange(cp, cp) end
   end
-  for _, file in ipairs({ "Locales/enUS.lua", "Locales/frFR.lua" }) do
+  for _, loc in ipairs(LATIN_LOCALES) do
+    local file = "Locales/" .. loc .. ".lua"
     local text = readFile(ROOT .. file)
     if text then BODY_TEXTS[#BODY_TEXTS + 1] = text else fail("%s is missing", file) end
   end
-  for _, loc in ipairs({ "enUS", "frFR" }) do
+  local function addLocale(loc, body, display)
     local L = LOCALES[loc]
     local keys = {}
     for k in pairs(L) do keys[#keys + 1] = k end
     table.sort(keys)
-    for _, k in ipairs(keys) do BODY_TEXTS[#BODY_TEXTS + 1] = rendered(L[k]) end
+    for _, k in ipairs(keys) do body[#body + 1] = rendered(L[k]) end
     for _, k in ipairs(Themes.DISPLAY_KEYS) do
-      if L[k] then DISPLAY_TEXTS[#DISPLAY_TEXTS + 1] = rendered(L[k])
+      if L[k] then display[#display + 1] = rendered(L[k])
       else fail("display key %s is missing from the %s strings", k, loc) end
     end
   end
+  for _, loc in ipairs(LATIN_LOCALES) do addLocale(loc, BODY_TEXTS, DISPLAY_TEXTS) end
+  for _, loc in ipairs(CYRILLIC_LOCALES) do addLocale(loc, CYR_BODY_TEXTS, CYR_DISPLAY_TEXTS) end
   DISPLAY_TEXTS[#DISPLAY_TEXTS + 1] = "0123456789%.,:/-()~ "
   DISPLAY_TEXTS[#DISPLAY_TEXTS + 1] = "\194\160"
+  CYR_DISPLAY_TEXTS[#CYR_DISPLAY_TEXTS + 1] = "0123456789%.,:/-()~ "
+  CYR_DISPLAY_TEXTS[#CYR_DISPLAY_TEXTS + 1] = "\194\160"
 end
 
 -- Code points of texts after the font's substitutions.
@@ -409,6 +435,11 @@ for _, key in ipairs(themeKeys) do
   checkCoverage(key, "display", fonts.display, DISPLAY_TEXTS, "display")
   checkCoverage(key, "body", body, BODY_TEXTS, "body")
   if num ~= body then checkCoverage(key, "num", num, BODY_TEXTS, "body") end
+  -- ruRU: only the `cyr` fonts stay (the others give way to the game font)
+  local function cyr(name) local e = name and Themes.FONTS[name] return e ~= nil and e.cyr == true end
+  if cyr(fonts.display) then checkCoverage(key, "display", fonts.display, CYR_DISPLAY_TEXTS, "ruRU display") end
+  if cyr(body) then checkCoverage(key, "body", body, CYR_BODY_TEXTS, "ruRU body") end
+  if num ~= body and cyr(num) then checkCoverage(key, "num", num, CYR_BODY_TEXTS, "ruRU body") end
 end
 
 ---------------------------------------------------------------------------

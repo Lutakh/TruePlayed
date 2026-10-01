@@ -1,0 +1,452 @@
+-- Locales/ruRU.lua - Russian strings of TruePlayed (complete translation).
+-- A copy of frFR.lua (see the recipe at the top of enUS.lua): it builds its own table and
+-- registers it as ns.LOCALES[CODE]; Core applies it into ns.L when the "language" setting
+-- resolves to this language (at ADDON_LOADED, again at PLAYER_LOGIN), then drops
+-- ns.LOCALES. On a client in this language it also fills ns.L at file load (the default
+-- "auto"). Values are strings only, with the same keys and the same format arguments, in
+-- the same order, as enUS.lua (tests/test_locales.lua). Short words: the bar, the tooltip
+-- rows, option labels, buttons and menu entries must fit.
+-- Any UTF-8 character (the client of this language draws its script: see
+-- C.LANGUAGES_NATIVE_ONLY and tests/check_encoding.lua NATIVE_LOCALES).
+local _, ns = ...
+local CODE = "ruRU"
+local L = {}
+
+-- General and chat
+L.ADDON_TITLE             = "TruePlayed"
+L.CHAT_PREFIX             = "|cff8b5cf6TruePlayed|r: "
+L.FIRST_RUN               = "Перетащите полосу куда нужно, затем ПКМ > Закрепить. Наведите курсор для подробностей (Shift: больше), щелкните для статистики. Настройки: /tpl"
+L.ON                      = "вкл."
+L.OFF                     = "выкл."
+L.EXCL_STATE_FMT          = "%s: %s"  -- [fmt] exclusion label (MENU_EXCLUDE_*), ON/OFF
+L.CITY_ADDED_FMT          = "%s теперь считается городом."  -- [fmt] zone name
+L.CITY_REMOVED_FMT        = "%s больше не считается городом."  -- [fmt] zone name
+L.NO_ZONE                 = "Текущая зона неизвестна, попробуйте чуть позже."
+L.CITY_INSTANCE           = "Инстансы никогда не считаются городами."
+L.UNKNOWN_CMD_FMT         = "Неизвестная команда «%s». Введите /tpl help."  -- [fmt] command
+L.SYNC_REQUESTED          = "Запрос /played у сервера..."
+L.SYNCED                  = "/played синхронизирован."
+L.SYNC_THROTTLED          = "Подождите несколько секунд перед новым запросом."
+L.RESET_POS_DONE          = "Позиция сброшена."
+L.RESET_SESSION_DONE      = "Сессия сброшена."
+L.RESET_RATE_DONE         = "Опыт в час сброшен."
+L.RESET_CHAR_DONE_FMT     = "Данные персонажа %s удалены."  -- [fmt] character name
+L.WIDGET_SHOWN            = "Полоса показана."
+L.WIDGET_HIDDEN           = "Полоса скрыта. Введите /tpl show, чтобы вернуть ее."
+L.LOCKED                  = "Полоса закреплена."
+L.UNLOCKED                = "Полоса откреплена: перетащите ее, чтобы переместить."
+L.THEME_SET_FMT           = "Тема: %s"  -- [fmt] THEME_* name
+L.THEME_LIST_FMT          = "Тема: %s. Доступно: %s"  -- [fmt] THEME_* name of the setting, theme keys (/tpl theme <key>)
+L.LANG_SET_FMT            = "Язык: %s. Введите /reload, чтобы применить."  -- [fmt] LANG_* name
+L.LANG_LIST_FMT           = "Язык: %s. Доступно: %s. Изменение применяется после /reload."  -- [fmt] LANG_* name of the setting, accepted values (/tpl lang <value>)
+L.DEBUG_ON                = "Отладочные сообщения включены."
+L.DEBUG_OFF               = "Отладочные сообщения выключены."
+L.SCHEMA_NEWER            = "Ваши данные сохранены более новой версией TruePlayed. Обновите аддон; учет приостановлен."
+L.READONLY_ACTION         = "Недоступно: ваши данные сохранены более новой версией TruePlayed (режим только для чтения)."
+L.NOT_READY               = "TruePlayed не загрузился до конца (см. окно ошибок)."
+L.COMBAT_DEFERRED         = "Настройки откроются после боя."
+L.EST_RECOVERED_FMT       = "Восстановлено игрового времени: %s (недоставало с последнего сохранения: вылет или игра без TruePlayed). Его распределение оценено по вашим привычкам."  -- [fmt] duration
+L.THEME_FONT_MISSING      = "Не удалось загрузить шрифт темы (%s); вместо него используется шрифт игры. Перезапустите игру после обновления."  -- [fmt] font file name (printed once per session, after CHAT_PREFIX)
+L.WTFIX_PROTECTED         = "WTFix при каждой загрузке возвращает данные TruePlayed к старой копии, так что недавняя история игры потерялась бы. Введите /wtfix и снимите флажок с TruePlayed: тогда TruePlayed сохранит свои данные и сверится с /played сервера."
+
+-- Help
+L.HELP_HEADER             = "Команды:"
+L.HELP_OPTIONS            = "/tpl - настройки"
+L.HELP_STATS              = "/tpl stats [levels | zones | sessions] - окно статистики"
+L.HELP_LOCK               = "/tpl lock | unlock - закрепить или переместить полосу"
+L.HELP_SHOW               = "/tpl show | hide - показать или скрыть полосу"
+L.HELP_THEME              = "/tpl theme [название] - показать или сменить тему"
+L.HELP_LANG               = "/tpl lang [%s] - показать или сменить язык TruePlayed (после /reload)"
+L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - исключения (без аргумента: переключить)"
+L.HELP_CITY               = "/tpl citytoggle - считать текущую зону городом (или нет)"
+L.HELP_PLAYED             = "/tpl played - сводка в чате"
+L.HELP_SYNC               = "/tpl sync - обновить /played сервера"
+L.HELP_RESET              = "/tpl reset pos | session | rate | char - сбросить позицию полосы, сессию или опыт в час, либо удалить данные этого персонажа (с подтверждением)"
+L.HELP_DEBUG              = "/tpl debug - отладочные сообщения"
+L.HELP_PERF               = "/tpl perf - память и ЦП, занятые TruePlayed"
+
+-- /tpl played summary
+L.SUM_HEADER_FMT          = "%s - уровень %d"  -- [fmt] name, level
+L.SUM_PLAYED_FMT          = "Сыграно: %s (/played сервера: %s)"  -- [fmt] filtered, server
+L.SUM_EXCLUDED_FMT        = "Исключено: %s (%s)"  -- [fmt] duration, mask label
+L.SUM_LEVEL_FMT           = "Этот уровень: %s · в среднем за уровень: %s"  -- [fmt] durations
+L.SUM_ETA_FMT             = "Следующий уровень через %s при %s"  -- [fmt] ETA, rate
+L.SUM_ETA_NONE            = "Следующий уровень: пока мало данных."
+L.SUM_MAX                 = "Достигнут максимальный уровень."
+L.SUM_CAP_FMT             = "Уровень %d: текущий предел уровня на сервере. Учет опыта возобновится сам."  -- [fmt] level (detected server level cap)
+
+-- /tpl perf
+L.PERF_HEADER_FMT         = "TruePlayed %s - производительность (клиент %d):"  -- [fmt] version, interface
+L.PERF_MEM_FMT            = "Память (код + сохраненные данные всех персонажей): %s КБ"  -- [fmt] number
+L.PERF_MEM_NA             = "Память: недоступно в этом клиенте."
+L.PERF_CPU_FMT            = "ЦП: %s мс с загрузки (%s мс в минуту)"  -- [fmt] numbers
+L.PERF_CPU_OFF            = "ЦП: введите /console scriptProfile 1, затем /reload, чтобы измерить. Это замедляет игру: потом верните 0."
+L.PERF_PROFILER_FMT       = "Профайлер: в среднем %s мс на кадр, пик %s мс"  -- [fmt] numbers
+L.PERF_DATA_FMT           = "Данные персонажа: уровни %d, зоны %d, сессии %d. Персонажи: %d"  -- [fmt] counts (label form: no plural agreement)
+L.PERF_TICK_ARMED_FMT     = "Замер следующих %d с..."  -- [fmt] ticks
+L.PERF_TICK_FMT           = "Тик: в среднем %s мс, максимум %s мс (тиков: %d)"  -- [fmt] numbers, count
+
+-- Formats
+L.DUR_D_H                 = "%d д %02d ч"  -- [fmt] days, hours
+L.DUR_H_M                 = "%d ч %02d мин"  -- [fmt] hours, minutes
+L.DUR_H                   = "%d ч"  -- [fmt] hours
+L.DUR_M                   = "%d мин"  -- [fmt] minutes
+L.DUR_LT_1M               = "<1 мин"
+L.DUR_LONG_DHM            = "%d д %d ч %02d мин"  -- [fmt]
+L.DUR_LONG_HM             = "%d ч %02d мин"  -- [fmt]
+L.DUR_LONG_M              = "%d мин"  -- [fmt]
+L.ETA_FMT                 = "~%s"  -- [fmt] duration
+L.ETA_LT_1M               = "<1 мин"
+L.AGO_FMT                 = "%s назад"  -- [fmt] duration
+L.DECIMAL_SEP             = ","
+L.THOUSANDS_SEP           = "\194\160"
+L.NUM_K                   = "%sк"  -- [fmt] number text
+L.NUM_M                   = "%sМ"  -- [fmt] number text
+L.PERCENT_FMT             = "%s%%"  -- [fmt] number text
+L.PER_HOUR                = "/ч"
+L.FPS_FMT                 = "%s fps"  -- [fmt] coloured number
+L.MS_FMT                  = "%s мс"  -- [fmt] coloured number
+L.DATE_FMT                = "%d.%m.%Y"  -- date() pattern
+L.DATETIME_FMT            = "%d.%m %H:%M"  -- date() pattern
+L.DOTS                    = "..."
+L.SEP                     = " · "
+L.RANGE_FMT               = "%s » %s"  -- [fmt] from, to
+
+-- Tokens (option labels) and token texts
+L.TOKEN_NONE              = "Ничего"
+L.TOKEN_ETA               = "Время до уровня"
+L.TOKEN_XPH               = "Опыт в час"
+L.TOKEN_PCTH              = "% уровня в час"
+L.TOKEN_XPLEFT            = "Осталось опыта"
+L.TOKEN_RESTED            = "Бонус отдыха"
+L.TOKEN_LEVEL_TIME        = "Время на уровне"
+L.TOKEN_SESSION           = "Время сессии"
+L.TOKEN_PLAYED            = "Сыграно (с фильтром)"
+L.TOKEN_PLAYED_SERVER     = "/played сервера"
+L.TOKEN_AFK_SESSION       = "АФК за сессию"
+L.TOKEN_AVG_LEVEL         = "Среднее время на уровень"
+L.TOKEN_ZONE_TIME         = "Время в текущей зоне"
+L.TOKEN_FPS               = "FPS"
+L.TOKEN_LATENCY           = "Задержка"
+L.TOKEN_FPS_LATENCY       = "FPS + задержка"
+L.TOKEN_KILLS             = "Мобов до уровня"
+L.TOKEN_ETA_KILLS         = "Время + мобов до уровня"
+L.TOKEN_INSTANCE_SESSION  = "Время в инстансах (сессия)"
+L.TOKEN_INSTANCE_TOTAL    = "Всего в инстансах"
+L.PFX_LEVEL_FMT           = "Уровень %s"  -- [fmt] duration
+L.PFX_SESSION_FMT         = "Сессия %s"  -- [fmt] duration
+L.PFX_PLAYED_FMT          = "Всего %s"  -- [fmt] duration
+L.PFX_SERVER_FMT          = "/played %s"  -- [fmt] duration
+L.PFX_AFK_FMT             = "АФК %s"  -- [fmt] duration
+L.PFX_AVG_FMT             = "Ср. %s/ур."  -- [fmt] duration
+L.PFX_ZONE_FMT            = "Зона %s"  -- [fmt] duration
+L.PFX_INST_SESSION_FMT    = "Инст. %s"  -- [fmt] duration (instances this session)
+L.PFX_INST_TOTAL_FMT      = "Инст. всего %s"  -- [fmt] duration (instances, whole character)
+L.XPLEFT_FMT              = "Осталось опыта: %s"  -- [fmt] number
+L.RESTED_FMT              = "Отдых %s"  -- [fmt] percent text
+L.PCTH_FMT                = "%s%%/ч"  -- [fmt] number text
+L.KILLS_FMT               = "мобов: %s"  -- [fmt] number text
+L.KILLS_ONE_FMT           = "%s моб"  -- [fmt] number text (exactly 1)
+L.STALL_MARK              = "*"  -- after a frozen XP per hour / time to level (no XP for a while)
+L.CAP_SHORT               = "Предел сервера"  -- XP infos at a detected server level cap
+
+-- Widget
+L.LEVEL_SHORT_FMT         = "УР. %d"  -- [fmt] level
+L.LEVEL_PCT_FMT           = "УР. %d · %s"  -- [fmt] level, percent text
+L.LEVEL_CAP_FMT           = "УР. %d · ПРЕДЕЛ"  -- [fmt] level (detected server level cap)
+L.XP_FMT                  = "Опыт: %s / %s"  -- [fmt] numbers
+L.XP_BARE_FMT             = "%s / %s"  -- [fmt] numbers (narrow bar: the XP label is dropped)
+L.XP_LABEL                = "Опыт:"  -- themes with split texts: label before the XP numbers (XP_BARE_FMT)
+L.LEVEL_TITLE_FMT         = "Уровень %d"  -- [fmt] level (themes with title-case level texts)
+L.LEVEL_CAP_TAG           = "ПРЕДЕЛ"  -- themes: detected server level cap, after the level (upper case)
+L.LEVEL_CAP_TAG_TITLE     = "Предел"  -- themes: detected server level cap, after LEVEL_TITLE_FMT
+L.UNLOCKED_HINT           = "Перетащите для перемещения · ПКМ: меню"
+L.MAX_LEVEL               = "Макс. уровень"
+
+-- Tooltip
+L.TT_LEVEL_FMT            = "Уровень %d » %d"  -- [fmt] level, next level
+L.TT_XP                   = "Опыт"
+L.TT_REMAINING            = "Осталось"
+L.TT_RESTED               = "Отдых"
+L.TT_RESTED_FMT           = "%s опыта (%s)"  -- [fmt] number, percent of the level
+L.TT_NEXT_LEVEL           = "След. уровень"
+L.TT_XPH                  = "Опыт в час"
+L.TT_KILLS                = "Убить мобов"
+L.TT_KILLS_FMT            = "~%s (ср. %s, посл. %s опыта)"  -- [fmt] count, average XP of the last 10 kills, XP of the last kill (both without rested bonus)
+L.TT_KILLS_NODATA         = "после следующего убийства"
+L.TT_RATES_FMT            = "сессия %s · уровень %s"  -- [fmt] rates
+L.TT_WARMING_FMT          = "оценка через ~%s"  -- [fmt] duration
+L.TT_NO_RATE              = "пока мало данных"
+L.TT_NODATA_FMT           = "доступно после ~%s учтенной игры"  -- [fmt] duration
+L.TT_NODATA_XP            = "доступно после первого опыта"
+L.RATE_ESTIMATE           = "оценка по вашему /played"
+L.TT_SRC_LEVEL            = "по этому уровню"
+L.TT_SRC_RECENT           = "по последним уровням"
+L.TT_PAUSED_FMT           = "Таймер на паузе: %s исключено"  -- [fmt] PAUSE_*
+L.PAUSE_AFK               = "время АФК"
+L.PAUSE_INN               = "время в таверне"
+L.PAUSE_CITY              = "время в городе"
+L.MASK_AFK                = "АФК"
+L.MASK_INN                = "таверна"
+L.MASK_CITY               = "город"
+L.TT_READONLY             = "Только чтение: данные более новой версии"
+L.TT_EXCL_FMT             = "искл.: %s"  -- [fmt] mask label
+L.TT_SESSION              = "Сессия"
+L.TT_THIS_LEVEL           = "Этот уровень"
+L.TT_ZONE_FMT             = "Зона: %s"  -- [fmt] zone name
+L.TT_PLAYED               = "Сыграно"
+L.TT_PLAYED_EXCL_FMT      = "Сыграно (искл.: %s)"  -- [fmt] mask label
+L.TT_PREINSTALL_FMT       = "вкл. %s до установки, без фильтра"  -- [fmt] duration
+L.TT_EST_FMT              = "вкл. %s, восстановлено после вылета"  -- [fmt] duration
+L.TT_SERVER               = "/played сервера"
+L.TT_SERVER_AGE_FMT       = "%s (%s)"  -- [fmt] duration, AGO text
+L.TT_AVG_LEVEL            = "В среднем за уровень"
+L.TT_AVG_RECENT_FMT       = "Среднее за посл. %d ур."  -- [fmt] count (always >= 2)
+L.TT_BREAKDOWN            = "Распределение"
+L.BD_PART_FMT             = "%s %s"  -- [fmt] part label (BD_*), percent
+L.BD_WORLD                = "Мир"
+L.BD_DUNGEON              = "Подземелья"
+L.BD_RAID                 = "Рейды"
+L.BD_PVP                  = "PvP"
+L.BD_TAXI                 = "Полет"
+L.BD_AFK                  = "АФК"
+L.BD_INN                  = "Таверна"
+L.BD_CITY                 = "Город"
+L.TT_INSTANCES            = "В инстансах"
+L.TT_HINT                 = "Shift: подробно · ЛКМ: статистика · ПКМ: меню"
+L.TT_HINT_COMPARTMENT     = "Shift: подробно · ЛКМ: настройки · ПКМ: статистика"
+L.TT_MAX_LEVEL            = "Максимальный уровень достигнут"
+L.TT_CAP_FMT              = "Уровень %d: текущий предел уровня на сервере (мобов подряд без опыта: %d)"  -- [fmt] level, mobs killed without XP (3 or more)
+L.TT_CAP_RESUME           = "Учет опыта возобновится сам, как только сервер снова начнет давать опыт."
+L.TT_STALLED_FMT          = "%s Опыт в час заморожен: нет опыта уже %s игры"  -- [fmt] STALL_MARK, duration of counted play
+L.TT_STALLED_RESUME       = "Расчет продолжится со следующим опытом; время без опыта не учитывается."
+L.TT_TOP_ZONES            = "Главные зоны уровня"
+L.TT_TOP_CITIES           = "Частые столицы"
+L.SECTION_CONTINENTS      = "Континенты"
+L.CONT_INSTANCES          = "Инстансы"
+L.CONT_OTHER              = "Другое"
+L.TT_OF_WHICH_AFK_FMT     = "%s (из них АФК %s)"  -- [fmt] durations
+L.TT_LAST_LEVELS          = "Последние уровни"
+L.TT_LEVEL_ROW_FMT        = "Уровень %d"  -- [fmt] level
+L.TT_INN                  = "Таверна / зона отдыха"
+L.TT_CITY                 = "Город"
+L.TT_AFK                  = "АФК"
+L.TT_TAXI                 = "Полет"
+L.TT_DEATHS               = "Смерти"
+L.TT_UNTRACKED            = "До установки / без учета"
+L.TT_UNTRACKED_NOTE       = "без деления"
+L.TT_EST_TOTAL            = "Восстановлено после вылетов"
+L.TT_EST_NOTE             = "оценочное деление"
+L.TT_ACCOUNT_FMT          = "Аккаунт (персонажей: %d)"  -- [fmt] count (2 or more)
+L.TT_ACCOUNT_ONE_FMT      = "Аккаунт (%d персонаж)"  -- [fmt] count (1)
+L.TT_ACCOUNT_INST         = "Аккаунт, в инстансах"
+L.TT_NET                  = "FPS · локальная · мировая"
+L.TT_NET_FMT              = "%s · %s · %s"  -- [fmt] fps, home, world
+
+-- Context menu
+L.MENU_EXCLUDE_AFK        = "Исключить время АФК"
+L.MENU_EXCLUDE_INN        = "Исключить время в таверне / зоне отдыха"
+L.MENU_EXCLUDE_CITY       = "Исключить время в городе"
+L.MENU_LOCK               = "Закрепить"
+L.MENU_THEME              = "Тема"
+L.MENU_STATS              = "Статистика..."
+L.MENU_RESET_SESSION      = "Сбросить сессию"
+L.MENU_HIDE               = "Скрыть"
+L.MENU_OPTIONS            = "Настройки..."
+
+-- Options panel
+L.OPT_EXCLUSIONS          = "Исключения"
+L.OPT_EXCLUSIONS_HELP     = "Исключения меняют только отображение: ничего не удаляется, все сразу пересчитывается."
+L.OPT_CITY_HELP           = "Города: Штормград, Стальгорн, Дарнас, Оргриммар, Громовой Утес, Подгород (/tpl citytoggle добавляет или убирает текущую зону). Таверна / зона отдыха: любая другая зона отдыха."
+L.OPT_DISPLAY             = "Отображение"
+L.OPT_THEME               = "Тема"
+L.OPT_THEME_NOTE          = "Меняет вид полосы, ее подсказки, графика и окна статистики. Цвета, выбранные ниже, заменяют цвета темы."
+L.OPT_THEME_RESTART_NOTE  = "После установки или обновления TruePlayed перезапустите игру (/reload недостаточно), чтобы загрузились шрифты и текстуры тем."
+L.OPT_SHOW                = "Показывать полосу"
+L.OPT_SLOT1               = "Инфо 1 (крупно)"
+L.OPT_SLOT2               = "Инфо 2"
+L.OPT_SLOT3               = "Инфо 3"
+L.OPT_SLOT3_POS           = "Положение инфо 3"
+L.OPT_SLOTS_NOTE          = "Инфо 1 вверху справа, инфо 2 после опыта, инфо 3 вверху."
+L.POS_CENTER              = "Вверху по центру"
+L.POS_LEFT                = "Вверху слева"
+L.OPT_PCT_POS             = "Процент уровня"
+L.PCT_FOLLOW              = "Следует за полосой"
+L.PCT_LEVEL               = "Рядом с уровнем"
+L.OPT_MAX_SLOTS           = "На макс. уровне заменить инфо об опыте на:"
+L.OPT_MAX_SLOT_FMT        = "Инфо %d на макс. уровне"  -- [fmt] slot index
+L.OPT_WIDTH               = "Ширина"
+L.OPT_HEIGHT              = "Высота полосы"
+L.OPT_SCALE               = "Масштаб"
+L.OPT_FONT_SIZE           = "Размер текста"
+L.OPT_LOCK                = "Закрепить положение"
+L.OPT_COMBAT_HIDE         = "Скрывать в бою"
+L.OPT_FADE                = "Тускнеть без курсора"
+L.OPT_HIDE_MAX            = "Скрывать на макс. уровне"
+L.OPT_LANGUAGE            = "Язык (Language)"
+L.OPT_LANGUAGE_NOTE       = "Язык TruePlayed меняется после перезагрузки интерфейса (кнопка ниже или /reload). Названия из игры (зоны, мобы, подземелья, персонажи) остаются на языке клиента игры."
+L.OPT_RELOAD              = "Перезагрузить UI"
+L.LANG_AUTO               = "Авто"
+L.LANG_ENUS               = "English"
+L.LANG_FRFR               = "Français"
+L.LANG_DEDE               = "Deutsch"
+L.LANG_ESES               = "Español (EU)"
+L.LANG_ESMX               = "Español (AL)"
+L.LANG_ITIT               = "Italiano"
+L.LANG_PTBR               = "Português (BR)"
+L.LANG_RURU               = "\208\160\209\131\209\129\209\129\208\186\208\184\208\185"  -- Russian, in Cyrillic (escaped: this file is Latin-1)
+L.LANG_KOKR               = "\237\149\156\234\181\173\236\150\180"  -- Korean, in Hangul (escaped)
+L.LANG_ZHCN               = "\231\174\128\228\189\147\228\184\173\230\150\135"  -- Simplified Chinese (escaped)
+L.LANG_ZHTW               = "\231\185\129\233\171\148\228\184\173\230\150\135"  -- Traditional Chinese (escaped)
+L.OPT_TEXTS               = "Тексты"
+L.OPT_TEXT_COLOR          = "Цвет текста"
+L.OPT_TEXT_COLOR_RESET    = "Цвета темы"
+L.OPT_TEXT_COLOR_NOTE     = "Применяется ко всем текстам полосы. Цвета самой полосы настраиваются ниже."
+L.OPT_OUTLINE             = "Контур текста"
+L.OUTLINE_NONE            = "Нет"
+L.OUTLINE_THIN            = "Тонкий"
+L.OUTLINE_THICK           = "Толстый"
+L.OPT_SHADOW              = "Тень текста"
+L.OPT_BG_ALPHA            = "Непрозрачность фона"
+L.OPT_BAR_COLORS          = "Цвета полосы"
+L.OPT_XP_COLOR            = "Цвет полосы опыта"
+L.OPT_RESTED_COLOR        = "Цвет бонуса отдыха"
+L.OPT_BAR_COLORS_RESET    = "Цвета темы"
+L.OPT_BAR_COLORS_NOTE     = "Пока вы не выбрали свои цвета, полоса использует цвета темы. Когда вы отдохнули, полоса окрашивается в цвет бонуса отдыха, а более светлый оттенок показывает, докуда хватит бонуса. На максимальном уровне полоса заполнена целиком, в цвете полосы опыта, приглушенно."
+L.OPT_NET                 = "FPS и задержка"
+L.OPT_QUALITY_COLORS      = "Цвета качества (зеленый, желтый, красный)"
+L.OPT_QUALITY_COLORS_NOTE = "Без флажка FPS и задержка используют цвет текста."
+L.OPT_GRAPH_WINDOW        = "Период графика"
+L.OPT_GRAPH_NOTE          = "Наведите курсор на FPS или задержку на полосе, чтобы увидеть график, затем на график, чтобы прочитать значение. Игра обновляет задержку лишь примерно раз в 30 секунд."
+L.OPT_CALC                = "Расчет"
+L.OPT_REACTIVITY          = "Отзывчивость опыта в час"
+L.OPT_REACTIVITY_HELP     = "Как быстро опыт в час следует за вашим недавним темпом."
+L.REACT_SLOW              = "Медленно (90 мин)"
+L.REACT_NORMAL            = "Обычно (60 мин)"
+L.REACT_FAST              = "Быстро (20 мин)"
+L.OPT_REQUEST_PLAYED      = "Запрашивать /played у сервера при входе"
+L.OPT_REQUEST_PLAYED_HELP = "Нужно, чтобы восстановить время после вылета. Обычные строки /played появятся в чате один раз, только если никакой другой аддон не запросил их в течение 10 секунд."
+L.OPT_HIDE_PLAYED         = "Скрывать строки /played, когда их запрашивает TruePlayed (экспериментально)"
+L.OPT_HIDE_PLAYED_HELP    = "Ненадолго перехватывает вывод /played в чат, пока ждет собственный запрос TruePlayed. Введенный вами /played показывается всегда. Может мешать чату в подземельях: отключите, если видите ошибки чата."
+L.OPT_HIDE_PLAYED_NA      = "Недоступно в этом клиенте."
+L.OPT_CITIES              = "Города"
+L.OPT_CITY_CURRENT_FMT    = "Текущая зона: %s (%s)"  -- [fmt] zone name, CITY_YES/CITY_NO
+L.CITY_YES                = "считается городом"
+L.CITY_NO                 = "не город"
+L.OPT_CITY_TOGGLE         = "Считать / не считать эту зону городом"
+L.OPT_DATA                = "Данные"
+L.OPT_OPEN_STATS          = "Статистика..."
+L.OPT_RESET_POS           = "Сбросить позицию"
+L.OPT_RESET_SESSION       = "Сбросить сессию"
+L.OPT_RESET_RATE          = "Сбросить опыт/ч"
+L.OPT_RESET_CHAR          = "Удалить данные этого персонажа"
+L.CONFIRM_ERASE_CHAR_FMT  = "Удалить все данные TruePlayed для %s? Это нельзя отменить."  -- [fmt] name
+L.ERASE_YES               = "Да"  -- the erase popup's buttons (the game's YES / NO follow the client)
+L.ERASE_NO                = "Нет"
+L.OPT_NOTE_PREINSTALL     = "Время, сыгранное до установки TruePlayed, нельзя распределить, и оно никогда не исключается."
+L.OPT_NOTE_IDLE           = "Несколько минут до того, как игра автоматически отметит вас АФК, по-прежнему считаются активными."
+L.OPT_NOTE_CRASH          = "После вылета игры (или игры без TruePlayed) недостающее время берется из /played сервера и распределяется по вашим привычкам; оно помечается как восстановленное."
+L.OPT_NOTE_CITY           = "Время в городе считается по карте: вся столица считается городом, а не только ее таверна."
+L.OPT_NOTE_STALL_FMT      = "После %d мин. игры без опыта (предел уровня, долгий перерыв в городе...) опыт в час и время до уровня замирают: это время не учитывается, и расчет продолжится со следующим опытом."  -- [fmt] minutes
+L.OPT_NOTE_CAP_FMT        = "Сервер с временным пределом уровня (бета) распознается, когда несколько мобов подряд (%d) не дают опыта: полоса тогда выглядит как на максимальном уровне и сама возвращается к обычному виду, как только опыт снова начисляется."  -- [fmt] mobs
+L.OPT_NOTE_READONLY       = "Только чтение: ваши данные сохранены более новой версией TruePlayed. Обновите аддон; пока ничего не записывается."
+L.OPT_VERSION_FMT         = "Версия %s"  -- [fmt] version
+L.SLIDER_PX_FMT           = "%d px"  -- [fmt] value
+L.SLIDER_PCT_FMT          = "%d%%"  -- [fmt] value
+
+-- Themes (display names: options dropdown, context menu, /tpl theme)
+L.THEME_FUTURISTE         = "Футуризм"
+L.THEME_ACTUEL            = "Классика"
+L.THEME_HEROIC            = "Героическое фэнтези"
+L.THEME_PIXEL             = "Пиксели (ретро)"
+L.THEME_CLASS             = "Класс (авто)"
+L.THEME_WARRIOR           = "Воин"
+L.THEME_PALADIN           = "Паладин"
+L.THEME_HUNTER            = "Охотник"
+L.THEME_ROGUE             = "Разбойник"
+L.THEME_PRIEST            = "Жрец"
+L.THEME_SHAMAN            = "Шаман"
+L.THEME_MAGE              = "Маг"
+L.THEME_WARLOCK           = "Чернокнижник"
+L.THEME_DRUID             = "Друид"
+
+-- Statistics window
+L.WIN_TITLE               = "TruePlayed - статистика"
+L.VIEW_ACCOUNT            = "Аккаунт (все персонажи)"
+L.WIN_ERASE               = "Удалить..."
+L.WIN_FILTER_FMT          = "Время без учета: %s"  -- [fmt] mask label
+L.TAB_LEVELS              = "Уровни"
+L.TAB_ZONES               = "Зоны"
+L.TAB_SESSIONS            = "Сессии"
+L.COL_LEVEL               = "Ур."
+L.COL_TIME                = "Время"
+L.COL_SERVER              = "Сервер"
+L.COL_XPH                 = "Опыт/ч"
+L.COL_AFK                 = "АФК"
+L.COL_INN                 = "Таверна"
+L.COL_CITY                = "Город"
+L.COL_INST                = "Инст."
+L.COL_MAIN_ZONE           = "Основная зона"
+L.COL_REACHED             = "Получен"
+L.COL_ZONE                = "Зона"
+L.COL_RAW                 = "Полное"
+L.COL_XP                  = "Опыт"
+L.COL_DATE                = "Дата"
+L.COL_DURATION            = "Длит."
+L.COL_LEVELS              = "Уровни"
+L.COL_DEATHS              = "Смерти"
+L.COL_CHARS               = "Перс."
+L.COL_AVG                 = "Среднее"
+L.ROW_IN_PROGRESS         = "в процессе"
+L.ROW_PARTIAL_TIP         = "Уровень начат до установки TruePlayed."
+L.ROW_REC_TIP             = "Получен во время вылета или без TruePlayed: время оценено по /played сервера и вашему опыту."
+L.ROW_EST_TIP_FMT         = "Включает %s, восстановленное после вылета (оценочное деление)."  -- [fmt] duration
+L.ROW_GAP_TIP_FMT         = "Время сервера на %s больше учтенного (без деления)."  -- [fmt] duration
+L.ROW_ZONES_FMT           = "Зоны на уровне %d"  -- [fmt] level
+L.ROW_ZONES_EMPTY         = "Для этого уровня зоны не записаны."
+L.LEVELS_HOVER_HINT       = "Наведите на уровень, чтобы увидеть его зоны."
+L.FOOTER_FMT              = "В среднем за уровень: %s · за посл. %d ур.: %s · всего: %s"  -- [fmt] dur, count, dur, dur
+L.FOOTER_ACCOUNT_FMT      = "В среднем за уровень по аккаунту: %s (персонажей: %d)"  -- [fmt] dur, count (2 or more)
+L.FOOTER_ACCOUNT_ONE_FMT  = "В среднем за уровень по аккаунту: %s (%d персонаж)"  -- [fmt] dur, count (1)
+L.FOOTER_ACCOUNT_NONE     = "В среднем за уровень по аккаунту: пока мало данных"
+L.CITIES_HEADER           = "Самые посещаемые столицы"
+L.INSTANCES_HEADER        = "Самые частые инстансы"
+L.INST_ROW_FMT            = "%s (%s)"  -- [fmt] instance name, KIND_*
+L.KIND_DUNGEON            = "подземелье"
+L.KIND_RAID               = "рейд"
+L.KIND_PVP                = "PvP"
+L.FOOTER_INST_FMT         = "в инстансах: %s"  -- [fmt] duration
+L.NO_DATA                 = "Пока нет данных."
+L.NO_SESSIONS_ACCOUNT     = "Сессии показываются для каждого персонажа."
+L.CITY_MARK               = "(город)"
+L.CHAR_FMT                = "%s - уровень %d"  -- [fmt] name, level
+L.ZONE_UNKNOWN            = "Неизвестная зона"
+L.ZONE_OTHER              = "Другие зоны"
+
+-- FPS / latency graph (Graph.lua)
+L.GRAPH_TITLE_FMT         = "FPS и задержка за %s"  -- [fmt] GRAPH_WINDOW_*
+L.GRAPH_WINDOW_30         = "30 с"
+L.GRAPH_WINDOW_60         = "1 мин"
+L.GRAPH_WINDOW_300        = "5 мин"
+L.GRAPH_AGO_FMT           = "%s назад: %s · %s"  -- [fmt] age (GRAPH_AGE_*), FPS text, latency text
+L.GRAPH_AGE_S_FMT         = "%d с"  -- [fmt] seconds (age below one minute)
+L.GRAPH_AGE_MS_FMT        = "%d мин %02d с"  -- [fmt] minutes, seconds
+L.GRAPH_MIN_AVG_MAX_FMT   = "мин %s · ср %s · макс %s"  -- [fmt] values
+L.GRAPH_LAT_NOTE          = "Игра обновляет задержку лишь примерно раз в 30 с: она рисуется ступеньками."
+L.GRAPH_NO_DATA           = "Сбор данных..."
+
+-- Registration for Core's language switch. Keep this block LAST: a string defined
+-- below it would miss the file-load copy into ns.L on a client in this language.
+local reg = ns.LOCALES
+if type(reg) ~= "table" then
+  reg = {}
+  ns.LOCALES = reg
+end
+reg[CODE] = L
+-- The default ("auto") on a client in this language: this language from file load on.
+if GetLocale() == CODE then
+  local dst = ns.L
+  if type(dst) == "table" then
+    for k, v in pairs(L) do dst[k] = v end
+  end
+end

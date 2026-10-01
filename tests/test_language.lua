@@ -9,6 +9,13 @@ local Stub, T = ...
 
 local format, find, concat = string.format, string.find, table.concat
 
+-- The /tpl lang values offered on a client of a Latin-script language (the native-only
+-- languages ru, ko, cn, tw are offered on their own client only: tests/test_locales.lua).
+local LATIN_ALIASES = "auto, en, fr, de, es, mx, it, pt"
+local LATIN_VALUES = { "auto", "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR" }
+local LATIN_LABELS = { "Auto", "English", "Fran\195\167ais", "Deutsch", "Espa\195\177ol (EU)", "Espa\195\177ol (AL)",
+                       "Italiano", "Portugu\195\170s (BR)" }
+
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
@@ -304,7 +311,7 @@ T.test("language: read-only mode refuses a new language (/tpl lang, the dropdown
   T.ok(Printed(format(L.UNKNOWN_CMD_FMT, "lang xx"), n + 1), "unknown value")
   n = #Stub.printed
   Stub.RunSlash("lang")
-  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr"), n + 1), "the listing")
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", LATIN_ALIASES), n + 1), "the listing")
   -- the dropdown: the same message, it keeps showing the setting
   ns.Options.Open()
   local controls = Controls()
@@ -351,9 +358,10 @@ T.test("language: SetSetting refuses unknown values; a stored unknown value beco
   local en, fr = EN(), FR()
   local ns = Start()
   local Core = ns.Core
-  T.eq(ns.C.LANGUAGES, { "auto", "enUS", "frFR" })
+  T.eq(ns.C.LANGUAGES, { "auto", "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN",
+                         "zhTW" })
   T.eq(ns.C.DEFAULTS.language, "auto")
-  for _, bad in ipairs({ "deDE", "fr", "FRFR", "en", "", 42, true, false, { "frFR" } }) do
+  for _, bad in ipairs({ "plPL", "enGB", "fr", "FRFR", "en", "", 42, true, false, { "frFR" } }) do
     T.no(Core.SetSetting("language", bad), "refused: " .. T.repr(bad))
     T.eq(Core.GetSetting("language"), "auto", "unchanged after " .. T.repr(bad))
   end
@@ -365,7 +373,7 @@ T.test("language: SetSetting refuses unknown values; a stored unknown value beco
   T.ok(Core.SetSetting("language", "auto"))
 
   -- stored unknown values: repaired to auto, then not written (sparse)
-  for _, stored in ipairs({ "xx", "deDE", 42, true, { "frFR" } }) do
+  for _, stored in ipairs({ "xx", "plPL", 42, true, { "frFR" } }) do
     for _, client in ipairs({ "enUS", "frFR" }) do
       Stub.Reset()
       ns = Start({ locale = client, db = { schema = 1, settings = { language = stored } } })
@@ -381,8 +389,8 @@ end)
 T.test("language: a language without a locale table falls back to English", function()
   local en = EN()
   -- auto on a client whose language has no table
-  local ns = Start({ locale = "deDE" })
-  SameStrings(ns.L, en, "auto on a deDE client")
+  local ns = Start({ locale = "ptPT" })
+  SameStrings(ns.L, en, "auto on a ptPT client")
   T.eq(ns.LOCALES, nil)
   -- frFR chosen on a build without Locales/frFR.lua
   local noFr = TocFiles({ ["Locales/frFR.lua"] = true })
@@ -736,8 +744,8 @@ T.test("options: the language dropdown, its note and the reload button (modern c
     T.eq(item.kind, "radio")
     values[i], labels[i] = item.data.value, item.text
   end
-  T.eq(values, { "auto", "enUS", "frFR" })
-  T.eq(labels, { "Auto", "English", "Fran\195\167ais" })
+  T.eq(values, LATIN_VALUES, "an enUS client: the Latin-script languages")
+  T.eq(labels, LATIN_LABELS)
   T.ok(ui.IsChecked(ui.FindMenuItem(root, "Auto")), "auto checked")
   T.no(ui.IsChecked(ui.FindMenuItem(root, "English")))
   -- the note, between the dropdown and the reload button
@@ -783,11 +791,11 @@ T.test("options: the language controls in French, with the fallback cycle button
   T.ok(rec ~= nil, "language control with the fallback controls")
   T.eq(rec.label:GetText(), "Langue (Language)")
   T.eq(rec.index, controls["widget.hideAtMax"].index + 1)
-  for i, want in ipairs({ { "auto", "Auto" }, { "enUS", "English" }, { "frFR", "Fran\195\167ais" } }) do
-    T.eq(rec.choices[i].value, want[1])
-    T.eq(rec.choices[i].label, want[2], "label in its own language: " .. want[1])
+  for i, want in ipairs(LATIN_VALUES) do
+    T.eq(rec.choices[i].value, want)
+    T.eq(rec.choices[i].label, LATIN_LABELS[i], "label in its own language: " .. want)
   end
-  T.eq(#rec.choices, 3)
+  T.eq(#rec.choices, #LATIN_VALUES)
   T.ok(FindRegion("Auto") ~= nil, "the button shows the setting")
   local b = rec.widget
   b:GetScript("OnClick")(b, "LeftButton")
@@ -795,10 +803,14 @@ T.test("options: the language controls in French, with the fallback cycle button
   T.ok(FindRegion("English") ~= nil)
   b:GetScript("OnClick")(b, "LeftButton")
   T.eq(ns.settings.language, "frFR")
+  for i = 4, #LATIN_VALUES do
+    b:GetScript("OnClick")(b, "LeftButton")
+    T.eq(ns.settings.language, LATIN_VALUES[i], "in C.LANGUAGES order")
+  end
   b:GetScript("OnClick")(b, "LeftButton")
   T.eq(ns.settings.language, "auto", "wraps around")
   b:GetScript("OnClick")(b, "RightButton")
-  T.eq(ns.settings.language, "frFR", "backwards")
+  T.eq(ns.settings.language, "ptBR", "backwards")
   T.eq(Stub.ui.reloads, 0, "cycling does not reload")
   T.ok(FindRegion(L.OPT_LANGUAGE_NOTE) ~= nil, "French note")
   T.ok(find(L.OPT_LANGUAGE_NOTE, "zones", 1, true) ~= nil)
@@ -810,7 +822,7 @@ end)
 
 T.test("options: a stored unknown language shows as Auto; the reload button without ReloadUI", function()
   -- a value from a newer version is repaired to auto before the panel shows it
-  local ns = Start({ ui = { modern = true, reload = false }, db = { schema = 1, settings = { language = "deDE" } } })
+  local ns = Start({ ui = { modern = true, reload = false }, db = { schema = 1, settings = { language = "plPL" } } })
   ns.Options.Open()
   local rec = Controls().language
   local root = rawget(rec.widget, "_root")
@@ -829,7 +841,7 @@ T.test("/tpl lang lists, /tpl lang <value> sets (case-insensitive), anything els
   local L = ns.L
   local n = #Stub.printed
   Stub.RunSlash("lang")
-  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr"), n + 1), "current value and the choices")
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", LATIN_ALIASES), n + 1), "current value and the choices")
   T.eq(ns.settings.language, "auto", "listing changes nothing")
   for _, case in ipairs({ { "lang fr", "frFR", "Fran\195\167ais" }, { "lang EN", "enUS", "English" },
                           { "lang FrFr", "frFR", "Fran\195\167ais" }, { "lang enus", "enUS", "English" },
@@ -845,8 +857,9 @@ T.test("/tpl lang lists, /tpl lang <value> sets (case-insensitive), anything els
   T.ok(Printed(format(L.LANG_SET_FMT, "Fran\195\167ais"), n + 1), "the same value again: still confirmed")
   n = #Stub.printed
   Stub.RunSlash("lang")
-  T.ok(Printed(format(L.LANG_LIST_FMT, "Fran\195\167ais", "auto, en, fr"), n + 1), "the setting")
-  for _, bad in ipairs({ "lang xx", "lang deDE", "lang french", "lang fr_FR", "lang 1" }) do
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Fran\195\167ais", LATIN_ALIASES), n + 1), "the setting")
+  for _, bad in ipairs({ "lang xx", "lang plPL", "lang french", "lang fr_FR", "lang 1", "lang ru", "lang ruRU",
+                         "lang ko", "lang cn", "lang tw" }) do
     n = #Stub.printed
     Stub.RunSlash(bad)
     T.ok(Printed(format(L.UNKNOWN_CMD_FMT, bad), n + 1), "unknown: " .. bad)
@@ -862,7 +875,7 @@ T.test("/tpl lang lists, /tpl lang <value> sets (case-insensitive), anything els
     local line = Stub.printed[i]
     if find(line, L.HELP_SHOW, 1, true) then showAt = i end
     if find(line, L.HELP_THEME, 1, true) then themeAt = i end
-    if find(line, L.HELP_LANG, 1, true) then langAt = i end
+    if find(line, format(L.HELP_LANG, "auto | en | fr | de | es | mx | it | pt"), 1, true) then langAt = i end
   end
   T.ok(showAt ~= nil and themeAt ~= nil and langAt ~= nil, "show, theme and lang lines")
   T.eq(themeAt, showAt + 1, "HELP_THEME after HELP_SHOW")
@@ -874,20 +887,21 @@ T.test("/tpl lang in French", function()
   local ns = Start({ locale = "frFR" })
   local n = #Stub.printed
   Stub.RunSlash("lang")
-  T.ok(Printed("Langue : Auto. Disponibles : auto, en, fr.", n + 1))
+  T.ok(Printed("Langue : Auto. Disponibles : " .. LATIN_ALIASES .. ".", n + 1))
   n = #Stub.printed
   Stub.RunSlash("lang en")
   T.eq(ns.settings.language, "enUS")
   T.ok(Printed("Langue : English. Tapez /reload pour l'appliquer.", n + 1), "said in the current language")
   n = #Stub.printed
   Stub.RunSlash("help")
-  T.ok(Printed("/tpl lang [auto | en | fr] - affiche ou change la langue de TruePlayed (apr\195\168s /reload)", n + 1))
+  T.ok(Printed("/tpl lang [auto | en | fr | de | es | mx | it | pt] - affiche ou change la langue de TruePlayed"
+    .. " (apr\195\168s /reload)", n + 1))
   -- the next UI load is in English
   ns = Stub.Restart({ reload = true, settle = 3 })
   T.eq(ns.L.ON, "on")
   n = #Stub.printed
   Stub.RunSlash("lang")
-  T.ok(Printed("Language: English. Available: auto, en, fr.", n + 1))
+  T.ok(Printed("Language: English. Available: " .. LATIN_ALIASES .. ".", n + 1))
 end)
 
 -- The recipe for a new locale (enUS.lua header): the listing is built from C.LANGUAGES
@@ -897,17 +911,17 @@ T.test("/tpl lang lists C.LANGUAGES; a copy of frFR.lua with another CODE regist
   local ns = Start()
   local L = ns.L
   local codes = ns.C.LANGUAGES
-  codes[#codes + 1] = "deDE"
+  codes[#codes + 1] = "plPL"
   local n = #Stub.printed
   Stub.RunSlash("lang")
-  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr, deDE"), n + 1),
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", LATIN_ALIASES .. ", plPL"), n + 1),
     "a code without an alias is listed as its code")
   codes[#codes] = nil
 
   local f = assert(io.open(Stub.ROOT .. "Locales/frFR.lua", "rb"))
   local src = f:read("*a")
   f:close()
-  local copy, count = src:gsub('\nlocal CODE = "frFR"\n', '\nlocal CODE = "deDE"\n')
+  local copy, count = src:gsub('\nlocal CODE = "frFR"\n', '\nlocal CODE = "plPL"\n')
   T.eq(count, 1, "one CODE line")
   local function Run(client)
     local done = false
@@ -915,7 +929,7 @@ T.test("/tpl lang lists C.LANGUAGES; a copy of frFR.lua with another CODE regist
       if done then return nil end
       done = true
       return copy
-    end, "=Locales/deDE.lua"))
+    end, "=Locales/plPL.lua"))
     local frTable = {}
     local cns = { L = {}, LOCALES = { frFR = frTable } }
     Stub.locale = client
@@ -925,9 +939,9 @@ T.test("/tpl lang lists C.LANGUAGES; a copy of frFR.lua with another CODE regist
   local fr = FR()
   local cns, frTable = Run("frFR")
   T.ok(cns.LOCALES.frFR == frTable, "the French table stays")
-  T.eq(cns.LOCALES.deDE, fr, "the copy registers under its CODE")
+  T.eq(cns.LOCALES.plPL, fr, "the copy registers under its CODE")
   T.eq(cns.L, {}, "a French client's L is not filled by the copy")
-  cns = Run("deDE")
+  cns = Run("plPL")
   T.eq(cns.L, fr, "a client in the copy's language gets it at file load")
 end)
 

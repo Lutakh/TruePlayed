@@ -6,9 +6,18 @@
 -- and every character decodes to a code point in U+0000..U+00FF (Latin-1 range: the
 -- game font has no glyph above it). Control characters other than TAB and LF, and the
 -- C1 range U+0080..U+009F (a sign of mojibake), are refused too.
+-- Exception, and the only one: the locale files of NATIVE_LOCALES (the languages of
+-- C.LANGUAGES_NATIVE_ONLY, offered and applied only on a client in that language, whose
+-- font draws their script) may hold any valid UTF-8 character above U+00FF.
 -- Problems are reported as file:line:column (column counted in characters).
 
 local MAX_REPORTS_PER_FILE = 25
+
+-- Locale files allowed to hold characters above U+00FF (exact repository paths).
+local NATIVE_LOCALES = {
+  ["Locales/ruRU.lua"] = true, ["Locales/koKR.lua"] = true,
+  ["Locales/zhCN.lua"] = true, ["Locales/zhTW.lua"] = true,
+}
 
 -- Suggested ASCII / Latin-1 replacements for characters that often slip in.
 local HINTS = {
@@ -147,6 +156,7 @@ local total = 0
 
 -- Returns the number of problems found in `data` (the content of `rel`).
 local function checkFile(rel, data)
+  local native = NATIVE_LOCALES[rel] == true
   local problems = 0
   local function report(line, col, fmt, ...)
     problems = problems + 1
@@ -221,10 +231,12 @@ local function checkFile(rel, data)
           i = i + 1
         else
           if cp > 0xFF then
-            local hint = HINTS[cp]
-            report(line, col, "U+%04X '%s' is outside the Latin-1 range%s", cp,
-              string.sub(data, i, i + need),
-              hint and (": use " .. hint .. " instead") or " (the game font cannot draw it)")
+            if not native then
+              local hint = HINTS[cp]
+              report(line, col, "U+%04X '%s' is outside the Latin-1 range%s", cp,
+                string.sub(data, i, i + need),
+                hint and (": use " .. hint .. " instead") or " (the game font cannot draw it)")
+            end
           elseif cp < 0xA0 then
             report(line, col, "U+%04X is a C1 control character (mojibake?)", cp)
           end

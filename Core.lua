@@ -163,8 +163,13 @@ C.CLASS_THEMES  = { WARRIOR = "warrior", PALADIN = "paladin", HUNTER = "hunter",
 -- language of the addon (setting "language", the order of the options dropdown): "auto"
 -- follows GetLocale(); every other value is a locale code with a Locales/<code>.lua that
 -- registers ns.LOCALES[code] (a new one also needs its LANG_* name and its /tpl lang
--- aliases in Options.lua)
-C.LANGUAGES = { "auto", "enUS", "frFR" }
+-- alias in Options.lua). enGB clients report enUS.
+C.LANGUAGES = { "auto", "enUS", "frFR", "deDE", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN",
+                "zhTW" }
+-- Languages written in a script that the fonts of the other clients cannot draw
+-- (Cyrillic, Hangul, Han): offered (options, /tpl lang) only on a client in that
+-- language, and applied only there (elsewhere the client's language applies).
+C.LANGUAGES_NATIVE_ONLY = { ruRU = true, koKR = true, zhCN = true, zhTW = true }
 
 -- state keys. Lowercase = active, uppercase = AFK. d / r / p (dungeon or scenario,
 -- raid, battleground or arena) apply only inside an instance, where inn and city
@@ -1658,7 +1663,9 @@ local LOGIN_MAX_ATTEMPTS = 10
 -- Every module captured the ns.L table at file load, so the chosen language is written
 -- INTO that same table: English first, then the chosen locale over it (a key it lacks
 -- stays English; the metatable fallback is kept). "auto" (or an invalid value) follows
--- GetLocale(); a code without a locale table falls back to English. Applied when the
+-- GetLocale(), and so does a C.LANGUAGES_NATIVE_ONLY language on a client in another
+-- language (its script would not draw); a code without a locale table falls back to
+-- English. Applied when the
 -- settings are adopted (ADDON_LOADED, again at PLAYER_LOGIN where a late table wins),
 -- before anything is built or rendered (DB_READY); ns.LOCALES is then dropped, so the
 -- unused strings are collected. Any later change (options, /tpl lang, a late
@@ -1670,8 +1677,10 @@ local function ApplyLanguage(db)
   if type(reg) ~= "table" or type(L) ~= "table" then return end
   local s = type(db) == "table" and db.settings
   local code = type(s) == "table" and s.language
-  if Normalize(SETTINGS.language, code, true) == nil or code == "auto" then
-    code = type(GetLocale) == "function" and GetLocale() or nil
+  local client = type(GetLocale) == "function" and GetLocale() or nil
+  if Normalize(SETTINGS.language, code, true) == nil or code == "auto"
+      or (C.LANGUAGES_NATIVE_ONLY[code] and code ~= client) then
+    code = client
   end
   local en, chosen = reg.enUS, reg[code]
   if type(en) == "table" then

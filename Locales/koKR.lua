@@ -1,0 +1,452 @@
+-- Locales/koKR.lua - Korean strings of TruePlayed (complete translation).
+-- A copy of frFR.lua (see the recipe at the top of enUS.lua): it builds its own table and
+-- registers it as ns.LOCALES[CODE]; Core applies it into ns.L when the "language" setting
+-- resolves to this language (at ADDON_LOADED, again at PLAYER_LOGIN), then drops
+-- ns.LOCALES. On a client in this language it also fills ns.L at file load (the default
+-- "auto"). Values are strings only, with the same keys and the same format arguments, in
+-- the same order, as enUS.lua (tests/test_locales.lua). Short words: the bar, the tooltip
+-- rows, option labels, buttons and menu entries must fit.
+-- Any UTF-8 character (the client of this language draws its script: see
+-- C.LANGUAGES_NATIVE_ONLY and tests/check_encoding.lua NATIVE_LOCALES).
+local _, ns = ...
+local CODE = "koKR"
+local L = {}
+
+-- General and chat
+L.ADDON_TITLE             = "TruePlayed"
+L.CHAT_PREFIX             = "|cff8b5cf6TruePlayed|r: "
+L.FIRST_RUN               = "바를 원하는 곳으로 끌어 놓은 뒤 우클릭 > 잠금을 선택하세요. 마우스를 올리면 상세 정보(Shift: 더 보기), 클릭하면 통계가 나옵니다. 설정: /tpl"
+L.ON                      = "켬"
+L.OFF                     = "끔"
+L.EXCL_STATE_FMT          = "%s: %s"  -- [fmt] exclusion label (MENU_EXCLUDE_*), ON/OFF
+L.CITY_ADDED_FMT          = "%s: 이제 도시로 계산합니다."  -- [fmt] zone name
+L.CITY_REMOVED_FMT        = "%s: 더 이상 도시로 계산하지 않습니다."  -- [fmt] zone name
+L.NO_ZONE                 = "현재 지역을 알 수 없습니다. 잠시 후 다시 시도하세요."
+L.CITY_INSTANCE           = "인스턴스는 도시로 계산하지 않습니다."
+L.UNKNOWN_CMD_FMT         = "알 수 없는 명령어 \"%s\". /tpl help를 입력하세요."  -- [fmt] command
+L.SYNC_REQUESTED          = "서버에 /played 요청 중..."
+L.SYNCED                  = "/played 동기화 완료."
+L.SYNC_THROTTLED          = "몇 초 후에 다시 요청하세요."
+L.RESET_POS_DONE          = "위치를 초기화했습니다."
+L.RESET_SESSION_DONE      = "세션을 초기화했습니다."
+L.RESET_RATE_DONE         = "시간당 경험치를 초기화했습니다."
+L.RESET_CHAR_DONE_FMT     = "%s의 데이터를 삭제했습니다."  -- [fmt] character name
+L.WIDGET_SHOWN            = "바를 표시합니다."
+L.WIDGET_HIDDEN           = "바를 숨겼습니다. 다시 표시하려면 /tpl show를 입력하세요."
+L.LOCKED                  = "바를 잠갔습니다."
+L.UNLOCKED                = "바 잠금 해제: 끌어서 이동하세요."
+L.THEME_SET_FMT           = "테마: %s"  -- [fmt] THEME_* name
+L.THEME_LIST_FMT          = "테마: %s. 사용 가능: %s"  -- [fmt] THEME_* name of the setting, theme keys (/tpl theme <key>)
+L.LANG_SET_FMT            = "언어: %s. 적용하려면 /reload를 입력하세요."  -- [fmt] LANG_* name
+L.LANG_LIST_FMT           = "언어: %s. 사용 가능: %s. 변경은 /reload 후 적용됩니다."  -- [fmt] LANG_* name of the setting, accepted values (/tpl lang <value>)
+L.DEBUG_ON                = "디버그 메시지 켬."
+L.DEBUG_OFF               = "디버그 메시지 끔."
+L.SCHEMA_NEWER            = "데이터가 더 최신 버전의 TruePlayed로 저장되었습니다. 애드온을 업데이트하세요. 기록이 일시 중지되었습니다."
+L.READONLY_ACTION         = "사용할 수 없음: 더 최신 버전의 TruePlayed로 저장된 데이터입니다(읽기 전용 모드)."
+L.NOT_READY               = "TruePlayed 로딩이 완료되지 않았습니다(오류 창 참고)."
+L.COMBAT_DEFERRED         = "전투가 끝나면 설정이 열립니다."
+L.EST_RECOVERED_FMT       = "마지막 저장 이후 누락된 플레이 시간 %s을(를) 복구했습니다(충돌 또는 TruePlayed 없이 플레이). 분류는 평소 습관을 바탕으로 추정했습니다."  -- [fmt] duration
+L.THEME_FONT_MISSING      = "테마 글꼴을 불러오지 못했습니다(%s). 게임 글꼴을 대신 사용합니다. 업데이트 후에는 게임을 다시 시작하세요."  -- [fmt] font file name (printed once per session, after CHAT_PREFIX)
+L.WTFIX_PROTECTED         = "WTFix가 로딩할 때마다 TruePlayed 데이터를 예전 사본으로 되돌려 최근 플레이 기록이 사라집니다. /wtfix를 입력하고 TruePlayed 체크를 해제하세요. 그러면 TruePlayed가 자체 데이터를 유지하고 서버 /played와 다시 동기화합니다."
+
+-- Help
+L.HELP_HEADER             = "명령어:"
+L.HELP_OPTIONS            = "/tpl - 설정"
+L.HELP_STATS              = "/tpl stats [levels | zones | sessions] - 통계 창"
+L.HELP_LOCK               = "/tpl lock | unlock - 바 잠금 또는 이동"
+L.HELP_SHOW               = "/tpl show | hide - 바 표시 또는 숨기기"
+L.HELP_THEME              = "/tpl theme [이름] - 테마 보기 또는 변경"
+L.HELP_LANG               = "/tpl lang [%s] - TruePlayed 언어 보기 또는 변경(/reload 후)"
+L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - 제외 설정(인수 없음: 전환)"
+L.HELP_CITY               = "/tpl citytoggle - 현재 지역을 도시로 계산(또는 해제)"
+L.HELP_PLAYED             = "/tpl played - 채팅창에 요약"
+L.HELP_SYNC               = "/tpl sync - 서버 /played 새로 고침"
+L.HELP_RESET              = "/tpl reset pos | session | rate | char - 바 위치, 세션, 시간당 경험치 초기화 또는 이 캐릭터 삭제(확인 후)"
+L.HELP_DEBUG              = "/tpl debug - 디버그 메시지"
+L.HELP_PERF               = "/tpl perf - TruePlayed의 메모리 및 CPU 사용량"
+
+-- /tpl played summary
+L.SUM_HEADER_FMT          = "%s - 레벨 %d"  -- [fmt] name, level
+L.SUM_PLAYED_FMT          = "플레이 시간: %s (서버 /played: %s)"  -- [fmt] filtered, server
+L.SUM_EXCLUDED_FMT        = "제외됨: %s (%s)"  -- [fmt] duration, mask label
+L.SUM_LEVEL_FMT           = "이번 레벨: %s · 레벨당 평균: %s"  -- [fmt] durations
+L.SUM_ETA_FMT             = "다음 레벨까지 %s, 속도 %s"  -- [fmt] ETA, rate
+L.SUM_ETA_NONE            = "다음 레벨: 아직 데이터가 부족합니다."
+L.SUM_MAX                 = "최고 레벨에 도달했습니다."
+L.SUM_CAP_FMT             = "레벨 %d: 현재 서버 레벨 제한입니다. 경험치 기록은 자동으로 재개됩니다."  -- [fmt] level (detected server level cap)
+
+-- /tpl perf
+L.PERF_HEADER_FMT         = "TruePlayed %s - 성능 (클라이언트 %d):"  -- [fmt] version, interface
+L.PERF_MEM_FMT            = "메모리 (코드 + 모든 캐릭터의 저장 데이터): %s KB"  -- [fmt] number
+L.PERF_MEM_NA             = "메모리: 이 클라이언트에서는 사용할 수 없습니다."
+L.PERF_CPU_FMT            = "CPU: 로딩 후 %s ms (분당 %s ms)"  -- [fmt] numbers
+L.PERF_CPU_OFF            = "CPU: 측정하려면 /console scriptProfile 1 입력 후 /reload 하세요. 게임이 느려지므로 끝나면 0으로 되돌리세요."
+L.PERF_PROFILER_FMT       = "프로파일러: 프레임당 평균 %s ms, 최대 %s ms"  -- [fmt] numbers
+L.PERF_DATA_FMT           = "이 캐릭터의 데이터: 레벨 %d, 지역 %d, 세션 %d. 캐릭터: %d"  -- [fmt] counts (label form: no plural agreement)
+L.PERF_TICK_ARMED_FMT     = "다음 %d초 동안 측정 중..."  -- [fmt] ticks
+L.PERF_TICK_FMT           = "틱: 평균 %s ms, 최대 %s ms (%d틱)"  -- [fmt] numbers, count
+
+-- Formats
+L.DUR_D_H                 = "%d일 %02d시간"  -- [fmt] days, hours
+L.DUR_H_M                 = "%d시간 %02d분"  -- [fmt] hours, minutes
+L.DUR_H                   = "%d시간"  -- [fmt] hours
+L.DUR_M                   = "%d분"  -- [fmt] minutes
+L.DUR_LT_1M               = "<1분"
+L.DUR_LONG_DHM            = "%d일 %d시간 %02d분"  -- [fmt]
+L.DUR_LONG_HM             = "%d시간 %02d분"  -- [fmt]
+L.DUR_LONG_M              = "%d분"  -- [fmt]
+L.ETA_FMT                 = "~%s"  -- [fmt] duration
+L.ETA_LT_1M               = "<1분"
+L.AGO_FMT                 = "%s 전"  -- [fmt] duration
+L.DECIMAL_SEP             = "."
+L.THOUSANDS_SEP           = ","
+L.NUM_K                   = "%sk"  -- [fmt] number text
+L.NUM_M                   = "%sM"  -- [fmt] number text
+L.PERCENT_FMT             = "%s%%"  -- [fmt] number text
+L.PER_HOUR                = "/시간"
+L.FPS_FMT                 = "%s fps"  -- [fmt] coloured number
+L.MS_FMT                  = "%s ms"  -- [fmt] coloured number
+L.DATE_FMT                = "%Y.%m.%d"  -- date() pattern
+L.DATETIME_FMT            = "%m.%d %H:%M"  -- date() pattern
+L.DOTS                    = "..."
+L.SEP                     = " · "
+L.RANGE_FMT               = "%s » %s"  -- [fmt] from, to
+
+-- Tokens (option labels) and token texts
+L.TOKEN_NONE              = "없음"
+L.TOKEN_ETA               = "다음 레벨까지 시간"
+L.TOKEN_XPH               = "시간당 경험치"
+L.TOKEN_PCTH              = "시간당 레벨 %"
+L.TOKEN_XPLEFT            = "남은 경험치"
+L.TOKEN_RESTED            = "휴식 경험치"
+L.TOKEN_LEVEL_TIME        = "이번 레벨 시간"
+L.TOKEN_SESSION           = "세션 시간"
+L.TOKEN_PLAYED            = "플레이 시간 (필터)"
+L.TOKEN_PLAYED_SERVER     = "서버 /played"
+L.TOKEN_AFK_SESSION       = "이번 세션 자리 비움"
+L.TOKEN_AVG_LEVEL         = "레벨당 평균 시간"
+L.TOKEN_ZONE_TIME         = "현재 지역 시간"
+L.TOKEN_FPS               = "FPS"
+L.TOKEN_LATENCY           = "지연 시간"
+L.TOKEN_FPS_LATENCY       = "FPS + 지연 시간"
+L.TOKEN_KILLS             = "레벨업까지 처치 수"
+L.TOKEN_ETA_KILLS         = "레벨업 시간 + 처치 수"
+L.TOKEN_INSTANCE_SESSION  = "이번 세션 인스턴스 시간"
+L.TOKEN_INSTANCE_TOTAL    = "전체 인스턴스 시간"
+L.PFX_LEVEL_FMT           = "레벨 %s"  -- [fmt] duration
+L.PFX_SESSION_FMT         = "세션 %s"  -- [fmt] duration
+L.PFX_PLAYED_FMT          = "전체 %s"  -- [fmt] duration
+L.PFX_SERVER_FMT          = "/played %s"  -- [fmt] duration
+L.PFX_AFK_FMT             = "자리 비움 %s"  -- [fmt] duration
+L.PFX_AVG_FMT             = "평균 %s/레벨"  -- [fmt] duration
+L.PFX_ZONE_FMT            = "지역 %s"  -- [fmt] duration
+L.PFX_INST_SESSION_FMT    = "인스 %s"  -- [fmt] duration (instances this session)
+L.PFX_INST_TOTAL_FMT      = "인스 전체 %s"  -- [fmt] duration (instances, whole character)
+L.XPLEFT_FMT              = "남은 경험치 %s"  -- [fmt] number
+L.RESTED_FMT              = "휴식 %s"  -- [fmt] percent text
+L.PCTH_FMT                = "%s%%/시간"  -- [fmt] number text
+L.KILLS_FMT               = "%s마리"  -- [fmt] number text
+L.KILLS_ONE_FMT           = "%s마리"  -- [fmt] number text (exactly 1)
+L.STALL_MARK              = "*"  -- after a frozen XP per hour / time to level (no XP for a while)
+L.CAP_SHORT               = "서버 제한"  -- XP infos at a detected server level cap
+
+-- Widget
+L.LEVEL_SHORT_FMT         = "레벨 %d"  -- [fmt] level
+L.LEVEL_PCT_FMT           = "레벨 %d · %s"  -- [fmt] level, percent text
+L.LEVEL_CAP_FMT           = "레벨 %d · 제한"  -- [fmt] level (detected server level cap)
+L.XP_FMT                  = "경험치: %s / %s"  -- [fmt] numbers
+L.XP_BARE_FMT             = "%s / %s"  -- [fmt] numbers (narrow bar: the XP label is dropped)
+L.XP_LABEL                = "경험치:"  -- themes with split texts: label before the XP numbers (XP_BARE_FMT)
+L.LEVEL_TITLE_FMT         = "레벨 %d"  -- [fmt] level (themes with title-case level texts)
+L.LEVEL_CAP_TAG           = "제한"  -- themes: detected server level cap, after the level (upper case)
+L.LEVEL_CAP_TAG_TITLE     = "제한"  -- themes: detected server level cap, after LEVEL_TITLE_FMT
+L.UNLOCKED_HINT           = "끌어서 이동 · 우클릭: 메뉴"
+L.MAX_LEVEL               = "최고 레벨"
+
+-- Tooltip
+L.TT_LEVEL_FMT            = "레벨 %d » %d"  -- [fmt] level, next level
+L.TT_XP                   = "경험치"
+L.TT_REMAINING            = "남은 양"
+L.TT_RESTED               = "휴식"
+L.TT_RESTED_FMT           = "%s 경험치 (%s)"  -- [fmt] number, percent of the level
+L.TT_NEXT_LEVEL           = "다음 레벨"
+L.TT_XPH                  = "시간당 경험치"
+L.TT_KILLS                = "처치 필요 수"
+L.TT_KILLS_FMT            = "~%s (평균 %s, 최근 %s 경험치)"  -- [fmt] count, average XP of the last 10 kills, XP of the last kill (both without rested bonus)
+L.TT_KILLS_NODATA         = "다음 처치 후 표시"
+L.TT_RATES_FMT            = "세션 %s · 레벨 %s"  -- [fmt] rates
+L.TT_WARMING_FMT          = "~%s 후 추정"  -- [fmt] duration
+L.TT_NO_RATE              = "아직 데이터 부족"
+L.TT_NODATA_FMT           = "집계된 플레이 ~%s 후 표시"  -- [fmt] duration
+L.TT_NODATA_XP            = "첫 경험치 획득 후 표시"
+L.RATE_ESTIMATE           = "/played 기반 추정"
+L.TT_SRC_LEVEL            = "이번 레벨 기준"
+L.TT_SRC_RECENT           = "최근 레벨 기준"
+L.TT_PAUSED_FMT           = "타이머 일시 중지: %s 제외"  -- [fmt] PAUSE_*
+L.PAUSE_AFK               = "자리 비움 시간"
+L.PAUSE_INN               = "여관 시간"
+L.PAUSE_CITY              = "도시 시간"
+L.MASK_AFK                = "자리 비움"
+L.MASK_INN                = "여관"
+L.MASK_CITY               = "도시"
+L.TT_READONLY             = "읽기 전용: 최신 버전의 데이터"
+L.TT_EXCL_FMT             = "%s 제외"  -- [fmt] mask label
+L.TT_SESSION              = "세션"
+L.TT_THIS_LEVEL           = "이번 레벨"
+L.TT_ZONE_FMT             = "지역: %s"  -- [fmt] zone name
+L.TT_PLAYED               = "플레이 시간"
+L.TT_PLAYED_EXCL_FMT      = "플레이 시간 (%s 제외)"  -- [fmt] mask label
+L.TT_PREINSTALL_FMT       = "설치 전 %s 포함, 필터 없음"  -- [fmt] duration
+L.TT_EST_FMT              = "충돌 후 복구한 %s 포함"  -- [fmt] duration
+L.TT_SERVER               = "서버 /played"
+L.TT_SERVER_AGE_FMT       = "%s (%s)"  -- [fmt] duration, AGO text
+L.TT_AVG_LEVEL            = "레벨당 평균"
+L.TT_AVG_RECENT_FMT       = "최근 %d레벨 평균"  -- [fmt] count (always >= 2)
+L.TT_BREAKDOWN            = "분류"
+L.BD_PART_FMT             = "%s %s"  -- [fmt] part label (BD_*), percent
+L.BD_WORLD                = "필드"
+L.BD_DUNGEON              = "던전"
+L.BD_RAID                 = "공격대"
+L.BD_PVP                  = "PvP"
+L.BD_TAXI                 = "비행"
+L.BD_AFK                  = "자리 비움"
+L.BD_INN                  = "여관"
+L.BD_CITY                 = "도시"
+L.TT_INSTANCES            = "인스턴스"
+L.TT_HINT                 = "Shift: 상세 · 클릭: 통계 · 우클릭: 메뉴"
+L.TT_HINT_COMPARTMENT     = "Shift: 상세 · 클릭: 설정 · 우클릭: 통계"
+L.TT_MAX_LEVEL            = "최고 레벨 도달"
+L.TT_CAP_FMT              = "레벨 %d: 현재 서버 레벨 제한 (최근 %d마리 처치에서 경험치 없음)"  -- [fmt] level, mobs killed without XP (3 or more)
+L.TT_CAP_RESUME           = "서버가 다시 경험치를 주면 경험치 기록이 자동으로 재개됩니다."
+L.TT_STALLED_FMT          = "%s 시간당 경험치 정지: %s 동안 경험치 획득 없음"  -- [fmt] STALL_MARK, duration of counted play
+L.TT_STALLED_RESUME       = "다음 경험치 획득 시 재개되며, 경험치 없이 보낸 시간은 제외됩니다."
+L.TT_TOP_ZONES            = "이번 레벨 주요 지역"
+L.TT_TOP_CITIES           = "자주 간 수도"
+L.SECTION_CONTINENTS      = "대륙"
+L.CONT_INSTANCES          = "인스턴스"
+L.CONT_OTHER              = "기타"
+L.TT_OF_WHICH_AFK_FMT     = "%s (자리 비움 %s)"  -- [fmt] durations
+L.TT_LAST_LEVELS          = "최근 레벨"
+L.TT_LEVEL_ROW_FMT        = "레벨 %d"  -- [fmt] level
+L.TT_INN                  = "여관 / 휴식 지역"
+L.TT_CITY                 = "도시"
+L.TT_AFK                  = "자리 비움"
+L.TT_TAXI                 = "비행"
+L.TT_DEATHS               = "죽음"
+L.TT_UNTRACKED            = "설치 전 / 미기록"
+L.TT_UNTRACKED_NOTE       = "분류 없음"
+L.TT_EST_TOTAL            = "충돌 후 복구"
+L.TT_EST_NOTE             = "추정 분류"
+L.TT_ACCOUNT_FMT          = "계정 (캐릭터 %d명)"  -- [fmt] count (2 or more)
+L.TT_ACCOUNT_ONE_FMT      = "계정 (캐릭터 %d명)"  -- [fmt] count (1)
+L.TT_ACCOUNT_INST         = "계정, 인스턴스"
+L.TT_NET                  = "FPS · 로컬 · 월드"
+L.TT_NET_FMT              = "%s · %s · %s"  -- [fmt] fps, home, world
+
+-- Context menu
+L.MENU_EXCLUDE_AFK        = "자리 비움 시간 제외"
+L.MENU_EXCLUDE_INN        = "여관 / 휴식 지역 시간 제외"
+L.MENU_EXCLUDE_CITY       = "도시 시간 제외"
+L.MENU_LOCK               = "잠금"
+L.MENU_THEME              = "테마"
+L.MENU_STATS              = "통계..."
+L.MENU_RESET_SESSION      = "세션 초기화"
+L.MENU_HIDE               = "숨기기"
+L.MENU_OPTIONS            = "설정..."
+
+-- Options panel
+L.OPT_EXCLUSIONS          = "제외"
+L.OPT_EXCLUSIONS_HELP     = "제외는 표시만 바꿉니다. 아무것도 삭제되지 않으며 모든 값이 즉시 다시 계산됩니다."
+L.OPT_CITY_HELP           = "도시: 스톰윈드, 아이언포지, 다르나서스, 오그리마, 썬더 블러프, 언더시티 (/tpl citytoggle로 현재 지역 추가 또는 제거). 여관 / 휴식 지역: 그 밖의 모든 휴식 지역."
+L.OPT_DISPLAY             = "표시"
+L.OPT_THEME               = "테마"
+L.OPT_THEME_NOTE          = "바, 툴팁, 그래프, 통계 창의 모양을 바꿉니다. 아래에서 고른 색상이 테마 색상을 대신합니다."
+L.OPT_THEME_RESTART_NOTE  = "TruePlayed를 설치하거나 업데이트한 뒤에는 테마 글꼴과 텍스처를 불러오도록 게임을 다시 시작하세요(/reload로는 부족합니다)."
+L.OPT_SHOW                = "바 표시"
+L.OPT_SLOT1               = "정보 1 (크게)"
+L.OPT_SLOT2               = "정보 2"
+L.OPT_SLOT3               = "정보 3"
+L.OPT_SLOT3_POS           = "정보 3 위치"
+L.OPT_SLOTS_NOTE          = "정보 1은 오른쪽 위, 정보 2는 경험치 뒤, 정보 3은 위쪽."
+L.POS_CENTER              = "위쪽 가운데"
+L.POS_LEFT                = "위쪽 왼쪽"
+L.OPT_PCT_POS             = "레벨 퍼센트"
+L.PCT_FOLLOW              = "바를 따라감"
+L.PCT_LEVEL               = "레벨 옆"
+L.OPT_MAX_SLOTS           = "최고 레벨에서 경험치 정보 대신 표시:"
+L.OPT_MAX_SLOT_FMT        = "최고 레벨 정보 %d"  -- [fmt] slot index
+L.OPT_WIDTH               = "너비"
+L.OPT_HEIGHT              = "바 높이"
+L.OPT_SCALE               = "크기 비율"
+L.OPT_FONT_SIZE           = "글자 크기"
+L.OPT_LOCK                = "위치 잠금"
+L.OPT_COMBAT_HIDE         = "전투 중 숨기기"
+L.OPT_FADE                = "마우스가 없으면 흐리게"
+L.OPT_HIDE_MAX            = "최고 레벨에서 숨기기"
+L.OPT_LANGUAGE            = "언어 (Language)"
+L.OPT_LANGUAGE_NOTE       = "TruePlayed의 언어는 UI를 다시 불러온 뒤 바뀝니다(아래 버튼 또는 /reload). 게임이 제공하는 이름(지역, 몬스터, 인스턴스, 캐릭터)은 게임 클라이언트의 언어로 남습니다."
+L.OPT_RELOAD              = "UI 다시 불러오기"
+L.LANG_AUTO               = "자동"
+L.LANG_ENUS               = "English"
+L.LANG_FRFR               = "Français"
+L.LANG_DEDE               = "Deutsch"
+L.LANG_ESES               = "Español (EU)"
+L.LANG_ESMX               = "Español (AL)"
+L.LANG_ITIT               = "Italiano"
+L.LANG_PTBR               = "Português (BR)"
+L.LANG_RURU               = "\208\160\209\131\209\129\209\129\208\186\208\184\208\185"  -- Russian, in Cyrillic (escaped: this file is Latin-1)
+L.LANG_KOKR               = "\237\149\156\234\181\173\236\150\180"  -- Korean, in Hangul (escaped)
+L.LANG_ZHCN               = "\231\174\128\228\189\147\228\184\173\230\150\135"  -- Simplified Chinese (escaped)
+L.LANG_ZHTW               = "\231\185\129\233\171\148\228\184\173\230\150\135"  -- Traditional Chinese (escaped)
+L.OPT_TEXTS               = "텍스트"
+L.OPT_TEXT_COLOR          = "글자 색상"
+L.OPT_TEXT_COLOR_RESET    = "테마 색상"
+L.OPT_TEXT_COLOR_NOTE     = "바의 모든 텍스트에 적용됩니다. 바 자체의 색상은 아래에서 설정합니다."
+L.OPT_OUTLINE             = "글자 외곽선"
+L.OUTLINE_NONE            = "없음"
+L.OUTLINE_THIN            = "얇게"
+L.OUTLINE_THICK           = "굵게"
+L.OPT_SHADOW              = "글자 그림자"
+L.OPT_BG_ALPHA            = "배경 불투명도"
+L.OPT_BAR_COLORS          = "바 색상"
+L.OPT_XP_COLOR            = "경험치 바 색상"
+L.OPT_RESTED_COLOR        = "휴식 경험치 색상"
+L.OPT_BAR_COLORS_RESET    = "테마 색상"
+L.OPT_BAR_COLORS_NOTE     = "직접 고르기 전까지 바는 테마 색상을 사용합니다. 휴식 상태일 때는 바가 휴식 경험치 색상이 되고, 더 밝은 색조가 휴식 경험치가 어디까지인지 보여 줍니다. 최고 레벨에서는 바가 경험치 바 색상으로 가득 차고 흐리게 표시됩니다."
+L.OPT_NET                 = "FPS 및 지연 시간"
+L.OPT_QUALITY_COLORS      = "품질 색상 (초록, 노랑, 빨강)"
+L.OPT_QUALITY_COLORS_NOTE = "체크를 해제하면 FPS와 지연 시간이 글자 색상을 사용합니다."
+L.OPT_GRAPH_WINDOW        = "그래프 기간"
+L.OPT_GRAPH_NOTE          = "바의 FPS나 지연 시간에 마우스를 올리면 그래프가 나오고, 그래프에 마우스를 올리면 값을 읽을 수 있습니다. 게임은 지연 시간을 약 30초마다만 갱신합니다."
+L.OPT_CALC                = "계산"
+L.OPT_REACTIVITY          = "시간당 경험치 반응 속도"
+L.OPT_REACTIVITY_HELP     = "시간당 경험치가 최근 속도를 얼마나 빨리 따라가는지 정합니다."
+L.REACT_SLOW              = "느리게 (90분)"
+L.REACT_NORMAL            = "보통 (60분)"
+L.REACT_FAST              = "빠르게 (20분)"
+L.OPT_REQUEST_PLAYED      = "접속 시 서버에 /played 요청"
+L.OPT_REQUEST_PLAYED_HELP = "충돌 후 시간을 복구하는 데 필요합니다. 다른 애드온이 10초 안에 요청하지 않은 경우에만 평소의 /played 줄이 채팅창에 한 번 나옵니다."
+L.OPT_HIDE_PLAYED         = "TruePlayed가 요청할 때 /played 줄 숨기기 (실험적)"
+L.OPT_HIDE_PLAYED_HELP    = "TruePlayed 자체 요청이 진행되는 동안 채팅창의 /played 표시를 잠깐 가로챕니다. 직접 입력한 /played는 항상 표시됩니다. 던전에서 채팅에 방해가 될 수 있으니, 채팅 오류가 보이면 끄세요."
+L.OPT_HIDE_PLAYED_NA      = "이 클라이언트에서는 사용할 수 없습니다."
+L.OPT_CITIES              = "도시"
+L.OPT_CITY_CURRENT_FMT    = "현재 지역: %s (%s)"  -- [fmt] zone name, CITY_YES/CITY_NO
+L.CITY_YES                = "도시로 계산"
+L.CITY_NO                 = "도시 아님"
+L.OPT_CITY_TOGGLE         = "이 지역을 도시로 계산 / 해제"
+L.OPT_DATA                = "데이터"
+L.OPT_OPEN_STATS          = "통계..."
+L.OPT_RESET_POS           = "위치 초기화"
+L.OPT_RESET_SESSION       = "세션 초기화"
+L.OPT_RESET_RATE          = "시간당 경험치 초기화"
+L.OPT_RESET_CHAR          = "이 캐릭터의 데이터 삭제"
+L.CONFIRM_ERASE_CHAR_FMT  = "%s의 TruePlayed 데이터를 모두 삭제할까요? 되돌릴 수 없습니다."  -- [fmt] name
+L.ERASE_YES               = "예"  -- the erase popup's buttons (the game's YES / NO follow the client)
+L.ERASE_NO                = "아니요"
+L.OPT_NOTE_PREINSTALL     = "TruePlayed 설치 전에 플레이한 시간은 분류할 수 없으며 제외되지 않습니다."
+L.OPT_NOTE_IDLE           = "게임이 자동으로 자리 비움 상태로 표시하기 전 몇 분은 활동 시간으로 계산됩니다."
+L.OPT_NOTE_CRASH          = "게임 충돌 후(또는 TruePlayed 없이 플레이한 후) 누락된 시간은 서버 /played에서 가져와 평소 습관대로 분류하며, 복구됨으로 표시됩니다."
+L.OPT_NOTE_CITY           = "도시 시간은 지도 기준으로 계산합니다. 여관뿐 아니라 수도 전체가 도시로 계산됩니다."
+L.OPT_NOTE_STALL_FMT      = "경험치 없이 %d분 동안 플레이하면(레벨 제한, 마을에서의 긴 휴식 등) 시간당 경험치와 다음 레벨까지 시간이 멈춥니다. 그 시간은 제외되며, 다음 경험치 획득 시 다시 계산됩니다."  -- [fmt] minutes
+L.OPT_NOTE_CAP_FMT        = "임시 레벨 제한이 있는 서버(베타)는 연속 %d마리 처치에서 경험치가 없으면 감지됩니다. 그러면 바가 최고 레벨처럼 보이며, 경험치가 다시 들어오면 자동으로 원래대로 돌아옵니다."  -- [fmt] mobs
+L.OPT_NOTE_READONLY       = "읽기 전용: 더 최신 버전의 TruePlayed로 저장된 데이터입니다. 애드온을 업데이트하세요. 그동안 아무것도 기록되지 않습니다."
+L.OPT_VERSION_FMT         = "버전 %s"  -- [fmt] version
+L.SLIDER_PX_FMT           = "%d px"  -- [fmt] value
+L.SLIDER_PCT_FMT          = "%d%%"  -- [fmt] value
+
+-- Themes (display names: options dropdown, context menu, /tpl theme)
+L.THEME_FUTURISTE         = "미래형"
+L.THEME_ACTUEL            = "클래식"
+L.THEME_HEROIC            = "영웅 판타지"
+L.THEME_PIXEL             = "픽셀 (레트로)"
+L.THEME_CLASS             = "직업 (자동)"
+L.THEME_WARRIOR           = "전사"
+L.THEME_PALADIN           = "성기사"
+L.THEME_HUNTER            = "사냥꾼"
+L.THEME_ROGUE             = "도적"
+L.THEME_PRIEST            = "사제"
+L.THEME_SHAMAN            = "주술사"
+L.THEME_MAGE              = "마법사"
+L.THEME_WARLOCK           = "흑마법사"
+L.THEME_DRUID             = "드루이드"
+
+-- Statistics window
+L.WIN_TITLE               = "TruePlayed - 통계"
+L.VIEW_ACCOUNT            = "계정 (모든 캐릭터)"
+L.WIN_ERASE               = "삭제..."
+L.WIN_FILTER_FMT          = "%s 제외한 시간"  -- [fmt] mask label
+L.TAB_LEVELS              = "레벨"
+L.TAB_ZONES               = "지역"
+L.TAB_SESSIONS            = "세션"
+L.COL_LEVEL               = "레벨"
+L.COL_TIME                = "시간"
+L.COL_SERVER              = "서버"
+L.COL_XPH                 = "시간당"
+L.COL_AFK                 = "자리비움"
+L.COL_INN                 = "여관"
+L.COL_CITY                = "도시"
+L.COL_INST                = "인스"
+L.COL_MAIN_ZONE           = "주 지역"
+L.COL_REACHED             = "달성"
+L.COL_ZONE                = "지역"
+L.COL_RAW                 = "원본"
+L.COL_XP                  = "경험치"
+L.COL_DATE                = "날짜"
+L.COL_DURATION            = "시간"
+L.COL_LEVELS              = "레벨"
+L.COL_DEATHS              = "죽음"
+L.COL_CHARS               = "캐릭터"
+L.COL_AVG                 = "평균"
+L.ROW_IN_PROGRESS         = "진행 중"
+L.ROW_PARTIAL_TIP         = "TruePlayed 설치 전에 시작한 레벨입니다."
+L.ROW_REC_TIP             = "충돌 중이거나 TruePlayed가 꺼진 동안 달성: 서버 /played와 경험치로 추정한 시간입니다."
+L.ROW_EST_TIP_FMT         = "충돌 후 복구한 %s 포함 (추정 분류)."  -- [fmt] duration
+L.ROW_GAP_TIP_FMT         = "서버 시간이 기록된 시간보다 %s 더 깁니다 (분류 없음)."  -- [fmt] duration
+L.ROW_ZONES_FMT           = "레벨 %d의 지역"  -- [fmt] level
+L.ROW_ZONES_EMPTY         = "이 레벨에 기록된 지역이 없습니다."
+L.LEVELS_HOVER_HINT       = "레벨에 마우스를 올리면 지역이 보입니다."
+L.FOOTER_FMT              = "레벨당 평균: %s · 최근 %d레벨: %s · 합계: %s"  -- [fmt] dur, count, dur, dur
+L.FOOTER_ACCOUNT_FMT      = "계정 레벨당 평균: %s (캐릭터 %d명)"  -- [fmt] dur, count (2 or more)
+L.FOOTER_ACCOUNT_ONE_FMT  = "계정 레벨당 평균: %s (캐릭터 %d명)"  -- [fmt] dur, count (1)
+L.FOOTER_ACCOUNT_NONE     = "계정 레벨당 평균: 아직 데이터 부족"
+L.CITIES_HEADER           = "자주 간 수도"
+L.INSTANCES_HEADER        = "가장 많이 플레이한 인스턴스"
+L.INST_ROW_FMT            = "%s (%s)"  -- [fmt] instance name, KIND_*
+L.KIND_DUNGEON            = "던전"
+L.KIND_RAID               = "공격대"
+L.KIND_PVP                = "PvP"
+L.FOOTER_INST_FMT         = "인스턴스: %s"  -- [fmt] duration
+L.NO_DATA                 = "아직 데이터가 없습니다."
+L.NO_SESSIONS_ACCOUNT     = "세션은 캐릭터별로 표시됩니다."
+L.CITY_MARK               = "(도시)"
+L.CHAR_FMT                = "%s - 레벨 %d"  -- [fmt] name, level
+L.ZONE_UNKNOWN            = "알 수 없는 지역"
+L.ZONE_OTHER              = "기타 지역"
+
+-- FPS / latency graph (Graph.lua)
+L.GRAPH_TITLE_FMT         = "FPS 및 지연 시간 (%s)"  -- [fmt] GRAPH_WINDOW_*
+L.GRAPH_WINDOW_30         = "30초"
+L.GRAPH_WINDOW_60         = "1분"
+L.GRAPH_WINDOW_300        = "5분"
+L.GRAPH_AGO_FMT           = "%s 전: %s · %s"  -- [fmt] age (GRAPH_AGE_*), FPS text, latency text
+L.GRAPH_AGE_S_FMT         = "%d초"  -- [fmt] seconds (age below one minute)
+L.GRAPH_AGE_MS_FMT        = "%d분 %02d초"  -- [fmt] minutes, seconds
+L.GRAPH_MIN_AVG_MAX_FMT   = "최소 %s · 평균 %s · 최대 %s"  -- [fmt] values
+L.GRAPH_LAT_NOTE          = "게임은 지연 시간을 약 30초마다만 갱신하므로 계단 모양으로 그려집니다."
+L.GRAPH_NO_DATA           = "샘플 수집 중..."
+
+-- Registration for Core's language switch. Keep this block LAST: a string defined
+-- below it would miss the file-load copy into ns.L on a client in this language.
+local reg = ns.LOCALES
+if type(reg) ~= "table" then
+  reg = {}
+  ns.LOCALES = reg
+end
+reg[CODE] = L
+-- The default ("auto") on a client in this language: this language from file load on.
+if GetLocale() == CODE then
+  local dst = ns.L
+  if type(dst) == "table" then
+    for k, v in pairs(L) do dst[k] = v end
+  end
+end

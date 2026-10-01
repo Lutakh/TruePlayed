@@ -1135,12 +1135,17 @@ T.test("locale: every enUS key has a frFR value and vice versa", function()
   T.ok(n >= 272, "the frozen 8.2 table has 272 keys, got " .. n)
 end)
 
+-- The names of the languages offered only on a client in that language (Cyrillic,
+-- Hangul, Han: C.LANGUAGES_NATIVE_ONLY) are the one exception to Latin-1: they are shown
+-- only where the client's font draws them (tests/test_locales.lua checks their values).
+local NATIVE_NAMES = { LANG_RURU = true, LANG_KOKR = true, LANG_ZHCN = true, LANG_ZHTW = true }
+
 T.test("locale: Latin-1 only, same format specifiers in enUS and frFR", function()
   local en, fr = LoadLocaleTables()
   for k, v in pairs(en) do
     T.eq(type(v), "string", k)
-    T.ok(IsLatin1(v), "enUS " .. k)
-    T.ok(IsLatin1(fr[k]), "frFR " .. k)
+    T.ok(IsLatin1(v) or NATIVE_NAMES[k], "enUS " .. k)
+    T.ok(IsLatin1(fr[k]) or NATIVE_NAMES[k], "frFR " .. k)
     if k ~= "DATE_FMT" and k ~= "DATETIME_FMT" then
       T.eq(Specs(fr[k]), Specs(v), "format specifiers of " .. k)
     end

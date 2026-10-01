@@ -8,18 +8,26 @@
 -- PLAYER_LOGIN.
 -- A new language <code> (a GetLocale() value such as deDE) needs, and only needs:
 --   1. Locales/<code>.lua: a copy of frFR.lua with its CODE local set to "<code>" (the
---      registration and the file-load check both read it), every value translated;
---   2. TruePlayed_Camelot.toc: the file listed after Locales/frFR.lua;
+--      registration and the file-load check both read it), every value translated, with
+--      the same format arguments in the same order (tests/test_locales.lua);
+--   2. TruePlayed_Camelot.toc: the file listed after the other locale files, and its
+--      Notes-<code> / Category-<code> lines (Latin-1 languages only: the TOC is Latin-1);
 --   3. Core.lua: <code> appended to C.LANGUAGES (the setting's values, the order of the
---      options dropdown and of the /tpl lang listing);
+--      options dropdown and of the /tpl lang listing); a language whose script the fonts
+--      of the other clients cannot draw (Cyrillic, Hangul, Han) also goes in
+--      C.LANGUAGES_NATIVE_ONLY, and its locale file may then hold any UTF-8 character
+--      (tests/check_encoding.lua NATIVE_LOCALES);
 --   4. every locale file: a LANG_<CODE> key holding the language's name written in that
---      language (the same text in every file), and Options.lua LanguageLabel returning
---      it for <code>;
+--      language (the same text in every file; outside Latin-1 as decimal escapes in the
+--      Latin-1 files), and Options.lua LanguageLabel returning it for <code>;
 --   5. Options.lua LANG_ALIAS: the short /tpl lang alias (optional: without one, the
---      listing shows the code and the command takes the code);
---   6. every locale file: the HELP_LANG text, which lists the /tpl lang values.
+--      listing shows the code and the command takes the code). HELP_LANG lists the
+--      offered aliases by itself.
+-- Short words: the bar, the tooltip rows, option labels, buttons and menu entries must
+-- fit (tests/test_locales.lua measures them with the real fonts).
 -- Keys marked [fmt] are format patterns: %s / %d arguments, literal percent as %%.
--- Latin-1 characters only (see SPEC-FINAL 2.6).
+-- Latin-1 characters only (see SPEC-FINAL 2.6); the names of the native-only languages
+-- are decimal escapes.
 local _, ns = ...
 local L = setmetatable({}, { __index = function(_, k) return k end })
 ns.L = L
@@ -68,7 +76,7 @@ L.HELP_STATS              = "/tpl stats [levels | zones | sessions] - statistics
 L.HELP_LOCK               = "/tpl lock | unlock - lock or move the bar"
 L.HELP_SHOW               = "/tpl show | hide - show or hide the bar"
 L.HELP_THEME              = "/tpl theme [name] - show or change the theme"
-L.HELP_LANG               = "/tpl lang [auto | en | fr] - show or change the language of TruePlayed (after /reload)"
+L.HELP_LANG               = "/tpl lang [%s] - show or change the language of TruePlayed (after /reload)"  -- [fmt] the offered /tpl lang values, joined by " | "
 L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - exclusions (no argument: toggle)"
 L.HELP_CITY               = "/tpl citytoggle - count the current zone as a city (or not)"
 L.HELP_PLAYED             = "/tpl played - summary in chat"
@@ -301,6 +309,15 @@ L.OPT_RELOAD              = "Reload UI"
 L.LANG_AUTO               = "Auto"
 L.LANG_ENUS               = "English"
 L.LANG_FRFR               = "Français"
+L.LANG_DEDE               = "Deutsch"
+L.LANG_ESES               = "Español (EU)"
+L.LANG_ESMX               = "Español (AL)"
+L.LANG_ITIT               = "Italiano"
+L.LANG_PTBR               = "Português (BR)"
+L.LANG_RURU               = "\208\160\209\131\209\129\209\129\208\186\208\184\208\185"  -- Russian, in Cyrillic (escaped: this file is Latin-1)
+L.LANG_KOKR               = "\237\149\156\234\181\173\236\150\180"  -- Korean, in Hangul (escaped)
+L.LANG_ZHCN               = "\231\174\128\228\189\147\228\184\173\230\150\135"  -- Simplified Chinese (escaped)
+L.LANG_ZHTW               = "\231\185\129\233\171\148\228\184\173\230\150\135"  -- Traditional Chinese (escaped)
 L.OPT_TEXTS               = "Texts"
 L.OPT_TEXT_COLOR          = "Text colour"
 L.OPT_TEXT_COLOR_RESET    = "Theme colours"

@@ -10,8 +10,14 @@
 --
 -- Width = sum of the advance widths (hmtx) of the code points (cmap formats 4 and 12) x
 -- size / unitsPerEm, colour codes left out, no kerning. Fonts of Media/Fonts are read from
--- their files; any other path (the game font, not shipped) is measured with Signika x 1.04,
--- a stand-in of about the same width as FRIZQT__.
+-- their files; any other path (the game font, not shipped) and any character a bundled
+-- font lacks is measured with a stand-in of the game font of the client that draws it:
+--   * Latin and the rest: Signika x 1.04, about the same width as FRIZQT__;
+--   * Cyrillic (U+0400-U+052F, FRIZQT___CYR on a ruRU client): Nunito Sans, scaled so that
+--     its Latin alphabet is as wide as the Latin stand-in's, + 5 % (no metrics of the
+--     Cyrillic game font in the repository);
+--   * Hangul, CJK ideographs, kana and full-width forms (the koKR / zhCN / zhTW game
+--     fonts): one em (the font size) per character, the widest such glyphs (conservative).
 local FM = {}
 
 local floor = math.floor
@@ -86,22 +92,35 @@ local function LoadFont(path)
   end
 
   local cache = {}
-  local function Adv(cp)
-    local v = cache[cp]
-    if v then return v end
+  local function Glyph(cp)
     local g = 0
     for i = 1, #subs do
       local t = subs[i]
       g = (t.fmt == 4) and Glyph4(t, cp) or Glyph12(t, cp)
       if g ~= 0 then break end
     end
+    return g
+  end
+  local function Adv(cp)
+    local v = cache[cp]
+    if v then return v end
+    local g = Glyph(cp)
     if g >= nHM then g = nHM - 1 end
     v = U16(s, hmtx + 4 * g)
     cache[cp] = v
     return v
   end
-  return { upm = upm, adv = Adv }
+  local function Has(cp) return Glyph(cp) ~= 0 end
+  return { upm = upm, adv = Adv, has = Has }
 end
+
+-- Scripts drawn by another game font than FRIZQT__ (see the header).
+local function IsWide(cp)
+  return (cp >= 0x1100 and cp <= 0x11FF) or (cp >= 0x2E80 and cp <= 0x9FFF) or (cp >= 0xAC00 and cp <= 0xD7AF)
+    or (cp >= 0xF900 and cp <= 0xFAFF) or (cp >= 0xFE30 and cp <= 0xFE4F) or (cp >= 0xFF00 and cp <= 0xFFEF)
+end
+local function IsCyrillic(cp) return cp >= 0x0400 and cp <= 0x052F end
+local LATIN_SAMPLE = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 -- UTF-8 code points of `text` into `out` (reused); returns the count.
 local function CodePoints(text, out)
@@ -121,31 +140,46 @@ end
 function FM.New(root)
   local fonts = {}
   local cps = {}
+  local function Load(file)
+    local f = fonts[file]
+    if f == nil then
+      f = LoadFont(root .. "Media/Fonts/" .. file) or false
+      fonts[file] = f
+    end
+    return f
+  end
+  -- A bundled font, or false for the game font (any other path).
   local function Font(path)
     local file = type(path) == "string" and path:match("([^\\/]+)$") or nil
-    local key = file or "?"
-    local f = fonts[key]
-    if f == nil then
-      f = (file and file:lower() ~= "frizqt__.ttf") and LoadFont(root .. "Media/Fonts/" .. file) or false
-      fonts[key] = f
-    end
-    if f then return f, 1 end
-    local sub = fonts["Signika-Medium.ttf"]
-    if sub == nil then
-      sub = LoadFont(root .. "Media/Fonts/Signika-Medium.ttf") or false
-      fonts["Signika-Medium.ttf"] = sub
-    end
-    return sub, 1.04
+    if not file or file:lower():find("^frizqt") then return false end
+    return Load(file)
+  end
+  local latin, cyr = Load("Signika-Medium.ttf"), Load("NunitoSans-SemiBold.ttf")
+  local LATIN_K, CYR_K = 1.04, 1
+  local function Sum(f, s)
+    local n, total = CodePoints(s, cps), 0
+    for i = 1, n do total = total + f.adv(cps[i]) end
+    return total / f.upm
+  end
+  if latin and cyr then CYR_K = Sum(latin, LATIN_SAMPLE) * LATIN_K / Sum(cyr, LATIN_SAMPLE) * 1.05 end
+  -- Width of code point cp in the game font stand-ins, in ems.
+  local function GameEm(cp)
+    if IsWide(cp) then return 1 end
+    if IsCyrillic(cp) and cyr then return cyr.adv(cp) / cyr.upm * CYR_K end
+    if latin then return latin.adv(cp) / latin.upm * LATIN_K end
+    return 0.5
   end
   return function(path, size, text)
     if text == nil then return 0 end
     text = tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-    local f, k = Font(path)
-    if not f then return 6 * #text end
+    local f = Font(path)
     local n = CodePoints(text, cps)
     local sum = 0
-    for i = 1, n do sum = sum + f.adv(cps[i]) end
-    return sum * (size or 12) / f.upm * k
+    for i = 1, n do
+      local cp = cps[i]
+      if f and f.has(cp) then sum = sum + f.adv(cp) / f.upm else sum = sum + GameEm(cp) end
+    end
+    return sum * (size or 12)
   end
 end
 

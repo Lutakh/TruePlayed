@@ -14,8 +14,8 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- The theme (SPEC-themes 5.6) is chosen in Display (first control), in the context
 -- menu (Theme submenu) or with /tpl theme [name]; all three share ThemeChoices().
 -- The language of the addon (setting "language", C.LANGUAGES) is chosen in Display
--- (after "Hide at max level") or with /tpl lang [auto | en | fr]: either one only
--- changes the setting, which Core applies into L at the next UI load (the "Reload UI"
+-- (after "Hide at max level") or with /tpl lang [value]: either one only offers the
+-- languages the client's font can draw (LanguageOffered) and only changes the setting, which Core applies into L at the next UI load (the "Reload UI"
 -- button under the dropdown calls ReloadUI). In read-only mode both refuse a change
 -- (READONLY_ACTION, like the data actions): nothing would be saved for the reload. The
 -- Reload UI button stays a plain reload. Localized strings are read from L at use
@@ -156,10 +156,11 @@ do
   end
 end
 
--- Short /tpl lang alias of a C.LANGUAGES value, shown by the listing; the full code is
--- accepted too, in any case (Util.Words lowercases). A value without an alias is listed
--- and typed as its code.
-local LANG_ALIAS = { auto = "auto", enUS = "en", frFR = "fr" }
+-- Short /tpl lang alias of a C.LANGUAGES value, shown by the listing and the help line;
+-- the full code is accepted too, in any case (Util.Words lowercases). A value without an
+-- alias is listed and typed as its code.
+local LANG_ALIAS = { auto = "auto", enUS = "en", frFR = "fr", deDE = "de", esES = "es", esMX = "mx",
+                     itIT = "it", ptBR = "pt", ruRU = "ru", koKR = "ko", zhCN = "cn", zhTW = "tw" }
 
 ---------------------------------------------------------------------------
 -- State
@@ -299,34 +300,66 @@ local function ThemeCommand(name)
   return true
 end
 
+-- A C.LANGUAGES_NATIVE_ONLY language on a client in another language: its script would
+-- not draw there.
+local function ForeignScript(value)
+  return C.LANGUAGES_NATIVE_ONLY[value] == true and value ~= GetLocale()
+end
+
 -- Display name of a "language" setting value, each in its own language (the same in
--- every locale file); nil for a value that is not a choice.
+-- every locale file; the code instead where its script would not draw); nil for a value
+-- that is not a choice. Read at use time: the names are in L once the language applied.
 local function LanguageLabel(value)
   if value == "auto" then return L.LANG_AUTO end
+  if ForeignScript(value) then return value end
   if value == "enUS" then return L.LANG_ENUS end
   if value == "frFR" then return L.LANG_FRFR end
+  if value == "deDE" then return L.LANG_DEDE end
+  if value == "esES" then return L.LANG_ESES end
+  if value == "esMX" then return L.LANG_ESMX end
+  if value == "itIT" then return L.LANG_ITIT end
+  if value == "ptBR" then return L.LANG_PTBR end
+  if value == "ruRU" then return L.LANG_RURU end
+  if value == "koKR" then return L.LANG_KOKR end
+  if value == "zhCN" then return L.LANG_ZHCN end
+  if value == "zhTW" then return L.LANG_ZHTW end
   return nil
 end
 
--- /tpl lang [auto | en | fr]: without a value, prints the current setting and the
--- accepted values (built from C.LANGUAGES and LANG_ALIAS); with a valid one, sets it
--- (the message says a /reload applies it, even when the value did not change: the
--- language may still be pending). Read-only mode refuses a value: nothing is saved, so
--- the next UI load would come back to the stored language. false = not a language (the
+-- The languages offered, in C.LANGUAGES order: every one the client's font can draw
+-- (a native-only language on its own client only), plus the stored setting (shown
+-- selected even when it came from another client).
+local function LanguageOffered(value)
+  return not ForeignScript(value) or value == GetSetting("language")
+end
+
+-- The /tpl lang aliases of the offered languages, joined by `sep`.
+local function LanguageAliases(sep)
+  local codes, names = C.LANGUAGES, {}
+  for i = 1, #codes do
+    local v = codes[i]
+    if LanguageOffered(v) then names[#names + 1] = LANG_ALIAS[v] or v end
+  end
+  return table_concat(names, sep)
+end
+
+-- /tpl lang [value]: without a value, prints the current setting and the accepted
+-- values (the offered ones, LanguageAliases); with a valid one, sets it (the message
+-- says a /reload applies it, even when the value did not change: the language may
+-- still be pending). Read-only mode refuses a value: nothing is saved, so the next UI
+-- load would come back to the stored language. false = not an offered language (the
 -- caller prints Unknown).
 local function LanguageCommand(arg)
   local codes = C.LANGUAGES
   if arg == nil then
-    local names = {}
-    for i = 1, #codes do names[i] = LANG_ALIAS[codes[i]] or codes[i] end
     local cur = GetSetting("language")
-    Util.Print(L.LANG_LIST_FMT, LanguageLabel(cur) or tostring(cur), table_concat(names, ", "))
+    Util.Print(L.LANG_LIST_FMT, LanguageLabel(cur) or tostring(cur), LanguageAliases(", "))
     return true
   end
   local value
   for i = 1, #codes do
     local v = codes[i]
-    if arg == LANG_ALIAS[v] or arg == v:lower() then value = v end
+    if (arg == LANG_ALIAS[v] or arg == v:lower()) and LanguageOffered(v) then value = v end
   end
   if not value then return false end
   if ReadOnlyRefused() then return true end
@@ -784,7 +817,7 @@ local function AddLanguage()
   local choices = {}
   for i = 1, #C.LANGUAGES do
     local v = C.LANGUAGES[i]
-    choices[i] = { value = v, label = LanguageLabel(v) or v }
+    if LanguageOffered(v) then choices[#choices + 1] = { value = v, label = LanguageLabel(v) or v } end
   end
   AddDropdown(L.OPT_LANGUAGE, "language", choices)
   AddNote(L.OPT_LANGUAGE_NOTE)
@@ -1332,6 +1365,7 @@ local function PrintHelp()
                  "HELP_DEBUG", "HELP_PERF" }
   for i = 1, #keys do
     local line = L[keys[i]]
+    if keys[i] == "HELP_LANG" then line = format(line, LanguageAliases(" | ")) end
     if out then out:AddMessage("  " .. line) else Util.Print(line) end
   end
 end

@@ -1,0 +1,452 @@
+-- Locales/esES.lua - Spanish (Spain, EU client) strings of TruePlayed (complete translation).
+-- A copy of frFR.lua (see the recipe at the top of enUS.lua): it builds its own table and
+-- registers it as ns.LOCALES[CODE]; Core applies it into ns.L when the "language" setting
+-- resolves to this language (at ADDON_LOADED, again at PLAYER_LOGIN), then drops
+-- ns.LOCALES. On a client in this language it also fills ns.L at file load (the default
+-- "auto"). Values are strings only, with the same keys and the same format arguments, in
+-- the same order, as enUS.lua (tests/test_locales.lua). Short words: the bar, the tooltip
+-- rows, option labels, buttons and menu entries must fit.
+-- Latin-1 characters only (see SPEC-FINAL 2.6); the names of the native-only languages
+-- are decimal escapes.
+local _, ns = ...
+local CODE = "esES"
+local L = {}
+
+-- General and chat
+L.ADDON_TITLE             = "TruePlayed"
+L.CHAT_PREFIX             = "|cff8b5cf6TruePlayed|r: "
+L.FIRST_RUN               = "Arrastra la barra donde quieras y luego clic derecho > Bloquear. Pasa el ratón por encima para ver detalles (Mayús: más) y haz clic para ver estadísticas. Opciones: /tpl"
+L.ON                      = "activado"
+L.OFF                     = "desactivado"
+L.EXCL_STATE_FMT          = "%s: %s"  -- [fmt] exclusion label (MENU_EXCLUDE_*), ON/OFF
+L.CITY_ADDED_FMT          = "%s ahora cuenta como ciudad."  -- [fmt] zone name
+L.CITY_REMOVED_FMT        = "%s ya no cuenta como ciudad."  -- [fmt] zone name
+L.NO_ZONE                 = "Zona actual desconocida, inténtalo de nuevo en un momento."
+L.CITY_INSTANCE           = "Las instancias nunca cuentan como ciudades."
+L.UNKNOWN_CMD_FMT         = "Comando desconocido «%s». Escribe /tpl help."  -- [fmt] command
+L.SYNC_REQUESTED          = "Pidiendo /played al servidor..."
+L.SYNCED                  = "/played sincronizado."
+L.SYNC_THROTTLED          = "Espera unos segundos antes de volver a pedirlo."
+L.RESET_POS_DONE          = "Posición restablecida."
+L.RESET_SESSION_DONE      = "Sesión restablecida."
+L.RESET_RATE_DONE         = "XP por hora restablecida."
+L.RESET_CHAR_DONE_FMT     = "Datos de %s borrados."  -- [fmt] character name
+L.WIDGET_SHOWN            = "Barra visible."
+L.WIDGET_HIDDEN           = "Barra oculta. Escribe /tpl show para volver a mostrarla."
+L.LOCKED                  = "Barra bloqueada."
+L.UNLOCKED                = "Barra desbloqueada: arrástrala para moverla."
+L.THEME_SET_FMT           = "Tema: %s"  -- [fmt] THEME_* name
+L.THEME_LIST_FMT          = "Tema: %s. Disponibles: %s"  -- [fmt] THEME_* name of the setting, theme keys (/tpl theme <key>)
+L.LANG_SET_FMT            = "Idioma: %s. Escribe /reload para aplicarlo."  -- [fmt] LANG_* name
+L.LANG_LIST_FMT           = "Idioma: %s. Disponibles: %s. Un cambio se aplica tras /reload."  -- [fmt] LANG_* name of the setting, accepted values (/tpl lang <value>)
+L.DEBUG_ON                = "Mensajes de depuración activados."
+L.DEBUG_OFF               = "Mensajes de depuración desactivados."
+L.SCHEMA_NEWER            = "Tus datos los guardó una versión más reciente de TruePlayed. Actualiza el addon; el seguimiento está en pausa."
+L.READONLY_ACTION         = "No disponible: tus datos son de una versión más reciente de TruePlayed (modo de solo lectura)."
+L.NOT_READY               = "TruePlayed no terminó de cargarse (consulta la ventana de errores)."
+L.COMBAT_DEFERRED         = "Las opciones se abrirán al terminar el combate."
+L.EST_RECOVERED_FMT       = "Se han recuperado %s de tiempo de juego que faltaban desde el último guardado (cierre inesperado o juego sin TruePlayed). Su reparto se estima según tus hábitos."  -- [fmt] duration
+L.THEME_FONT_MISSING      = "No se pudo cargar una fuente del tema (%s); se usa la fuente del juego. Reinicia el juego tras una actualización."  -- [fmt] font file name (printed once per session, after CHAT_PREFIX)
+L.WTFIX_PROTECTED         = "WTFix restaura los datos de TruePlayed a una copia antigua en cada carga, así que perderías tu historial de juego reciente. Escribe /wtfix y desmarca TruePlayed: así TruePlayed conserva sus propios datos y se resincroniza con el /played del servidor."
+
+-- Help
+L.HELP_HEADER             = "Comandos:"
+L.HELP_OPTIONS            = "/tpl - opciones"
+L.HELP_STATS              = "/tpl stats [levels | zones | sessions] - ventana de estadísticas"
+L.HELP_LOCK               = "/tpl lock | unlock - bloquear o mover la barra"
+L.HELP_SHOW               = "/tpl show | hide - mostrar u ocultar la barra"
+L.HELP_THEME              = "/tpl theme [nombre] - ver o cambiar el tema"
+L.HELP_LANG               = "/tpl lang [%s] - ver o cambiar el idioma de TruePlayed (tras /reload)"
+L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - exclusiones (sin argumento: alternar)"
+L.HELP_CITY               = "/tpl citytoggle - contar la zona actual como ciudad (o no)"
+L.HELP_PLAYED             = "/tpl played - resumen en el chat"
+L.HELP_SYNC               = "/tpl sync - actualizar el /played del servidor"
+L.HELP_RESET              = "/tpl reset pos | session | rate | char - restablecer la posición de la barra, la sesión o la XP por hora, o borrar este personaje (pide confirmación)"
+L.HELP_DEBUG              = "/tpl debug - mensajes de depuración"
+L.HELP_PERF               = "/tpl perf - memoria y CPU que usa TruePlayed"
+
+-- /tpl played summary
+L.SUM_HEADER_FMT          = "%s - nivel %d"  -- [fmt] name, level
+L.SUM_PLAYED_FMT          = "Jugado: %s (/played del servidor: %s)"  -- [fmt] filtered, server
+L.SUM_EXCLUDED_FMT        = "Excluido: %s (%s)"  -- [fmt] duration, mask label
+L.SUM_LEVEL_FMT           = "Este nivel: %s · media por nivel: %s"  -- [fmt] durations
+L.SUM_ETA_FMT             = "Siguiente nivel en %s a %s"  -- [fmt] ETA, rate
+L.SUM_ETA_NONE            = "Siguiente nivel: aún no hay datos suficientes."
+L.SUM_MAX                 = "Nivel máximo alcanzado."
+L.SUM_CAP_FMT             = "Nivel %d: tope de nivel actual del servidor. El seguimiento de XP se reanuda solo."  -- [fmt] level (detected server level cap)
+
+-- /tpl perf
+L.PERF_HEADER_FMT         = "TruePlayed %s - rendimiento (cliente %d):"  -- [fmt] version, interface
+L.PERF_MEM_FMT            = "Memoria (código + datos guardados de todos los personajes): %s KB"  -- [fmt] number
+L.PERF_MEM_NA             = "Memoria: no disponible en este cliente."
+L.PERF_CPU_FMT            = "CPU: %s ms desde la carga (%s ms por minuto)"  -- [fmt] numbers
+L.PERF_CPU_OFF            = "CPU: escribe /console scriptProfile 1 y luego /reload para medir. Ralentiza el juego: vuelve a ponerlo a 0 después."
+L.PERF_PROFILER_FMT       = "Perfilador: %s ms por fotograma de media, pico de %s ms"  -- [fmt] numbers
+L.PERF_DATA_FMT           = "Datos de este personaje: niveles %d, zonas %d, sesiones %d. Personajes: %d"  -- [fmt] counts (label form: no plural agreement)
+L.PERF_TICK_ARMED_FMT     = "Midiendo los próximos %d segundos..."  -- [fmt] ticks
+L.PERF_TICK_FMT           = "Tic: %s ms de media, %s ms como máximo en %d tics"  -- [fmt] numbers, count
+
+-- Formats
+L.DUR_D_H                 = "%d d %02d h"  -- [fmt] days, hours
+L.DUR_H_M                 = "%d h %02d min"  -- [fmt] hours, minutes
+L.DUR_H                   = "%d h"  -- [fmt] hours
+L.DUR_M                   = "%d min"  -- [fmt] minutes
+L.DUR_LT_1M               = "<1 min"
+L.DUR_LONG_DHM            = "%d d %d h %02d min"  -- [fmt]
+L.DUR_LONG_HM             = "%d h %02d min"  -- [fmt]
+L.DUR_LONG_M              = "%d min"  -- [fmt]
+L.ETA_FMT                 = "~%s"  -- [fmt] duration
+L.ETA_LT_1M               = "<1 min"
+L.AGO_FMT                 = "hace %s"  -- [fmt] duration
+L.DECIMAL_SEP             = ","
+L.THOUSANDS_SEP           = "."
+L.NUM_K                   = "%sk"  -- [fmt] number text
+L.NUM_M                   = "%sM"  -- [fmt] number text
+L.PERCENT_FMT             = "%s %%"  -- [fmt] number text
+L.PER_HOUR                = "/h"
+L.FPS_FMT                 = "%s fps"  -- [fmt] coloured number
+L.MS_FMT                  = "%s ms"  -- [fmt] coloured number
+L.DATE_FMT                = "%d/%m/%Y"  -- date() pattern
+L.DATETIME_FMT            = "%d/%m %H:%M"  -- date() pattern
+L.DOTS                    = "..."
+L.SEP                     = " · "
+L.RANGE_FMT               = "%s » %s"  -- [fmt] from, to
+
+-- Tokens (option labels) and token texts
+L.TOKEN_NONE              = "Nada"
+L.TOKEN_ETA               = "Tiempo hasta el siguiente nivel"
+L.TOKEN_XPH               = "XP por hora"
+L.TOKEN_PCTH              = "% de nivel por hora"
+L.TOKEN_XPLEFT            = "XP restante"
+L.TOKEN_RESTED            = "XP de descanso"
+L.TOKEN_LEVEL_TIME        = "Tiempo en este nivel"
+L.TOKEN_SESSION           = "Tiempo de sesión"
+L.TOKEN_PLAYED            = "Jugado (filtrado)"
+L.TOKEN_PLAYED_SERVER     = "/played del servidor"
+L.TOKEN_AFK_SESSION       = "AFK en esta sesión"
+L.TOKEN_AVG_LEVEL         = "Tiempo medio por nivel"
+L.TOKEN_ZONE_TIME         = "Tiempo en la zona actual"
+L.TOKEN_FPS               = "FPS"
+L.TOKEN_LATENCY           = "Latencia"
+L.TOKEN_FPS_LATENCY       = "FPS + latencia"
+L.TOKEN_KILLS             = "Enemigos por matar"
+L.TOKEN_ETA_KILLS         = "Tiempo al nivel + enemigos"
+L.TOKEN_INSTANCE_SESSION  = "Tiempo en instancias (sesión)"
+L.TOKEN_INSTANCE_TOTAL    = "Tiempo total en instancias"
+L.PFX_LEVEL_FMT           = "Nivel %s"  -- [fmt] duration
+L.PFX_SESSION_FMT         = "Sesión %s"  -- [fmt] duration
+L.PFX_PLAYED_FMT          = "Total %s"  -- [fmt] duration
+L.PFX_SERVER_FMT          = "/played %s"  -- [fmt] duration
+L.PFX_AFK_FMT             = "AFK %s"  -- [fmt] duration
+L.PFX_AVG_FMT             = "Media %s/niv."  -- [fmt] duration
+L.PFX_ZONE_FMT            = "Zona %s"  -- [fmt] duration
+L.PFX_INST_SESSION_FMT    = "Inst. %s"  -- [fmt] duration (instances this session)
+L.PFX_INST_TOTAL_FMT      = "Inst. total %s"  -- [fmt] duration (instances, whole character)
+L.XPLEFT_FMT              = "Faltan %s XP"  -- [fmt] number
+L.RESTED_FMT              = "Descanso %s"  -- [fmt] percent text
+L.PCTH_FMT                = "%s %%/h"  -- [fmt] number text
+L.KILLS_FMT               = "%s enemigos"  -- [fmt] number text
+L.KILLS_ONE_FMT           = "%s enemigo"  -- [fmt] number text (exactly 1)
+L.STALL_MARK              = "*"  -- after a frozen XP per hour / time to level (no XP for a while)
+L.CAP_SHORT               = "Tope del servidor"  -- XP infos at a detected server level cap
+
+-- Widget
+L.LEVEL_SHORT_FMT         = "NIVEL %d"  -- [fmt] level
+L.LEVEL_PCT_FMT           = "NIVEL %d · %s"  -- [fmt] level, percent text
+L.LEVEL_CAP_FMT           = "NIVEL %d · TOPE"  -- [fmt] level (detected server level cap)
+L.XP_FMT                  = "XP: %s / %s"  -- [fmt] numbers
+L.XP_BARE_FMT             = "%s / %s"  -- [fmt] numbers (narrow bar: the XP label is dropped)
+L.XP_LABEL                = "XP:"  -- themes with split texts: label before the XP numbers (XP_BARE_FMT)
+L.LEVEL_TITLE_FMT         = "Nivel %d"  -- [fmt] level (themes with title-case level texts)
+L.LEVEL_CAP_TAG           = "TOPE"  -- themes: detected server level cap, after the level (upper case)
+L.LEVEL_CAP_TAG_TITLE     = "Tope"  -- themes: detected server level cap, after LEVEL_TITLE_FMT
+L.UNLOCKED_HINT           = "Arrastra para mover · Clic derecho: menú"
+L.MAX_LEVEL               = "Nivel máximo"
+
+-- Tooltip
+L.TT_LEVEL_FMT            = "Nivel %d » %d"  -- [fmt] level, next level
+L.TT_XP                   = "XP"
+L.TT_REMAINING            = "Restante"
+L.TT_RESTED               = "Descansado"
+L.TT_RESTED_FMT           = "%s XP (%s)"  -- [fmt] number, percent of the level
+L.TT_NEXT_LEVEL           = "Siguiente nivel"
+L.TT_XPH                  = "XP por hora"
+L.TT_KILLS                = "Enemigos por matar"
+L.TT_KILLS_FMT            = "~%s (media %s XP, último %s XP)"  -- [fmt] count, average XP of the last 10 kills, XP of the last kill (both without rested bonus)
+L.TT_KILLS_NODATA         = "tras matar a tu próximo enemigo"
+L.TT_RATES_FMT            = "sesión %s · nivel %s"  -- [fmt] rates
+L.TT_WARMING_FMT          = "estimación en ~%s"  -- [fmt] duration
+L.TT_NO_RATE              = "aún no hay datos suficientes"
+L.TT_NODATA_FMT           = "disponible tras ~%s de juego contado"  -- [fmt] duration
+L.TT_NODATA_XP            = "disponible tras ganar tu primera XP"
+L.RATE_ESTIMATE           = "estimado según tu /played"
+L.TT_SRC_LEVEL            = "según este nivel hasta ahora"
+L.TT_SRC_RECENT           = "según tus últimos niveles"
+L.TT_PAUSED_FMT           = "Contador en pausa: %s excluido"  -- [fmt] PAUSE_*
+L.PAUSE_AFK               = "tiempo AFK"
+L.PAUSE_INN               = "tiempo en posada"
+L.PAUSE_CITY              = "tiempo en ciudad"
+L.MASK_AFK                = "AFK"
+L.MASK_INN                = "posada"
+L.MASK_CITY               = "ciudad"
+L.TT_READONLY             = "Solo lectura: datos de una versión más reciente"
+L.TT_EXCL_FMT             = "sin %s"  -- [fmt] mask label
+L.TT_SESSION              = "Sesión"
+L.TT_THIS_LEVEL           = "Este nivel"
+L.TT_ZONE_FMT             = "Zona: %s"  -- [fmt] zone name
+L.TT_PLAYED               = "Jugado"
+L.TT_PLAYED_EXCL_FMT      = "Jugado (sin %s)"  -- [fmt] mask label
+L.TT_PREINSTALL_FMT       = "incl. %s antes de instalar, sin filtrar"  -- [fmt] duration
+L.TT_EST_FMT              = "incl. %s reconstruido tras un cierre"  -- [fmt] duration
+L.TT_SERVER               = "/played del servidor"
+L.TT_SERVER_AGE_FMT       = "%s (%s)"  -- [fmt] duration, AGO text
+L.TT_AVG_LEVEL            = "Media por nivel"
+L.TT_AVG_RECENT_FMT       = "Media de los últimos %d niveles"  -- [fmt] count (always >= 2)
+L.TT_BREAKDOWN            = "Reparto"
+L.BD_PART_FMT             = "%s %s"  -- [fmt] part label (BD_*), percent
+L.BD_WORLD                = "Mundo"
+L.BD_DUNGEON              = "Mazmorras"
+L.BD_RAID                 = "Bandas"
+L.BD_PVP                  = "JcJ"
+L.BD_TAXI                 = "Vuelo"
+L.BD_AFK                  = "AFK"
+L.BD_INN                  = "Posada"
+L.BD_CITY                 = "Ciudad"
+L.TT_INSTANCES            = "En instancias"
+L.TT_HINT                 = "Mayús: detalles · Clic: estadísticas · Clic derecho: menú"
+L.TT_HINT_COMPARTMENT     = "Mayús: detalles · Clic: opciones · Clic derecho: estadísticas"
+L.TT_MAX_LEVEL            = "Nivel máximo alcanzado"
+L.TT_CAP_FMT              = "Nivel %d: tope de nivel actual del servidor (sin XP en los últimos %d enemigos)"  -- [fmt] level, mobs killed without XP (3 or more)
+L.TT_CAP_RESUME           = "El seguimiento de XP se reanuda solo en cuanto el servidor vuelva a dar XP."
+L.TT_STALLED_FMT          = "%s XP por hora congelada: sin XP en %s de juego"  -- [fmt] STALL_MARK, duration of counted play
+L.TT_STALLED_RESUME       = "Se reanuda con tu próxima XP; el tiempo sin XP no se cuenta."
+L.TT_TOP_ZONES            = "Zonas principales del nivel"
+L.TT_TOP_CITIES           = "Capitales más visitadas"
+L.SECTION_CONTINENTS      = "Continentes"
+L.CONT_INSTANCES          = "Instancias"
+L.CONT_OTHER              = "Otros"
+L.TT_OF_WHICH_AFK_FMT     = "%s (AFK %s)"  -- [fmt] durations
+L.TT_LAST_LEVELS          = "Últimos niveles"
+L.TT_LEVEL_ROW_FMT        = "Nivel %d"  -- [fmt] level
+L.TT_INN                  = "Posada / zona de descanso"
+L.TT_CITY                 = "Ciudad"
+L.TT_AFK                  = "AFK"
+L.TT_TAXI                 = "Vuelo"
+L.TT_DEATHS               = "Muertes"
+L.TT_UNTRACKED            = "Antes de instalar / sin seguimiento"
+L.TT_UNTRACKED_NOTE       = "sin desglose"
+L.TT_EST_TOTAL            = "Reconstruido tras cierres"
+L.TT_EST_NOTE             = "reparto estimado"
+L.TT_ACCOUNT_FMT          = "Cuenta (%d personajes)"  -- [fmt] count (2 or more)
+L.TT_ACCOUNT_ONE_FMT      = "Cuenta (%d personaje)"  -- [fmt] count (1)
+L.TT_ACCOUNT_INST         = "Cuenta, en instancias"
+L.TT_NET                  = "FPS · local · mundo"
+L.TT_NET_FMT              = "%s · %s · %s"  -- [fmt] fps, home, world
+
+-- Context menu
+L.MENU_EXCLUDE_AFK        = "Excluir el tiempo AFK"
+L.MENU_EXCLUDE_INN        = "Excluir el tiempo en posada / zona de descanso"
+L.MENU_EXCLUDE_CITY       = "Excluir el tiempo en ciudad"
+L.MENU_LOCK               = "Bloquear"
+L.MENU_THEME              = "Tema"
+L.MENU_STATS              = "Estadísticas..."
+L.MENU_RESET_SESSION      = "Restablecer sesión"
+L.MENU_HIDE               = "Ocultar"
+L.MENU_OPTIONS            = "Opciones..."
+
+-- Options panel
+L.OPT_EXCLUSIONS          = "Exclusiones"
+L.OPT_EXCLUSIONS_HELP     = "Las exclusiones solo cambian lo que se muestra: no se borra nada y todo se recalcula al momento."
+L.OPT_CITY_HELP           = "Ciudades: Ventormenta, Forjaz, Darnassus, Orgrimmar, Cima del Trueno, Entrañas (/tpl citytoggle añade o quita la zona actual). Posada / zona de descanso: cualquier otra zona de descanso."
+L.OPT_DISPLAY             = "Visualización"
+L.OPT_THEME               = "Tema"
+L.OPT_THEME_NOTE          = "Cambia el aspecto de la barra, su ventana de información, la gráfica y la ventana de estadísticas. Los colores que elijas abajo sustituyen a los del tema."
+L.OPT_THEME_RESTART_NOTE  = "Tras instalar o actualizar TruePlayed, reinicia el juego (un /reload no basta) para que se carguen las fuentes y texturas de los temas."
+L.OPT_SHOW                = "Mostrar la barra"
+L.OPT_SLOT1               = "Info 1 (grande)"
+L.OPT_SLOT2               = "Info 2"
+L.OPT_SLOT3               = "Info 3"
+L.OPT_SLOT3_POS           = "Posición de la info 3"
+L.OPT_SLOTS_NOTE          = "Info 1 arriba a la derecha, info 2 tras la XP, info 3 arriba."
+L.POS_CENTER              = "Arriba al centro"
+L.POS_LEFT                = "Arriba a la izquierda"
+L.OPT_PCT_POS             = "Porcentaje del nivel"
+L.PCT_FOLLOW              = "Sigue la barra"
+L.PCT_LEVEL               = "Junto al nivel"
+L.OPT_MAX_SLOTS           = "En el nivel máximo, sustituir las infos de XP por:"
+L.OPT_MAX_SLOT_FMT        = "Info %d en nivel máximo"  -- [fmt] slot index
+L.OPT_WIDTH               = "Anchura"
+L.OPT_HEIGHT              = "Altura de la barra"
+L.OPT_SCALE               = "Escala"
+L.OPT_FONT_SIZE           = "Tamaño del texto"
+L.OPT_LOCK                = "Bloquear la posición"
+L.OPT_COMBAT_HIDE         = "Ocultar en combate"
+L.OPT_FADE                = "Atenuar sin el ratón encima"
+L.OPT_HIDE_MAX            = "Ocultar en el nivel máximo"
+L.OPT_LANGUAGE            = "Idioma (Language)"
+L.OPT_LANGUAGE_NOTE       = "El idioma de TruePlayed cambia tras recargar la interfaz (botón de abajo o /reload). Los nombres que da el juego (zonas, enemigos, instancias, personajes) siguen en el idioma del cliente del juego."
+L.OPT_RELOAD              = "Recargar interfaz"
+L.LANG_AUTO               = "Auto"
+L.LANG_ENUS               = "English"
+L.LANG_FRFR               = "Français"
+L.LANG_DEDE               = "Deutsch"
+L.LANG_ESES               = "Español (EU)"
+L.LANG_ESMX               = "Español (AL)"
+L.LANG_ITIT               = "Italiano"
+L.LANG_PTBR               = "Português (BR)"
+L.LANG_RURU               = "\208\160\209\131\209\129\209\129\208\186\208\184\208\185"  -- Russian, in Cyrillic (escaped: this file is Latin-1)
+L.LANG_KOKR               = "\237\149\156\234\181\173\236\150\180"  -- Korean, in Hangul (escaped)
+L.LANG_ZHCN               = "\231\174\128\228\189\147\228\184\173\230\150\135"  -- Simplified Chinese (escaped)
+L.LANG_ZHTW               = "\231\185\129\233\171\148\228\184\173\230\150\135"  -- Traditional Chinese (escaped)
+L.OPT_TEXTS               = "Textos"
+L.OPT_TEXT_COLOR          = "Color del texto"
+L.OPT_TEXT_COLOR_RESET    = "Colores del tema"
+L.OPT_TEXT_COLOR_NOTE     = "Se aplica a todos los textos de la barra. Los colores de la propia barra se ajustan más abajo."
+L.OPT_OUTLINE             = "Contorno del texto"
+L.OUTLINE_NONE            = "Ninguno"
+L.OUTLINE_THIN            = "Fino"
+L.OUTLINE_THICK           = "Grueso"
+L.OPT_SHADOW              = "Sombra del texto"
+L.OPT_BG_ALPHA            = "Opacidad del fondo"
+L.OPT_BAR_COLORS          = "Colores de la barra"
+L.OPT_XP_COLOR            = "Color de la barra de XP"
+L.OPT_RESTED_COLOR        = "Color de la XP de descanso"
+L.OPT_BAR_COLORS_RESET    = "Colores del tema"
+L.OPT_BAR_COLORS_NOTE     = "Mientras no elijas los tuyos, la barra usa los colores del tema. Cuando estás descansado, la barra toma el color de la XP de descanso, y un tono más claro muestra hasta dónde llega tu XP de descanso. En el nivel máximo la barra se ve llena, en el color de la barra de XP, atenuada."
+L.OPT_NET                 = "FPS y latencia"
+L.OPT_QUALITY_COLORS      = "Colores de calidad (verde, amarillo, rojo)"
+L.OPT_QUALITY_COLORS_NOTE = "Desmarcado, los FPS y la latencia usan el color del texto."
+L.OPT_GRAPH_WINDOW        = "Historial de la gráfica"
+L.OPT_GRAPH_NOTE          = "Pasa el ratón sobre los FPS o la latencia de la barra para ver su gráfica, y luego sobre la gráfica para leer un valor. El juego solo actualiza la latencia cada 30 segundos aprox."
+L.OPT_CALC                = "Cálculo"
+L.OPT_REACTIVITY          = "Reactividad de la XP por hora"
+L.OPT_REACTIVITY_HELP     = "La rapidez con la que la XP por hora sigue tu ritmo reciente."
+L.REACT_SLOW              = "Lenta (90 min)"
+L.REACT_NORMAL            = "Normal (60 min)"
+L.REACT_FAST              = "Rápida (20 min)"
+L.OPT_REQUEST_PLAYED      = "Pedir /played al servidor al conectarse"
+L.OPT_REQUEST_PLAYED_HELP = "Necesario para recuperar tiempo tras un cierre inesperado. Las líneas habituales de /played aparecen una vez en el chat, solo si ningún otro addon lo ha pedido en 10 segundos."
+L.OPT_HIDE_PLAYED         = "Ocultar las líneas de /played cuando lo pide TruePlayed (experimental)"
+L.OPT_HIDE_PLAYED_HELP    = "Intercepta brevemente la visualización de /played en el chat mientras la petición de TruePlayed está pendiente. Un /played que escribas tú siempre se muestra. Puede alterar el chat en mazmorras: desactívalo si ves errores de chat."
+L.OPT_HIDE_PLAYED_NA      = "No disponible en este cliente."
+L.OPT_CITIES              = "Ciudades"
+L.OPT_CITY_CURRENT_FMT    = "Zona actual: %s (%s)"  -- [fmt] zone name, CITY_YES/CITY_NO
+L.CITY_YES                = "cuenta como ciudad"
+L.CITY_NO                 = "no es una ciudad"
+L.OPT_CITY_TOGGLE         = "Contar / dejar de contar esta zona como ciudad"
+L.OPT_DATA                = "Datos"
+L.OPT_OPEN_STATS          = "Estadísticas..."
+L.OPT_RESET_POS           = "Restablecer posición"
+L.OPT_RESET_SESSION       = "Restablecer sesión"
+L.OPT_RESET_RATE          = "Restablecer XP/h"
+L.OPT_RESET_CHAR          = "Borrar los datos de este personaje"
+L.CONFIRM_ERASE_CHAR_FMT  = "¿Borrar todos los datos de TruePlayed de %s? No se puede deshacer."  -- [fmt] name
+L.ERASE_YES               = "Sí"  -- the erase popup's buttons (the game's YES / NO follow the client)
+L.ERASE_NO                = "No"
+L.OPT_NOTE_PREINSTALL     = "El tiempo jugado antes de instalar TruePlayed no se puede desglosar y nunca se excluye."
+L.OPT_NOTE_IDLE           = "Los pocos minutos antes de que el juego te marque como AFK automáticamente siguen contando como activos."
+L.OPT_NOTE_CRASH          = "Tras un cierre inesperado del juego (o jugar sin TruePlayed), el tiempo que falta se recupera del /played del servidor y se reparte según tus propios hábitos; se marca como reconstruido."
+L.OPT_NOTE_CITY           = "El tiempo en ciudad se cuenta por mapa: toda la capital cuenta como ciudad, no solo su posada."
+L.OPT_NOTE_STALL_FMT      = "Tras %d minutos de juego sin XP (un tope de nivel, una pausa larga en la ciudad...), la XP por hora y el tiempo hasta el siguiente nivel se congelan: ese tiempo no se cuenta, y se reanudan con tu próxima XP."  -- [fmt] minutes
+L.OPT_NOTE_CAP_FMT        = "Un servidor con tope de nivel temporal (beta) se detecta cuando %d enemigos seguidos no dan XP: la barra se ve entonces como en el nivel máximo, y vuelve a la normalidad sola en cuanto vuelve la XP."  -- [fmt] mobs
+L.OPT_NOTE_READONLY       = "Solo lectura: tus datos los guardó una versión más reciente de TruePlayed. Actualiza el addon; mientras tanto no se registra nada."
+L.OPT_VERSION_FMT         = "Versión %s"  -- [fmt] version
+L.SLIDER_PX_FMT           = "%d px"  -- [fmt] value
+L.SLIDER_PCT_FMT          = "%d %%"  -- [fmt] value
+
+-- Themes (display names: options dropdown, context menu, /tpl theme)
+L.THEME_FUTURISTE         = "Futurista"
+L.THEME_ACTUEL            = "Clásico"
+L.THEME_HEROIC            = "Fantasía heroica"
+L.THEME_PIXEL             = "Píxel (retro)"
+L.THEME_CLASS             = "Clase (automático)"
+L.THEME_WARRIOR           = "Guerrero"
+L.THEME_PALADIN           = "Paladín"
+L.THEME_HUNTER            = "Cazador"
+L.THEME_ROGUE             = "Pícaro"
+L.THEME_PRIEST            = "Sacerdote"
+L.THEME_SHAMAN            = "Chamán"
+L.THEME_MAGE              = "Mago"
+L.THEME_WARLOCK           = "Brujo"
+L.THEME_DRUID             = "Druida"
+
+-- Statistics window
+L.WIN_TITLE               = "TruePlayed - estadísticas"
+L.VIEW_ACCOUNT            = "Cuenta (todos los personajes)"
+L.WIN_ERASE               = "Borrar..."
+L.WIN_FILTER_FMT          = "Tiempos sin %s"  -- [fmt] mask label
+L.TAB_LEVELS              = "Niveles"
+L.TAB_ZONES               = "Zonas"
+L.TAB_SESSIONS            = "Sesiones"
+L.COL_LEVEL               = "Niv."
+L.COL_TIME                = "Tiempo"
+L.COL_SERVER              = "Servidor"
+L.COL_XPH                 = "XP/h"
+L.COL_AFK                 = "AFK"
+L.COL_INN                 = "Posada"
+L.COL_CITY                = "Ciudad"
+L.COL_INST                = "Inst."
+L.COL_MAIN_ZONE           = "Zona principal"
+L.COL_REACHED             = "Alcanzado"
+L.COL_ZONE                = "Zona"
+L.COL_RAW                 = "Bruto"
+L.COL_XP                  = "XP"
+L.COL_DATE                = "Fecha"
+L.COL_DURATION            = "Duración"
+L.COL_LEVELS              = "Niveles"
+L.COL_DEATHS              = "Muertes"
+L.COL_CHARS               = "Pers."
+L.COL_AVG                 = "Media"
+L.ROW_IN_PROGRESS         = "en curso"
+L.ROW_PARTIAL_TIP         = "Nivel empezado antes de instalar TruePlayed."
+L.ROW_REC_TIP             = "Alcanzado durante un cierre o sin TruePlayed: tiempo estimado según el /played del servidor y tu XP."
+L.ROW_EST_TIP_FMT         = "Incluye %s reconstruido tras un cierre (reparto estimado)."  -- [fmt] duration
+L.ROW_GAP_TIP_FMT         = "El tiempo del servidor supera en %s al tiempo registrado (sin desglose)."  -- [fmt] duration
+L.ROW_ZONES_FMT           = "Zonas en el nivel %d"  -- [fmt] level
+L.ROW_ZONES_EMPTY         = "Ninguna zona registrada en este nivel."
+L.LEVELS_HOVER_HINT       = "Pasa el ratón por un nivel para ver sus zonas."
+L.FOOTER_FMT              = "Media por nivel: %s · últimos %d niveles: %s · total: %s"  -- [fmt] dur, count, dur, dur
+L.FOOTER_ACCOUNT_FMT      = "Media por nivel de la cuenta: %s (%d personajes)"  -- [fmt] dur, count (2 or more)
+L.FOOTER_ACCOUNT_ONE_FMT  = "Media por nivel de la cuenta: %s (%d personaje)"  -- [fmt] dur, count (1)
+L.FOOTER_ACCOUNT_NONE     = "Media por nivel de la cuenta: aún no hay datos suficientes"
+L.CITIES_HEADER           = "Capitales más visitadas"
+L.INSTANCES_HEADER        = "Instancias más jugadas"
+L.INST_ROW_FMT            = "%s (%s)"  -- [fmt] instance name, KIND_*
+L.KIND_DUNGEON            = "mazmorra"
+L.KIND_RAID               = "banda"
+L.KIND_PVP                = "JcJ"
+L.FOOTER_INST_FMT         = "en instancias: %s"  -- [fmt] duration
+L.NO_DATA                 = "Aún no hay datos."
+L.NO_SESSIONS_ACCOUNT     = "Las sesiones se listan por personaje."
+L.CITY_MARK               = "(ciudad)"
+L.CHAR_FMT                = "%s - nivel %d"  -- [fmt] name, level
+L.ZONE_UNKNOWN            = "Zona desconocida"
+L.ZONE_OTHER              = "Otras zonas"
+
+-- FPS / latency graph (Graph.lua)
+L.GRAPH_TITLE_FMT         = "FPS y latencia en %s"  -- [fmt] GRAPH_WINDOW_*
+L.GRAPH_WINDOW_30         = "30 s"
+L.GRAPH_WINDOW_60         = "1 min"
+L.GRAPH_WINDOW_300        = "5 min"
+L.GRAPH_AGO_FMT           = "hace %s: %s · %s"  -- [fmt] age (GRAPH_AGE_*), FPS text, latency text
+L.GRAPH_AGE_S_FMT         = "%d s"  -- [fmt] seconds (age below one minute)
+L.GRAPH_AGE_MS_FMT        = "%d min %02d s"  -- [fmt] minutes, seconds
+L.GRAPH_MIN_AVG_MAX_FMT   = "mín %s · media %s · máx %s"  -- [fmt] values
+L.GRAPH_LAT_NOTE          = "El juego solo actualiza la latencia cada 30 s aprox.: se dibuja en escalones."
+L.GRAPH_NO_DATA           = "Recogiendo muestras..."
+
+-- Registration for Core's language switch. Keep this block LAST: a string defined
+-- below it would miss the file-load copy into ns.L on a client in this language.
+local reg = ns.LOCALES
+if type(reg) ~= "table" then
+  reg = {}
+  ns.LOCALES = reg
+end
+reg[CODE] = L
+-- The default ("auto") on a client in this language: this language from file load on.
+if GetLocale() == CODE then
+  local dst = ns.L
+  if type(dst) == "table" then
+    for k, v in pairs(L) do dst[k] = v end
+  end
+end
