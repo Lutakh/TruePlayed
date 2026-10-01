@@ -44,30 +44,12 @@ cd ~/Code/TruePlayed
    git config --global user.email "COLLEZ-ICI-L-ADRESSE-NOREPLY"
    ```
 
-## 2. Remplacer `<ACCOUNT>`
+## 2. Remplacer `<ACCOUNT>` (déjà fait)
 
-L'auteur est déjà renseigné : **Lutak** (ligne `## Author:` du `.toc` et fichier
-`LICENSE`). Il reste un seul repère, `<ACCOUNT>` : c'est votre **nom d'utilisateur
-GitHub**, celui qui apparaît dans l'adresse de votre profil (`https://github.com/NOM`).
-Il n'est connu qu'une fois le compte créé (étape 1), c'est pourquoi il reste à remplacer.
-Il sert dans les liens du `.toc` (`## X-Website:`), du README et des pages CurseForge.
-
-**Quand ?** Après l'étape 1 (compte GitHub créé et `gh auth login` fait), avant l'étape 4.
-Tant que `<ACCOUNT>` est présent, `lua tests/check_toc.lua` affiche un avertissement et la
-publication (étape 9) refuse de partir (étape « Refuse placeholders »).
-
-Remplacez-le **uniquement** dans ces fichiers (pas dans `.github/workflows/release.yml`,
-ni dans `tests/check_toc.lua`, ni dans ce guide, qui le citent exprès) :
-
-```
-cd ~/Code/TruePlayed
-gh api user --jq .login
-# la ligne affichée est votre nom d'utilisateur GitHub ; la suite l'utilise directement :
-ACCOUNT=$(gh api user --jq .login)
-sed -i '' "s/<ACCOUNT>/$ACCOUNT/g" TruePlayed_Camelot.toc README.md docs/curseforge-en.md docs/curseforge-fr.md
-```
-
-Vérification : la commande suivante ne doit plus rien afficher.
+L'auteur (**Lutak**, ligne `## Author:` du `.toc` et fichier `LICENSE`) et le nom
+d'utilisateur GitHub (**Lutakh**, dans `## X-Website:` du `.toc`, le README et les pages
+CurseForge) sont en place. Il ne reste aucun repère `<ACCOUNT>` : la commande suivante ne
+doit rien afficher (la publication, étape 9, refuse de partir sinon).
 
 ```
 grep -n -e '<AUTHOR>' -e '<ACCOUNT>' TruePlayed_Camelot.toc LICENSE README.md docs/curseforge-*.md
@@ -84,9 +66,11 @@ lua tests/check_toc.lua
 lua tests/check_encoding.lua
 lua tests/lint51.lua
 lua tests/check_globals.lua
+lua tests/check_media.lua
 ```
 
-Chaque commande doit se terminer sans « FAIL ».
+Chaque commande doit se terminer sans « FAIL ». La vérification automatique de GitHub
+(CI) lance en plus `luacheck`, qui refuse le moindre avertissement.
 
 ### Installer l'addon dans le jeu
 
@@ -98,7 +82,8 @@ chaque modification). Vérifiez bien que `DEST` se termine par `/TruePlayed` : l
 cd ~/Code/TruePlayed
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
-rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' ./ "$DEST/"
+rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
+  --exclude 'tools' --exclude 'media-src' ./ "$DEST/"
 ```
 
 (`_classic_beta_` est le dossier du client WoW Forever sur votre Mac ; adaptez-le si le
@@ -214,30 +199,26 @@ Les données enregistrées par l'addon se trouvent dans
 `/Applications/World of Warcraft/_classic_beta_/WTF/Account/<VOTRE_COMPTE>/SavedVariables/TruePlayed.lua`
 (copiez ce fichier si vous voulez en garder une sauvegarde).
 
-## 4. Créer le dépôt GitHub public et y envoyer le code
+## 4. Le dépôt GitHub (déjà fait) et la branche `main`
 
-```
-cd ~/Code/TruePlayed
-git status
-# Si git répond "not a git repository", créez le dépôt :
-git init -b main
-git add -A
-git status
-git commit -m "TruePlayed 0.1.0-beta.1"
-gh repo create TruePlayed --public --source=. --remote=origin --push
-```
+Le dépôt public existe : https://github.com/Lutakh/TruePlayed, et sa vérification
+automatique (CI : tests en Lua 5.1 et 5.5, vérifications et luacheck) tourne à chaque
+envoi. Les évolutions arrivent sur des branches de travail : **la version publiée part
+toujours de `main`**. Avant de publier :
 
-Vérifiez ensuite l'onglet **Actions** du dépôt (`https://github.com/NOM/TruePlayed/actions`,
-NOM étant votre nom d'utilisateur GitHub)
-ou suivez la vérification automatique depuis le Terminal :
+1. Fusionnez la branche de travail dans `main` par une *pull request* sur GitHub (bouton
+   **Merge**), une fois sa CI verte.
+2. Récupérez `main` sur le Mac et vérifiez que sa CI est verte :
 
-```
-gh run list --limit 3
-gh run watch
-```
+   ```
+   cd ~/Code/TruePlayed
+   git checkout main
+   git pull
+   gh run list --branch main --limit 3
+   ```
 
-La ligne « CI » doit passer au vert (tests en Lua 5.1 et 5.5, vérifications et luacheck).
-Si elle est rouge, voir l'étape 13.
+La ligne « CI » la plus récente doit être `completed success`. Si elle est rouge, voir
+l'étape 13.
 
 ## 5. Créer le projet CurseForge
 
@@ -341,13 +322,31 @@ simplement ignorée.
 
 ## 9. Publier la version 0.1.0-beta.1
 
-1. Ouvrez `CHANGELOG.md` et remplacez `YYYY-MM-DD` du titre `## [0.1.0-beta.1]` par la
-   date du jour (par exemple `2026-10-05`). Relisez la liste « Added » : c'est le texte
-   que verront les joueurs.
-2. Lancez les tests hors jeu (étape 3), puis :
+1. **Aperçu du zip (conseillé)** : sur GitHub, onglet **Actions** > **Package preview** >
+   **Run workflow**, branche `main`. En une minute ou deux, la page du run propose en bas
+   (« Artifacts ») le fichier `TruePlayed-....zip` : c'est exactement le zip que recevra
+   CurseForge, mais rien n'est publié. Ou depuis le Terminal :
+
+   ```
+   gh workflow run package-preview.yml --ref main
+   sleep 5; gh run watch
+   RUN=$(gh run list --workflow package-preview.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+   gh run download "$RUN" --dir ~/Downloads/tp-preview
+   ```
+
+   Pour l'essayer en jeu : jeu fermé, mettez de côté votre dossier
+   `Interface/AddOns/TruePlayed`, décompressez le zip dans `Interface/AddOns` (il contient
+   le dossier `TruePlayed`), lancez le jeu et faites un tour rapide (barre, infobulle,
+   `/tpl stats`, `/tpl perf`, aucune erreur Lua). Le zip ne contient ni `tests`, ni `docs`,
+   ni `design`, ni `tools`, ni `media-src`.
+2. Sur `main` (étape 4), ouvrez `CHANGELOG.md` et remplacez `YYYY-MM-DD` du titre
+   `## [0.1.0-beta.1]` par la date du jour (par exemple `2026-10-05`). Relisez la section
+   entière : c'est le texte que verront les joueurs sur CurseForge.
+3. Lancez les tests hors jeu (étape 3), puis :
 
    ```
    cd ~/Code/TruePlayed
+   git checkout main
    git commit -am "Release 0.1.0-beta.1"
    git push
    git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1
