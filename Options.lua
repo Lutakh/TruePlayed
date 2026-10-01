@@ -86,7 +86,7 @@ end
 if type(StaticPopupDialogs) == "table" then
   StaticPopupDialogs.TRUEPLAYED_ERASE_CHAR = {
     text = "%s",                     -- filled with format(L.CONFIRM_ERASE_CHAR_FMT, name)
-    button1 = YES, button2 = NO,
+    button1 = YES, button2 = NO,     -- replaced by L.ERASE_YES / ERASE_NO at show time
     OnAccept = function(self, data)
       if ns.Core and ns.Core.ResetChar then ns.Core.ResetChar(data) end
     end,
@@ -1247,6 +1247,10 @@ function Options.ConfirmErase(guid)
     rec = ns.db and ns.db.chars and ns.db.chars[guid]
   end
   if not rec or not guid then return end
+  -- the buttons in the addon's language (the game's YES / NO follow the client's); set
+  -- here, not at file load: the language is applied into L after the files load
+  local dialog = type(StaticPopupDialogs) == "table" and StaticPopupDialogs.TRUEPLAYED_ERASE_CHAR
+  if dialog then dialog.button1, dialog.button2 = L.ERASE_YES, L.ERASE_NO end
   StaticPopup_Show("TRUEPLAYED_ERASE_CHAR", format(L.CONFIRM_ERASE_CHAR_FMT, Util.CharName(rec)), nil, guid)
 end
 

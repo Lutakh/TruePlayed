@@ -430,8 +430,9 @@ end)
 -- private frame or GameTooltip, and Tooltip.Fill), the graph, the statistics window (3
 -- tabs and the account view), the options panel (every FontString and every dropdown
 -- label), the context menu, the chat (login, /tpl help, theme, lang, played, lock,
--- unlock, an unknown command), the erase popup, the broker, every token
--- (Tokens.Render, with its short form) and Tokens.PercentText.
+-- unlock, an unknown command), the erase popup (its text and its buttons), the broker,
+-- every token (Tokens.Render, with its short form) and Tokens.PercentText. On a frFR
+-- client the game's YES / NO are French, as in the game (the stub's are English).
 local function Snapshot(opts)
   Stub.Reset()
   local p = Stub.player
@@ -443,6 +444,10 @@ local function Snapshot(opts)
   end
   local db
   if opts.language then db = { schema = 1, settings = { language = opts.language } } end
+  if opts.client == "frFR" then
+    rawset(_G, "YES", "Oui")
+    rawset(_G, "NO", "Non")
+  end
   local ns = Start({ locale = opts.client, db = db, theme = opts.theme, ui = { modern = true } })
   local out = {}
   local function add(tag, s)
@@ -525,7 +530,13 @@ local function Snapshot(opts)
     Stub.RunSlash(cmd)
   end
   for i = 1, #Stub.printed do add("chat " .. i, Stub.printed[i]) end
-  for i = 1, #Stub.popups do add("popup " .. i, Stub.popups[i].text_arg1) end
+  local dialogs = rawget(_G, "StaticPopupDialogs")
+  for i = 1, #Stub.popups do
+    local popup = Stub.popups[i]
+    local d = dialogs[popup.which]
+    add("popup " .. i, popup.text_arg1)
+    add("popup " .. i .. " buttons", tostring(d.button1) .. " / " .. tostring(d.button2))
+  end
   local obj = Stub.ui.ldbObjects.TruePlayed
   if obj then
     add("broker label", obj.label)
@@ -572,10 +583,11 @@ T.test("language: no English left in French mode (enUS client, language frFR = a
     SameTexts(chosen, native, english, "frFR mode, " .. tag)
     local all = concat(chosen, "\n")
     for _, s in ipairs({ "monstres", "Niveau", "Th\195\168me : ", "Langue : Auto", "Commandes :",
-                         "Langue (Language)", "Recharger l'interface" }) do
+                         "Langue (Language)", "Recharger l'interface", "buttons: Oui / Non" }) do
       T.ok(find(all, s, 1, true) ~= nil, tag .. ": shows " .. s)
     end
-    for _, s in ipairs({ " mobs", "Level ", "XP to go", "Theme: ", "Commands:", "Reload UI" }) do
+    for _, s in ipairs({ " mobs", "Level ", "XP to go", "Theme: ", "Commands:", "Reload UI",
+                         "Yes / No" }) do
       T.ok(find(all, s, 1, true) == nil, tag .. ": no English " .. s)
     end
   end
@@ -594,9 +606,11 @@ T.test("language: English mode on a frFR client = an enUS client", function()
     local french = Snapshot({ client = "frFR", theme = theme })
     SameTexts(chosen, native, french, "enUS mode, " .. tag)
     local all = concat(chosen, "\n")
-    for _, s in ipairs({ "monstres", "Niveau ", "XP restants", "Th\195\168me", "Commandes", "Recharger" }) do
+    for _, s in ipairs({ "monstres", "Niveau ", "XP restants", "Th\195\168me", "Commandes", "Recharger",
+                         "Oui / Non" }) do
       T.ok(find(all, s, 1, true) == nil, tag .. ": no French " .. s)
     end
+    T.ok(find(all, "buttons: Yes / No", 1, true) ~= nil, tag .. ": shows buttons: Yes / No")
   end
 end)
 
