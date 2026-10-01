@@ -597,9 +597,14 @@ local function TexSpec(ctx, src, file, slice)
     return nil
   end
   spec = setmetatable({}, MT.spec)
-  if path ~= WHITE then spec.path, spec.w, spec.h = path, tw, th end
+  if path ~= WHITE then spec.path = path end
+  if tw ~= 8 then spec.w = tw end
+  if th ~= 8 then spec.h = th end
   if blend ~= "BLEND" then spec.blend = blend end
-  if l ~= 0 or r ~= 1 or t ~= 0 or b ~= 1 then spec.l, spec.r, spec.t, spec.b = l, r, t, b end
+  if l ~= 0 then spec.l = l end
+  if r ~= 1 then spec.r = r end
+  if t ~= 0 then spec.t = t end
+  if b ~= 1 then spec.b = b end
   if fx then spec.flipX = true end
   if fy then spec.flipY = true end
   spec.tile = tile
@@ -1701,8 +1706,9 @@ function Themes.PlaceNine(texs, spec, rel, x, y, w, h)
   Place(texs[7], rel, x, y, p, p);      Place(texs[8], rel, x + p, y, mw, p);      Place(texs[9], rel, xr, y, p, p)
 end
 
--- Direction, from, to and flat colour of any gradient form: a compiled per-state gradient
--- { dir =, pair1..3 } (k = the fill state, default 0), one pair { from, to, dir = }, or
+-- Direction, from, to and flat colour of any gradient form: one pair { from, to, dir = }
+-- (the compiled form), a per-state list of pairs (k = the fill state, default 0; a state
+-- without an entry gives the first: the state-2 alpha is the caller's, see BarSkin), or
 -- { dir, from, to }; `flat` is a colour or a per-state list of colours.
 local function GradientParts(g, flat, k)
   local dir, from, to

@@ -1375,9 +1375,11 @@ end
 
 -- A texture spec, with the coordinates SetTex sets: the round-4 tc, or (compact form) the
 -- rect flipped when it differs from the whole texture, for a spec neither tiled nor
--- sliced.
+-- sliced. Coordinates of the whole texture (0, 1, 0, 1) count as none: the engines reset
+-- a texture to them before SetTex.
 local function Spec(s)
   local tc = Copy(s.tc)
+  if tc and tc[1] == 0 and tc[2] == 1 and tc[3] == 0 and tc[4] == 1 then tc = nil end
   if not tc and not s.tc8 and not s.tile and not s.slice then
     local l, r, t, b = s.l, s.r, s.t, s.b
     if s.flipX or s.flipY or l ~= 0 or r ~= 1 or t ~= 0 or b ~= 1 then
