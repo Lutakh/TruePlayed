@@ -35,9 +35,12 @@ jobs:
         with:
           args: -d
 
+      # The packager writes the zip into .release/, a hidden folder: upload-artifact skips
+      # hidden files unless told otherwise.
       - uses: actions/upload-artifact@v7
         with:
           path: .release/*.zip
+          include-hidden-files: true
           archive: false
           if-no-files-found: error
           retention-days: 14
