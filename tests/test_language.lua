@@ -1,8 +1,10 @@
 -- tests/test_language.lua - the "language" setting (design/NEXT-LOT.md B): the locale
 -- tables, the adoption order (ADDON_LOADED, a late table at PLAYER_LOGIN, no
--- SavedVariables, read-only), the fallbacks for unknown values, the sparse save, no
--- English left in French mode (and the reverse), the options (dropdown, note, reload
--- button), /tpl lang and its help line, and the locale tables dropped after login.
+-- SavedVariables, read-only, where a new language is refused), the fallbacks for unknown
+-- values and for keys a locale lacks, the sparse save, no English left in French mode
+-- (and the reverse), the options (dropdown, note, reload button), /tpl lang and its help
+-- line, the locale recipe (the listing from C.LANGUAGES, one CODE per locale file), and
+-- the locale tables dropped after login.
 local Stub, T = ...
 
 local format, find, concat = string.format, string.find, table.concat
@@ -257,6 +259,17 @@ T.test("language: read-only mode (newer schema) reads the language and writes no
   SameStrings(ns.L, en, "invalid value: auto (enUS client)")
   T.eq(ns.Core.GetSetting("language"), "auto", "repaired in memory")
   T.eq(sv, snapshot, "nothing written")
+  -- the same on a frFR client: auto = French there (not the English fallback)
+  Stub.Reset()
+  sv = { schema = 99, settings = { language = "xx" }, chars = {} }
+  snapshot = Stub.DeepCopy(sv)
+  ns = Start({ locale = "frFR", db = sv })
+  T.ok(ns.readOnly)
+  SameStrings(ns.L, fr, "invalid value: auto (frFR client)")
+  T.eq(ns.Core.GetSetting("language"), "auto", "repaired in memory (frFR client)")
+  rawset(_G, "TruePlayedDB", sv)
+  Stub.Fire("PLAYER_LOGOUT")
+  T.eq(sv, snapshot, "nothing written (frFR client)")
 
   -- a read-only table arriving at PLAYER_LOGIN
   Stub.Reset()
@@ -387,6 +400,25 @@ T.test("language: a language without a locale table falls back to English", func
   Stub.Reset()
   ns = Start({ locale = "frFR", files = noFr })
   SameStrings(ns.L, en, "auto, frFR client, no frFR file")
+  T.eq(#Stub.errors, 0)
+end)
+
+-- ApplyLanguage writes English first: a key the chosen locale lacks is English, not the
+-- client's language that ns.L held since file load (a partial locale of a later version).
+T.test("language: a key the chosen locale lacks is English, not the client's language", function()
+  local en, fr = EN(), FR()
+  Stub.InstallUI()
+  Stub.locale = "frFR"
+  local ns = Stub.LoadAddon()
+  SameStrings(ns.L, fr, "French at file load")
+  ns.LOCALES.frFR = { ON = "x" }
+  Stub.LoginSequence({ settle = 3 })
+  T.eq(ns.L.ON, "x", "the locale's own key")
+  local want = {}
+  for k, v in pairs(en) do want[k] = v end
+  want.ON = "x"
+  SameStrings(ns.L, want, "every other key in English")
+  T.eq(ns.L.SOME_MISSING_KEY, "SOME_MISSING_KEY", "the fallback kept")
   T.eq(#Stub.errors, 0)
 end)
 
