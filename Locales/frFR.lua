@@ -1,9 +1,14 @@
 -- Locales/frFR.lua - French strings of TruePlayed (complete translation).
--- Fills ns.L only when the client runs in French; otherwise English stays.
+-- Builds its own table and registers it as ns.LOCALES.frFR: Core applies it into ns.L
+-- when the "language" setting resolves to French (at ADDON_LOADED, again at
+-- PLAYER_LOGIN), then drops ns.LOCALES. On a French client it also fills ns.L at file
+-- load (the default "auto"), so ns.L is French before the settings are known; on any
+-- other client ns.L is left untouched here. Self-contained (tests load it alone): it
+-- needs only GetLocale and ns.L, and creates ns.LOCALES when enUS.lua did not. Values
+-- are strings only, with the same keys as enUS.lua.
 -- Latin-1 characters only (see SPEC-FINAL 2.6).
 local _, ns = ...
-if GetLocale() ~= "frFR" then return end
-local L = ns.L
+local L = {}
 
 -- General and chat
 L.ADDON_TITLE             = "TruePlayed"
@@ -31,6 +36,8 @@ L.UNLOCKED                = "Barre déverrouillée : faites-la glisser pour la d
 L.STYLE_SET_FMT           = "Style : %s"  -- [fmt] STYLE_BAR / STYLE_BOX
 L.THEME_SET_FMT           = "Thème : %s"  -- [fmt] THEME_* name
 L.THEME_LIST_FMT          = "Thème : %s. Disponibles : %s"  -- [fmt] THEME_* name of the setting, theme keys (/tpl theme <key>)
+L.LANG_SET_FMT            = "Langue : %s. Tapez /reload pour l'appliquer."  -- [fmt] LANG_* name
+L.LANG_LIST_FMT           = "Langue : %s. Disponibles : %s. Un changement s'applique après un /reload."  -- [fmt] LANG_* name of the setting, accepted values (/tpl lang <value>)
 L.DEBUG_ON                = "Messages de débogage activés."
 L.DEBUG_OFF               = "Messages de débogage désactivés."
 L.SCHEMA_NEWER            = "Vos données viennent d'une version plus récente de TruePlayed. Mettez l'addon à jour ; le suivi est en pause."
@@ -49,6 +56,7 @@ L.HELP_LOCK               = "/tpl lock | unlock - verrouiller ou déplacer la ba
 L.HELP_SHOW               = "/tpl show | hide - afficher ou masquer la barre"
 L.HELP_STYLE              = "/tpl style bar | box - barre ou encadré compact"
 L.HELP_THEME              = "/tpl theme [nom] - affiche ou change le thème"
+L.HELP_LANG               = "/tpl lang [auto | en | fr] - affiche ou change la langue de TruePlayed (après /reload)"
 L.HELP_EXCLUDE            = "/tpl afk | inn | city [on | off] - exclusions (sans argument : bascule)"
 L.HELP_CITY               = "/tpl citytoggle - compter la zone actuelle comme une ville (ou non)"
 L.HELP_PLAYED             = "/tpl played - récapitulatif dans le chat"
@@ -279,6 +287,12 @@ L.OPT_LOCK                = "Verrouiller la position"
 L.OPT_COMBAT_HIDE         = "Masquer en combat"
 L.OPT_FADE                = "Estomper hors survol"
 L.OPT_HIDE_MAX            = "Masquer au niveau max"
+L.OPT_LANGUAGE            = "Langue (Language)"
+L.OPT_LANGUAGE_NOTE       = "La langue de TruePlayed change après un rechargement de l'interface (bouton ci-dessous ou /reload). Les noms fournis par le jeu (zones, monstres, instances, personnages) restent dans la langue du client du jeu."
+L.OPT_RELOAD              = "Recharger l'interface"
+L.LANG_AUTO               = "Auto"
+L.LANG_ENUS               = "English"
+L.LANG_FRFR               = "Français"
 L.OPT_TEXTS               = "Textes"
 L.OPT_TEXT_COLOR          = "Couleur du texte"
 L.OPT_TEXT_COLOR_RESET    = "Couleurs du thème"
@@ -413,3 +427,18 @@ L.GRAPH_AGE_MS_FMT        = "%d min %02d s"  -- [fmt] minutes, seconds
 L.GRAPH_MIN_AVG_MAX_FMT   = "min %s · moy. %s · max %s"  -- [fmt] values
 L.GRAPH_LAT_NOTE          = "Le jeu ne rafraîchit la latence qu'environ toutes les 30 s : elle est tracée en paliers."
 L.GRAPH_NO_DATA           = "Collecte des mesures..."
+
+-- Registration for Core's language switch.
+local reg = ns.LOCALES
+if type(reg) ~= "table" then
+  reg = {}
+  ns.LOCALES = reg
+end
+reg.frFR = L
+-- The default ("auto") on a French client: French from file load on.
+if GetLocale() == "frFR" then
+  local dst = ns.L
+  if type(dst) == "table" then
+    for k, v in pairs(L) do dst[k] = v end
+  end
+end
