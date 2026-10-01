@@ -19,8 +19,10 @@
 -- functions, the experimental /played hide, combat hide, crash and /reload restarts,
 -- a late SavedVariables swap, a WTFix-style late table, a table applied at logout,
 -- read-only mode, frFR and max level, the server level cap of the Forever beta and a frozen
--- rate (round 3), and every theme (design/SPEC-themes.md 8.3: the 14 setting values with
--- the tooltip, graph and window shown in each, the options, /tpl theme). The other
+-- rate (round 3), the language option (French chosen on an enUS client, English on a
+-- frFR client through a late table), and every theme (design/SPEC-themes.md 8.3: the 14
+-- setting values with the tooltip, graph and window shown in each, the options, /tpl
+-- theme). The other
 -- scenarios keep the stub's default theme (Stub.theme = "actuel"). Any error reported
 -- through geterrorhandler also fails the check.
 
@@ -88,6 +90,7 @@ local READ_OK = Set({
   "AddonCompartmentFrame",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
+  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read
@@ -308,6 +311,7 @@ local SETTINGS = {
   { "widget.xpColor", { 1, 0.5, 0 } }, { "widget.restedColor", { r = 0, g = 0.8, b = 0.2 } },
   { "widget.xpColor", false }, { "widget.restedColor", false },
   { "widget.slots.1", "eta_kills" }, { "widget.slots.2", "xph" }, { "widget.slots.3", "fps_latency" },
+  { "language", "frFR" }, { "language", "enUS" }, { "language", "auto" },
 }
 
 local function ApplyAllSettings(ns)
@@ -321,6 +325,7 @@ local SLASH = {
   "afk", "inn", "inn", "city on", "city off", "citytoggle", "citytoggle", "played",
   "sync", "reset pos", "reset session", "reset rate", "reset nothing", "debug", "played",
   "debug", "perf", "bogus command",
+  "lang", "lang fr", "lang FR", "lang en", "lang enus", "lang frfr", "lang", "lang xx", "lang auto",
 }
 
 local function RunAllSlash()
@@ -448,6 +453,8 @@ local function Exercise(ns)
         w:GenerateMenu(); ClickAll(w._root)
       elseif rec.kind == "slider" and w.SetValue then
         w:SetValue(rec.min); w:SetValue(rec.max)
+      elseif rec.kind == "button" then
+        Stub.RunScript(w, "OnClick", "LeftButton")    -- the bar colours reset, "Reload UI"
       elseif rec.kind == "color" then
         -- the game's colour picker: open, move, cancel, open, move, reset
         local ui = Stub.ui
@@ -687,6 +694,37 @@ Scenario("server level cap, frozen rate and bar colours, frFR", function()
   ns.Window.Show(); ns.Window.Toggle("levels"); Stub.Advance(6); ns.Window.Hide()
   Stub.Kill(145); Stub.Advance(5)
   ns.Options.Open(); Stub.Advance(1)
+  Stub.Logout()
+end)
+
+-- Language option (design/NEXT-LOT.md B): French chosen on an enUS client (applied at
+-- ADDON_LOADED), then English chosen on a frFR client through a late table (WTFix) and
+-- a reload, with everything exercised.
+Scenario("language option: frFR on an enUS client, enUS on a frFR client", function()
+  Stub.InstallUI()
+  _G.TruePlayedDB = { schema = 1, settings = { language = "frFR" },
+                      chars = { [OTHER_GUID] = OtherRecord() } }
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.Advance(15)
+  if ns.L.ON ~= "activ\195\169" or ns.LOCALES ~= nil then error("frFR not applied, or tables kept") end
+  Exercise(ns)
+  Stub.Logout()
+  Stub.Reset({ keepWorld = true })
+  Stub.InstallUI()
+  Stub.locale = "frFR"
+  ns = Stub.LoadAddon()
+  Stub.Fire("ADDON_LOADED", "TruePlayed")
+  _G.TruePlayedDB = { schema = 1, settings = { language = "enUS" } }
+  Stub.Fire("PLAYER_LOGIN")
+  Stub.Fire("PLAYER_ENTERING_WORLD", true, false)
+  Stub.Advance(15)
+  if ns.L.ON ~= "on" then error("enUS not applied on the frFR client") end
+  Exercise(ns)
+  ns = Stub.Restart({ reload = true, settle = 3 })
+  Stub.Advance(5)
+  -- Exercise ends on "auto" (its settings and slash lists): French again on this client
+  if ns.L.ON ~= "activ\195\169" then error("auto not applied after the reload") end
   Stub.Logout()
 end)
 

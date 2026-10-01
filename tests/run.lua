@@ -192,6 +192,8 @@ local FILES = {
   "test_theme", "test_theme_data", "test_actuel_golden", "test_bar_theme",
   "test_tooltip_theme", "test_options_theme", "test_theme_integration",
   "test_round4_regress",
+  -- language option (design/NEXT-LOT.md B)
+  "test_language",
 }
 
 local passed, failed, skipped = 0, 0, 0
