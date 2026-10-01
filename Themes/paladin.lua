@@ -130,7 +130,7 @@ return {
     shadow = { color = "ink@.9", x = 1, y = -1 },
   },
   tooltip = {
-    width = { 300, 440 }, pad = { 20, 20, 15, 14 }, gap = 12, lineGap = 5,
+    width = { 300, 458 }, pad = { 20, 20, 15, 14 }, gap = 12, lineGap = 5,
     fonts = { title = { "display", 23 }, body = { "body", 16 }, value = { "num", 13 },
               note = { "body", 14 }, hint = { "body", 13 } },
     colors = { title = "pink", mode = "mode", label = "text", value = "cream", dim = "mode",

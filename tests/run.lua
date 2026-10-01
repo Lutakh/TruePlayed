@@ -196,6 +196,8 @@ local FILES = {
   "test_theme_compact", "test_theme_memory",
   -- language option (design/NEXT-LOT.md B)
   "test_language",
+  -- mobs to kill from the average of the last 10 kills (design/NEXT-LOT.md C)
+  "test_kills",
 }
 
 local passed, failed, skipped = 0, 0, 0

@@ -178,7 +178,7 @@ return {
     shadow = { color = "ink@.9", x = 1, y = -1 },
   },
   tooltip = {
-    width = { 300, 440 }, pad = { 21, 21, 16, 15 }, gap = 12, lineGap = 4,
+    width = { 300, 476 }, pad = { 21, 21, 16, 15 }, gap = 12, lineGap = 4,
     fonts = { title = { "display", 20 }, body = { "body", 15 }, value = { "num", 14 },
               note = { "body", 13 }, hint = { "body", 12 } },
     colors = { title = "soul", mode = "dim", label = "label", value = "bright", dim = "dim",

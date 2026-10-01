@@ -458,7 +458,7 @@ T.test("F1-fidelity: the widest XP rows fit every theme's widest tooltip with a 
       { L.TT_NEXT_LEVEL, Estimated(Fmt.ETA(2 * 86400 + 5 * 3600)) },
       { L.TT_XPH, Estimated(Fmt.Rate(123456)) },
       { L.TT_KILLS, L.TT_KILLS_NODATA },
-      { L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(1234), Fmt.Number(12345)) },
+      { L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(1234), Fmt.Number(12345), Fmt.Number(12345)) },
       { L.TT_NEXT_LEVEL, format(L.TT_WARMING_FMT, Fmt.Duration(ns.C.WARMUP_FULL)) },
     }
     for _, key in ipairs(KEYS) do

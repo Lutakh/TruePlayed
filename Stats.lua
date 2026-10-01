@@ -32,6 +32,7 @@ local CAPITALS = C.CAPITALS
 local WARMUP_MIN, WARMUP_FULL = C.WARMUP_MIN, C.WARMUP_FULL
 local FALLBACK_MIN, RATE_SAMPLE_MIN = C.FALLBACK_MIN, C.RATE_SAMPLE_MIN
 local REST_BONUS, REST_DRAIN = C.REST_BONUS, C.REST_DRAIN
+local KILL_RING, KILL_XP_MAX = C.KILL_RING, C.KILL_XP_MAX
 local RECENT_LEVELS = C.RECENT_LEVELS
 local DRIFT_TOL = C.DRIFT_TOL
 local PRIOR_WEIGHT = C.PRIOR_WEIGHT
@@ -445,20 +446,41 @@ function Stats.ETA(char, mask, xp, max, rested, isMax)
   return Stats.EtaRestAware(max - xp, rested or 0, A, Q), status, src, left, stallSecs
 end
 
--- Mobs like the last one killed (char.lastKill.xp, base XP without the rested
--- bonus) still needed to reach the next level, with the rested pool E: a rested kill
--- gives base * (1 + C.REST_BONUS) and drains base * C.REST_DRAIN from the pool (the
--- engine's model, see Tracker 5.9), the kill that empties it gets a partial bonus.
--- Returns n, baseXP; nil when there is no last kill, at max level (isMax, optional
--- 5th argument, or XP gain disabled) or without a valid xp / max (then nil, baseXP).
+-- Mobs worth the average base XP (without the rested bonus) of the last C.KILL_RING
+-- kills (char.killRing, oldest first) still needed to reach the next level, with the
+-- rested pool E: a rested kill gives base * (1 + C.REST_BONUS) and drains
+-- base * C.REST_DRAIN from the pool (the engine's model, see Tracker 5.9), the kill that
+-- empties it gets a partial bonus. The average is rounded to a whole XP (the count and
+-- the XP shown agree); without a ring it is the last kill's XP (char.lastKill.xp).
+-- Returns n, avgXP, lastXP (the last kill's XP: lastKill.xp, else the newest ring
+-- entry); nil when no kill is known, at max level (isMax, optional 5th argument, or
+-- XP gain disabled) or without a valid xp / max (then nil, avgXP, lastXP).
 function Stats.KillsToLevel(char, xp, max, rested, isMax)
   if isMax or (IsXPUserDisabled and IsXPUserDisabled()) then return nil end
   local lk = char and char.lastKill
-  local base = type(lk) == "table" and lk.xp
-  if type(base) ~= "number" or not (base > 0) then return nil end   -- luacheck: ignore 581 (NaN fails too)
-  if type(xp) ~= "number" or type(max) ~= "number" or max <= 0 then return nil, base end
+  local last = type(lk) == "table" and lk.xp
+  if type(last) ~= "number" or not (last > 0) then last = nil end   -- luacheck: ignore 581 (NaN fails too)
+  local base
+  local ring = char and char.killRing
+  if type(ring) == "table" then
+    local top = #ring
+    local first = top - KILL_RING + 1
+    if first < 1 then first = 1 end
+    local sum, k = 0, 0
+    for i = top, first, -1 do                  -- newest first: the first valid one is the last kill
+      local v = ring[i]
+      if type(v) == "number" and v >= 1 and v <= KILL_XP_MAX then   -- NaN and inf fail
+        sum, k = sum + v, k + 1
+        if last == nil then last = v end
+      end
+    end
+    if k > 0 then base = floor(sum / k + 0.5) end
+  end
+  if base == nil then base = last end
+  if base == nil then return nil end
+  if type(xp) ~= "number" or type(max) ~= "number" or max <= 0 then return nil, base, last end
   local R = max - xp
-  if R <= 0 then return 0, base end
+  if R <= 0 then return 0, base, last end
   local E = (type(rested) == "number" and rested > 0) and rested or 0
   local n = 0
   if E > 0 and REST_DRAIN > 0 then
@@ -467,7 +489,7 @@ function Stats.KillsToLevel(char, xp, max, rested, isMax)
     if k * full >= R then
       n = floor(R / full)
       if n * full < R then n = n + 1 end
-      return n, base
+      return n, base, last
     end
     n = k
     R = R - k * full
@@ -475,12 +497,12 @@ function Stats.KillsToLevel(char, xp, max, rested, isMax)
     if E > 0 then                             -- the kill that drains what is left
       n = n + 1
       R = R - (base + E * REST_BONUS / REST_DRAIN)
-      if R <= 0 then return n, base end
+      if R <= 0 then return n, base, last end
     end
   end
   local m = floor(R / base)
   if m * base < R then m = m + 1 end
-  return n + m, base
+  return n + m, base, last
 end
 
 ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ local function Record(opts)
     srv = opts.srv,
     prior = opts.prior,
     lastKill = opts.lastKill,
+    killRing = opts.killRing,                -- round 5: base XP of the last kills
     noXP = opts.noXP,                        -- C1: counted seconds since the last XP gain
     capLevel = opts.capLevel,                -- C2: detected server level cap
   }
@@ -880,6 +881,28 @@ T.test("allocation: nothing at all in a steady state (AFK excluded, default slot
   ns.Core.SetSetting("exclude.afk", true)
   Stub.SetAFK(true)                          -- excluded time: the rate clock does not move
   Tokens.Acquire("test", 3)
+  local function Step()
+    Stub.Advance(1)
+    for i = 1, 3 do Tokens.Render(Tokens.Resolve(i)) end
+  end
+  for _ = 1, 300 do Step() end
+  local kb = Alloc(Step, 600)
+  T.ok(kb < 0.1, format("allocated %.3f KB", kb))
+end)
+
+T.test("allocation: nothing at all in a steady state with a full kill ring (kills tokens shown)", function()
+  local ns = Start({ lastKill = { xp = 330, level = 10, at = 1789990000 },
+                     killRing = { 300, 310, 290, 305, 315, 320, 280, 300, 312, 330 } })
+  local Tokens = ns.Tokens
+  ns.Core.SetSetting("widget.slots.1", "kills")
+  ns.Core.SetSetting("widget.slots.2", "eta_kills")
+  ns.Core.SetSetting("exclude.afk", true)
+  Stub.SetAFK(true)                          -- excluded time: the rate clock does not move
+  Tokens.Acquire("test", 3)
+  T.eq({ Tokens.Resolve(1), Tokens.Resolve(2) }, { "kills", "eta_kills" })
+  T.eq(Tokens.ctx.killXP, 306, "the rounded average of the ring")
+  T.ok(type(Tokens.ctx.kills) == "number" and Tokens.ctx.kills > 0)
+  T.eq(Tokens.ctx.kills, ns.Stats.KillsToLevel(ns.char, Tokens.ctx.xp, Tokens.ctx.max, Tokens.ctx.rested))
   local function Step()
     Stub.Advance(1)
     for i = 1, 3 do Tokens.Render(Tokens.Resolve(i)) end
