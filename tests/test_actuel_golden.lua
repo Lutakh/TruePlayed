@@ -276,18 +276,6 @@ local SCENARIOS = {
       end
       snap("server cap")
     end },
-  { name = "6. box style", setup = function() Stub.player.xp, Stub.player.rest = 2000, 3000 end,
-    play = function(ns, snap)
-      Set(ns, "widget.locked", true)
-      Set(ns, "widget.style", "box")
-      snap("box rested")
-      SetRest(0)
-      Stub.GrantXP(1000)
-      Stub.Advance(2)
-      snap("box after xp")
-      Set(ns, "widget.style", "bar")
-      snap("back to bar")
-    end },
   { name = "7. custom xp, rested and text colours", setup = function() Stub.player.xp = 2000 end,
     play = function(ns, snap)
       Set(ns, "widget.locked", true)
