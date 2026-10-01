@@ -4,15 +4,24 @@ Ce guide part de zéro. Suivez les étapes dans l'ordre. Chaque commande se tape
 l'application **Terminal** du Mac. Une ligne qui commence par `#` est un commentaire :
 inutile de la taper.
 
-Le dossier `TruePlayed` est à la fois l'addon et le dépôt git. Rangez-le dans un endroit
-stable, par exemple `~/Code/TruePlayed` (le reste du guide utilise ce chemin) :
+Votre copie de travail est le dépôt git cloné depuis GitHub, à la fois l'addon et le dépôt :
+`~/Documents/claude/TruePlayed/TruePlayed_on_github` (le reste du guide utilise ce chemin).
+Elle a été créée ainsi, une seule fois :
 
 ```
-mkdir -p ~/Code
-# glissez le dossier TruePlayed dans ~/Code avec le Finder, ou utilisez mv :
-# mv "/chemin/actuel/TruePlayed" ~/Code/TruePlayed
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed
+gh repo clone Lutakh/TruePlayed TruePlayed_on_github
 ```
+
+Pour récupérer les dernières modifications publiées sur GitHub, dans ce dossier :
+
+```
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+git pull
+```
+
+Le dossier voisin `~/Documents/claude/TruePlayed/TruePlayed` est une ancienne copie sans git :
+ne le modifiez plus (sauvegarde seulement).
 
 ---
 
@@ -60,7 +69,7 @@ grep -n -e '<AUTHOR>' -e '<ACCOUNT>' TruePlayed_Camelot.toc LICENSE README.md do
 ### Tests hors jeu (à lancer avant chaque commit)
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
 lua tests/run.lua
 lua tests/check_toc.lua
 lua tests/check_encoding.lua
@@ -79,7 +88,7 @@ chaque modification). Vérifiez bien que `DEST` se termine par `/TruePlayed` : l
 `--delete` supprime dans ce dossier les fichiers qui n'existent plus dans le dépôt.
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
 rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
@@ -211,7 +220,7 @@ toujours de `main`**. Avant de publier :
 2. Récupérez `main` sur le Mac et vérifiez que sa CI est verte :
 
    ```
-   cd ~/Code/TruePlayed
+   cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
    git checkout main
    git pull
    gh run list --branch main --limit 3
@@ -343,7 +352,7 @@ simplement ignorée.
 3. Lancez les tests hors jeu (étape 3), puis :
 
    ```
-   cd ~/Code/TruePlayed
+   cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
    git checkout main
    git commit -am "Release 0.1.0-beta.1"
    git push

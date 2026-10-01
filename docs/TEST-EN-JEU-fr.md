@@ -82,7 +82,8 @@ Cette mise à jour ajoute des dossiers (`Media`, `Themes`) et des fichiers. Reco
 dossier, en laissant de côté ce qui ne sert qu'au développement :
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+git pull
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
 rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
@@ -388,10 +389,12 @@ L'addon est le dossier `TruePlayed`. Il doit arriver dans le dossier des addons 
 Le plus simple, dans le Terminal (depuis le dossier de l'addon, voir `PUBLISHING-fr.md`) :
 
 ```
-cd ~/Code/TruePlayed
+cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
+git pull
 DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
 mkdir -p "$DEST"
-rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' ./ "$DEST/"
+rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
+  --exclude 'tools' --exclude 'media-src' ./ "$DEST/"
 ```
 
 Vérifiez que le fichier `TruePlayed_Camelot.toc` se trouve **directement** dans
