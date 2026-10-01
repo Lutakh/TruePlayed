@@ -327,7 +327,7 @@ simplement ignorée.
    git push
    ```
 
-## 9. Publier la version 0.1.0-beta.1
+## 9. Publier la version 1.0.0
 
 1. **Aperçu du zip (conseillé)** : sur GitHub, onglet **Actions** > **Package preview** >
    **Run workflow**, branche `main`. En une minute ou deux, la page du run propose en bas
@@ -346,17 +346,18 @@ simplement ignorée.
    le dossier `TruePlayed`), lancez le jeu et faites un tour rapide (barre, infobulle,
    `/tpl stats`, `/tpl perf`, aucune erreur Lua). Le zip ne contient ni `tests`, ni `docs`,
    ni `design`, ni `tools`, ni `media-src`.
-2. Sur `main` (étape 4), ouvrez `CHANGELOG.md` et remplacez `YYYY-MM-DD` du titre
-   `## [0.1.0-beta.1]` par la date du jour (par exemple `2026-10-05`). Relisez la section
-   entière : c'est le texte que verront les joueurs sur CurseForge.
+2. Sur `main` (étape 4), ouvrez `CHANGELOG.md` : le titre `## [1.0.0] - 2026-10-01` porte
+   la date de préparation ; si vous publiez un autre jour, mettez la date du jour. Relisez la
+   section entière : c'est le texte que verront les joueurs sur CurseForge. L'étiquette
+   `v1.0.0`, sans suffixe, publie un fichier de type **Release** (proposé à tous les joueurs).
 3. Lancez les tests hors jeu (étape 3), puis :
 
    ```
    cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
    git checkout main
-   git commit -am "Release 0.1.0-beta.1"
+   git commit -am "Release 1.0.0"      # seulement si vous avez changé la date
    git push
-   git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1
+   git tag v1.0.0 && git push origin v1.0.0
    ```
 
 L'étiquette (tag) déclenche la publication : tests, contrôle des repères, notes de
@@ -378,15 +379,15 @@ fichier apparaît dans l'onglet « Files » du projet, d'abord « Under review �
 
 ## 11. Les versions suivantes
 
-- Numérotation SemVer :
-  - `0.1.1` : correctif ;
-  - `0.2.0` : nouvelle fonction ;
-  - `1.0.0` puis `2.0.0` : changement incompatible des données ou des options.
-- Le type de fichier dépend de l'étiquette : `v0.2.0-beta.1` donne une Beta, une
-  étiquette contenant `alpha` une Alpha, `v1.0.0` une Release. **Attention : `-rc.1`
+- Numérotation SemVer (depuis la 1.0.0) :
+  - `1.0.1` : correctif ;
+  - `1.1.0` : nouvelle fonction ;
+  - `2.0.0` : changement incompatible des données ou des options.
+- Le type de fichier dépend de l'étiquette : `v1.1.0-beta.1` donne une Beta, une
+  étiquette contenant `alpha` une Alpha, `v1.1.0` une Release. **Attention : `-rc.1`
   part en Release.**
 - Ne réutilisez jamais une étiquette : en cas d'erreur, passez au numéro suivant
-  (`v0.1.0-beta.2`).
+  (`v1.0.1`).
 - Pour chaque version, ajoutez dans `CHANGELOG.md` une section `## [x.y.z] - AAAA-MM-JJ`
   écrite pour les joueurs (la publication refuse de partir sans elle).
 - Quand WoW Forever change de version, `/dump select(4, GetBuildInfo())` donne le nouveau

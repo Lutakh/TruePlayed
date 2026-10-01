@@ -172,7 +172,7 @@ their rested bonus), your XP to go and your rested XP. Quest and exploration XP 
 kills.
 
 **Why does my old dungeon time show as open world?** Dungeons, raids and PvP are recorded
-apart from version 0.1.0-beta.1 on; earlier instance time cannot be told apart.
+apart from version 1.0.0 on; earlier instance time cannot be told apart.
 
 **Why do a few AFK minutes count as active?** The game sets the AFK flag only after about
 5 minutes without input; those minutes count as active.

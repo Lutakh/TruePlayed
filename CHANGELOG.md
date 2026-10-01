@@ -7,9 +7,9 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
-## [0.1.0-beta.1] - YYYY-MM-DD
+## [1.0.0] - 2026-10-01
 
-First public beta, for WoW Forever.
+First public release, for WoW Forever.
 
 **Install it with the game closed, or restart the game completely after installing**
 (quit and launch it again): the game loads new fonts, textures and files only at start.
