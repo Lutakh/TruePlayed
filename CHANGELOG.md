@@ -7,6 +7,11 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+## [1.0.1] - YYYY-MM-DD
+
+**Quit the game and launch it again after updating** (a `/reload` is not enough): this
+version adds files (the new languages), and the game loads new files only at start.
+
 ### Added
 
 - **TruePlayed speaks every language of the game**: Deutsch, Español (EU), Español (AL),
