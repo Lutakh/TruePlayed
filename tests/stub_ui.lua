@@ -6,7 +6,8 @@
 -- files rely on that). A test opts in, after Reset and before Stub.LoadAddon(), with:
 --
 --   Stub.InstallUI({ settings = true, menu = true, ldb = true, compartment = true,
---                    modern = true, colorPicker = true })   -- every field defaults to true
+--                    modern = true, colorPicker = true, reload = true })
+--                                                           -- every field defaults to true
 --
 --   settings    : Settings.RegisterCanvasLayoutCategory / RegisterAddOnCategory /
 --                 OpenToCategory (shows the canvas frame and runs its OnShow script)
@@ -25,6 +26,8 @@
 --                 colorPicker = "legacy" installs the older API only (fields func /
 --                 cancelFunc / previousValues, SetColorRGB calls func like the game's
 --                 OnColorSelect); false leaves ColorPickerFrame absent.
+--   reload      : ReloadUI, which only counts its calls (Stub.ui.reloads); false leaves
+--                 it absent.
 --
 -- Helpers: Stub.ui.FindMenuItem(root, text), Stub.ui.ClickMenuItem(item),
 -- Stub.ui.IsChecked(item), Stub.ui.CloseSettings(), Stub.ui.categories,
@@ -33,7 +36,7 @@
 -- Stub.ui.pickerShows (times the picker was opened),
 -- Stub.ui.opened (OpenToCategory calls), Stub.ui.menus / lastMenu / lastMenuOwner,
 -- Stub.ui.ldbObjects[name], Stub.ui.ldbTextSets, Stub.ui.generateMenus (dropdown
--- GenerateMenu calls, SetupMenu included).
+-- GenerateMenu calls, SetupMenu included), Stub.ui.reloads (ReloadUI calls).
 
 local installedByUs = {}          -- global name -> value we installed (undone at Reset)
 
@@ -193,7 +196,7 @@ return function(Stub)
     opened = 0, openedID = nil, categories = {}, addonCategories = {},
     menus = 0, lastMenu = nil, lastMenuOwner = nil,
     ldbObjects = {}, ldbTextSets = 0, modern = false, generateMenus = 0,
-    pickerInfo = nil, pickerShows = 0, pickerLegacy = false,
+    pickerInfo = nil, pickerShows = 0, pickerLegacy = false, reloads = 0,
     FindMenuItem = FindMenuItem, ClickMenuItem = ClickMenuItem, IsChecked = IsChecked,
   }
   Stub.ui = ui
@@ -323,6 +326,10 @@ return function(Stub)
     if want("colorPicker") then
       ui.pickerLegacy = (opts.colorPicker == "legacy")
       Install("ColorPickerFrame", NewColorPicker(ui, ui.pickerLegacy))
+    end
+
+    if want("reload") then
+      Install("ReloadUI", function() ui.reloads = ui.reloads + 1 end)
     end
 
     Stub.templates = Stub.templates or {}

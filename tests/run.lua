@@ -194,6 +194,8 @@ local FILES = {
   "test_round4_regress",
   -- memory pass of the themes (design/NEXT-LOT.md A)
   "test_theme_compact", "test_theme_memory",
+  -- language option (design/NEXT-LOT.md B)
+  "test_language",
 }
 
 local passed, failed, skipped = 0, 0, 0

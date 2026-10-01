@@ -80,8 +80,6 @@ local BOX_HALF     = math_floor((BOX_WIDTH - 2 * BOX_PAD - BOX_GAP) / 2)   -- bo
 local FADE_ALPHA   = 0.35
 local VEIL_ALPHA   = 0.20
 local EMPTY        = ""
-local SEP_TEXT     = strtrim(L.SEP or "")      -- "·" between the XP text and slot 2
-if SEP_TEXT == "" then SEP_TEXT = "\194\183" end
 local BACKDROP = {
   bgFile = C.TEX_TT_BG, edgeFile = C.TEX_TT_BORDER,
   tile = true, tileSize = 16, edgeSize = 12,
@@ -1029,7 +1027,11 @@ local function ApplyBarStyle(w)
   brx:Show()
   brxShown = true
   ElemFont(sepFS, "sep", size.sep)
-  local st = Skin.Sub("sep", SEP_TEXT)
+  -- "·" between the XP text and slot 2: L.SEP without its spaces, read here (the
+  -- language is applied into L after the files load)
+  local st = strtrim(L.SEP or "")
+  if st == "" then st = "\194\183" end
+  st = Skin.Sub("sep", st)
   sepFS:SetText(st)
   wSep = Skin.Measure("sep", false, st)
   s1:SetWidth(0); s2:SetWidth(0); s3:SetWidth(0)   -- free widths (the box style bounds them)

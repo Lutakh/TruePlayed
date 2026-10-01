@@ -178,6 +178,7 @@ for _, name in ipairs({
   "AddonCompartmentFrame",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
+  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read
