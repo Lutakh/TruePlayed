@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="8" viewBox="0 0 256 8">
+  <!-- Druid tooltip separator (board "separateur feuille"): a line fading in toward a centred leaf and
+       out again, on row 4. Drawn about 1.3x narrower than the board because the separator is stretched
+       to the tooltip's inner width (1.0x to 1.6x). White, with a darker grey vein (R = G = B), tinted
+       by the theme colour; grey = true. -->
+  <defs>
+    <linearGradient id="in" x1="0" y1="0" x2="115" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="out" x1="141" y1="0" x2="256" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="256" height="8" fill="#ffffff" fill-opacity="0.004"/>
+  <rect x="0" y="4" width="115" height="1" fill="url(#in)"/>
+  <rect x="141" y="4" width="115" height="1" fill="url(#out)"/>
+  <g transform="translate(128 4.5) scale(0.786 0.933) translate(-10 -5)">
+    <path d="M3 5 C6 0 14 0 17 5 C14 10 6 10 3 5 Z" fill="#ffffff"/>
+    <path d="M4.5 5 L15.5 5" stroke="#3b3b3b" stroke-width="1"/>
+  </g>
+</svg>

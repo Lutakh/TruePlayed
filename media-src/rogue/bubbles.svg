@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="16" viewBox="0 0 64 16">
+  <!-- Rogue fill bubbles (grey, tiled): small soft dots, solid to 45 % of the radius (board radial bubbles). -->
+  <g shape-rendering="crispEdges">
+    <rect x="43" y="3" width="2" height="1" fill="#ffffff" fill-opacity="0.010"/>
+    <rect x="42" y="4" width="1" height="1" fill="#ffffff" fill-opacity="0.010"/>
+    <rect x="43" y="4" width="2" height="1" fill="#ffffff" fill-opacity="0.603"/>
+    <rect x="45" y="4" width="1" height="1" fill="#ffffff" fill-opacity="0.010"/>
+    <rect x="42" y="5" width="1" height="1" fill="#ffffff" fill-opacity="0.010"/>
+    <rect x="43" y="5" width="2" height="1" fill="#ffffff" fill-opacity="0.603"/>
+    <rect x="45" y="5" width="1" height="1" fill="#ffffff" fill-opacity="0.010"/>
+    <rect x="43" y="6" width="2" height="1" fill="#ffffff" fill-opacity="0.010"/>
+    <rect x="11" y="7" width="2" height="1" fill="#ffffff" fill-opacity="0.090"/>
+    <rect x="10" y="8" width="1" height="1" fill="#ffffff" fill-opacity="0.090"/>
+    <rect x="11" y="8" width="2" height="1" fill="#ffffff" fill-opacity="0.794"/>
+    <rect x="13" y="8" width="1" height="1" fill="#ffffff" fill-opacity="0.090"/>
+    <rect x="10" y="9" width="1" height="1" fill="#ffffff" fill-opacity="0.090"/>
+    <rect x="11" y="9" width="2" height="1" fill="#ffffff" fill-opacity="0.794"/>
+    <rect x="13" y="9" width="1" height="1" fill="#ffffff" fill-opacity="0.090"/>
+    <rect x="11" y="10" width="2" height="1" fill="#ffffff" fill-opacity="0.090"/>
+    <rect x="28" y="10" width="2" height="1" fill="#ffffff" fill-opacity="0.123"/>
+    <rect x="27" y="11" width="1" height="1" fill="#ffffff" fill-opacity="0.002"/>
+    <rect x="28" y="11" width="2" height="1" fill="#ffffff" fill-opacity="0.588"/>
+    <rect x="30" y="11" width="1" height="1" fill="#ffffff" fill-opacity="0.002"/>
+    <rect x="28" y="12" width="2" height="1" fill="#ffffff" fill-opacity="0.123"/>
+  </g>
+</svg>

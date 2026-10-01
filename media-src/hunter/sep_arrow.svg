@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="8" viewBox="0 0 256 8">
+  <!-- Hunter tooltip separator (board "separateur fleche"): a line fading in toward a centred arrow
+       (fletching chevrons, shaft, head) and out again, on row 4. Drawn about 1.25x narrower than the
+       board because the separator is stretched to the tooltip's inner width. White, grey = true. -->
+  <defs>
+    <linearGradient id="in" x1="0" y1="0" x2="111" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="out" x1="145" y1="0" x2="256" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="256" height="8" fill="#ffffff" fill-opacity="0.004"/>
+  <rect x="0" y="4" width="111" height="1" fill="url(#in)"/>
+  <rect x="145" y="4" width="111" height="1" fill="url(#out)"/>
+  <g transform="translate(128 4.5) scale(0.8 0.95) translate(-13.25 -5)">
+    <path d="M4 5 L19 5" stroke="#ffffff" stroke-width="1.2"/>
+    <path d="M25 5 L18 1.4 L19.6 5 L18 8.6 Z" fill="#ffffff"/>
+    <path d="M1.5 1.6 L5.2 5 L1.5 8.4 M4.8 1.6 L8.5 5 L4.8 8.4" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,0 +1,57 @@
+name: CI
+
+# Runs on every branch push and pull request. The release workflow calls it too
+# (workflow_call), so a tag is only published when these exact checks pass.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (Lua ${{ matrix.lua }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 5.1 = the game's Lua; 5.5 = the interpreter used for local development.
+        lua: ['5.1', '5.5']
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: ${{ matrix.lua }}
+
+      - name: Unit tests
+        run: lua tests/run.lua
+
+      - name: TOC check
+        run: lua tests/check_toc.lua
+
+      - name: Encoding check (UTF-8, Latin-1 range, no BOM, no CR)
+        run: lua tests/check_encoding.lua
+
+      - name: Lua 5.1 portability lint
+        run: lua tests/lint51.lua
+
+      - name: Global access check (run time, SPEC 2.2 / 2.3)
+        run: lua tests/check_globals.lua
+
+      - name: Theme media check (fonts, glyph coverage, TGA files, budgets)
+        run: lua tests/check_media.lua
+
+  luacheck:
+    name: Luacheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: nebularg/actions-luacheck@v1
+        with:
+          args: --no-color
+          annotate: warning

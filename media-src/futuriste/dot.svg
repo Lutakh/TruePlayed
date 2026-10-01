@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/dot (4 x 2, grey): 1 px dot every 2 px, both rows (drawn 1 px high), tiled H.
+     The last column is transparent. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="4" height="2" viewBox="0 0 4 2">
+  <rect x="0" y="0" width="1" height="2" fill="#ffffff"/>
+  <rect x="2" y="0" width="1" height="2" fill="#ffffff"/>
+</svg>

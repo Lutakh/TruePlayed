@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="8" viewBox="0 0 256 8">
+  <!-- Rogue tooltip stitches, left and right (grey, tinted): column 0 holds a 4 px on / 4 px
+       off dash (tiled V at 1 texel = 1 px); the 255 columns to the right are transparent, so
+       the texture stretched over the plate leaves a single dashed column at the left edge
+       of its box (flipX: at the right edge). -->
+  <rect x="0" y="0" width="1" height="4" fill="#ffffff" shape-rendering="crispEdges"/>
+</svg>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/panel (32 x 32, grey): filled panel, TL and BR corners cut at 45 degrees
+     (14 texels), for a 9-slice with 15-texel corners. Tinted by vertex colour. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <polygon points="14,0 32,0 32,18 18,32 0,32 0,14" fill="#ffffff"/>
+</svg>

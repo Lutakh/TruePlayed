@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/panel_line (32 x 32, grey): 1 px outline of the panel shape (TL and BR
+     corners cut at 45 degrees, 14 texels), 9-slice with 15-texel corners. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <polygon points="14.2,0.5 31.5,0.5 31.5,17.8 17.8,31.5 0.5,31.5 0.5,14.2"
+           fill="none" stroke="#ffffff" stroke-width="1"/>
+</svg>

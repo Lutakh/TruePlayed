@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="32" viewBox="0 0 16 32">
+  <!-- Violet tab hanging under the end of the fill (baked). The layer spans the track top
+       to H + 10, so only the bottom rows (from about H + 3) hold the tab. No outline along
+       the top edge: the tab comes out from under the frame's bottom outline. -->
+  <defs>
+    <linearGradient id="t" x1="0" y1="23" x2="0" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b3b4f7"/><stop offset="0.6" stop-color="#8788ee"/>
+      <stop offset="1" stop-color="#6a6bd0"/>
+    </linearGradient>
+  </defs>
+  <path d="M2.5 23 H13.5 V28.5 Q13.5 31.5 10.5 31.5 H5.5 Q2.5 31.5 2.5 28.5 Z" fill="#0c0a12"/>
+  <path d="M2.5 22.5 H13.5 V23 H12.5 V28.3 Q12.5 30.5 10.3 30.5 H5.7 Q3.5 30.5 3.5 28.3 V23 H2.5 Z" fill="url(#t)"/>
+  <rect x="4.5" y="23.5" width="7" height="1" fill="#e2e2ff" fill-opacity="0.6"/>
+</svg>

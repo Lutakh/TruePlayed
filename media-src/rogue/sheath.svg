@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 32 16">
+  <!-- Rogue track sheath (Voleur board, "fourreau de cuir surpique, lisere d'acier"), baked,
+       drawn as a 9-slice: corners 12 texels = 6 px (1 user unit = 1 px, 2 texels).
+       Around the track: 1 px #0b0a0f ring, 1 px #7d8592 steel ring, 3 px leather rim.
+       Rows 0..5 / 10..15 are the fixed top / bottom slices: the leather rim rows are
+       2..4 (glossy) and 11..13 (shaded); rows 6..9 stretch over the track (hidden by it).
+       The leather runs dark -> light -> dark across the stretched middle (x 6..26). -->
+  <defs>
+    <linearGradient id="leather" gradientUnits="userSpaceOnUse" x1="6" y1="0" x2="26" y2="0">
+      <stop offset="0" stop-color="#211a27"/>
+      <stop offset="0.5" stop-color="#30263a"/>
+      <stop offset="1" stop-color="#211a27"/>
+    </linearGradient>
+    <clipPath id="rim"><rect x="2" y="2" width="28" height="12" rx="3"/></clipPath>
+  </defs>
+  <rect x="0" y="0" width="32" height="16" rx="5" fill="#0b0a0f"/>
+  <rect x="1" y="1" width="30" height="14" rx="4" fill="#7d8592"/>
+  <rect x="1.5" y="1" width="29" height="0.5" fill="#aab1bc" fill-opacity="0.6"/>
+  <rect x="2" y="2" width="28" height="12" rx="3" fill="url(#leather)"/>
+  <g clip-path="url(#rim)">
+    <!-- top gloss (white .14 fading by 35 % of the height) + 1 px inset highlight -->
+    <rect x="0" y="2" width="32" height="1" fill="#ffffff" fill-opacity="0.24"/>
+    <rect x="0" y="3" width="32" height="1" fill="#ffffff" fill-opacity="0.11"/>
+    <rect x="0" y="4" width="32" height="1" fill="#ffffff" fill-opacity="0.08"/>
+    <rect x="0" y="5" width="32" height="1" fill="#ffffff" fill-opacity="0.05"/>
+    <!-- bottom shade (black up to .45) + 1 px inset shadow -->
+    <rect x="0" y="10" width="32" height="1" fill="#000000" fill-opacity="0.2"/>
+    <rect x="0" y="11" width="32" height="1" fill="#000000" fill-opacity="0.28"/>
+    <rect x="0" y="12" width="32" height="1" fill="#000000" fill-opacity="0.36"/>
+    <rect x="0" y="13" width="32" height="1" fill="#000000" fill-opacity="0.66"/>
+  </g>
+</svg>

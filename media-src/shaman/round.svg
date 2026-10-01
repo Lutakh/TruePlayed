@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- White rounded rectangle (radius 6), 9-slice with 7-texel corners; tinted by vertex colour. -->
+  <rect x="0" y="0" width="16" height="16" rx="6" fill="#ffffff"/>
+</svg>

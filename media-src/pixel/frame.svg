@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel frame, 9-slice 4 texels = 4 px (1:1): black / #eef0ff / black rings with the outer
+       corner pixel cut (board nf4 / nf6 clip), then a transparent 1-texel gutter that lies over
+       the framed area, so that the stretched clear centre never filters in a ring colour.
+       Used by the track frame and the bar panel. -->
+  <path fill-rule="evenodd" fill="#000000" d="M1 0 H15 V1 H16 V15 H15 V16 H1 V15 H0 V1 H1 Z M1 1 V15 H15 V1 Z"/>
+  <path fill-rule="evenodd" fill="#eef0ff" d="M1 1 H15 V15 H1 Z M2 2 V14 H14 V2 Z"/>
+  <path fill-rule="evenodd" fill="#000000" d="M2 2 H14 V14 H2 Z M3 3 V13 H13 V3 Z"/>
+</svg>

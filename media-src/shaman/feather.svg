@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="32" viewBox="0 0 16 32">
+  <!-- Shaman tooltip: cord with two beads and a feather hanging from the top-left medallion
+       (board units scaled 0.78). Texel (11.5, 1.4) is where the cord leaves the medallion. -->
+  <g transform="translate(7.2 -10.3) scale(0.78)">
+    <path d="M5.5 15 C3 21 1.6 26 1.2 31" fill="none" stroke="#0a0e14" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M5.5 15 C3 21 1.6 26 1.2 31" fill="none" stroke="#c9a36a" stroke-width="1.1" stroke-linecap="round"/>
+    <circle cx="3.9" cy="20.5" r="2" fill="#b8392b" stroke="#0a0e14" stroke-width="1"/>
+    <circle cx="2.4" cy="25.6" r="2" fill="#e8e2d4" stroke="#0a0e14" stroke-width="1"/>
+    <path d="M1.2 30 C4.6 34 5 43 1.4 52 C-2.4 43 -2.2 34 1.2 30 Z" fill="none" stroke="#0a0e14" stroke-width="1.6"/>
+    <path d="M1.2 30 C4.6 34 5 43 1.4 52 C-2.4 43 -2.2 34 1.2 30 Z" fill="#e8e2d4"/>
+    <path d="M1.2 31.5 L1.4 51" stroke="#6b7885" stroke-width="0.7"/>
+    <path d="M-1.4 42 L1.3 44 L4 42 M-1 46 L1.35 48 L3.7 46" fill="none" stroke="#0070dd" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

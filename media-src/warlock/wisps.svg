@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <!-- Soul wisps over the rested part (grey, tinted rested+.8), stretched over the span. -->
+  <defs>
+    <radialGradient id="w1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="w2"><stop offset="0" stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="6.4" cy="6.1" rx="8.5" ry="4.8" fill="url(#w1)"/>
+  <ellipse cx="19.2" cy="10.9" rx="10.4" ry="4" fill="url(#w2)"/>
+</svg>

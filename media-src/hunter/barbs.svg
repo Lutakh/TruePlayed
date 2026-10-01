@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Hunter fill texture, tiled HV (1 texel = 1 px): faint "\" feather barbs, 2 px wide, 8 px period,
+       seamless in both directions. White, grey = true. -->
+  <rect x="0" y="0" width="16" height="16" fill="#ffffff" fill-opacity="0.004"/>
+  <g fill="#ffffff">
+    <polygon points="-16,0 -14,0 -6,16 -8,16"/>
+    <polygon points="-8,0 -6,0 2,16 0,16"/>
+    <polygon points="0,0 2,0 10,16 8,16"/>
+    <polygon points="8,0 10,0 18,16 16,16"/>
+  </g>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="128" viewBox="0 0 64 128">
+  <!-- Hunter tooltip ornament: two feathers hanging from the corner rivet on a cord, with beads
+       (board "plume suspendue", 40 x 120 viewBox moved by (10, 4) so the back feather fits).
+       1:1 at TOPLEFT (-39, 1): the cord starts on the rivet of the corner patch. Baked colours. -->
+  <g transform="translate(10 4)">
+    <path d="M35.5 3.5 C28 4.5 21.5 10 20 21" fill="none" stroke="#1a1008" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M35.5 3.5 C28 4.5 21.5 10 20 21" fill="none" stroke="#8a6440" stroke-width="1.2" stroke-linecap="round"/>
+    <g transform="translate(20 30) rotate(18) scale(0.72) translate(-20 -30)">
+      <path d="M20 34 C12 42 9 62 10 82 C11 96 13 106 16 113 C19 106 24 96 26 82 C28 62 27 42 20 34 Z" fill="none" stroke="#1a1008" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="M20 34 C12 42 9 62 10 82 C11 96 13 106 16 113 C19 106 24 96 26 82 C28 62 27 42 20 34 Z" fill="#b79464"/>
+      <path d="M15 44.5 L19.9 49.5 L24.2 44.5 M12 57 L19.7 63 L25.8 57 M11 71 L19.2 77 L26 71 M11.3 86 L18.4 92 L24.3 86 M13.3 100 L17.3 104.5 L20.4 100" fill="none" stroke="#5a3a1e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 30 C20 55 19.4 85 16 112.5" fill="none" stroke="#7a5a38" stroke-width="1"/>
+    </g>
+    <path d="M20 34 C12 42 9 62 10 82 C11 96 13 106 16 113 C19 106 24 96 26 82 C28 62 27 42 20 34 Z" fill="none" stroke="#1a1008" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M20 34 C12 42 9 62 10 82 C11 96 13 106 16 113 C19 106 24 96 26 82 C28 62 27 42 20 34 Z" fill="#ebdcbc"/>
+    <path d="M15 44.5 L19.9 49.5 L24.2 44.5 M12 57 L19.7 63 L25.8 57 M11 71 L19.2 77 L26 71 M11.3 86 L18.4 92 L24.3 86 M13.3 100 L17.3 104.5 L20.4 100" fill="none" stroke="#7a5230" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M20 30 C20 55 19.4 85 16 112.5" fill="none" stroke="#8a6a44" stroke-width="0.9"/>
+    <path d="M18 34.5 L15.4 31.8 M22 34.5 L24.6 31.8" stroke="#ebdcbc" stroke-width="1" stroke-linecap="round"/>
+    <rect x="18.3" y="29.2" width="3.4" height="4.4" rx="0.6" fill="#e2c894" stroke="#1a1008" stroke-width="0.8"/>
+    <circle cx="20" cy="27" r="2.2" fill="#b5651d" stroke="#1a1008" stroke-width="1"/>
+    <circle cx="20" cy="22" r="3" fill="#aad372" stroke="#1a1008" stroke-width="1"/>
+    <circle cx="19" cy="21" r="0.9" fill="#e8f5d4"/>
+  </g>
+</svg>

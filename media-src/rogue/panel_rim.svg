@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Rogue bar panel rim (grey, tinted): the outer 2 px of a panel with 5 px rounded
+       corners, 9-slice 6 texels = 6 px; the inside (inset 2) is the gradient part. -->
+  <path fill-rule="evenodd" fill="#ffffff"
+        d="M5 0 H11 A5 5 0 0 1 16 5 V11 A5 5 0 0 1 11 16 H5 A5 5 0 0 1 0 11 V5 A5 5 0 0 1 5 0 Z M2 2 V14 H14 V2 Z"/>
+</svg>

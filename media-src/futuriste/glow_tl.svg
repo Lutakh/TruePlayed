@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/glow_tl (32 x 32, grey): quarter radial glow from the top-left corner,
+     alpha 1 at the corner falling linearly to 0 at radius 32 (stretched to an ellipse). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <radialGradient id="g" cx="0" cy="0" r="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" fill="url(#g)"/>
+</svg>

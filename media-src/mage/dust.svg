@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <!-- Mage arcane dust over the rested part (tiled horizontally): two white sparkles with a
+       solid core and a soft edge per 32 px. Tinted by a fading gradient. -->
+  <defs>
+    <radialGradient id="s"><stop offset="0" stop-color="#fff"/><stop offset="0.45" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  </defs>
+  <circle cx="7" cy="5.6" r="2.4" fill="url(#s)"/>
+  <circle cx="23" cy="10.4" r="2" fill="url(#s)" fill-opacity="0.8"/>
+</svg>

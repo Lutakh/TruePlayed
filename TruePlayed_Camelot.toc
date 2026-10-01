@@ -1,0 +1,48 @@
+## Interface: 16001
+## Title: TruePlayed
+## Notes: Your real /played: XP per hour, time to next level, time per level and per zone. Optionally leaves out AFK, inn and city time.
+## Notes-frFR: Votre vrai /played : XP par heure, temps avant le prochain niveau, temps par niveau et par zone. Exclut au choix le temps AFK, en auberge et en ville.
+## Author: Lutak
+## Version: @project-version@
+## Category: Leveling
+## Category-frFR: Montée en niveau
+## IconTexture: Interface\Icons\INV_Misc_PocketWatch_01
+## SavedVariables: TruePlayedDB
+## LoadSavedVariablesFirst: 1
+## OptionalDeps: WTFix
+## AddonCompartmentFunc: TruePlayed_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: TruePlayed_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: TruePlayed_OnAddonCompartmentLeave
+## X-License: MIT
+## X-Website: https://github.com/Lutakh/TruePlayed
+
+Locales\enUS.lua
+Locales\frFR.lua
+Core.lua
+Format.lua
+Stats.lua
+Tracker.lua
+Played.lua
+Tokens.lua
+Themes.lua
+Themes\actuel.lua
+Themes\futuriste.lua
+Themes\heroic.lua
+Themes\pixel.lua
+Themes\warrior.lua
+Themes\paladin.lua
+Themes\hunter.lua
+Themes\rogue.lua
+Themes\priest.lua
+Themes\shaman.lua
+Themes\mage.lua
+Themes\warlock.lua
+Themes\druid.lua
+Graph.lua
+TooltipFrame.lua
+Tooltip.lua
+BarSkin.lua
+Bar.lua
+Window.lua
+Options.lua
+Broker.lua

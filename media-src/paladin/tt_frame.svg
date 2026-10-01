@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Tooltip frame (Paladin board): 9-slice, corners 12 texels. From the outside: #3a2708 edge,
+       #b8892e gold setting, 4 px white marble (lit top, shaded bottom, a few veins in the corners),
+       #c9a04a gold ring, #1a1206 ring, then a soft inner shadow; transparent centre ("bg" part). -->
+  <defs>
+    <linearGradient id="marble" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32">
+      <stop offset="0" stop-color="#f6f2e9"/>
+      <stop offset="0.40" stop-color="#e8e1d2"/>
+      <stop offset="0.70" stop-color="#f3eee3"/>
+      <stop offset="1" stop-color="#e2dac9"/>
+    </linearGradient>
+    <linearGradient id="shT" gradientUnits="userSpaceOnUse" x1="0" y1="8" x2="0" y2="13">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.38"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shB" gradientUnits="userSpaceOnUse" x1="0" y1="24" x2="0" y2="19">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.38"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shL" gradientUnits="userSpaceOnUse" x1="8" y1="0" x2="13" y2="0">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.38"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shR" gradientUnits="userSpaceOnUse" x1="24" y1="0" x2="19" y2="0">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.38"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="16" height="5" fill="url(#shT)"/>
+  <rect x="8" y="19" width="16" height="5" fill="url(#shB)"/>
+  <rect x="8" y="8" width="5" height="16" fill="url(#shL)"/>
+  <rect x="19" y="8" width="5" height="16" fill="url(#shR)"/>
+  <!-- edge + gold setting -->
+  <path fill-rule="evenodd" fill="#3a2708"
+        d="M9 0 H23 A9 9 0 0 1 32 9 V23 A9 9 0 0 1 23 32 H9 A9 9 0 0 1 0 23 V9 A9 9 0 0 1 9 0 Z M9 1 A8 8 0 0 0 1 9 V23 A8 8 0 0 0 9 31 H23 A8 8 0 0 0 31 23 V9 A8 8 0 0 0 23 1 Z"/>
+  <path fill-rule="evenodd" fill="#b8892e"
+        d="M9 1 H23 A8 8 0 0 1 31 9 V23 A8 8 0 0 1 23 31 H9 A8 8 0 0 1 1 23 V9 A8 8 0 0 1 9 1 Z M9 2 A7 7 0 0 0 2 9 V23 A7 7 0 0 0 9 30 H23 A7 7 0 0 0 30 23 V9 A7 7 0 0 0 23 2 Z"/>
+  <!-- marble rim -->
+  <path fill-rule="evenodd" fill="url(#marble)"
+        d="M9 2 H23 A7 7 0 0 1 30 9 V23 A7 7 0 0 1 23 30 H9 A7 7 0 0 1 2 23 V9 A7 7 0 0 1 9 2 Z M10 6 H22 A4 4 0 0 1 26 10 V22 A4 4 0 0 1 22 26 H10 A4 4 0 0 1 6 22 V10 A4 4 0 0 1 10 6 Z"/>
+  <g shape-rendering="crispEdges">
+    <rect x="8" y="2" width="16" height="1" fill="#ffffff" fill-opacity="0.95"/>
+    <rect x="8" y="29" width="16" height="1" fill="#786446" fill-opacity="0.45"/>
+  </g>
+  <g fill="none" stroke="#968c7a" stroke-linecap="round">
+    <path d="M2.6 8 L7.4 4.6" stroke-width="0.5" stroke-opacity="0.7"/>
+    <path d="M25 2.8 L29.6 6.6" stroke-width="0.4" stroke-opacity="0.6"/>
+    <path d="M3 25.5 L6 28.6" stroke-width="0.4" stroke-opacity="0.55"/>
+    <path d="M24.6 29.2 L29.2 25.4" stroke-width="0.5" stroke-opacity="0.65"/>
+  </g>
+  <!-- inner gold and dark rings of the navy panel -->
+  <path fill-rule="evenodd" fill="#c9a04a"
+        d="M10 6 H22 A4 4 0 0 1 26 10 V22 A4 4 0 0 1 22 26 H10 A4 4 0 0 1 6 22 V10 A4 4 0 0 1 10 6 Z M10 7 A3 3 0 0 0 7 10 V22 A3 3 0 0 0 10 25 H22 A3 3 0 0 0 25 22 V10 A3 3 0 0 0 22 7 Z"/>
+  <path fill-rule="evenodd" fill="#1a1206"
+        d="M10 7 H22 A3 3 0 0 1 25 10 V22 A3 3 0 0 1 22 25 H10 A3 3 0 0 1 7 22 V10 A3 3 0 0 1 10 7 Z M10 8 A2 2 0 0 0 8 10 V22 A2 2 0 0 0 10 24 H22 A2 2 0 0 0 24 22 V10 A2 2 0 0 0 22 8 Z"/>
+</svg>

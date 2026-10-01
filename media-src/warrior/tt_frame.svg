@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Tooltip frame (Guerrier board): 9-slice, corners 12 texels. From the outside: #110c09 outline,
+       4 px riveted-steel rim (lit top/left, shaded bottom/right), #110c09 inner ring, then a soft
+       inner shadow over the dark panel; the centre is transparent (the "bg" part shows through). -->
+  <defs>
+    <linearGradient id="steel" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="32">
+      <stop offset="0" stop-color="#9ea4ab"/>
+      <stop offset="0.25" stop-color="#7b828b"/>
+      <stop offset="0.75" stop-color="#767d86"/>
+      <stop offset="1" stop-color="#4f545a"/>
+    </linearGradient>
+    <linearGradient id="shT" gradientUnits="userSpaceOnUse" x1="0" y1="6" x2="0" y2="12">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.4"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shB" gradientUnits="userSpaceOnUse" x1="0" y1="26" x2="0" y2="20">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.4"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shL" gradientUnits="userSpaceOnUse" x1="6" y1="0" x2="12" y2="0">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.4"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shR" gradientUnits="userSpaceOnUse" x1="26" y1="0" x2="20" y2="0">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.4"/><stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- inner shadow (under the rim, over the transparent centre) -->
+  <rect x="6" y="6" width="20" height="6" fill="url(#shT)"/>
+  <rect x="6" y="20" width="20" height="6" fill="url(#shB)"/>
+  <rect x="6" y="6" width="6" height="20" fill="url(#shL)"/>
+  <rect x="20" y="6" width="6" height="20" fill="url(#shR)"/>
+  <!-- outline + rim + inner ring -->
+  <path fill-rule="evenodd" fill="#110c09"
+        d="M4 0 H28 A4 4 0 0 1 32 4 V28 A4 4 0 0 1 28 32 H4 A4 4 0 0 1 0 28 V4 A4 4 0 0 1 4 0 Z M7 6 H25 A1 1 0 0 1 26 7 V25 A1 1 0 0 1 25 26 H7 A1 1 0 0 1 6 25 V7 A1 1 0 0 1 7 6 Z"/>
+  <path fill-rule="evenodd" fill="url(#steel)"
+        d="M4 1 H28 A3 3 0 0 1 31 4 V28 A3 3 0 0 1 28 31 H4 A3 3 0 0 1 1 28 V4 A3 3 0 0 1 4 1 Z M7 5 H25 A2 2 0 0 1 27 7 V25 A2 2 0 0 1 25 27 H7 A2 2 0 0 1 5 25 V7 A2 2 0 0 1 7 5 Z"/>
+  <g shape-rendering="crispEdges">
+    <rect x="3" y="1" width="26" height="1" fill="#ffffff" fill-opacity="0.35"/>
+    <rect x="3" y="30" width="26" height="1" fill="#000000" fill-opacity="0.4"/>
+    <rect x="1" y="3" width="1" height="26" fill="#ffffff" fill-opacity="0.14"/>
+    <rect x="30" y="3" width="1" height="26" fill="#000000" fill-opacity="0.22"/>
+    <!-- brushed streaks on the corner plates (the edges stretch, the corners do not) -->
+    <rect x="2" y="2" width="1" height="3" fill="#ffffff" fill-opacity="0.08"/>
+    <rect x="9" y="2" width="1" height="3" fill="#000000" fill-opacity="0.08"/>
+    <rect x="27" y="2" width="1" height="3" fill="#ffffff" fill-opacity="0.08"/>
+    <rect x="22" y="27" width="1" height="3" fill="#000000" fill-opacity="0.08"/>
+  </g>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Druid tooltip corner: vine running along the top and left edges with leaves and two orange
+       berries (board "vigne coin haut-gauche", top run shortened to fit 64 texels). Drawn 1:1;
+       placed at TOPLEFT (-14, 9); the bottom-right corner uses flipX + flipY. Baked colours. -->
+  <path d="M62 10.5 C50 8.6 39 8 29 9 C20 9.8 15.4 13 14.6 21 C14 30 14.6 42 15.6 56"
+        fill="none" stroke="#1a1008" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M62 10.5 C50 8.6 39 8 29 9 C20 9.8 15.4 13 14.6 21 C14 30 14.6 42 15.6 56"
+        fill="none" stroke="#7a9a44" stroke-width="1.8" stroke-linecap="round"/>
+  <g transform="translate(43 8.7) rotate(-162)">
+    <path d="M0 0 C3 -5 10 -5.5 14 0 C10 5.5 3 5 0 0 Z" fill="none" stroke="#1a1008" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M0 0 C3 -5 10 -5.5 14 0 C10 5.5 3 5 0 0 Z" fill="#6f9440"/>
+    <path d="M1.5 0 L12 0" stroke="#2f5d34" stroke-width="0.9"/>
+  </g>
+  <g transform="translate(14.6 34) rotate(165)">
+    <path d="M0 0 C3 -5 10 -5.5 14 0 C10 5.5 3 5 0 0 Z" fill="none" stroke="#1a1008" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M0 0 C3 -5 10 -5.5 14 0 C10 5.5 3 5 0 0 Z" fill="#557a33"/>
+    <path d="M1.5 0 L12 0" stroke="#2f5d34" stroke-width="0.9"/>
+  </g>
+  <g transform="translate(52 10) rotate(-22) scale(0.8)">
+    <path d="M0 0 C3 -5 10 -5.5 14 0 C10 5.5 3 5 0 0 Z" fill="none" stroke="#1a1008" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M0 0 C3 -5 10 -5.5 14 0 C10 5.5 3 5 0 0 Z" fill="#7fa345"/>
+    <path d="M1.5 0 L12 0" stroke="#2f5d34" stroke-width="1"/>
+  </g>
+  <circle cx="12.5" cy="7.5" r="2.4" fill="#ff7c0a" stroke="#1a1008" stroke-width="1"/>
+  <circle cx="17" cy="4.8" r="1.7" fill="#e86a05" stroke="#1a1008" stroke-width="1"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="16" viewBox="0 0 64 16">
+  <!-- Marble veins (tiled HV over the frame band, white, tinted warm grey): two thin vein families
+       crossing at about +-14 degrees; each rises one tile height per tile width, so the tile is seamless. -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="butt">
+    <path d="M0 2 L64 18 M0 -14 L64 2" stroke-width="0.8" stroke-opacity="0.9"/>
+    <path d="M0 13 L64 -3 M0 29 L64 13" stroke-width="0.6" stroke-opacity="0.65"/>
+    <path d="M20 7 L31 9.2" stroke-width="0.5" stroke-opacity="0.5"/>
+  </g>
+</svg>

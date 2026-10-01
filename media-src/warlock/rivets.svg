@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4" height="32" viewBox="0 0 4 32">
+  <!-- Rivet column (grey, tinted): one stud at the top, one at the bottom, stretched over
+       the frame height (track -3 .. H + 3); the tooltip crops one stud with rect. -->
+  <defs>
+    <radialGradient id="stud" cx="0.4" cy="0.35" r="0.65">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.55" stop-color="#9c9c9c"/>
+      <stop offset="1" stop-color="#5c5c5c"/>
+    </radialGradient>
+  </defs>
+  <circle cx="2" cy="1.6" r="1.6" fill="url(#stud)"/>
+  <circle cx="2" cy="30.4" r="1.6" fill="url(#stud)"/>
+</svg>

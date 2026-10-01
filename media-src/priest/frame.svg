@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 32 16">
+  <!-- Priest track frame (Pretre board, "cadre ivoire nacre, lisere d'argent"), baked,
+       drawn as a 9-slice: corners 14 texels = 7 px (1 user unit = 1 px, 2 texels).
+       Around the track: 1 px #16121f ring, 1 px silver #c3c0d0, 1 px #16121f, then a 3 px
+       pearly ivory rim (rows 3..5 glossy white, rows 10..12 shaded lavender-grey) with the
+       board's mother-of-pearl tints (lavender / sky / gold / lavender / sky / violet) across
+       the stretched middle (x 7..25). Rows 7..9 stretch over the track (hidden by it). -->
+  <defs>
+    <linearGradient id="pearl" gradientUnits="userSpaceOnUse" x1="7" y1="0" x2="25" y2="0">
+      <stop offset="0" stop-color="#c4b2ff" stop-opacity="0.26"/>
+      <stop offset="0.22" stop-color="#aad6ff" stop-opacity="0.2"/>
+      <stop offset="0.46" stop-color="#ffe8b4" stop-opacity="0.24"/>
+      <stop offset="0.7" stop-color="#c4b2ff" stop-opacity="0.24"/>
+      <stop offset="0.88" stop-color="#aad6ff" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#6c3fb5" stop-opacity="0.34"/>
+    </linearGradient>
+    <linearGradient id="silver" gradientUnits="userSpaceOnUse" x1="0" y1="1" x2="0" y2="15">
+      <stop offset="0" stop-color="#e6e4ee"/>
+      <stop offset="0.5" stop-color="#c3c0d0"/>
+      <stop offset="1" stop-color="#9894ab"/>
+    </linearGradient>
+    <clipPath id="ivory"><rect x="3" y="3" width="26" height="10" rx="4"/></clipPath>
+  </defs>
+  <rect x="0" y="0" width="32" height="16" rx="7" fill="#16121f"/>
+  <rect x="1" y="1" width="30" height="14" rx="6" fill="url(#silver)"/>
+  <rect x="2" y="2" width="28" height="12" rx="5" fill="#16121f"/>
+  <g clip-path="url(#ivory)">
+    <rect x="0" y="0" width="32" height="16" fill="#e9e3d4"/>
+    <rect x="0" y="3" width="32" height="1" fill="#fffefc"/>
+    <rect x="0" y="4" width="32" height="1" fill="#fdfbf6"/>
+    <rect x="0" y="5" width="32" height="1" fill="#f8f5ee"/>
+    <rect x="0" y="6" width="32" height="4" fill="#ece7db"/>
+    <rect x="0" y="10" width="32" height="1" fill="#b4aca8"/>
+    <rect x="0" y="11" width="32" height="1" fill="#a69e9f"/>
+    <rect x="0" y="12" width="32" height="1" fill="#766c80"/>
+    <rect x="0" y="0" width="32" height="16" fill="url(#pearl)"/>
+  </g>
+</svg>

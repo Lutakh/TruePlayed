@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Bar background panel: filled rounded rectangle (radius 4), white, tinted. 9-slice, corners 6 texels. -->
+  <rect x="0" y="0" width="16" height="16" rx="4" ry="4" fill="#ffffff"/>
+</svg>

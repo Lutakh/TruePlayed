@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Filled rounded rectangle, radius 6 texels, for 9-slices with 6-texel corners (bar background
+       panel drawn with 7 px corners, tooltip inner panel with 5 px corners). White, grey = true. -->
+  <rect x="0" y="0" width="16" height="16" fill="#ffffff" fill-opacity="0.004"/>
+  <rect x="0" y="0" width="16" height="16" rx="6" fill="#ffffff"/>
+</svg>

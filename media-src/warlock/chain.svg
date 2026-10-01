@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="32" viewBox="0 0 8 32">
+  <!-- Chain and soul shard hanging under a bar end cap (baked, 1:1). The top links hide
+       behind the cap; a taller track hides more of them. Faint soul glow around the shard. -->
+  <g fill="#6f6b7d" stroke="#0c0a12" stroke-width="0.55">
+    <rect x="3.45" y="1.6" width="1.1" height="3.8" rx="0.55"/>
+    <rect x="3.45" y="8.6" width="1.1" height="3.8" rx="0.55"/>
+    <rect x="3.45" y="15.6" width="1.1" height="3.8" rx="0.55"/>
+  </g>
+  <g fill="none">
+    <ellipse cx="4" cy="7" rx="1.5" ry="2.2" stroke="#0c0a12" stroke-width="1.6"/>
+    <ellipse cx="4" cy="7" rx="1.5" ry="2.2" stroke="#8d899c" stroke-width="0.75"/>
+    <ellipse cx="4" cy="14" rx="1.5" ry="2.2" stroke="#0c0a12" stroke-width="1.6"/>
+    <ellipse cx="4" cy="14" rx="1.5" ry="2.2" stroke="#8d899c" stroke-width="0.75"/>
+    <ellipse cx="4" cy="21" rx="1.5" ry="2.2" stroke="#0c0a12" stroke-width="1.6"/>
+    <ellipse cx="4" cy="21" rx="1.5" ry="2.2" stroke="#8d899c" stroke-width="0.75"/>
+  </g>
+  <defs><radialGradient id="soul"><stop offset="0" stop-color="#8788ee" stop-opacity="0.45"/>
+    <stop offset="1" stop-color="#8788ee" stop-opacity="0"/></radialGradient></defs>
+  <ellipse cx="4" cy="27.6" rx="4" ry="4.4" fill="url(#soul)"/>
+  <path d="M4 23.6 L6.2 26.7 L4 31.4 L1.8 26.7 Z" fill="#9a6ee6" stroke="#0c0a12" stroke-width="0.8" stroke-linejoin="round"/>
+  <path d="M4 23.6 L1.8 26.7 L4 27.4 Z" fill="#dccbff"/>
+  <path d="M4 27.4 L6.2 26.7 L4 31.4 Z" fill="#6a3fb8"/>
+</svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Warrior track frame (Guerrier board, "cadre en plaques d'acier"): 9-slice, corners 8 texels.
+       Texels 0 = #110c09 outline, 1..3 = steel rail (lit top, shaded bottom) with a rivet near each
+       end, 4..27 = hole (the track). -->
+  <defs>
+    <linearGradient id="steel" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="32">
+      <stop offset="0" stop-color="#a3a8ae"/>
+      <stop offset="0.30" stop-color="#787f88"/>
+      <stop offset="0.66" stop-color="#787f88"/>
+      <stop offset="1" stop-color="#43474c"/>
+    </linearGradient>
+  </defs>
+  <path fill-rule="evenodd" fill="#110c09"
+        d="M3 0 H29 A3 3 0 0 1 32 3 V29 A3 3 0 0 1 29 32 H3 A3 3 0 0 1 0 29 V3 A3 3 0 0 1 3 0 Z M4 4 V28 H28 V4 Z"/>
+  <path fill-rule="evenodd" fill="url(#steel)"
+        d="M3 1 H29 A2 2 0 0 1 31 3 V29 A2 2 0 0 1 29 31 H3 A2 2 0 0 1 1 29 V3 A2 2 0 0 1 3 1 Z M4 4 V28 H28 V4 Z"/>
+  <!-- inset top highlight and bottom shade (1 px) -->
+  <rect x="3" y="1" width="26" height="1" fill="#ffffff" fill-opacity="0.4" shape-rendering="crispEdges"/>
+  <rect x="3" y="30" width="26" height="1" fill="#000000" fill-opacity="0.45" shape-rendering="crispEdges"/>
+  <!-- left rail catches a little light, right rail a little shade -->
+  <rect x="1" y="3" width="1" height="26" fill="#ffffff" fill-opacity="0.12" shape-rendering="crispEdges"/>
+  <rect x="30" y="3" width="1" height="26" fill="#000000" fill-opacity="0.15" shape-rendering="crispEdges"/>
+  <!-- 1 px dark lip around the hole: the track's own inset ring (board: inset 0 0 0 1px rgba(0,0,0,.6)) -->
+  <path fill-rule="evenodd" fill="#000000" fill-opacity="0.35" d="M3 3 H29 V29 H3 Z M4 4 V28 H28 V4 Z" shape-rendering="crispEdges"/>
+  <!-- end rivets of both rails, in the corner pieces (not stretched); the top rail gets more
+       rivets from the "rivets" tick layer -->
+  <g shape-rendering="crispEdges">
+    <rect x="4" y="1" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="5" y="1" width="1" height="1" fill="#b4bbc2"/><rect x="6" y="1" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+    <rect x="4" y="2" width="1" height="1" fill="#b4bbc2"/><rect x="5" y="2" width="1" height="1" fill="#f2f4f6"/><rect x="6" y="2" width="1" height="1" fill="#5b6269"/>
+    <rect x="4" y="3" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="5" y="3" width="1" height="1" fill="#5b6269"/><rect x="6" y="3" width="1" height="1" fill="#16181b" fill-opacity="0.75"/>
+    <rect x="25" y="1" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="26" y="1" width="1" height="1" fill="#b4bbc2"/><rect x="27" y="1" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+    <rect x="25" y="2" width="1" height="1" fill="#b4bbc2"/><rect x="26" y="2" width="1" height="1" fill="#f2f4f6"/><rect x="27" y="2" width="1" height="1" fill="#5b6269"/>
+    <rect x="25" y="3" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="26" y="3" width="1" height="1" fill="#5b6269"/><rect x="27" y="3" width="1" height="1" fill="#16181b" fill-opacity="0.75"/>
+    <rect x="4" y="28" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="5" y="28" width="1" height="1" fill="#b4bbc2"/><rect x="6" y="28" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+    <rect x="4" y="29" width="1" height="1" fill="#b4bbc2"/><rect x="5" y="29" width="1" height="1" fill="#f2f4f6"/><rect x="6" y="29" width="1" height="1" fill="#5b6269"/>
+    <rect x="4" y="30" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="5" y="30" width="1" height="1" fill="#5b6269"/><rect x="6" y="30" width="1" height="1" fill="#16181b" fill-opacity="0.75"/>
+    <rect x="25" y="28" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="26" y="28" width="1" height="1" fill="#b4bbc2"/><rect x="27" y="28" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+    <rect x="25" y="29" width="1" height="1" fill="#b4bbc2"/><rect x="26" y="29" width="1" height="1" fill="#f2f4f6"/><rect x="27" y="29" width="1" height="1" fill="#5b6269"/>
+    <rect x="25" y="30" width="1" height="1" fill="#16181b" fill-opacity="0.55"/><rect x="26" y="30" width="1" height="1" fill="#5b6269"/><rect x="27" y="30" width="1" height="1" fill="#16181b" fill-opacity="0.75"/>
+  </g>
+</svg>

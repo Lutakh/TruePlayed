@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Druid fill texture, tiled HV (1 texel = 1 px): faint "/" leaf veins, 3 px wide, 8 px period,
+       seamless in both directions. White (tinted by vertex colour, grey = true). The near-invisible
+       white background (alpha 1/255) keeps transparent texels white, so filtering adds no dark halo. -->
+  <rect x="0" y="0" width="16" height="16" fill="#ffffff" fill-opacity="0.004"/>
+  <g fill="#ffffff">
+    <polygon points="0,0 3,0 -5,16 -8,16"/>
+    <polygon points="8,0 11,0 3,16 0,16"/>
+    <polygon points="16,0 19,0 11,16 8,16"/>
+    <polygon points="24,0 27,0 19,16 16,16"/>
+  </g>
+</svg>

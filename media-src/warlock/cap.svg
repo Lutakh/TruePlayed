@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Left end cap of the bar (baked): black iron point with a spike, two bolts and a
+       soul gem. Used through rect {0, 4, 22, 24}: 22 px wide, track -5 .. H + 5 tall;
+       its right edge sits on the track start. The right cap is the same, flipped. -->
+  <defs>
+    <linearGradient id="iron" x1="0" y1="4" x2="0" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#737083"/><stop offset="0.4" stop-color="#45424f"/>
+      <stop offset="0.75" stop-color="#2c2a34"/><stop offset="1" stop-color="#1b1a21"/>
+    </linearGradient>
+  </defs>
+  <path d="M4.6 14.3 L0.6 16 L4.6 17.7 Z" fill="#2c2a34" stroke="#0c0a12" stroke-width="0.8" stroke-linejoin="round"/>
+  <path d="M22.4 4.6 L11.2 4.6 L3.6 16 L11.2 27.4 L22.4 27.4 Z" fill="url(#iron)" stroke="#0c0a12" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M21.2 5.9 L11.9 5.9 L5.2 16" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="0.8" stroke-linecap="round"/>
+  <circle cx="13.6" cy="16" r="4.6" fill="#8788ee" fill-opacity="0.35"/>
+  <path d="M13.6 12.3 L16.4 16 L13.6 19.7 L10.8 16 Z" fill="#8788ee" stroke="#0c0a12" stroke-width="0.8" stroke-linejoin="round"/>
+  <path d="M13.6 12.3 L10.8 16 L13.6 16 Z" fill="#cfd0ff"/>
+  <path d="M13.6 16 L16.4 16 L13.6 19.7 Z" fill="#5f60c4"/>
+  <circle cx="19.4" cy="7.4" r="1.1" fill="#aeabbd" stroke="#0c0a12" stroke-width="0.6"/>
+  <circle cx="19.4" cy="24.6" r="1.1" fill="#aeabbd" stroke="#0c0a12" stroke-width="0.6"/>
+</svg>

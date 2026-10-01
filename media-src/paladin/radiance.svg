@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="32" viewBox="0 0 8 32">
+  <!-- Fill "radiance": steep "/" light stripes, 2 px on / 6 off, slope 1/4 (seamless 8 x 32, tiled HV). -->
+  <g fill="#ffffff">
+    <polygon points="0,0 2,0 -6,32 -8,32"/>
+    <polygon points="8,0 10,0 2,32 0,32"/>
+    <polygon points="16,0 18,0 10,32 8,32"/>
+  </g>
+</svg>

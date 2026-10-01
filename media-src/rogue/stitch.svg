@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Rogue saddle stitches (grey, tinted): tiled horizontally at 1 texel = 1 px and
+       stretched vertically over the leather rim, so row 0 runs along the top rim and
+       row 15 along the bottom rim. Uneven dashes (3 on / 2 off / 3 on / 3 off / 3 on /
+       2 off) read as hand stitching; rows 1..14 are transparent. -->
+  <g fill="#ffffff" shape-rendering="crispEdges">
+    <rect x="0" y="0" width="3" height="1"/><rect x="5" y="0" width="3" height="1"/><rect x="11" y="0" width="3" height="1"/>
+    <rect x="1" y="15" width="3" height="1"/><rect x="6" y="15" width="3" height="1"/><rect x="12" y="15" width="3" height="1"/>
+  </g>
+</svg>

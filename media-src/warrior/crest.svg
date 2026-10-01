@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="8 9.5 52 52">
+  <!-- Warrior crest (Guerrier board, "blason"): steel shield over two crossed swords.
+       Content spans the top 52 x 44 units (texels 0..63 x 0..53, rect {0,0,64,54}).
+       paint-order="stroke" of the board is emulated by drawing the outline shape first. -->
+  <g id="sword">
+    <path d="M19.2 44.1 L52.1 15.9 L54 12 L49.9 13.3 L17 41.5 Z" fill="#110c09" stroke="#110c09" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M19.2 44.1 L52.1 15.9 L54 12 L49.9 13.3 L17 41.5 Z" fill="#d3d9df"/>
+    <path d="M19.8 41.3 L49.4 15.9" stroke="#848d96" stroke-width="0.9"/>
+    <path d="M18.1 42.8 L12 48" stroke="#110c09" stroke-width="4.2" stroke-linecap="round"/>
+    <path d="M18.1 42.8 L12 48" stroke="#6e4a2c" stroke-width="2.3" stroke-linecap="round"/>
+    <path d="M14.8 39 L21.3 46.6" stroke="#110c09" stroke-width="4" stroke-linecap="round"/>
+    <path d="M14.8 39 L21.3 46.6" stroke="#c69b6d" stroke-width="2.1" stroke-linecap="round"/>
+    <circle cx="11.4" cy="48.6" r="2.1" fill="#c69b6d" stroke="#110c09" stroke-width="1"/>
+  </g>
+  <g transform="translate(68 0) scale(-1 1)">
+    <path d="M19.2 44.1 L52.1 15.9 L54 12 L49.9 13.3 L17 41.5 Z" fill="#110c09" stroke="#110c09" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M19.2 44.1 L52.1 15.9 L54 12 L49.9 13.3 L17 41.5 Z" fill="#d3d9df"/>
+    <path d="M19.8 41.3 L49.4 15.9" stroke="#848d96" stroke-width="0.9"/>
+    <path d="M18.1 42.8 L12 48" stroke="#110c09" stroke-width="4.2" stroke-linecap="round"/>
+    <path d="M18.1 42.8 L12 48" stroke="#6e4a2c" stroke-width="2.3" stroke-linecap="round"/>
+    <path d="M14.8 39 L21.3 46.6" stroke="#110c09" stroke-width="4" stroke-linecap="round"/>
+    <path d="M14.8 39 L21.3 46.6" stroke="#c69b6d" stroke-width="2.1" stroke-linecap="round"/>
+    <circle cx="11.4" cy="48.6" r="2.1" fill="#c69b6d" stroke="#110c09" stroke-width="1"/>
+  </g>
+  <!-- shield: steel rim, bronze field, red chevron, rivets -->
+  <path d="M34 11 L47 14.5 L47 27 C47 36 41.5 42.5 34 46.5 C26.5 42.5 21 36 21 27 L21 14.5 Z" fill="#110c09" stroke="#110c09" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M34 11 L47 14.5 L47 27 C47 36 41.5 42.5 34 46.5 C26.5 42.5 21 36 21 27 L21 14.5 Z" fill="#8f979f"/>
+  <path d="M22.2 15.4 L34 12.2 L45.8 15.4" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="0.8"/>
+  <path d="M34 13.6 L44.6 16.4 L44.6 27 C44.6 34.8 40 40.4 34 43.8 C28 40.4 23.4 34.8 23.4 27 L23.4 16.4 Z" fill="#c69b6d" stroke="#3a2a1a" stroke-width="0.8"/>
+  <path d="M34 13.6 L44.6 16.4 L44.6 27 C44.6 34.8 40 40.4 34 43.8 Z" fill="#3c220e" fill-opacity="0.25"/>
+  <path d="M25.4 31 L34 24 L42.6 31" fill="none" stroke="#110c09" stroke-width="5"/>
+  <path d="M25.4 31 L34 24 L42.6 31" fill="none" stroke="#b33a1f" stroke-width="3.2"/>
+  <path d="M38.5 17.5 L42.5 21.8 M27 36 L30.6 34.4" stroke="#fff4e2" stroke-opacity="0.55" stroke-width="0.7" stroke-linecap="round"/>
+  <g fill="#e4e8ec" stroke="#110c09" stroke-width="0.6">
+    <circle cx="22.2" cy="17.4" r="1"/>
+    <circle cx="45.8" cy="17.4" r="1"/>
+    <circle cx="22.3" cy="27" r="1"/>
+    <circle cx="45.7" cy="27" r="1"/>
+    <circle cx="34" cy="45.1" r="1"/>
+  </g>
+</svg>

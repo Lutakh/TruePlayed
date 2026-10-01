@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Mage arcane seal behind the tooltip header: LEFT HALF of a 128 px sigil (the right half
+       is the same texture with flipX). Rows 46..110 of the sigil: its top is hidden by the
+       tooltip edge as on the board, its bottom is faded out by a vertical gradient.
+       Board sigil (170 px) scaled 0.753: rings, dashed ring, violet hexagram, vertex rings,
+       inner ring and a faint four-point star. The sigil centre is texel (64, 18). -->
+  <g transform="translate(0 -46)">
+    <g fill="none">
+      <circle cx="64" cy="64" r="61" stroke="#3fc7eb" stroke-opacity="0.3" stroke-width="1"/>
+      <circle cx="64" cy="64" r="55.7" stroke="#3fc7eb" stroke-opacity="0.2" stroke-width="4.5" stroke-dasharray="1.2 2.3 3.8 1.9 1.2 4.5 2.3 1.5"/>
+      <circle cx="64" cy="64" r="50.5" stroke="#3fc7eb" stroke-opacity="0.32" stroke-width="1"/>
+      <polygon points="64,17.3 104.4,87.3 23.6,87.3" stroke="#a64dff" stroke-opacity="0.4" stroke-width="1"/>
+      <polygon points="64,110.7 104.4,40.7 23.6,40.7" stroke="#a64dff" stroke-opacity="0.4" stroke-width="1"/>
+      <circle cx="64" cy="64" r="24.8" stroke="#3fc7eb" stroke-opacity="0.28" stroke-width="1"/>
+      <circle cx="23.6" cy="40.7" r="2.8" stroke="#3fc7eb" stroke-opacity="0.4" stroke-width="1"/>
+      <circle cx="23.6" cy="87.3" r="2.8" stroke="#3fc7eb" stroke-opacity="0.4" stroke-width="1"/>
+      <circle cx="64" cy="110.7" r="2.8" stroke="#3fc7eb" stroke-opacity="0.4" stroke-width="1"/>
+    </g>
+    <path d="M64 54.2 Q65.5 62.5 73.8 64 Q65.5 65.5 64 73.8 Q62.5 65.5 54.2 64 Q62.5 62.5 64 54.2 Z" fill="#3fc7eb" fill-opacity="0.18"/>
+  </g>
+</svg>

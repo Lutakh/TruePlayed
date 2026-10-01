@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Druid bar frame: carved wood rim around the track (9-slice, 8-texel corners drawn at 8 px).
+       Row/column 0 = ink outline, 1..3 = wood band, the track covers rows/columns 4..27.
+       Grain stripes (6 px period) only in the corner/edge rows; rows 8..23 stay plain because the
+       9-slice stretches them vertically. Baked colours (not tinted). -->
+  <defs>
+    <clipPath id="rim"><rect x="1" y="1" width="30" height="30" rx="5"/></clipPath>
+    <linearGradient id="lit" x1="0" y1="1" x2="0" y2="7" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffdeb0" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#ffdeb0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="25" x2="0" y2="31" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.38"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" rx="6" fill="#1a1008"/>
+  <g clip-path="url(#rim)">
+    <rect x="0" y="0" width="32" height="32" fill="#5a4029"/>
+    <!-- top grain -->
+    <rect x="0" y="2" width="32" height="1" fill="#4a3320"/>
+    <rect x="0" y="3" width="32" height="1" fill="#684b31"/>
+    <rect x="0" y="4" width="32" height="1" fill="#553b25"/>
+    <rect x="0" y="5" width="32" height="1" fill="#5f432b"/>
+    <rect x="0" y="8" width="32" height="1" fill="#4a3320"/>
+    <!-- bottom grain -->
+    <rect x="0" y="23" width="32" height="1" fill="#4a3320"/>
+    <rect x="0" y="24" width="32" height="1" fill="#684b31"/>
+    <rect x="0" y="25" width="32" height="1" fill="#553b25"/>
+    <rect x="0" y="26" width="32" height="1" fill="#5f432b"/>
+    <rect x="0" y="28" width="32" height="1" fill="#553b25"/>
+    <rect x="0" y="29" width="32" height="1" fill="#5f432b"/>
+    <!-- light from above, shadow below, inset highlight and inset dark line -->
+    <rect x="0" y="1" width="32" height="6" fill="url(#lit)"/>
+    <rect x="0" y="25" width="32" height="6" fill="url(#shade)"/>
+    <rect x="0" y="1" width="32" height="1" fill="#ffdeb0" fill-opacity="0.28"/>
+    <rect x="0" y="30" width="32" height="1" fill="#000000" fill-opacity="0.45"/>
+  </g>
+</svg>

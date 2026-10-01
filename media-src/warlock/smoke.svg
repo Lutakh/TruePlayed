@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" viewBox="0 0 8 16">
+  <!-- Smoke streaks on the fill (grey, tiled HV): 3 px slanted stripes every 8 px. -->
+  <g fill="#ffffff">
+    <path d="M0 0 L3 0 L11 16 L8 16 Z"/>
+    <path d="M-8 0 L-5 0 L3 16 L0 16 Z"/>
+    <path d="M8 0 L11 0 L19 16 L16 16 Z"/>
+  </g>
+</svg>

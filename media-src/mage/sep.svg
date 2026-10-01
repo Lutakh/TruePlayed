@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="8" viewBox="0 0 256 8">
+  <!-- Mage tooltip separator (header and block): 1 px cyan lines fading out towards the ends,
+       runic diamond with a dark core between two dots. Stretched to the tooltip's inner width
+       (about 1.1x to 1.6x), so the ornament is drawn 25 % narrower. -->
+  <defs>
+    <linearGradient id="l" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3fc7eb" stop-opacity="0"/>
+      <stop offset="1" stop-color="#3fc7eb" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3fc7eb" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#3fc7eb" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="4" width="119" height="1" fill="url(#l)"/>
+  <rect x="137" y="4" width="119" height="1" fill="url(#r)"/>
+  <g transform="translate(128 4.5) scale(0.5625 0.75) translate(-10 -5)">
+    <path d="M10 1 L14 5 L10 9 L6 5 Z" fill="#3fc7eb"/>
+    <circle cx="10" cy="5" r="1.4" fill="#0a0a22"/>
+    <ellipse cx="2.5" cy="5" rx="1.2" ry="1.1" fill="#3fc7eb"/>
+    <ellipse cx="17.5" cy="5" rx="1.2" ry="1.1" fill="#3fc7eb"/>
+  </g>
+</svg>

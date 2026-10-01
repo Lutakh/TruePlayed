@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Heroic tooltip border, 9-slice 8 texels = 8 px (1:1). From the outside: dark, bronze x2,
+       dark, gold x2, dark, inner bronze (the board's border + box-shadow rings). -->
+  <path fill-rule="evenodd" fill="#1a1004" d="M0 0 H32 V32 H0 Z M1 1 V31 H31 V1 Z"/>
+  <path fill-rule="evenodd" fill="#7a5c1e" d="M1 1 H31 V31 H1 Z M3 3 V29 H29 V3 Z"/>
+  <path fill-rule="evenodd" fill="#1a1004" d="M3 3 H29 V29 H3 Z M4 4 V28 H28 V4 Z"/>
+  <path fill-rule="evenodd" fill="#c9a44c" d="M4 4 H28 V28 H4 Z M6 6 V26 H26 V6 Z"/>
+  <path fill-rule="evenodd" fill="#1a1004" d="M6 6 H26 V26 H6 Z M7 7 V25 H25 V7 Z"/>
+  <path fill-rule="evenodd" fill="#8a6a2a" d="M7 7 H25 V25 H7 Z M8 8 V24 H24 V8 Z"/>
+</svg>

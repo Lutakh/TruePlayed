@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Hunter rested part: a trail of prints (board dots every 14 px, alternating at 36 % and 64 % of
+       the height), tiled horizontally. White, grey = true. -->
+  <defs>
+    <radialGradient id="d">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="16" height="16" fill="#ffffff" fill-opacity="0.004"/>
+  <circle cx="4" cy="5.8" r="1.9" fill="url(#d)"/>
+  <circle cx="12" cy="10.2" r="1.9" fill="url(#d)"/>
+</svg>

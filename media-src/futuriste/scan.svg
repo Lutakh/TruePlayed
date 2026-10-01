@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/scan (8 x 8, grey): scan lines, 1 px opaque rows at y = 0 and 4, tiled HV.
+     The last row and column are transparent, so a client without REPEAT shows nothing. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">
+  <rect x="0" y="0" width="8" height="1" fill="#ffffff"/>
+  <rect x="0" y="4" width="8" height="1" fill="#ffffff"/>
+</svg>

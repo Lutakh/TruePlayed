@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/glow_bar (32 x 16, grey): neon glow around a 2 px accent line (CSS
+     box-shadow 0 0 8px): soft vertical falloff from the centre rows, short fades at both
+     ends, uniform in between (stretched horizontally). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+  <defs>
+    <linearGradient id="v" x1="0" y1="0" x2="0" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.125" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="0.25" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.375" stop-color="#ffffff" stop-opacity="0.86"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.625" stop-color="#ffffff" stop-opacity="0.86"/>
+      <stop offset="0.75" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.875" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="h" x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.09" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.91" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="16">
+      <rect x="0" y="0" width="32" height="16" fill="url(#h)"/>
+    </mask>
+  </defs>
+  <rect x="0" y="0" width="32" height="16" fill="url(#v)" mask="url(#m)"/>
+</svg>

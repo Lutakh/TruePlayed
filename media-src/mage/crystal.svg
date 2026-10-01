@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Mage frost crystals at the left end of the bar (the right end uses flipX): three ice
+       shards and the indigo holder with a violet gem that caps the frame. From the Mage board
+       (52 x 46 units at 1.5x), drawn 1:1: texel (28, 8) = the track's top-left corner. -->
+  <g transform="translate(-1.333 0) scale(0.6667)">
+    <polygon points="13,4 20.8,3.9 39.3,13.3 36.7,18.7 17.8,10.2" fill="#07061a" stroke="#07061a" stroke-width="2.4" stroke-linejoin="round"/>
+    <polygon points="13,4 20.8,3.9 39.3,13.3 38,16" fill="#bfeefc"/>
+    <polygon points="13,4 38,16 36.7,18.7 17.8,10.2" fill="#4aa6cc"/>
+    <polygon points="18,37 22.1,31.6 36.8,24.7 39.2,29.3 24.7,37" fill="#07061a" stroke="#07061a" stroke-width="2.4" stroke-linejoin="round"/>
+    <polygon points="18,37 22.1,31.6 36.8,24.7 38,27" fill="#a9e4f7"/>
+    <polygon points="18,37 38,27 39.2,29.3 24.7,37" fill="#3a8fb8"/>
+    <polygon points="2,22 12,16 42,15.5 42,28.5 12,28" fill="#07061a" stroke="#07061a" stroke-width="2.4" stroke-linejoin="round"/>
+    <polygon points="2,22 12,16 42,15.5 42,22" fill="#e2f8ff"/>
+    <polygon points="2,22 42,22 42,28.5 12,28" fill="#7fd3ef"/>
+    <path d="M12.5 18 L38 17.4" stroke="#ffffff" stroke-width="1" stroke-linecap="round" stroke-opacity="0.8"/>
+    <rect x="35.5" y="10.5" width="8" height="23" rx="2" fill="#261f66" stroke="#07061a" stroke-width="1.4"/>
+    <path d="M37.3 13.5 L41.7 13.5 M37.3 30.5 L41.7 30.5" stroke="#3fc7eb" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M39.5 17.5 L42 22 L39.5 26.5 L37 22 Z" fill="#a64dff" stroke="#07061a" stroke-width="1"/>
+    <path d="M39.5 18.8 L40.6 21" stroke="#e6ccff" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M8 9 Q8.5 11.5 11 12 Q8.5 12.5 8 15 Q7.5 12.5 5 12 Q7.5 11.5 8 9 Z" fill="#ffffff" stroke="#07061a" stroke-width="0.9"/>
+  </g>
+</svg>

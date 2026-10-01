@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel progress arrow (board 7 x 5 art), used as a 9-slice with 7-texel corners drawn at
+       7 px (1:1) and a 15 px width: the 2 centre columns (7, 8) are squeezed into the 1 px middle
+       column, so the arrow keeps its size below the track whatever the track height. Art columns
+       0-2 -> texels 4-6, column 3 -> texels 7-8, columns 4-6 -> texels 9-11; rows 11-15. -->
+  <rect x="7" y="11" width="2" height="1" fill="#000000"/>
+  <rect x="6" y="12" width="4" height="1" fill="#000000"/>
+  <rect x="5" y="13" width="6" height="1" fill="#000000"/>
+  <rect x="4" y="14" width="8" height="2" fill="#000000"/>
+  <rect x="7" y="12" width="2" height="1" fill="#ffffff"/>
+  <rect x="6" y="13" width="4" height="1" fill="#ffffff"/>
+  <rect x="5" y="14" width="6" height="1" fill="#ffffff"/>
+</svg>

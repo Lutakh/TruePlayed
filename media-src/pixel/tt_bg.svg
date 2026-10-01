@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="256" viewBox="0 0 8 256" shape-rendering="crispEdges">
+  <!-- Pixel tooltip body: the board's six hard colour steps (7 / 18 / 33 / 52 / 76 %),
+       stretched over the tooltip height. -->
+  <rect x="0" y="0" width="8" height="18" fill="#2c3294"/>
+  <rect x="0" y="18" width="8" height="28" fill="#282d88"/>
+  <rect x="0" y="46" width="8" height="38" fill="#23287a"/>
+  <rect x="0" y="84" width="8" height="49" fill="#1f236c"/>
+  <rect x="0" y="133" width="8" height="62" fill="#1b1f5a"/>
+  <rect x="0" y="195" width="8" height="61" fill="#171a4e"/>
+</svg>

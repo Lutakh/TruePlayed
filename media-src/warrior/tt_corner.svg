@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Bolted steel corner bracket ("equerre boulonnee") of the tooltip, top-left form, drawn 1:1 in
+       the top-left 26 x 26 texels (rect {0,0,26,26}); flipped for the other corners. -->
+  <path d="M1.5 1.5 L24 1.5 L24 6 L20 9.5 L9.5 9.5 L9.5 20 L6 24 L1.5 24 Z" fill="#8c949c" stroke="#110c09" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M3 3 L22.5 3 M3 3 L3 22.5" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1"/>
+  <path d="M9.5 9.5 L20 9.5 M9.5 9.5 L9.5 20" stroke="#000000" stroke-opacity="0.35" stroke-width="1"/>
+  <polygon points="8.6,5.8 7.2,8.2 4.4,8.2 3,5.8 4.4,3.4 7.2,3.4" fill="#c9cfd5" stroke="#110c09" stroke-width="0.9"/>
+  <circle cx="5.8" cy="5.8" r="1" fill="#6b727a"/>
+  <circle cx="17" cy="5.4" r="1.2" fill="#dfe3e7" stroke="#110c09" stroke-width="0.7"/>
+  <circle cx="5.4" cy="17" r="1.2" fill="#dfe3e7" stroke="#110c09" stroke-width="0.7"/>
+</svg>

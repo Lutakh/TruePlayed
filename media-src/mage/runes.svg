@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="2" viewBox="0 0 16 2">
+  <!-- Mage engraved runes along the top of the crystal rim (tiled horizontally, 1 px row):
+       cyan 1 px, cyan 3 px, violet 1 px dashes per 16 px. -->
+  <g fill="#96e6ff" fill-opacity="0.45">
+    <rect x="0" y="0" width="1" height="2"/><rect x="3" y="0" width="3" height="2"/>
+  </g>
+  <rect x="9" y="0" width="1" height="2" fill="#c77dff" fill-opacity="0.42"/>
+</svg>

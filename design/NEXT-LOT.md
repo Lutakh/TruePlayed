@@ -1,0 +1,111 @@
+# Next lot (round 5): memory pass, language option, kill average
+
+State at the time of writing:
+- The themes of round 4 (`design/SPEC-themes.md`) are implemented and validated in game by the author.
+- 526 tests pass, and every check is green.
+- Work in English (code, comments, tests). User-facing text lives only in `Locales/enUS.lua` and
+  `Locales/frFR.lua`.
+
+## Non-negotiables (unchanged)
+- **CPU and memory must be exemplary.**
+  - No `OnUpdate`. The only repeating timer is Core's shared 1 s `TICK`.
+  - Zero garbage per steady tick.
+  - `SetText`, `SetFont`, `SetTexture`, `SetVertexColor` and `GetStringWidth` run only on
+    change.
+  - Regions are created once and pooled.
+- Per-character isolation, persistence, crash recovery and localisation.
+- The game runs Lua 5.1. `tests/lint51.lua` enforces the limits: 200 locals per chunk, 60
+  upvalues, no `string.unpack` in addon code.
+- Never weaken a legacy test or `tests/test_actuel_golden.lua`. `tests/baseline/` is the frozen
+  pre-theme copy that the golden test uses: never edit it.
+
+## Commands
+```sh
+lua tests/run.lua
+lua tests/check_toc.lua && lua tests/check_encoding.lua && lua tests/lint51.lua
+lua tests/check_globals.lua && lua tests/check_media.lua
+```
+- The suite was developed on Lua 5.5. CI also runs Lua 5.1 and luacheck
+  (`.github/workflows/ci.yml`).
+- Texture conversion (`tools/svg2tga.py`) relies on macOS `sips`, so it is not available on
+  Linux. This lot needs no new texture.
+
+## A. Memory pass
+Measured in the test stub (Lua 5.5, after login, full GC):
+- before themes: about 800 KB;
+- theme `actuel`: about 1250 KB;
+- theme `futuriste` (default): about 1440 KB.
+
+Causes:
+1. The compiled theme takes 77 to 113 KB for the 12 non-`actuel` themes, about 4.5 KB per
+   layer. The reasons: mixed colour tables (`r,g,b,a` plus `[1..4]`), per-state copies, and
+   gradient and flat tables for every layer.
+2. The 13 theme builders stay resident as bytecode: about 240 KB in total, and more on
+   Lua 5.1, where line info costs 4 bytes per instruction. Their source text is about 135 KB.
+3. `Themes.lua` is 112 KB of bytecode, part of it compile-time validation that only tests need.
+
+Targets and approach:
+- **M1. Compact compiled form, 25 KB or less per theme.**
+  - Use plain 4-number colour arrays, interning the static ones only, so that an in-place
+    recolour never corrupts a shared array.
+  - Do not keep per-state copies when a colour does not depend on the fill state.
+  - Use two module-level scratch `{r,g,b,a}` tables for `SetGradient`.
+  - Materialise no default field.
+- **M2. Validation in test-only code.** Move the warnings-only validation into a test-only
+  module, for example `tests/theme_validate.lua`. The shipped compiler stays robust and falls
+  back on bad data.
+- **M3. Theme sources resident as compact text, 80 KB or less in total.**
+  - Each `Themes/<key>.lua` registers a long-bracket string holding `return { ... }`, with no
+    comments inside. Comments stay outside the string.
+  - The string is compiled on demand with `loadstring` (Lua 5.1) or `load`, in an empty
+    environment (`setfenv` on 5.1), and the function is dropped right after.
+  - Leading indentation is stripped once at registration.
+  - Add a test: no `--` and no `function` inside the sources.
+- **Proof of render identity.** Snapshot every visible region of the widget, the private
+  tooltip (short and Shift), the graph and the window:
+  - for the 13 themes;
+  - in these scenarios: defaults, rested, max level, server cap, box style, custom colours,
+    `bgAlpha` 0.5 + thick outline + no shadow, unlocked.
+  - Compare against a checkout of the commit taken before the pass. The diff must be EMPTY.
+- Add `tests/test_theme_memory.lua` with the size thresholds. It runs only on Lua 5.4 and 5.5.
+
+## B. Language option
+- New setting `language`:
+  - values: `"auto"` (default, follows `GetLocale()`), `"enUS"`, `"frFR"`, plus later every
+    translated locale;
+  - account-wide, saved sparse.
+- SavedVariables arrive after the files run. Therefore:
+  - keep the frFR strings in their own table at file load (today `frFR.lua` patches `ns.L`
+    directly when the client is French);
+  - apply the chosen locale into `ns.L` when settings are adopted (`ADDON_LOADED`, re-run at
+    `PLAYER_LOGIN` for WTFix), before any UI is built;
+  - then drop the unused locale tables.
+- Audit every module-level cache of an `L.*` value, because it would capture English. Read
+  such values at use time instead.
+- Options:
+  - a dropdown "Langue (Language)" in the Display section;
+  - each choice written in its own language: "Auto", "English", "Français";
+  - a note saying a UI reload is needed, and that game-provided names (zones, mobs) stay in
+    the client language;
+  - a "Reload" button calling `ReloadUI()`.
+- Slash command `/tpl lang en|fr|auto`, plus a help line.
+- Tests: adoption order, fallback for an unknown value, no English left in frFR mode, sparse
+  save, options and slash command.
+
+## C. Mobs to kill: average of the last 10 kills
+- Today `Stats.KillsToLevel` uses only `char.lastKill.xp`, the base XP of the last XP-giving
+  kill, so the number jumps with every mob level.
+- Replace it with the average base XP of the last 10 XP-giving kills (base XP, without the
+  rested bonus):
+  - keep a small per-character ring of 10 numbers, persisted and bounded;
+  - keep `lastKill` for display;
+  - the rest-aware math stays as it is.
+- Tooltip: `~38 (average: 47 XP, last: 30 XP)` / `~38 (moyenne : 47 XP, dernier : 30 XP)`.
+- Tests: ring wrap, migration from a record that only has `lastKill`, per-character isolation,
+  no garbage per tick.
+
+## Delivery
+- Run the full suite and every check twice.
+- Update `CHANGELOG.md`, `README.md` and `docs/TEST-EN-JEU-fr.md` (French).
+- The author installs into the game locally. New files need a full game restart; Lua changes
+  in existing files only need a `/reload`.

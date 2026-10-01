@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Rogue tooltip frame (Voleur board), baked, 9-slice 10 texels = 10 px: 1 px #0b0a0f
+       outer ring (radius 8), 3 px brushed steel (#3b3444 / #4a4354 / #332c3b / #463f50
+       across the stretched middle, lit top rows, shaded bottom rows), 1 px #0b0a0f inner
+       ring, then a hole with 4 px rounded corners (the plate parts show through). -->
+  <defs>
+    <linearGradient id="steel" gradientUnits="userSpaceOnUse" x1="10" y1="0" x2="22" y2="0">
+      <stop offset="0" stop-color="#3c3546"/>
+      <stop offset="0.28" stop-color="#4a4354"/>
+      <stop offset="0.61" stop-color="#332c3b"/>
+      <stop offset="1" stop-color="#463f50"/>
+    </linearGradient>
+    <clipPath id="outer"><rect x="1" y="1" width="30" height="30" rx="7"/></clipPath>
+  </defs>
+  <path fill-rule="evenodd" fill="#0b0a0f"
+        d="M8 0 H24 A8 8 0 0 1 32 8 V24 A8 8 0 0 1 24 32 H8 A8 8 0 0 1 0 24 V8 A8 8 0 0 1 8 0 Z M9 5 H23 A4 4 0 0 1 27 9 V23 A4 4 0 0 1 23 27 H9 A4 4 0 0 1 5 23 V9 A4 4 0 0 1 9 5 Z"/>
+  <path fill-rule="evenodd" fill="url(#steel)"
+        d="M8 1 H24 A7 7 0 0 1 31 8 V24 A7 7 0 0 1 24 31 H8 A7 7 0 0 1 1 24 V8 A7 7 0 0 1 8 1 Z M9 4 H23 A5 5 0 0 1 28 9 V23 A5 5 0 0 1 23 28 H9 A5 5 0 0 1 4 23 V9 A5 5 0 0 1 9 4 Z"/>
+  <!-- lit top rows and shaded bottom rows (all inside the steel band) -->
+  <g clip-path="url(#outer)">
+    <rect x="0" y="1" width="32" height="1" fill="#ffffff" fill-opacity="0.34"/>
+    <rect x="0" y="2" width="32" height="1" fill="#ffffff" fill-opacity="0.14"/>
+    <rect x="5" y="3" width="22" height="1" fill="#ffffff" fill-opacity="0.08"/>
+    <rect x="5" y="28" width="22" height="1" fill="#000000" fill-opacity="0.25"/>
+    <rect x="0" y="29" width="32" height="1" fill="#000000" fill-opacity="0.33"/>
+    <rect x="0" y="30" width="32" height="1" fill="#000000" fill-opacity="0.4"/>
+  </g>
+</svg>

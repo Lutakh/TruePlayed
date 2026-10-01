@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Hunter tooltip corner: stitched leather patch with a brass rivet (board "coin de cuir cousu"),
+       1:1 at TOPLEFT (-1, 1); the bottom-right corner uses flipX + flipY. Baked colours. -->
+  <path d="M7 1 L31 1 Q18 8 11 17 Q6 23 1 31 L1 7 Q1 1 7 1 Z" fill="#6a4122" stroke="#1a1008" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M7 2.3 L27 2.3" stroke="#ffdcaa" stroke-opacity="0.25" stroke-width="0.8"/>
+  <path d="M25 4 Q15 9.5 9.2 16.6 Q5.6 21 4 25" fill="none" stroke="#e2c894" stroke-width="1" stroke-dasharray="2.4 2"/>
+  <circle cx="7.5" cy="7.5" r="2.4" fill="#d4a94f" stroke="#1a1008" stroke-width="1"/>
+  <circle cx="6.8" cy="6.8" r="0.8" fill="#fff0c0"/>
+</svg>

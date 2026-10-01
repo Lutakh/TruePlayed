@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 100 100">
+  <!-- Summoning circle behind the tooltip title (baked, drawn at 55 % alpha, cropped at
+       the top by rect). Strokes are thickened a little for the 64 px size. -->
+  <circle cx="50" cy="50" r="30" fill="#3fbf3f" fill-opacity="0.16"/>
+  <circle cx="50" cy="50" r="47" fill="#8788ee" fill-opacity="0.08" stroke="#8788ee" stroke-width="2"/>
+  <circle cx="50" cy="50" r="43.4" fill="none" stroke="#8788ee" stroke-width="3.4" stroke-dasharray="1.6 4.2"/>
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#8788ee" stroke-width="1.5"/>
+  <path d="M50 10 L73.51 82.36 L11.96 37.64 L88.04 37.64 L26.49 82.36 Z" fill="none" stroke="#8788ee" stroke-width="1.8" stroke-linejoin="miter"/>
+  <circle cx="50" cy="50" r="12.4" fill="none" stroke="#8788ee" stroke-width="1.4"/>
+  <g fill="#b3b4ff">
+    <circle cx="50" cy="10" r="2.8"/><circle cx="88.04" cy="37.64" r="2.8"/><circle cx="73.51" cy="82.36" r="2.8"/>
+    <circle cx="26.49" cy="82.36" r="2.8"/><circle cx="11.96" cy="37.64" r="2.8"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 16 16">
+  <!-- Rogue end-of-fill needle (Voleur board: 2 px #FFF468 marker + the "%" tab under it),
+       baked, drawn as a 9-slice 12 px wide: corners 12 texels = 6 px (1 user unit = 1 px).
+       The centre column (x 6..10) is never drawn (width = 2 corners): the needle is
+       x 5..6 + 10..11 (2 px on the fill end), the tab x 1..6 + 10..15 (10 px).
+       Rows 0..6 and the stretched rows 6..10 hold the needle, rows 10..16 the tab hanging
+       under the sheath (top = sheath outer edge). -->
+  <defs>
+    <linearGradient id="tab" gradientUnits="userSpaceOnUse" x1="0" y1="10" x2="0" y2="15.6">
+      <stop offset="0" stop-color="#fffab8"/>
+      <stop offset="0.6" stop-color="#fff468"/>
+      <stop offset="1" stop-color="#d8cc3a"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="0" width="1" height="11" fill="#fff468"/>
+  <rect x="10" y="0" width="1" height="11" fill="#fff468"/>
+  <path d="M0.5 10 H15.5 V12.6 A3 3 0 0 1 12.5 15.6 H3.5 A3 3 0 0 1 0.5 12.6 Z" fill="#0b0a0f"/>
+  <path d="M1.5 10 H14.5 V12.6 A2 2 0 0 1 12.5 14.6 H3.5 A2 2 0 0 1 1.5 12.6 Z" fill="url(#tab)"/>
+  <rect x="2" y="10" width="12" height="0.6" fill="#ffffff" fill-opacity="0.45"/>
+</svg>

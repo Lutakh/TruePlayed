@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Shaman elemental stone set on the top of the stone frame (board: 22 x 16 units),
+       2x supersampled: drawn at 16 x 16 px. Stone ring, dark core, blue rim, lightning glyph. -->
+  <g transform="translate(2.8 0.4) scale(1.2)">
+    <path d="M0.6 10.6 L5 5.6 L17 5.6 L21.4 10.6 Z" fill="#626d79"/>
+    <path d="M0.6 10.6 L5 5.6 L17 5.6 L21.4 10.6" fill="none" stroke="#0a0e14" stroke-width="1.1" stroke-linejoin="round"/>
+    <circle cx="11" cy="8" r="6.6" fill="#646f7b" stroke="#0a0e14" stroke-width="1.2"/>
+    <circle cx="11" cy="8" r="4.9" fill="#1b222b" stroke="#3fa6ff" stroke-width="0.7" stroke-opacity="0.75"/>
+    <g transform="translate(11 8) scale(0.75) translate(-10 -10)">
+      <path d="M11.2 4.6 L7.2 10.8 L9.9 10.8 L8.7 15.4 L12.9 8.9 L10.2 8.9 L11.9 4.6 Z" fill="#9fd0ff"/>
+    </g>
+    <path d="M6.4 4.6 A6 6 0 0 1 11 2.2" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.8"/>
+  </g>
+</svg>

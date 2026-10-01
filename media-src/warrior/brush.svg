@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges">
+  <!-- Brushed steel streaks (tiled HV, drawn with white vertex colour): light and dark columns
+       of the board's repeating-linear-gradient(90deg, #7a828b, #737b84, #808891, #767e87, #7c848d). -->
+  <rect x="0" y="0" width="1" height="8" fill="#ffffff" fill-opacity="0.05"/>
+  <rect x="1" y="0" width="1" height="8" fill="#000000" fill-opacity="0.10"/>
+  <rect x="2" y="0" width="1" height="8" fill="#ffffff" fill-opacity="0.12"/>
+  <rect x="3" y="0" width="1" height="8" fill="#000000" fill-opacity="0.05"/>
+  <rect x="4" y="0" width="1" height="8" fill="#ffffff" fill-opacity="0.07"/>
+  <rect x="5" y="0" width="1" height="8" fill="#000000" fill-opacity="0.08"/>
+  <rect x="6" y="0" width="1" height="8" fill="#ffffff" fill-opacity="0.10"/>
+  <rect x="7" y="0" width="1" height="8" fill="#000000" fill-opacity="0.04"/>
+</svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">
+  <!-- Hunter tooltip stitching, tiled HV: diagonal bands where (x + y) mod 8 < 4, so EVERY row and
+       EVERY column reads as 4 px dashes and 4 px gaps. Only a 1 px ring of it shows: the tooltip
+       draws it 9 px inside the frame and covers it from 10 px inward with the opaque inner panel,
+       which gives a dashed seam whatever the tooltip size. White, grey = true. -->
+  <rect x="0" y="0" width="8" height="8" fill="#ffffff" fill-opacity="0.004"/>
+  <g fill="#ffffff">
+    <rect x="0" y="0" width="1" height="1"/>
+    <rect x="1" y="0" width="1" height="1"/>
+    <rect x="2" y="0" width="1" height="1"/>
+    <rect x="3" y="0" width="1" height="1"/>
+    <rect x="0" y="1" width="1" height="1"/>
+    <rect x="1" y="1" width="1" height="1"/>
+    <rect x="2" y="1" width="1" height="1"/>
+    <rect x="7" y="1" width="1" height="1"/>
+    <rect x="0" y="2" width="1" height="1"/>
+    <rect x="1" y="2" width="1" height="1"/>
+    <rect x="6" y="2" width="1" height="1"/>
+    <rect x="7" y="2" width="1" height="1"/>
+    <rect x="0" y="3" width="1" height="1"/>
+    <rect x="5" y="3" width="1" height="1"/>
+    <rect x="6" y="3" width="1" height="1"/>
+    <rect x="7" y="3" width="1" height="1"/>
+    <rect x="4" y="4" width="1" height="1"/>
+    <rect x="5" y="4" width="1" height="1"/>
+    <rect x="6" y="4" width="1" height="1"/>
+    <rect x="7" y="4" width="1" height="1"/>
+    <rect x="3" y="5" width="1" height="1"/>
+    <rect x="4" y="5" width="1" height="1"/>
+    <rect x="5" y="5" width="1" height="1"/>
+    <rect x="6" y="5" width="1" height="1"/>
+    <rect x="2" y="6" width="1" height="1"/>
+    <rect x="3" y="6" width="1" height="1"/>
+    <rect x="4" y="6" width="1" height="1"/>
+    <rect x="5" y="6" width="1" height="1"/>
+    <rect x="1" y="7" width="1" height="1"/>
+    <rect x="2" y="7" width="1" height="1"/>
+    <rect x="3" y="7" width="1" height="1"/>
+    <rect x="4" y="7" width="1" height="1"/>
+  </g>
+</svg>

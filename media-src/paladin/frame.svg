@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Paladin track frame (Paladin board, "cadre de marbre blanc serti d'or"): 9-slice, corners 8 texels.
+       Texels from the outside: 0 = #3a2708 edge, 1 = gold setting, 2..3 = white marble (lit top,
+       shaded bottom), 4 = the track's own gold ring (#a57a26), 5..26 = hole (the track). -->
+  <defs>
+    <linearGradient id="marbleH" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="0">
+      <stop offset="0" stop-color="#efe9dc"/>
+      <stop offset="0.30" stop-color="#f7f3ea"/>
+      <stop offset="0.55" stop-color="#e6dfd0"/>
+      <stop offset="0.80" stop-color="#f4efe4"/>
+      <stop offset="1" stop-color="#e9e2d3"/>
+    </linearGradient>
+    <linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="32">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.65" stop-color="#5a4628" stop-opacity="0"/>
+      <stop offset="1" stop-color="#5a4628" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  <path fill-rule="evenodd" fill="#3a2708"
+        d="M5 0 H27 A5 5 0 0 1 32 5 V27 A5 5 0 0 1 27 32 H5 A5 5 0 0 1 0 27 V5 A5 5 0 0 1 5 0 Z M5 1 A4 4 0 0 0 1 5 V27 A4 4 0 0 0 5 31 H27 A4 4 0 0 0 31 27 V5 A4 4 0 0 0 27 1 Z"/>
+  <path fill-rule="evenodd" fill="#d8b052"
+        d="M5 1 H27 A4 4 0 0 1 31 5 V27 A4 4 0 0 1 27 31 H5 A4 4 0 0 1 1 27 V5 A4 4 0 0 1 5 1 Z M5 2 A3 3 0 0 0 2 5 V27 A3 3 0 0 0 5 30 H27 A3 3 0 0 0 30 27 V5 A3 3 0 0 0 27 2 Z"/>
+  <path fill-rule="evenodd" fill="url(#marbleH)"
+        d="M5 2 H27 A3 3 0 0 1 30 5 V27 A3 3 0 0 1 27 30 H5 A3 3 0 0 1 2 27 V5 A3 3 0 0 1 5 2 Z M5 4 H27 A1 1 0 0 1 28 5 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 V5 A1 1 0 0 1 5 4 Z"/>
+  <path fill-rule="evenodd" fill="url(#gloss)"
+        d="M5 2 H27 A3 3 0 0 1 30 5 V27 A3 3 0 0 1 27 30 H5 A3 3 0 0 1 2 27 V5 A3 3 0 0 1 5 2 Z M5 4 H27 A1 1 0 0 1 28 5 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 V5 A1 1 0 0 1 5 4 Z"/>
+  <g shape-rendering="crispEdges">
+    <rect x="4" y="2" width="24" height="1" fill="#ffffff" fill-opacity="0.85"/>
+    <rect x="4" y="29" width="24" height="1" fill="#78603a" fill-opacity="0.45"/>
+  </g>
+  <!-- the track's gold ring -->
+  <path fill-rule="evenodd" fill="#a57a26"
+        d="M5 4 H27 A1 1 0 0 1 28 5 V27 A1 1 0 0 1 27 28 H5 A1 1 0 0 1 4 27 V5 A1 1 0 0 1 5 4 Z M5 5 V27 H27 V5 Z"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel tooltip window border, 9-slice 6 texels = 6 px (1:1): black (outer, 2 x 2 corner
+       notch), #f2f3ff, #0a0c2c, 2 px each (board JRPG window). -->
+  <path fill-rule="evenodd" fill="#000000" d="M2 0 H14 V2 H16 V14 H14 V16 H2 V14 H0 V2 H2 Z M2 2 V14 H14 V2 Z"/>
+  <path fill-rule="evenodd" fill="#f2f3ff" d="M2 2 H14 V14 H2 Z M4 4 V12 H12 V4 Z"/>
+  <path fill-rule="evenodd" fill="#0a0c2c" d="M4 4 H12 V12 H4 Z M6 6 V10 H10 V6 Z"/>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+  <!-- Paladin tooltip "soleil rayonnant" behind the title: 24 rays (5 deg on / 10 off, from 4 deg) and a
+       soft glow, both faded by the board's elliptic mask (radii 125 x 64 px). Grey: white with alpha,
+       tinted gold by the part colour. Drawn at 192 x 96 px (1.5 px per texel) from (8, -8) of TOPLEFT,
+       so the sun centre lands at (73, 25) px as on the board. Wedge k spans 4 + 15k .. 9 + 15k degrees
+       (clockwise from up) around (43.3, 11.3), radius 260. -->
+  <defs>
+    <radialGradient id="ray" gradientUnits="userSpaceOnUse" cx="43.3" cy="11.3" r="83.33" gradientTransform="translate(43.3 11.3) scale(1 0.5120) translate(-43.3 -11.3)">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="43.3" cy="11.3" r="83.33" gradientTransform="translate(43.3 11.3) scale(1 0.5120) translate(-43.3 -11.3)">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.2" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="0.4" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="0.72" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="128" height="64" fill="url(#glow)"/>
+  <g fill="url(#ray)">
+    <polygon points="43.30,11.30 61.44,-248.07 72.73,-247.03 83.97,-245.50"/>
+    <polygon points="43.30,11.30 127.95,-234.53 138.59,-230.61 149.05,-226.22"/>
+    <polygon points="43.30,11.30 188.69,-204.25 197.95,-197.70 206.92,-190.76"/>
+    <polygon points="43.30,11.30 239.52,-159.28 246.78,-150.55 253.64,-141.52"/>
+    <polygon points="43.30,11.30 276.99,-102.68 281.74,-92.37 286.03,-81.88"/>
+    <polygon points="43.30,11.30 298.52,-38.31 300.44,-27.13 301.88,-15.88"/>
+    <polygon points="43.30,11.30 302.67,29.44 301.63,40.73 300.10,51.97"/>
+    <polygon points="43.30,11.30 289.13,95.95 285.21,106.59 280.82,117.05"/>
+    <polygon points="43.30,11.30 258.85,156.69 252.30,165.95 245.36,174.92"/>
+    <polygon points="43.30,11.30 213.88,207.52 205.15,214.78 196.12,221.64"/>
+    <polygon points="43.30,11.30 157.28,244.99 146.97,249.74 136.48,254.03"/>
+    <polygon points="43.30,11.30 92.91,266.52 81.73,268.44 70.48,269.88"/>
+    <polygon points="43.30,11.30 25.16,270.67 13.87,269.63 2.63,268.10"/>
+    <polygon points="43.30,11.30 -41.35,257.13 -51.99,253.21 -62.45,248.82"/>
+    <polygon points="43.30,11.30 -102.09,226.85 -111.35,220.30 -120.32,213.36"/>
+    <polygon points="43.30,11.30 -152.92,181.88 -160.18,173.15 -167.04,164.12"/>
+    <polygon points="43.30,11.30 -190.39,125.28 -195.14,114.97 -199.43,104.48"/>
+    <polygon points="43.30,11.30 -211.92,60.91 -213.84,49.73 -215.28,38.48"/>
+    <polygon points="43.30,11.30 -216.07,-6.84 -215.03,-18.13 -213.50,-29.37"/>
+    <polygon points="43.30,11.30 -202.53,-73.35 -198.61,-83.99 -194.22,-94.45"/>
+    <polygon points="43.30,11.30 -172.25,-134.09 -165.70,-143.35 -158.76,-152.32"/>
+    <polygon points="43.30,11.30 -127.28,-184.92 -118.55,-192.18 -109.52,-199.04"/>
+    <polygon points="43.30,11.30 -70.68,-222.39 -60.37,-227.14 -49.88,-231.43"/>
+    <polygon points="43.30,11.30 -6.31,-243.92 4.87,-245.84 16.12,-247.28"/>
+  </g>
+</svg>

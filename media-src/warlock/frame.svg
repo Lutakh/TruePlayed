@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Warlock track frame (baked, 9-slice 6 texels -> 6 px, drawn under the track):
+       1 px ink outline, 3 px black iron band (lit top, dark bottom), open centre. -->
+  <defs>
+    <clipPath id="ring"><path fill-rule="evenodd" d="M3.5 0 H12.5 A3.5 3.5 0 0 1 16 3.5 V12.5 A3.5 3.5 0 0 1 12.5 16 H3.5 A3.5 3.5 0 0 1 0 12.5 V3.5 A3.5 3.5 0 0 1 3.5 0 Z M4 4 V12 H12 V4 Z"/></clipPath>
+    <linearGradient id="side" x1="0" y1="4" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a4754"/><stop offset="0.45" stop-color="#3a3844"/>
+      <stop offset="0.55" stop-color="#2b2933"/><stop offset="1" stop-color="#26252d"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#ring)" shape-rendering="crispEdges">
+    <rect x="0" y="0" width="16" height="16" fill="#0c0a12"/>
+    <rect x="1" y="4" width="14" height="8" fill="url(#side)"/>
+    <rect x="1" y="1" width="14" height="1" fill="#858290"/>
+    <rect x="1" y="2" width="14" height="1" fill="#67646f"/>
+    <rect x="1" y="3" width="14" height="1" fill="#57545f"/>
+    <rect x="1" y="12" width="14" height="1" fill="#25242c"/>
+    <rect x="1" y="13" width="14" height="1" fill="#1d1c23"/>
+    <rect x="1" y="14" width="14" height="1" fill="#121117"/>
+  </g>
+</svg>

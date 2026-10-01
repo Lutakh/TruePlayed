@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="8" viewBox="21 7.375 74 9.25">
+  <!-- Priest stained-glass lead along the tooltip's top edge (Pretre board), baked, light: gold, sky, lavender, ivory.
+       The board's 74 px strip at 0.865 scale (64 px). -->
+  <rect x="22" y="8.5" width="62" height="7" rx="1.5" fill="#16121f"/>
+  <rect x="23.5" y="10" width="10" height="4" fill="#e8c872"/>
+  <rect x="35" y="10" width="10" height="4" fill="#9ad0ff"/>
+  <rect x="46.5" y="10" width="10" height="4" fill="#c9b6ff"/>
+  <rect x="58" y="10" width="10" height="4" fill="#f4efe2"/>
+  <rect x="69.5" y="10" width="13" height="4" fill="#9ad0ff" opacity="0.8"/>
+  <path d="M86 12 L90 8 L94 12 L90 16 Z" fill="#e8c872" stroke="#16121f" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>

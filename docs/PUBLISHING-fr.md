@@ -1,0 +1,419 @@
+# Publier TruePlayed sur CurseForge : le guide pas à pas
+
+Ce guide part de zéro. Suivez les étapes dans l'ordre. Chaque commande se tape dans
+l'application **Terminal** du Mac. Une ligne qui commence par `#` est un commentaire :
+inutile de la taper.
+
+Le dossier `TruePlayed` est à la fois l'addon et le dépôt git. Rangez-le dans un endroit
+stable, par exemple `~/Code/TruePlayed` (le reste du guide utilise ce chemin) :
+
+```
+mkdir -p ~/Code
+# glissez le dossier TruePlayed dans ~/Code avec le Finder, ou utilisez mv :
+# mv "/chemin/actuel/TruePlayed" ~/Code/TruePlayed
+cd ~/Code/TruePlayed
+```
+
+---
+
+## 1. Prérequis
+
+1. Un compte GitHub : https://github.com/signup (gratuit).
+2. Les outils `git` et `gh` (l'outil GitHub en ligne de commande), avec Homebrew :
+
+   ```
+   brew install git gh lua
+   git --version
+   gh --version
+   lua -v
+   ```
+
+3. Connectez `gh` à votre compte. **Tapez cette commande vous-même** et suivez les
+   questions (GitHub.com, HTTPS, « Login with a web browser ») :
+
+   ```
+   gh auth login
+   ```
+
+4. Donnez à git votre nom d'auteur, **Lutak**. Pour ne pas publier votre adresse e-mail,
+   utilisez l'adresse « noreply » affichée sur https://github.com/settings/emails
+   (copiez-la telle quelle : elle ressemble à `12345678+nom@users.noreply.github.com`) :
+
+   ```
+   git config --global user.name "Lutak"
+   git config --global user.email "COLLEZ-ICI-L-ADRESSE-NOREPLY"
+   ```
+
+## 2. Remplacer `<ACCOUNT>`
+
+L'auteur est déjà renseigné : **Lutak** (ligne `## Author:` du `.toc` et fichier
+`LICENSE`). Il reste un seul repère, `<ACCOUNT>` : c'est votre **nom d'utilisateur
+GitHub**, celui qui apparaît dans l'adresse de votre profil (`https://github.com/NOM`).
+Il n'est connu qu'une fois le compte créé (étape 1), c'est pourquoi il reste à remplacer.
+Il sert dans les liens du `.toc` (`## X-Website:`), du README et des pages CurseForge.
+
+**Quand ?** Après l'étape 1 (compte GitHub créé et `gh auth login` fait), avant l'étape 4.
+Tant que `<ACCOUNT>` est présent, `lua tests/check_toc.lua` affiche un avertissement et la
+publication (étape 9) refuse de partir (étape « Refuse placeholders »).
+
+Remplacez-le **uniquement** dans ces fichiers (pas dans `.github/workflows/release.yml`,
+ni dans `tests/check_toc.lua`, ni dans ce guide, qui le citent exprès) :
+
+```
+cd ~/Code/TruePlayed
+gh api user --jq .login
+# la ligne affichée est votre nom d'utilisateur GitHub ; la suite l'utilise directement :
+ACCOUNT=$(gh api user --jq .login)
+sed -i '' "s/<ACCOUNT>/$ACCOUNT/g" TruePlayed_Camelot.toc README.md docs/curseforge-en.md docs/curseforge-fr.md
+```
+
+Vérification : la commande suivante ne doit plus rien afficher.
+
+```
+grep -n -e '<AUTHOR>' -e '<ACCOUNT>' TruePlayed_Camelot.toc LICENSE README.md docs/curseforge-*.md
+```
+
+## 3. Tester en jeu
+
+### Tests hors jeu (à lancer avant chaque commit)
+
+```
+cd ~/Code/TruePlayed
+lua tests/run.lua
+lua tests/check_toc.lua
+lua tests/check_encoding.lua
+lua tests/lint51.lua
+lua tests/check_globals.lua
+```
+
+Chaque commande doit se terminer sans « FAIL ».
+
+### Installer l'addon dans le jeu
+
+La méthode conseillée est de **copier** le dossier dans le jeu (et de recopier après
+chaque modification). Vérifiez bien que `DEST` se termine par `/TruePlayed` : l'option
+`--delete` supprime dans ce dossier les fichiers qui n'existent plus dans le dépôt.
+
+```
+cd ~/Code/TruePlayed
+DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
+mkdir -p "$DEST"
+rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' ./ "$DEST/"
+```
+
+(`_classic_beta_` est le dossier du client WoW Forever sur votre Mac ; adaptez-le si le
+vôtre est différent.)
+
+Si vous préférez un lien symbolique (`ln -s`) au lieu d'une copie : le lanceur de
+**WTFix** peut réécrire le fichier `.toc` et y ajouter une ligne `## X-WTFix-Managed`.
+Avec un lien, cette modification arriverait dans votre dépôt git. Dans ce cas, lancez
+toujours `git diff` avant un commit ; `lua tests/check_toc.lua` échoue si la ligne est
+présente, et cette commande l'annule :
+
+```
+git checkout -- TruePlayed_Camelot.toc
+```
+
+### Dans le jeu
+
+Pour le **tout premier essai**, suivez la fiche courte `docs/TEST-EN-JEU-fr.md` (installation,
+redémarrage, ce qu'il faut regarder et comment signaler un problème). La liste ci-dessous
+est la vérification complète à refaire avant chaque version.
+
+1. Lancez WoW Forever. Dans la liste des addons, TruePlayed doit apparaître avec l'icône
+   de montre à gousset, sans la mention « périmé ».
+2. Activez l'affichage des erreurs Lua, puis rechargez l'interface :
+
+   ```
+   /console scriptErrors 1
+   /reload
+   ```
+
+3. Vérifiez au minimum, avant chaque version :
+   - premier lancement : message de placement, barre déverrouillée ; déplacez-la, clic
+     droit > Verrouiller ; après `/reload`, elle reste à sa place ;
+   - `/afk` avec « Exclure le temps AFK » : les infos s'assombrissent avec un signe de
+     pause, l'infobulle indique « Chrono en pause » ; décochez : mêmes chiffres qu'avant ;
+   - chaque exclusion depuis le menu du clic droit change immédiatement les temps,
+     la moyenne, l'XP par heure et le temps avant le niveau ;
+   - pierre de foyer et `/reload` : la session continue, l'XP par heure ne repart pas
+     à « ... » ;
+   - premier chargement sur un personnage qui a déjà joué (au moins 30 minutes) : l'XP
+     par heure et le temps avant le niveau s'affichent tout de suite avec un `~`, même en
+     ville avec les exclusions ; l'infobulle précise « estimation d'après votre /played » ;
+   - barre en français à la largeur minimale, texte 16 : en bas à droite les nombres
+     raccourcissent (`58 / 23,2k`) sans jamais toucher `NIVEAU 20` ; en haut, l'info 3 ne
+     touche jamais l'info 1 ; le pourcentage a une décimale (`0,3 %`) ;
+   - `/tpl stats zones` : bloc « Continents » au-dessus des capitales, aucun continent
+     (Kalimdor, Royaumes de l'Est) dans la liste des zones ;
+   - montée de niveau : nouvelle ligne dans l'historique (`/tpl stats`) ;
+   - sans exclusion, « Temps de jeu » dans l'infobulle = le `/played` à 1 minute près ;
+   - plantage simulé : quittez le jeu de force (Moniteur d'activité) après 20 minutes,
+     reconnectez-vous et attendez 10 secondes : le total égale le `/played`, le chat
+     annonce le temps récupéré et l'infobulle indique « dont reconstitué après un
+     plantage : X min » ;
+   - donjon : passez AFK à l'intérieur, aucune erreur Lua ; avec l'option expérimentale
+     « Masquer les lignes du /played » cochée, recevez un chuchotement dans le donjon puis
+     tapez `/played` : aucune erreur dans le chat ;
+   - combat avec « Masquer en combat » : la barre disparaît puis revient ;
+   - donjon, raid ou champ de bataille : l'infobulle affiche « En instance » et la
+     répartition cite « Donjons », « Raids » ou « JcJ » ; `/tpl stats zones` montre le
+     bloc « Instances les plus jouées » avec le type après le nom ;
+   - un monstre tué (aussi dans un donjon) : « Monstres à tuer : ~N (dernier : X XP) »
+     dans l'infobulle et `~temps · N monstres` en haut à droite ; une quête rendue ne
+     change pas « dernier » ;
+   - personnage reposé : barre bleue avec une partie bleu clair, ligne « Reposé » ; le
+     repos consommé, la barre redevient violette ;
+   - survol des FPS ou de la latence : le graphique s'affiche, le survol d'un point donne
+     sa valeur (« il y a 23 s : ... »), il disparaît quand la souris s'en va ; refaites
+     `/tpl perf` en gardant la souris sur le graphique : la ligne « Tic » reste basse ;
+   - Options > Textes : couleur du texte (« Annuler » puis « Couleurs d'origine »),
+     contour Aucun / Fin / Épais, opacité du fond de 0 à 100 % ;
+   - accents, `·`, `«`, `»` et `~` s'affichent sans carrés ;
+   - `/tpl perf` : notez la ligne « Mémoire », rejouez une heure, retapez `/tpl perf` : le
+     chiffre doit rester **stable** (il compte le code de l'addon, environ 0,5 Mo, plus les
+     données de tous vos personnages : il grandit avec le nombre de personnages, ce n'est
+     pas une fuite). Aucune baisse de FPS.
+
+   Vérifiez aussi ces hypothèses du code, **en notant les résultats** :
+   - dans chaque capitale, tapez `/dump C_Map.GetBestMapForUnit("player")` : le numéro
+     doit être entre 1453 et 1458 (notez tout autre numéro, par exemple pour une capitale
+     propre à Forever) ;
+   - près d'un feu de camp, `/dump IsResting()` : notez `true` ou `false` ;
+   - `/tpl debug`, puis tuez un monstre en étant reposé : notez la ligne
+     « XP gain ... dRest ... r ... » ; `dRest` doit valoir environ -2 fois le `r` de la même
+     ligne (sinon les réglages `REST_BONUS` / `REST_DRAIN` de `Core.lua` sont à corriger) ;
+     retapez `/tpl debug` pour couper les messages ;
+   - vol au-dessus d'Orgrimmar ou de Hurlevent : notez dans l'infobulle détaillée (Maj) les
+     lignes « Ville » et « En vol » avant et après le vol ; seule « En vol » doit augmenter ;
+   - style « Encadré compact », largeur minimale, taille de texte 16, info 3 à gauche puis
+     au centre, pourcentage « Suit la barre » : aucun texte ne se chevauche ;
+   - Échap > Options > AddOns > TruePlayed ouvre les options ; `/tpl` ouvre la même page ;
+     le bouton TruePlayed du menu des addons (clic gauche : options, clic droit :
+     statistiques) fonctionne ; `/tpl` en combat s'ouvre après le combat ;
+   - un autre personnage portant le même prénom : données séparées ; dans la fenêtre de
+     statistiques, les flèches < > montrent chaque personnage et le bouton « Effacer... »
+     demande confirmation ;
+   - WTFix : TruePlayed coché dans `/wtfix`, un avertissement WTFix s'affiche une seule
+     fois par chargement ; décochez-le, jouez 5 minutes puis `/reload` : les données
+     restent et aucun « Temps de jeu récupéré » n'apparaît ;
+   - `/tpl citytoggle` dans un donjon : « Les instances ne comptent jamais comme des
+     villes. » s'affiche et rien ne change ;
+   - dans un donjon, un raid et un champ de bataille, tapez `/dump IsInInstance()` :
+     notez le second résultat (`party`, `raid`, `pvp`...), qui décide du type compté.
+4. Envoyez les numéros et résultats notés, avec une capture d'écran de chaque écran
+   vérifié. En cas d'erreur, envoyez le texte complet de l'erreur, ou le fichier le plus
+   récent du dossier `/Applications/World of Warcraft/_classic_beta_/Errors/`.
+
+Les données enregistrées par l'addon se trouvent dans
+`/Applications/World of Warcraft/_classic_beta_/WTF/Account/<VOTRE_COMPTE>/SavedVariables/TruePlayed.lua`
+(copiez ce fichier si vous voulez en garder une sauvegarde).
+
+## 4. Créer le dépôt GitHub public et y envoyer le code
+
+```
+cd ~/Code/TruePlayed
+git status
+# Si git répond "not a git repository", créez le dépôt :
+git init -b main
+git add -A
+git status
+git commit -m "TruePlayed 0.1.0-beta.1"
+gh repo create TruePlayed --public --source=. --remote=origin --push
+```
+
+Vérifiez ensuite l'onglet **Actions** du dépôt (`https://github.com/NOM/TruePlayed/actions`,
+NOM étant votre nom d'utilisateur GitHub)
+ou suivez la vérification automatique depuis le Terminal :
+
+```
+gh run list --limit 3
+gh run watch
+```
+
+La ligne « CI » doit passer au vert (tests en Lua 5.1 et 5.5, vérifications et luacheck).
+Si elle est rouge, voir l'étape 13.
+
+## 5. Créer le projet CurseForge
+
+### Avant : captures d'écran et logo
+
+- **Captures d'écran** (3 à 5, prises en jeu) : la barre, l'infobulle normale et avec Maj,
+  la fenêtre de statistiques (onglet Niveaux avec les zones d'un niveau au survol, onglet
+  Zones), les options. Pour capturer : la touche de capture d'écran du jeu (cherchez
+  « Capture d'écran » dans Échap > Options > Raccourcis) enregistre l'image dans
+  `/Applications/World of Warcraft/_classic_beta_/Screenshots/` ; ou, sur le Mac,
+  `Cmd + Maj + 4` puis la barre d'espace et un clic sur la fenêtre du jeu (l'image arrive
+  sur le Bureau). Pas d'image générée ou retouchée par IA sans mention visible.
+- **Logo** : une image carrée de 400 x 400 pixels, pas d'une seule couleur. N'utilisez
+  **pas** l'icône de montre à gousset du jeu : c'est une image Blizzard protégée. Une image
+  simple suffit : le mot « TruePlayed » en blanc sur fond violet `#8B5CF6` (la couleur de
+  l'addon), avec dans un coin un petit badge « FOREVER » pour que les joueurs de WoW
+  Forever reconnaissent tout de suite l'addon.
+
+### Le projet
+
+Le nom reste exactement **TruePlayed** : CurseForge interdit le nom du jeu ou d'une
+version dans le nom d'un projet (pas de « TruePlayed Forever »). « WoW Forever » va donc en
+tête du résumé, dans la description, les mots-clés et le badge du logo.
+
+1. Allez sur https://authors.curseforge.com et connectez-vous (le bouton GitHub convient).
+2. Cliquez sur **Create A Project**, puis choisissez **World of Warcraft**.
+3. Remplissez les champs avec le contenu de `docs/curseforge-en.md` :
+   - **Name** : `TruePlayed` ;
+   - **Summary** : la phrase « Summary » du fichier, qui commence par « WoW Forever » ;
+   - **Description** : tout ce qui suit le trait `---` du fichier (éditeur Markdown).
+     **Supprimez la section « Screenshots »** (elle est marquée « REMOVE ») : les images
+     vont dans l'onglet **Images** du projet. Vous pouvez ajouter en dessous la version
+     française de `docs/curseforge-fr.md` (même remarque pour « Captures d'écran ») ;
+   - **Class** : Addons ; **catégorie principale** : Quests & Leveling ; **catégorie
+     supplémentaire** : Miscellaneous ;
+   - **License** : MIT ;
+   - **Logo** : l'image préparée ci-dessus.
+4. Enregistrez le projet. Notez son numéro : **Project ID**, dans l'encadré
+   « About Project » de la page du projet.
+5. Envoyez les captures dans l'onglet **Images** du projet.
+
+**Version de jeu « Forever ».** CurseForge range les fichiers WoW par version de jeu ; WoW
+Forever a sa propre famille, « Forever », en version **1.60.1**. L'outil de publication la
+choisit tout seul d'après la ligne `## Interface: 16001` du `.toc`. Après la première
+publication (étape 10), vérifiez dans l'onglet **Files** que le fichier porte bien
+« Forever 1.60.1 ». Si un jour vous envoyez un fichier à la main, cochez cette version-là
+(et elle seule).
+
+## 6. Clé d'API CurseForge
+
+1. Sur https://authors.curseforge.com, ouvrez les réglages de votre compte, rubrique
+   **API tokens**, et créez un jeton (nom : `GitHub TruePlayed`). Copiez-le.
+2. Enregistrez-le comme secret du dépôt GitHub. La commande demande la valeur : collez-la
+   à l'invite et validez. Elle n'apparaît ni dans un fichier ni dans l'historique.
+
+   ```
+   cd ~/Code/TruePlayed
+   gh secret set CF_API_KEY
+   gh secret list
+   ```
+
+Ne collez jamais cette clé dans un fichier, un message ou une conversation.
+
+## 7. Ajouter le numéro du projet dans le `.toc`
+
+Remplacez `123456` par votre Project ID. La commande ajoute la ligne juste après
+`## X-Website:` :
+
+```
+cd ~/Code/TruePlayed
+perl -0pi -e 's/(## X-Website: [^\n]*\n)/$1## X-Curse-Project-ID: 123456\n/' TruePlayed_Camelot.toc
+git diff
+lua tests/check_toc.lua
+git commit -am "Add the CurseForge project ID"
+git push
+```
+
+N'écrivez jamais un faux numéro : l'outil de publication s'en sert pour envoyer le fichier.
+
+## 8. Wago (facultatif)
+
+Wago est utilisé par des gestionnaires d'addons comme WowUp. La prise en charge de
+Forever par Wago n'est pas encore confirmée : sans clé Wago, cette plateforme est
+simplement ignorée.
+
+1. Créez le projet sur https://addons.wago.io/developers et notez son identifiant à
+   8 caractères.
+2. Ajoutez-le au `.toc` (remplacez `AbCd1234`) :
+
+   ```
+   perl -0pi -e 's/(## X-Website: [^\n]*\n)/$1## X-Wago-ID: AbCd1234\n/' TruePlayed_Camelot.toc
+   ```
+
+3. Créez une clé sur https://addons.wago.io/account/apikeys, puis :
+
+   ```
+   gh secret set WAGO_API_TOKEN
+   git commit -am "Add the Wago project ID"
+   git push
+   ```
+
+## 9. Publier la version 0.1.0-beta.1
+
+1. Ouvrez `CHANGELOG.md` et remplacez `YYYY-MM-DD` du titre `## [0.1.0-beta.1]` par la
+   date du jour (par exemple `2026-10-05`). Relisez la liste « Added » : c'est le texte
+   que verront les joueurs.
+2. Lancez les tests hors jeu (étape 3), puis :
+
+   ```
+   cd ~/Code/TruePlayed
+   git commit -am "Release 0.1.0-beta.1"
+   git push
+   git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1
+   ```
+
+L'étiquette (tag) déclenche la publication : tests, contrôle des repères, notes de
+version tirées du CHANGELOG, puis création du zip et envoi vers CurseForge, Wago (si la
+clé existe) et GitHub Releases.
+
+## 10. Suivre la publication
+
+```
+gh run watch
+```
+
+(ou l'onglet **Actions** du dépôt). Une plateforme sans clé est sautée **sans message
+d'erreur** : dans le journal de l'étape « BigWigsMods/packager », vérifiez qu'une ligne
+parle bien de l'envoi vers CurseForge.
+
+Ensuite, CurseForge vérifie chaque fichier : de quelques minutes à 3 jours ouvrés. Le
+fichier apparaît dans l'onglet « Files » du projet, d'abord « Under review ».
+
+## 11. Les versions suivantes
+
+- Numérotation SemVer :
+  - `0.1.1` : correctif ;
+  - `0.2.0` : nouvelle fonction ;
+  - `1.0.0` puis `2.0.0` : changement incompatible des données ou des options.
+- Le type de fichier dépend de l'étiquette : `v0.2.0-beta.1` donne une Beta, une
+  étiquette contenant `alpha` une Alpha, `v1.0.0` une Release. **Attention : `-rc.1`
+  part en Release.**
+- Ne réutilisez jamais une étiquette : en cas d'erreur, passez au numéro suivant
+  (`v0.1.0-beta.2`).
+- Pour chaque version, ajoutez dans `CHANGELOG.md` une section `## [x.y.z] - AAAA-MM-JJ`
+  écrite pour les joueurs (la publication refuse de partir sans elle).
+- Quand WoW Forever change de version, `/dump select(4, GetBuildInfo())` donne le nouveau
+  numéro : mettez à jour la ligne `## Interface:` du `.toc` (et `EXPECTED_INTERFACE` en
+  haut de `tests/check_toc.lua`), puis publiez une nouvelle version.
+
+## 12. Règles à respecter
+
+- Aucune clé d'API dans un fichier du dépôt (elles vivent dans les secrets GitHub).
+- Des captures d'écran **réelles**, prises en jeu. Une image générée ou retouchée par IA
+  doit porter une mention visible sur CurseForge.
+- Aucune demande de dons dans le jeu. Un lien de don n'est permis qu'en bas de la page
+  CurseForge.
+- Le code reste lisible par tous (règle de Blizzard) : pas de code caché ni brouillé.
+- Répondez aux commentaires CurseForge et aux « issues » GitHub.
+- Restez sur GitHub (Codeberg refuse les projets écrits surtout par une IA). Le README
+  indique que l'addon a été développé avec l'aide de Claude.
+
+## 13. En cas de problème
+
+- **L'Action est rouge** : cliquez sur l'étape en échec pour lire le message.
+  - « Unit tests », « TOC check », « Encoding check », « Lua 5.1 portability lint » :
+    relancez la même commande en local (étape 3) pour voir le détail.
+  - « Luacheck » : le message donne le fichier, la ligne et le code de l'avertissement
+    (par exemple `211` = variable locale inutilisée).
+  - « Refuse placeholders » : il reste `<ACCOUNT>` (étape 2).
+  - « Release notes from CHANGELOG » : il manque la section `## [x.y.z] - date` de cette
+    version, ou la date est encore `YYYY-MM-DD` (étape 9).
+- **« Ambiguous addon name »** dans le journal du packager : la ligne
+  `package-as: TruePlayed` manque dans `.pkgmeta`.
+- **Tout est vert mais rien n'arrive sur CurseForge** : vérifiez `gh secret list`
+  (le secret doit s'appeler exactement `CF_API_KEY`) et la ligne
+  `## X-Curse-Project-ID` du `.toc`.
+- **Fichier bloqué en « Under review »** : c'est la vérification de CurseForge ; attendez
+  (jusqu'à 3 jours ouvrés) et surveillez vos e-mails.
+- **L'addon est « périmé » (out of date) en jeu** : le numéro `## Interface` est plus
+  ancien que celui du jeu. Voir l'étape 11 ; en attendant, les joueurs peuvent cocher
+  « Charger les addons périmés ».
+- **`check_toc` signale `X-WTFix-Managed`** : `git checkout -- TruePlayed_Camelot.toc`,
+  puis préférez la copie au lien symbolique (étape 3).
+- **`gh: command not found`** : `brew install gh`, puis `gh auth login`.

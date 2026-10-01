@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- common/glow (64 x 32, grey): soft horizontal glow made for 3-slicing with 16-texel caps
+     (Themes.COMMON_MEDIA.glow, `three = { "common/glow", 16, px }`). White, the colour comes
+     from the layer's vertex colour. The middle 32 texels are uniform horizontally (they are
+     stretched); each cap is a half disc of radius 16 with the same falloff as the middle
+     rows, so the ends are rounded and the joins are seamless. Falloff from the centre line:
+     1, 0.72 at 4 texels, 0.36 at 8, 0.11 at 12, 0 at 16. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 64 32">
+  <defs>
+    <linearGradient id="v" x1="0" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.125" stop-color="#ffffff" stop-opacity="0.11"/>
+      <stop offset="0.25" stop-color="#ffffff" stop-opacity="0.36"/>
+      <stop offset="0.375" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.625" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="0.75" stop-color="#ffffff" stop-opacity="0.36"/>
+      <stop offset="0.875" stop-color="#ffffff" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="l" cx="16" cy="16" r="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.25" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.36"/>
+      <stop offset="0.75" stop-color="#ffffff" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="r" cx="48" cy="16" r="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.25" stop-color="#ffffff" stop-opacity="0.72"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.36"/>
+      <stop offset="0.75" stop-color="#ffffff" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="16" height="32" fill="url(#l)"/>
+  <rect x="16" y="0" width="32" height="32" fill="url(#v)"/>
+  <rect x="48" y="0" width="16" height="32" fill="url(#r)"/>
+</svg>

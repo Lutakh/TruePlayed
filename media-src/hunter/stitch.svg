@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="2" viewBox="0 0 8 2">
+  <!-- Saddle stitch, tiled horizontally (1 texel = 1 px): 5 px of thread, 3 px gap. White, grey = true;
+       transparent texels stay white (alpha 1/255) so filtering adds no dark halo. -->
+  <rect x="0" y="0" width="8" height="2" fill="#ffffff" fill-opacity="0.004"/>
+  <rect x="0" y="0" width="5" height="2" fill="#ffffff"/>
+</svg>

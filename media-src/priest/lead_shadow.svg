@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="64" viewBox="7.375 21 9.25 74">
+  <!-- Priest stained-glass lead along the tooltip's left edge (Pretre board), baked, shadow: violets (drawn turned 180 deg at the bottom-right).
+       The board's strip at 0.865 scale (art in the top 50 px). -->
+  <rect x="8.5" y="22" width="7" height="46" rx="1.5" fill="#16121f"/>
+  <rect x="10" y="23.5" width="4" height="10" fill="#b39ddb"/>
+  <rect x="10" y="35" width="4" height="10" fill="#6c3fb5"/>
+  <rect x="10" y="46.5" width="4" height="10" fill="#8e4fa8"/>
+  <rect x="10" y="58" width="4" height="8.5" fill="#5a47a8" opacity="0.85"/>
+  <path d="M12 70 L16 74 L12 78 L8 74 Z" fill="#b8a1ff" stroke="#16121f" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>

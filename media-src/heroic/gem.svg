@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="7.5 12.5 15 15" preserveAspectRatio="none">
+  <!-- Heroic clasp gem (grey, tinted base+.15 by the theme): white body, darker lower-left facet. -->
+  <polygon points="15,12.5 22.5,20 15,27.5 7.5,20" fill="#ffffff"/>
+  <polygon points="15,20 15,27.5 7.5,20" fill="#7a7a7a"/>
+</svg>

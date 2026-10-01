@@ -1,0 +1,50 @@
+name: Release
+
+# Pushing a tag such as v0.1.0-beta.1 builds the zip and uploads it to CurseForge,
+# Wago (when a key is set) and GitHub Releases. Tag types (BigWigs packager):
+#   -beta.N -> Beta, a tag containing "alpha" -> Alpha, a plain version -> Release.
+#   WARNING: -rc.N is published as a Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    # Same tests, checks and luacheck as every push (see ci.yml).
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Refuse placeholders
+        run: |
+          if grep -nE '<AUTHOR>|<ACCOUNT>' TruePlayed_Camelot.toc LICENSE README.md docs/curseforge-en.md docs/curseforge-fr.md; then
+            echo "::error::Replace <ACCOUNT> (your GitHub user name) before releasing (see docs/PUBLISHING-fr.md, step 2)"
+            exit 1
+          fi
+
+      - name: Release notes from CHANGELOG
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          HEADING=$(grep -F "## [$V]" CHANGELOG.md | head -n 1 || true)
+          case "$HEADING" in
+            *" - "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*) ;;
+            *) echo "::error::CHANGELOG.md needs a heading '## [$V] - YYYY-MM-DD' with a real date"; exit 1 ;;
+          esac
+          awk -v v="$V" '/^## /{p = index($0, "[" v "]") > 0; next} p' CHANGELOG.md > RELEASE_NOTES.md
+          test -s RELEASE_NOTES.md || { echo "::error::No [$V] section in CHANGELOG.md"; exit 1; }
+          cat RELEASE_NOTES.md
+
+      - uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

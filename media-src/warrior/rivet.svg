@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4" shape-rendering="crispEdges">
+  <!-- Steel rivet, 3 x 3 texels at the top-left (rect {0,0,3,3}): bright dome, grey ring, dark rim. -->
+  <rect x="0" y="0" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+  <rect x="1" y="0" width="1" height="1" fill="#b4bbc2"/>
+  <rect x="2" y="0" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+  <rect x="0" y="1" width="1" height="1" fill="#b4bbc2"/>
+  <rect x="1" y="1" width="1" height="1" fill="#f2f4f6"/>
+  <rect x="2" y="1" width="1" height="1" fill="#5b6269"/>
+  <rect x="0" y="2" width="1" height="1" fill="#16181b" fill-opacity="0.55"/>
+  <rect x="1" y="2" width="1" height="1" fill="#5b6269"/>
+  <rect x="2" y="2" width="1" height="1" fill="#16181b" fill-opacity="0.75"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="32" viewBox="0 0 16 32">
+  <!-- Hunter bar ornament: laced leather binding over each strap end (board "ligatures lacees",
+       14 x 36 viewBox scaled into 16 x 32), shown at 10 px wide and 12 px taller than the track.
+       Baked colours. -->
+  <g transform="scale(1.142857 0.888889)">
+    <rect x="1" y="1" width="12" height="34" rx="2" fill="#553318" stroke="#1a1008" stroke-width="1.2"/>
+    <path d="M2.5 2.4 L11.5 2.4" stroke="#ffdcaa" stroke-opacity="0.28" stroke-width="0.9"/>
+    <path d="M3.5 5 L10.5 11.5 M10.5 5 L3.5 11.5 M3.5 14.5 L10.5 21 M10.5 14.5 L3.5 21 M3.5 24 L10.5 30.5 M10.5 24 L3.5 30.5" stroke="#1a1008" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M3.5 5 L10.5 11.5 M10.5 5 L3.5 11.5 M3.5 14.5 L10.5 21 M10.5 14.5 L3.5 21 M3.5 24 L10.5 30.5 M10.5 24 L3.5 30.5" stroke="#e2c894" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+</svg>

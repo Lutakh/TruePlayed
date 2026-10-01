@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Tooltip inner panel (baked), stretched over the whole panel: the board's dusk
+       radial gradient centred at 30 % / 12 %. -->
+  <defs>
+    <radialGradient id="g" cx="0.3" cy="0.12" r="1.124">
+      <stop offset="0" stop-color="#241b36"/><stop offset="0.5" stop-color="#171120"/>
+      <stop offset="1" stop-color="#0c0a12"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" fill="url(#g)"/>
+</svg>

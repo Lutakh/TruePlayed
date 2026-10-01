@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="8" viewBox="0 0 16 8">
+  <!-- Priest frame grooves (grey, tiled H, stretched V over the ivory rim): one 1 px column every 16 px (board: every 28 px at x1.5). -->
+  <g shape-rendering="crispEdges">
+    <rect x="15" y="0" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="1" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="2" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="3" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="4" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="5" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="6" width="1" height="1" fill="#ffffff"/>
+    <rect x="15" y="7" width="1" height="1" fill="#ffffff"/>
+  </g>
+</svg>

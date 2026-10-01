@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Soft white glow, 9-slice with 7-texel corners: full in the middle, fading to 0 at the
+       edges. Drawn outside the tooltip (negative inset) and tinted cyan. -->
+  <defs><filter id="b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="1.9"/></filter></defs>
+  <rect x="4" y="4" width="8" height="8" rx="2" fill="#ffffff" filter="url(#b)"/>
+</svg>

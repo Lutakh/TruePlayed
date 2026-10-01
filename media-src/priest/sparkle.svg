@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="16" viewBox="0 0 64 16">
+  <!-- Priest rested sparkles (grey, tiled): three soft points (board: 2 / 1.6 / 1.4 px at x1.5, alpha .85 / .7 / .55). -->
+  <g shape-rendering="crispEdges">
+    <rect x="45" y="3" width="2" height="1" fill="#ffffff" fill-opacity="0.004"/>
+    <rect x="9" y="4" width="1" height="1" fill="#ffffff" fill-opacity="0.005"/>
+    <rect x="10" y="4" width="2" height="1" fill="#ffffff" fill-opacity="0.126"/>
+    <rect x="12" y="4" width="1" height="1" fill="#ffffff" fill-opacity="0.005"/>
+    <rect x="44" y="4" width="1" height="1" fill="#ffffff" fill-opacity="0.004"/>
+    <rect x="45" y="4" width="2" height="1" fill="#ffffff" fill-opacity="0.295"/>
+    <rect x="47" y="4" width="1" height="1" fill="#ffffff" fill-opacity="0.004"/>
+    <rect x="9" y="5" width="1" height="1" fill="#ffffff" fill-opacity="0.126"/>
+    <rect x="10" y="5" width="2" height="1" fill="#ffffff" fill-opacity="0.681"/>
+    <rect x="12" y="5" width="1" height="1" fill="#ffffff" fill-opacity="0.126"/>
+    <rect x="44" y="5" width="1" height="1" fill="#ffffff" fill-opacity="0.004"/>
+    <rect x="45" y="5" width="2" height="1" fill="#ffffff" fill-opacity="0.295"/>
+    <rect x="47" y="5" width="1" height="1" fill="#ffffff" fill-opacity="0.004"/>
+    <rect x="9" y="6" width="1" height="1" fill="#ffffff" fill-opacity="0.126"/>
+    <rect x="10" y="6" width="2" height="1" fill="#ffffff" fill-opacity="0.681"/>
+    <rect x="12" y="6" width="1" height="1" fill="#ffffff" fill-opacity="0.126"/>
+    <rect x="45" y="6" width="2" height="1" fill="#ffffff" fill-opacity="0.004"/>
+    <rect x="9" y="7" width="1" height="1" fill="#ffffff" fill-opacity="0.005"/>
+    <rect x="10" y="7" width="2" height="1" fill="#ffffff" fill-opacity="0.126"/>
+    <rect x="12" y="7" width="1" height="1" fill="#ffffff" fill-opacity="0.005"/>
+    <rect x="28" y="9" width="1" height="1" fill="#ffffff" fill-opacity="0.006"/>
+    <rect x="29" y="9" width="2" height="1" fill="#ffffff" fill-opacity="0.200"/>
+    <rect x="31" y="9" width="1" height="1" fill="#ffffff" fill-opacity="0.006"/>
+    <rect x="28" y="10" width="1" height="1" fill="#ffffff" fill-opacity="0.049"/>
+    <rect x="29" y="10" width="2" height="1" fill="#ffffff" fill-opacity="0.583"/>
+    <rect x="31" y="10" width="1" height="1" fill="#ffffff" fill-opacity="0.049"/>
+    <rect x="28" y="11" width="1" height="1" fill="#ffffff" fill-opacity="0.006"/>
+    <rect x="29" y="11" width="2" height="1" fill="#ffffff" fill-opacity="0.200"/>
+    <rect x="31" y="11" width="1" height="1" fill="#ffffff" fill-opacity="0.006"/>
+  </g>
+</svg>

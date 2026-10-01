@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Shaman stone rim, 9-slice (7-texel corners): 1 px ink outline, 3 px carved stone,
+       inner top highlight and bottom shadow. Centre is stone (covered by the track or panel). -->
+  <defs>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0.0625" stop-color="#e1eeff" stop-opacity="0.24"/>
+      <stop offset="0.375" stop-color="#e1eeff" stop-opacity="0"/>
+      <stop offset="0.625" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.9375" stop-color="#000000" stop-opacity="0.4"/>
+    </linearGradient>
+    <clipPath id="stone"><rect x="1" y="1" width="14" height="14" rx="4"/></clipPath>
+  </defs>
+  <rect x="0" y="0" width="16" height="16" rx="5" fill="#0a0e14"/>
+  <rect x="1" y="1" width="14" height="14" rx="4" fill="#58626d"/>
+  <rect x="1" y="1" width="14" height="14" rx="4" fill="url(#shade)"/>
+  <g clip-path="url(#stone)">
+    <rect x="0" y="1" width="16" height="1" fill="#e1eeff" fill-opacity="0.3"/>
+    <rect x="0" y="14" width="16" height="1" fill="#000000" fill-opacity="0.45"/>
+  </g>
+</svg>

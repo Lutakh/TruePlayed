@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="8" viewBox="0 0 256 8">
+  <!-- Shaman tooltip separator (header and block): 1 px blue lines fading out towards the
+       ends, tribal diamond with two arrowheads in the middle. Stretched to the tooltip's
+       inner width (about 1.1x to 1.6x), so the ornament is drawn 25 % narrower. -->
+  <defs>
+    <linearGradient id="l" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0070dd" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0070dd" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0070dd" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#0070dd" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="4" width="117" height="1" fill="url(#l)"/>
+  <rect x="139" y="4" width="117" height="1" fill="url(#r)"/>
+  <g transform="translate(128 4.5) scale(0.5625 0.75) translate(-13 -5)">
+    <path d="M2 5 L6.5 2.4 L6.5 7.6 Z M24 5 L19.5 2.4 L19.5 7.6 Z" fill="#0070dd"/>
+    <path d="M13 0.8 L17.2 5 L13 9.2 L8.8 5 Z" fill="#2d8cf0" stroke="#0a0e14" stroke-width="0.9"/>
+    <path d="M13 3.2 L14.8 5 L13 6.8 L11.2 5 Z" fill="#cfe8ff"/>
+  </g>
+</svg>

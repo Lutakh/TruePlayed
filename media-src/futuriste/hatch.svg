@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/hatch (4 x 4, grey): 1 px vertical line every 4 px (rested overlay), tiled H.
+     The last column is transparent. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 4 4">
+  <rect x="0" y="0" width="1" height="4" fill="#ffffff"/>
+</svg>

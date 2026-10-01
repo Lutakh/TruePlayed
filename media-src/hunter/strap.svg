@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Hunter bar frame: leather strap around the track (9-slice, 8-texel corners drawn at 8 px).
+       Row/column 0 = ink outline, 1..4 = leather band, the track covers rows/columns 5..26.
+       The board gradient #86562f > #6f4526 > #5c381d is laid out for the default 24 px strap: the
+       top piece holds its first 8 rows, the bottom piece its last 8. Light from above, shadow below,
+       inset highlight (row 1) and inset dark line (row 30). The stitching is drawn by tiled layers.
+       Baked colours. -->
+  <defs>
+    <clipPath id="rim"><rect x="1" y="1" width="30" height="30" rx="4"/></clipPath>
+    <linearGradient id="hide" x1="0" y1="1" x2="0" y2="31" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#86562f"/>
+      <stop offset="0.233" stop-color="#754a29"/>
+      <stop offset="0.767" stop-color="#6a4124"/>
+      <stop offset="1" stop-color="#5c381d"/>
+    </linearGradient>
+    <linearGradient id="lit" x1="0" y1="1" x2="0" y2="7.6" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffdeb0" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffdeb0" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="25.4" x2="0" y2="31" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" rx="5" fill="#1a1008"/>
+  <g clip-path="url(#rim)">
+    <rect x="0" y="0" width="32" height="32" fill="url(#hide)"/>
+    <rect x="0" y="1" width="32" height="6.6" fill="url(#lit)"/>
+    <rect x="0" y="25.4" width="32" height="5.6" fill="url(#shade)"/>
+    <rect x="0" y="1" width="32" height="1" fill="#ffdeb0" fill-opacity="0.28"/>
+    <rect x="0" y="30" width="32" height="1" fill="#000000" fill-opacity="0.45"/>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="-1 -3 68 68">
+  <!-- Rogue tooltip corner (Voleur board: crossed lockpicks and a gold coin), baked. The
+       board's drawing at 0.94 scale; its coin (10, 10) sits on the tooltip's top-left corner,
+       the picks run along the top and left edges. -->
+  <path d="M2.8 6.4 C1.2 7.3 1 9.2 2.8 10 L52 10" fill="none" stroke="#0b0a0f" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M2.8 6.4 C1.2 7.3 1 9.2 2.8 10 L52 10" fill="none" stroke="#b9c1cc" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="58" cy="10" rx="6" ry="3.4" fill="none" stroke="#0b0a0f" stroke-width="3.6"/>
+  <ellipse cx="58" cy="10" rx="6" ry="3.4" fill="none" stroke="#8d96a3" stroke-width="1.8"/>
+  <path d="M10 48 L10 5 L11.8 3.4 L8.4 1.4 L10.4 -0.6" fill="none" stroke="#0b0a0f" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10 48 L10 5 L11.8 3.4 L8.4 1.4 L10.4 -0.6" fill="none" stroke="#b9c1cc" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="10" cy="54" rx="3.4" ry="6" fill="none" stroke="#0b0a0f" stroke-width="3.6"/>
+  <ellipse cx="10" cy="54" rx="3.4" ry="6" fill="none" stroke="#8d96a3" stroke-width="1.8"/>
+  <circle cx="10" cy="10" r="5" fill="#fff468" stroke="#0b0a0f" stroke-width="1.2"/>
+  <circle cx="10" cy="10" r="3.1" fill="none" stroke="#b3a62c" stroke-width="0.9"/>
+  <path d="M8.7 8.7 L11.3 11.3 M11.3 8.7 L8.7 11.3" stroke="#8f8420" stroke-width="0.9" stroke-linecap="round"/>
+</svg>

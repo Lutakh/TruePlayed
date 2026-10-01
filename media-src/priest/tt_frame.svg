@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Priest tooltip frame (Pretre board, pearl frame), baked, 9-slice 10 texels = 10 px:
+       1 px #16121f outer ring (radius 9), 3 px pearl running at 135 deg from ivory (top-left)
+       through silver to deep violet (bottom-right) - stretched, the edges keep that order -
+       with a white gloss at the top-left and a lit top row, 1 px #16121f inner ring, then a
+       hole with 4 px rounded corners (the plate parts show through). -->
+  <defs>
+    <linearGradient id="pearl" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32">
+      <stop offset="0" stop-color="#fbf8f0"/>
+      <stop offset="0.34" stop-color="#e4decf"/>
+      <stop offset="0.62" stop-color="#bdb8cc"/>
+      <stop offset="0.88" stop-color="#7a64a8"/>
+      <stop offset="1" stop-color="#4f3a7e"/>
+    </linearGradient>
+    <linearGradient id="gloss" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="0.28" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="outer"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+  </defs>
+  <path fill-rule="evenodd" fill="#16121f"
+        d="M9 0 H23 A9 9 0 0 1 32 9 V23 A9 9 0 0 1 23 32 H9 A9 9 0 0 1 0 23 V9 A9 9 0 0 1 9 0 Z M9 5 H23 A4 4 0 0 1 27 9 V23 A4 4 0 0 1 23 27 H9 A4 4 0 0 1 5 23 V9 A4 4 0 0 1 9 5 Z"/>
+  <path fill-rule="evenodd" fill="url(#pearl)"
+        d="M9 1 H23 A8 8 0 0 1 31 9 V23 A8 8 0 0 1 23 31 H9 A8 8 0 0 1 1 23 V9 A8 8 0 0 1 9 1 Z M9 4 H23 A5 5 0 0 1 28 9 V23 A5 5 0 0 1 23 28 H9 A5 5 0 0 1 4 23 V9 A5 5 0 0 1 9 4 Z"/>
+  <path fill-rule="evenodd" fill="url(#gloss)"
+        d="M9 1 H23 A8 8 0 0 1 31 9 V23 A8 8 0 0 1 23 31 H9 A8 8 0 0 1 1 23 V9 A8 8 0 0 1 9 1 Z M9 4 H23 A5 5 0 0 1 28 9 V23 A5 5 0 0 1 23 28 H9 A5 5 0 0 1 4 23 V9 A5 5 0 0 1 9 4 Z"/>
+  <g clip-path="url(#outer)">
+    <rect x="0" y="1" width="32" height="1" fill="#ffffff" fill-opacity="0.6"/>
+  </g>
+</svg>

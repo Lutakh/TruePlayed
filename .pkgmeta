@@ -1,0 +1,13 @@
+package-as: TruePlayed
+
+manual-changelog:
+  filename: RELEASE_NOTES.md
+  markup-type: markdown
+
+ignore:
+  - tests
+  - docs
+  - RELEASE_NOTES.md
+  - tools
+  - media-src
+  - design

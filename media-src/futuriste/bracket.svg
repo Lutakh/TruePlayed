@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/bracket (8 x 32, baked colours): HUD bracket "[" from the board, open side
+     right: ink 3.4 px under cyan #22d3ee 1.5 px, arms running to the right edge. Mirrored
+     with flipX for the right end. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="8" height="32" viewBox="0 0 8 32">
+  <path d="M8 0.75 H0.75 V31.25 H8" fill="none" stroke="#01040b" stroke-width="3.4"/>
+  <path d="M8 0.75 H0.75 V31.25 H8" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+</svg>

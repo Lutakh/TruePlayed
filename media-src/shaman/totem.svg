@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="64" viewBox="0 0 32 64">
+  <!-- Shaman thunderbird totem (left of the bar; the right one is drawn with flipX).
+       From the Chaman board (40 x 68 units), scaled 0.94 into the texture. The cross-bar on
+       the right reaches the texture's right edge, where it meets the stone frame. -->
+  <g transform="translate(1.1 -3.1) scale(0.94)">
+    <!-- cross-bar holding the frame -->
+    <rect x="18" y="35" width="14" height="7" rx="1" fill="none" stroke="#0a0e14" stroke-width="1.6"/>
+    <rect x="18" y="35" width="14" height="7" rx="1" fill="#6a3f24"/>
+    <path d="M24 35.4 V41.6 M27.4 35.4 V41.6" stroke="#c9a36a" stroke-width="1.2"/>
+    <!-- wings -->
+    <g fill="none" stroke="#0a0e14" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M14 10 C10 6.4 5 5.2 0.6 6.6 C2.6 8 3.6 9.6 4 11.4 C2.2 11.6 1.2 12.6 0.8 14 C4 13.4 7.6 14 10 15.6 Z"/>
+      <path d="M14 10 C18 6.4 23 5.2 27.4 6.6 C25.4 8 24.4 9.6 24 11.4 C25.8 11.6 26.8 12.6 27.2 14 C24 13.4 20.4 14 18 15.6 Z"/>
+    </g>
+    <path d="M14 10 C10 6.4 5 5.2 0.6 6.6 C2.6 8 3.6 9.6 4 11.4 C2.2 11.6 1.2 12.6 0.8 14 C4 13.4 7.6 14 10 15.6 Z" fill="#0070dd"/>
+    <path d="M14 10 C18 6.4 23 5.2 27.4 6.6 C25.4 8 24.4 9.6 24 11.4 C25.8 11.6 26.8 12.6 27.2 14 C24 13.4 20.4 14 18 15.6 Z" fill="#0070dd"/>
+    <path d="M3.2 8 C6 8 8.6 9 10.6 10.8 M3.4 12.6 C5.8 12.6 8 13.2 9.8 14.2" fill="none" stroke="#6fb4ff" stroke-width="0.8"/>
+    <path d="M24.8 8 C22 8 19.4 9 17.4 10.8 M24.6 12.6 C22.2 12.6 20 13.2 18.2 14.2" fill="none" stroke="#6fb4ff" stroke-width="0.8"/>
+    <!-- pole -->
+    <rect x="8" y="12" width="12" height="47" rx="1.6" fill="none" stroke="#0a0e14" stroke-width="1.8"/>
+    <rect x="8" y="12" width="12" height="47" rx="1.6" fill="#7b4b2b"/>
+    <path d="M10.6 16 V57 M17.6 16 V57" stroke="#000000" stroke-opacity="0.25" stroke-width="0.8"/>
+    <path d="M12.2 12.2 L14 8.8 L15.8 12.2 Z" fill="#d9a441" stroke="#0a0e14" stroke-width="0.8" stroke-linejoin="round"/>
+    <rect x="8" y="13.4" width="12" height="2.6" fill="#b8392b"/>
+    <ellipse cx="11.2" cy="19" rx="1.9" ry="1.4" fill="#e8e2d4"/>
+    <ellipse cx="16.8" cy="19" rx="1.9" ry="1.4" fill="#e8e2d4"/>
+    <circle cx="11.4" cy="19.1" r="0.8" fill="#0a0e14"/>
+    <circle cx="16.6" cy="19.1" r="0.8" fill="#0a0e14"/>
+    <path d="M14 19.6 L15.7 23.2 L12.3 23.2 Z" fill="#d9a441" stroke="#0a0e14" stroke-width="0.7" stroke-linejoin="round"/>
+    <rect x="10.4" y="24.6" width="7.2" height="2.2" rx="0.6" fill="#1a0f08"/>
+    <rect x="8" y="29.6" width="12" height="3" fill="#0070dd"/>
+    <path d="M8.6 36.2 L10.4 34.6 L12.2 36.2 L14 34.6 L15.8 36.2 L17.6 34.6 L19.4 36.2" fill="none" stroke="#e8e2d4" stroke-width="1"/>
+    <path d="M10 43 H12.6 M15.4 43 H18" stroke="#0a0e14" stroke-width="1.3" stroke-linecap="round"/>
+    <path d="M11 47.4 Q14 50.2 17 47.4" fill="none" stroke="#0a0e14" stroke-width="1.2" stroke-linecap="round"/>
+    <rect x="8" y="52.6" width="12" height="2.2" fill="#b8392b"/>
+    <!-- stone base -->
+    <path d="M5 66 L6.6 58 L21.4 58 L23 66 Z" fill="none" stroke="#0a0e14" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M5 66 L6.6 58 L21.4 58 L23 66 Z" fill="#5d6772"/>
+    <path d="M7.2 59.4 H20.8" stroke="#ffffff" stroke-opacity="0.2" stroke-width="0.9"/>
+  </g>
+</svg>

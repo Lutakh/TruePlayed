@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Soft blob (grey, tinted; 9-slice 7 texels): drop shadows and halos. Opaque in the
+       2 middle texels, smooth fall-off to nothing at the edges (same profile on edges
+       and corners). -->
+  <defs>
+    <linearGradient id="L" gradientUnits="userSpaceOnUse" x1="7" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/><stop offset="0.25" stop-color="#ffffff" stop-opacity="0.86"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.52"/><stop offset="0.75" stop-color="#ffffff" stop-opacity="0.17"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="R" href="#L" xlink:href="#L" x1="9" x2="16" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+    <linearGradient id="T" href="#L" xlink:href="#L" x1="0" y1="7" x2="0" y2="0" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+    <linearGradient id="B" href="#L" xlink:href="#L" x1="0" y1="9" x2="0" y2="16" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+    <radialGradient id="TL" gradientUnits="userSpaceOnUse" cx="7" cy="7" r="7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/><stop offset="0.25" stop-color="#ffffff" stop-opacity="0.86"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.52"/><stop offset="0.75" stop-color="#ffffff" stop-opacity="0.17"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="TR" href="#TL" xlink:href="#TL" cx="9" cy="7" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+    <radialGradient id="BL" href="#TL" xlink:href="#TL" cx="7" cy="9" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+    <radialGradient id="BR" href="#TL" xlink:href="#TL" cx="9" cy="9" xmlns:xlink="http://www.w3.org/1999/xlink"/>
+  </defs>
+  <g shape-rendering="crispEdges">
+    <rect x="7" y="7" width="2" height="2" fill="#ffffff"/>
+    <rect x="0" y="7" width="7" height="2" fill="url(#L)"/>
+    <rect x="9" y="7" width="7" height="2" fill="url(#R)"/>
+    <rect x="7" y="0" width="2" height="7" fill="url(#T)"/>
+    <rect x="7" y="9" width="2" height="7" fill="url(#B)"/>
+    <rect x="0" y="0" width="7" height="7" fill="url(#TL)"/>
+    <rect x="9" y="0" width="7" height="7" fill="url(#TR)"/>
+    <rect x="0" y="9" width="7" height="7" fill="url(#BL)"/>
+    <rect x="9" y="9" width="7" height="7" fill="url(#BR)"/>
+  </g>
+</svg>

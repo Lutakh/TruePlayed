@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Priest bar panel border (grey, tinted): 1 px outline of the 7 px rounded panel,
+       9-slice 7 texels = 7 px. -->
+  <rect x="0.5" y="0.5" width="15" height="15" rx="6.5" fill="none" stroke="#ffffff" stroke-width="1"/>
+</svg>

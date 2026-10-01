@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Heroic bar panel border, 9-slice 4 texels = 4 px: bronze line + faint inner gold line. -->
+  <rect x="0.5" y="0.5" width="15" height="15" rx="2" fill="none" stroke="#7a5c1e" stroke-width="1"/>
+  <rect x="1.5" y="1.5" width="13" height="13" rx="1" fill="none" stroke="#c9a44c" stroke-opacity="0.28" stroke-width="1"/>
+</svg>

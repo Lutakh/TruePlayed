@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Heroic progress pointer, used as a 9-slice (corner 14 texels drawn at 7 px) so that the gold
+       diamond keeps its size below the track whatever the track height: only the bottom corner
+       row holds art, everything else is transparent. -->
+  <defs>
+    <linearGradient id="pg" gradientUnits="userSpaceOnUse" x1="0" y1="19" x2="0" y2="31">
+      <stop offset="0" stop-color="#fff0b0"/>
+      <stop offset="0.5" stop-color="#c9a44c"/>
+      <stop offset="1" stop-color="#7a5c1e"/>
+    </linearGradient>
+  </defs>
+  <polygon points="16,19 22,25 16,31 10,25" fill="url(#pg)" stroke="#1c1007" stroke-width="1.4" stroke-linejoin="miter"/>
+</svg>

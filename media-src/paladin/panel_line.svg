@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Outline of the bar panel: 1 px rounded rectangle (radius 6), white, tinted. 9-slice, corners 7 texels. -->
+  <rect x="0.5" y="0.5" width="15" height="15" rx="5.5" ry="5.5" fill="none" stroke="#ffffff" stroke-width="1"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- 1 px outline of a rounded rectangle, outer radius 7, for a 9-slice with 7-texel corners drawn
+       at 7 px (bar background panel border). White, grey = true. -->
+  <rect x="0" y="0" width="16" height="16" fill="#ffffff" fill-opacity="0.004"/>
+  <rect x="0.5" y="0.5" width="15" height="15" rx="6.5" fill="none" stroke="#ffffff" stroke-width="1"/>
+</svg>

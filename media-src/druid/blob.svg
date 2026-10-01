@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Soft round blob (board knots "solid to 35 %, gone at 80 %", and the inner panel's radial
+       light). Stretched to any ellipse. White, grey = true. -->
+  <defs>
+    <radialGradient id="g">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="16" height="16" fill="#ffffff" fill-opacity="0.004"/>
+  <rect x="0" y="0" width="16" height="16" fill="url(#g)"/>
+</svg>

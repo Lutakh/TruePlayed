@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" preserveAspectRatio="none">
+  <!-- Heroic tooltip background, stretched over the whole tooltip: radial gradient centred at
+       50% / 28% (CSS ellipse farthest-corner) and a soft inner shadow along the edges. -->
+  <defs>
+    <radialGradient id="bg" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1"
+                    gradientTransform="translate(16 8.96) scale(22.6 32.6)">
+      <stop offset="0" stop-color="#2a1d12"/>
+      <stop offset="0.58" stop-color="#1d140b"/>
+      <stop offset="1" stop-color="#120c07"/>
+    </radialGradient>
+    <linearGradient id="vl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="vr" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="vt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="vb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" fill="url(#bg)"/>
+  <rect x="0" y="0" width="3" height="32" fill="url(#vl)"/>
+  <rect x="29" y="0" width="3" height="32" fill="url(#vr)"/>
+  <rect x="0" y="0" width="32" height="3" fill="url(#vt)"/>
+  <rect x="0" y="29" width="32" height="3" fill="url(#vb)"/>
+</svg>

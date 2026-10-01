@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Priest bar panel rim (grey, tinted): the outer 3 px of a panel with 7 px rounded
+       corners, 9-slice 7 texels = 7 px; the inside (inset 3) is the gradient part. -->
+  <path fill-rule="evenodd" fill="#ffffff"
+        d="M7 0 H9 A7 7 0 0 1 16 7 V9 A7 7 0 0 1 9 16 H7 A7 7 0 0 1 0 9 V7 A7 7 0 0 1 7 0 Z M3 3 V13 H13 V3 Z"/>
+</svg>

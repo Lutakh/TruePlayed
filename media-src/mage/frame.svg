@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Mage runic crystal rim, 9-slice (6-texel corners), drawn 1:1: 1 px ink outline, indigo
+       body lit from above (ice sheen on top, shade below), 1 px cyan inner ring, ice highlight
+       on the top row and a dark bottom row. Centre is indigo (covered by the track or panel). -->
+  <defs>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0.0625" stop-color="#bef0ff" stop-opacity="0.32"/>
+      <stop offset="0.33" stop-color="#bef0ff" stop-opacity="0"/>
+      <stop offset="0.67" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.9375" stop-color="#000000" stop-opacity="0.42"/>
+    </linearGradient>
+    <clipPath id="body"><rect x="1" y="1" width="14" height="14" rx="3"/></clipPath>
+  </defs>
+  <rect x="0" y="0" width="16" height="16" rx="4" fill="#07061a"/>
+  <rect x="1" y="1" width="14" height="14" rx="3" fill="#261f66"/>
+  <rect x="1" y="1" width="14" height="14" rx="3" fill="url(#shade)"/>
+  <rect x="1.5" y="1.5" width="13" height="13" rx="2.5" fill="none" stroke="#3fc7eb" stroke-opacity="0.3" stroke-width="1"/>
+  <g clip-path="url(#body)">
+    <rect x="0" y="1" width="16" height="1" fill="#bef0ff" fill-opacity="0.45"/>
+    <rect x="0" y="14" width="16" height="1" fill="#000000" fill-opacity="0.5"/>
+  </g>
+</svg>

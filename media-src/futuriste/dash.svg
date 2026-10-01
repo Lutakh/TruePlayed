@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- futuriste/dash (16 x 2, grey): dashes 5 px on, 3 px off, both rows (drawn 1 px high),
+     tiled H. The last column is transparent. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="2" viewBox="0 0 16 2">
+  <rect x="0" y="0" width="5" height="2" fill="#ffffff"/>
+  <rect x="8" y="0" width="5" height="2" fill="#ffffff"/>
+</svg>
