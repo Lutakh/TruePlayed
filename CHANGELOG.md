@@ -7,6 +7,21 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+### Added
+
+- **TruePlayed speaks every language of the game**: Deutsch, Español (EU), Español (AL),
+  Italiano, Português (BR), Русский, 한국어, 简体中文 and 繁體中文, besides English and
+  Français. It follows your game's language by default; Options > Display > Language (or
+  `/tpl lang de`, `es`, `mx`, `it`, `pt`...) picks another one, after a reload of the
+  interface. Russian, Korean and Chinese are offered on a game client in that language
+  only (the other clients' fonts cannot draw them). Corrections from native speakers are
+  welcome.
+
+### Changed
+
+- French: the slot info "Temps avant le niveau + monstres à tuer" is now "Temps avant le
+  niveau + monstres", so that it fits the options dropdown.
+
 ### Removed
 
 - The **compact box** style of the bar (option, right-click menu entry and `/tpl style`):

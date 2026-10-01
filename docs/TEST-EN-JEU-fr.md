@@ -3,6 +3,50 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## Mise à jour suivante (lot 6) : toutes les langues du jeu, fin de l'encadré compact
+
+Cette mise à jour **ajoute 9 fichiers** (`Locales/deDE.lua` ... `Locales/zhTW.lua`) :
+recopiez le dossier, puis **redémarrez complètement le jeu** (un `/reload` ne charge pas
+les nouveaux fichiers).
+
+### Les nouvelles langues, sans les parler
+
+Le but n'est pas de juger les traductions, mais de vérifier que rien ne casse et que rien
+n'est coupé. Pour chaque langue :
+
+1. Options > Affichage > « Langue (Language) » : la liste propose « Auto », « English »,
+   « Français », « Deutsch », « Español (EU) », « Español (AL) », « Italiano » et
+   « Português (BR) ». Le russe, le coréen et le chinois n'apparaissent pas sur un client
+   français : c'est voulu (la police du jeu ne sait pas les afficher).
+2. Choisissez la langue, cliquez « Recharger l'interface » (le bouton change de nom avec
+   la langue, il reste à la même place sous la liste).
+3. Regardez, sans rien lire : la barre (en haut et en bas), l'infobulle (survol simple
+   puis Maj), le graphique (survol des FPS), la fenêtre `/tpl stats` (les trois onglets et
+   la vue « compte » avec les flèches), les options (tout le défilement) et le menu du clic
+   droit. **Aucun texte ne doit être coupé** (pas de « ... » en fin de ligne, sauf un nom
+   de zone très long dans la fenêtre, comme avant), **aucun texte ne doit en chevaucher un
+   autre**, et **aucune erreur Lua** ne doit apparaître.
+4. Tapez `/tpl help` et `/tpl lang` : le chat répond dans la langue choisie ; la liste
+   donnée par `/tpl lang` est `auto, en, fr, de, es, mx, it, pt`.
+5. Testez aussi une barre étroite (Largeur 150) avec une taille de texte de 16 : rien ne
+   dépasse de la barre.
+6. Revenez avec `/tpl lang fr` puis `/reload` (ou choisissez « Français » dans la liste).
+
+Faites-le au moins en Deutsch (les mots les plus longs), puis rapidement dans les autres.
+Notez la langue, le thème et une capture d'écran de tout texte coupé : il sera raccourci.
+Sans client russe, coréen ou chinois, ces trois langues ne peuvent pas être vues en jeu :
+elles sont vérifiées par les tests hors jeu (largeurs mesurées avec une marge).
+
+### L'encadré compact a disparu
+
+- Options > Affichage : plus de liste « Style » sous « Afficher la barre ».
+- Clic droit sur la barre : plus d'entrée « Style » ; « Thème » vient juste après les
+  exclusions.
+- `/tpl style box` répond « Commande inconnue » ; `/tpl help` n'a plus de ligne
+  `/tpl style`.
+- Si vous utilisiez l'encadré compact, la barre d'XP s'affiche à sa place, avec vos autres
+  réglages (infos, position, couleurs), sans erreur Lua.
+
 ## Mise à jour du 1er octobre (lot 5) : langue, moyenne des monstres, mémoire
 
 Cette mise à jour n'ajoute aucun fichier : recopiez le dossier comme d'habitude, puis un

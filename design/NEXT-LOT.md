@@ -144,3 +144,20 @@ Goal: as much choice and customisation as possible for players who do not want t
 4. **Mini display**: a small movable frame for a screen corner, showing 2 or 3 compact infos
    chosen by the player; on hover, the same tooltip as the bar; it follows the theme chosen
    for the bar.
+
+## Outcome of backlog 1 and 2 (round 6)
+- **2. Compact box removed**: setting `widget.style`, its option, menu entry, `/tpl style`,
+  every box code path (Bar, BarSkin, Themes: `when`, `text.boxSize`) and the box-only theme
+  data are gone. A stored `"box"` is dropped by the settings repair (the bar shows, the key
+  leaves the sparse file). Render identity: `tests/render_snapshot.lua` on this tree and on
+  the 1.0.1 tree differs only in the options panel (the style dropdown), on Lua 5.5, 5.4
+  and 5.1. `tests/test_actuel_golden.lua` (frozen) still has a "6. box style" scenario,
+  which now fails by design: the author decides (delete the scenario or its box stages).
+- **1. Translations**: `Locales/deDE, esES, esMX, itIT, ptBR, ruRU, koKR, zhCN, zhTW`.
+  `C.LANGUAGES_NATIVE_ONLY` (ruRU, koKR, zhCN, zhTW): offered and applied only on a
+  client in that language. `tests/test_locales.lua` checks the keys and format arguments,
+  the languages offered and applied, every view in every language, and the widths with
+  the real fonts (tooltips, bar, options, window, graph; Cyrillic with the `cyr` fonts or
+  a stand-in, Hangul / Han at one em per character). `check_encoding` allows UTF-8 in the
+  four native locale files only; `check_media` checks every Latin-1 locale against every
+  theme font and ruRU against the `cyr` fonts.

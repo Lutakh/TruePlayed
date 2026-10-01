@@ -145,7 +145,7 @@ niveau, **votre temps en donjon, en raid et en JcJ**.
 | `/tpl lock` / `unlock` | Verrouiller ou déplacer la barre |
 | `/tpl show` / `hide` | Afficher ou masquer la barre |
 | `/tpl theme [nom]` | Afficher ou changer le thème (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
-| `/tpl lang [fr\|en\|auto]` | Afficher ou choisir la langue de TruePlayed (après `/reload`) |
+| `/tpl lang [valeur]` | Afficher ou choisir la langue de TruePlayed (`auto`, `fr`, `en`, `de`, `es`, `mx`, `it`, `pt`, plus `ru`, `ko`, `cn`, `tw` sur un client dans cette langue ; après `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (sans argument : bascule) |
 | `/tpl citytoggle` | Compter la zone actuelle comme une ville (ou non) |
 | `/tpl played` | Récapitulatif dans le chat |
@@ -211,10 +211,16 @@ la demande de RXPGuides peut être masqué une fois par RXPGuides.
 
 ## Langues
 
-Anglais et français. TruePlayed suit la langue du jeu ; pour en choisir une autre :
-Options > Affichage > Langue (Language) ou `/tpl lang fr|en|auto`, puis rechargez
-l'interface. Les noms fournis par le jeu (zones, monstres) restent dans la langue du jeu.
-Les traductions sont les bienvenues sur GitHub.
+Toutes les langues du jeu : français, English, Deutsch, Español (EU), Español (AL),
+Italiano, Português (BR), Русский, 한국어, 简体中文, 繁體中文. TruePlayed suit la langue du
+jeu ; pour en choisir une autre : Options > Affichage > Langue (Language) ou `/tpl lang de`,
+`es`, `it`... (`/tpl lang` seul les liste), puis rechargez l'interface. Le russe, le coréen
+et le chinois ne sont proposés que sur un client du jeu dans cette langue. Les noms
+fournis par le jeu (zones, monstres) restent dans la langue du jeu. Les corrections de
+joueurs natifs sont les bienvenues sur GitHub.
+
+Le style « encadré compact » de la barre a disparu : la barre d'XP est le seul affichage
+(un encadré enregistré par une version précédente s'affiche en barre).
 
 ## Problèmes et suggestions
 

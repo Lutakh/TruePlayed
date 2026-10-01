@@ -134,7 +134,7 @@ zone** and, at any level, **your time in dungeons, raids and PvP**.
 | `/tpl lock` / `unlock` | Lock or move the bar |
 | `/tpl show` / `hide` | Show or hide the bar |
 | `/tpl theme [name]` | Show or change the theme (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
-| `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`) |
+| `/tpl lang [value]` | Show or choose the language of TruePlayed (`auto`, `en`, `fr`, `de`, `es`, `mx`, `it`, `pt`, plus `ru`, `ko`, `cn`, `tw` on a client in that language; applies after `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (no argument: toggle) |
 | `/tpl citytoggle` | Count the current zone as a city (or not) |
 | `/tpl played` | Summary in the chat |
@@ -198,10 +198,16 @@ hidden by RXPGuides once.
 
 ## Languages
 
-English and French. TruePlayed follows the game's language by default; choose another one
-in Options > Display > Language (Langue) or with `/tpl lang en|fr|auto`, then reload the
-interface. Names that come from the game (zones, mobs) stay in the game's language.
-Translations are welcome on GitHub.
+Every language of the game: English, Français, Deutsch, Español (EU), Español (AL),
+Italiano, Português (BR), Русский, 한국어, 简体中文, 繁體中文. TruePlayed follows the game's
+language by default; choose another one in Options > Display > Language or with
+`/tpl lang de`, `es`, `it`... (`/tpl lang` lists them), then reload the interface. Russian,
+Korean and Chinese are offered on a game client in that language. Names that come from
+the game (zones, mobs) stay in the game's language. Corrections from native speakers are
+welcome on GitHub.
+
+The compact box style of the bar is gone: the XP bar is the only look (a box saved by an
+older version shows as the bar).
 
 ## Issues and suggestions
 

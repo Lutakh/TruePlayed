@@ -201,7 +201,7 @@ choose **Lock**.
 | `/tpl lock` / `/tpl unlock` | Lock the bar, or unlock it to move it |
 | `/tpl show` / `/tpl hide` | Show or hide the bar |
 | `/tpl theme [name]` | Show the theme and the theme names, or change the theme (see [Themes](#themes)) |
-| `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`, see [Languages](#languages)) |
+| `/tpl lang [value]` | Show or choose the language of TruePlayed: `auto`, `en`, `fr`, `de`, `es`, `mx`, `it`, `pt` (and `ru`, `ko`, `cn`, `tw` on a client in that language); applies after `/reload`, see [Languages](#languages) |
 | `/tpl afk [on\|off]` | Exclude AFK time (no argument: toggle) |
 | `/tpl inn [on\|off]` | Exclude inn / rest area time (no argument: toggle) |
 | `/tpl city [on\|off]` | Exclude city time (no argument: toggle) |
@@ -301,19 +301,39 @@ RXPGuides once.
 
 ## Languages
 
-English and French. TruePlayed follows the game's language by default. To use another
-one, choose it in Options > Display > **Language (Langue)** (Auto, English, Français) or
-type `/tpl lang en`, `/tpl lang fr` or `/tpl lang auto`, then reload the interface (the
-**Reload UI** button under the option, or `/reload`). Names that come from the game
-(zones, mobs, instances, characters, the `/played` lines) stay in the game's language,
-and so do the AddOns list texts.
+Every language of the game: English, Français, Deutsch, Español (EU), Español (AL),
+Italiano, Português (BR), Русский, 한국어, 简体中文 and 繁體中文 (English game clients in
+Britain report `enUS`). TruePlayed follows the game's language by default. To use
+another one, choose it in Options > Display > **Language** or type `/tpl lang` with its
+short name (`auto`, `en`, `fr`, `de`, `es`, `mx`, `it`, `pt`, `ru`, `ko`, `cn`, `tw`;
+`/tpl lang` alone lists the ones you can pick), then reload the interface (the **Reload
+UI** button under the option, or `/reload`). Russian, Korean and Chinese are offered only
+on a game client in that language: the fonts of the other clients cannot draw their
+letters. Names that come from the game (zones, mobs, instances, characters, the
+`/played` lines) stay in the game's language, and so do the AddOns list texts.
 
-Translations are welcome: copy `Locales/frFR.lua` to `Locales/<code>.lua` (for example
-`deDE.lua`), set its `CODE` line to that code and translate the values (keep the keys and
-the registration block at the end of the file). The header of `Locales/enUS.lua` lists the
-few other places a new language goes (the TOC, `C.LANGUAGES` in `Core.lua`, the language
-name and `/tpl lang` alias in `Options.lua`, the `/tpl lang` help line). Then open a pull
-request.
+The translations other than French were not reviewed by native speakers yet:
+corrections are welcome (open an issue or a pull request with the line and your
+wording). Keep the words short: the offline tests measure every text of the bar, the
+tooltips, the options panel, the statistics window and the graph with the real fonts,
+in every language and theme, and fail when one does not fit.
+
+Translator recipe (the header of `Locales/enUS.lua` has the details):
+
+1. Copy `Locales/frFR.lua` to `Locales/<code>.lua` (a `GetLocale()` code, for example
+   `plPL`), set its `CODE` line to that code and translate every value. Keep the keys,
+   the format arguments (`%s`, `%d`, `%02d`) in the same order, `%%` for a percent sign,
+   and the registration block at the end of the file. Use the words of the game in that
+   language (XP, rested, level, dungeon, raid...), and phrasings that need no plural
+   form when the language has several (`Мобов: %s`).
+2. Add the file to `TruePlayed_Camelot.toc` after the other locales, with a `Notes-<code>`
+   and a `Category-<code>` line.
+3. Append `<code>` to `C.LANGUAGES` in `Core.lua`; if its script is not Latin (Cyrillic,
+   Hangul, Han), add it to `C.LANGUAGES_NATIVE_ONLY` too and to `NATIVE_LOCALES` in
+   `tests/check_encoding.lua`.
+4. Add its `LANG_<CODE>` name, written in that language, to every locale file, and a line
+   for it in `LanguageLabel` and an alias in `LANG_ALIAS` (`Options.lua`).
+5. Run the tests (see [Development](#development)) and open a pull request.
 
 ## Performance
 
@@ -355,7 +375,7 @@ The addon folder is the git repository. Offline tests run with a stock Lua inter
 ```
 lua tests/run.lua            # unit tests (add a filter, e.g. "lua tests/run.lua tracker")
 lua tests/check_toc.lua      # TOC file list and required lines
-lua tests/check_encoding.lua # UTF-8, Latin-1 range only, no BOM, no CR
+lua tests/check_encoding.lua # UTF-8, no BOM, no CR; Latin-1 range only (but ru/ko/zh locales)
 lua tests/lint51.lua         # Lua 5.1 portability and SPEC rules
 lua tests/check_globals.lua  # no accidental global read or write, at run time
 lua tests/check_media.lua    # theme fonts (glyph coverage, licences) and textures
@@ -363,7 +383,7 @@ lua tests/check_media.lua    # theme fonts (glyph coverage, licences) and textur
 
 `tests/test_theme_memory.lua` (part of the unit tests, on Lua 5.4 and 5.5 only) holds the
 memory budgets of the themes. `tests/render_snapshot.lua` writes everything the bar, its
-tooltip, the graph, the statistics window and the options draw, for the 13 themes in 8
+tooltip, the graph, the statistics window and the options draw, for the 13 themes in 7
 situations; run it on two versions and compare the files to prove that a change draws
 exactly the same thing:
 
@@ -422,10 +442,13 @@ aussi (Options > Couleurs de la barre, bouton « Couleurs du thème »). Survole
 graphique (30 s, 1 min ou 5 min).
 La barre affiche trois infos au choix parmi 19. Tapez `/tpl` pour les options,
 `/tpl stats` pour la fenêtre de statistiques et `/tpl help` pour la liste des
-commandes. L'addon est entièrement traduit en français et suit la langue du jeu ; pour en
-choisir une autre : Options > Affichage > « Langue (Language) » ou `/tpl lang fr|en|auto`,
-puis rechargez l'interface (bouton « Recharger l'interface » ou `/reload`). Les noms
-fournis par le jeu (zones, monstres) restent dans la langue du jeu.
+commandes. L'addon est traduit dans toutes les langues du jeu (français, anglais, allemand,
+espagnol, italien, portugais, russe, coréen, chinois) et suit la langue du jeu ; pour en
+choisir une autre : Options > Affichage > « Langue (Language) » ou `/tpl lang` suivi du
+nom court (`fr`, `en`, `de`, `es`, `mx`, `it`, `pt`, `auto`...), puis rechargez l'interface
+(bouton « Recharger l'interface » ou `/reload`). Le russe, le coréen et le chinois ne sont
+proposés que sur un client du jeu dans cette langue. Les noms fournis par le jeu (zones,
+monstres) restent dans la langue du jeu.
 
 **Thèmes** : 13 thèmes changent l'aspect de la barre, de son infobulle, du graphique et
 de la fenêtre de statistiques : Futuriste (par défaut, pour tout le monde), Classique
