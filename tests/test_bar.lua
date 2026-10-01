@@ -148,7 +148,7 @@ end)
 
 T.test("rested: rested at login, and the fallbacks when the gradient API is missing", function()
   -- rested at login: blue from the first draw
-  local ns, _, tp = Start({ xp = 1000, rest = 800 })
+  local _, _, tp = Start({ xp = 1000, rest = 800 })
   T.eq((Vertex(tp.tex.fillM)), Rgb(0.0, 0.39, 0.88))
   T.ok(tp.tex.rested:IsShown())
 

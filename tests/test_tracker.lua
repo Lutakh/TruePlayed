@@ -1037,9 +1037,9 @@ T.test("pre-install estimate at the install sync; conditions (level, time, XP ta
   ns, ch = Fresh(1, 100, 900)
   T.eq(ch.prior, nil, "level 1")
   T.eq(select(6, ns.Stats.Rate(ch, 0)), "nodata")
-  ns, ch = Fresh(2, 100, 1200)
+  _, ch = Fresh(2, 100, 1200)
   T.eq(ch.prior, nil, "less than 30 min before the install")
-  ns, ch = Fresh(1, 100, 7200)
+  _, ch = Fresh(1, 100, 7200)
   T.eq(ch.prior, nil, "level 1 even with time")
   Stub.player.level, Stub.player.max = 2, 900
   Stub.Advance(60)
@@ -1048,12 +1048,12 @@ T.test("pre-install estimate at the install sync; conditions (level, time, XP ta
   ns, ch = Fresh(58, 0, 7200)
   T.eq(ch.prior, nil, "level 58 after 2 h played: not an XP rate")
   T.eq(select(6, ns.Stats.Rate(ch, 0)), "nodata")
-  ns, ch = Fresh(20, 5000, 600 * 19 + 600)
+  _, ch = Fresh(20, 5000, 600 * 19 + 600)
   T.ok(ch.prior, "10 min of /played per level before the install is enough")
   -- the XP table does not match this client
-  ns, ch = Fresh(20, 5000, 172800, { max = 23000 })
+  _, ch = Fresh(20, 5000, 172800, { max = 23000 })
   T.eq(ch.prior, nil, "UnitXPMax differs from the table")
-  ns, ch = Fresh(20, 5000, 172800, { db = { schema = 1, xpMax = { [15] = 14000 } } })
+  _, ch = Fresh(20, 5000, 172800, { db = { schema = 1, xpMax = { [15] = 14000 } } })
   T.eq(ch.prior, nil, "a learned size differs from the table")
   ns, ch = Fresh(20, 5000, 172800, { interface = 110205 })
   T.no(ns.isForever or ns.isEra)
@@ -1930,7 +1930,6 @@ T.test("server cap: persisted per character; over at a new level; kept across /r
   -- another character is never capped by this one
   Stub.Logout()
   local db = Stub.DeepCopy(Stub.saved)
-  local P = Stub.player
   Stub.Reset()
   Stub.player.guid = "Player-4619-0BADF00D"
   _G.TruePlayedDB = db
@@ -1942,7 +1941,7 @@ T.test("server cap: persisted per character; over at a new level; kept across /r
   Stub.Logout()
   db = Stub.DeepCopy(Stub.saved)
   Stub.Reset()
-  P = Stub.player
+  local P = Stub.player
   P.level, P.xp, P.max = 11, 200, Stub.xpTable[11]
   _G.TruePlayedDB = db
   ns = Stub.LoadAddon()

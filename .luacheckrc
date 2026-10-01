@@ -55,6 +55,16 @@ read_globals = {
     other_fields = true,
     fields = { DisplayTimePlayed = { read_only = false } },   -- experimental hide only (SPEC 5.13)
   },
+  -- colour pickers on clients before 10.2.5: the shared picker is set up through its fields
+  -- (Options OpenColorPicker; newer clients take SetupColorPickerAndShow)
+  ColorPickerFrame = {
+    other_fields = true,
+    fields = {
+      hasOpacity = { read_only = false }, opacityFunc = { read_only = false },
+      previousValues = { read_only = false, other_fields = true },
+      func = { read_only = false }, cancelFunc = { read_only = false },
+    },
+  },
   -- `local unpack = unpack or table.unpack` idiom (SPEC 2.4).
   table = { fields = { unpack = {} } },
 
@@ -78,7 +88,6 @@ read_globals = {
   "STANDARD_TEXT_FONT", "YES", "NO",
   "GameFontNormal", "GameFontHighlight", "GameFontHighlightSmall", "GameFontDisable",
   "BackdropTemplateMixin", "AddonCompartmentFrame",
-  "ColorPickerFrame",              -- colour pickers (Options; SetupColorPickerAndShow, as TinyTooltip)
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read

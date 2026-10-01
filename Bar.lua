@@ -126,7 +126,6 @@ local xpPending = true           -- XP not valid yet: re-check on TICK until it 
 local slotFS, slotMark = {}, {}
 local lastText, lastDim, lastPaused = {}, {}, {}
 local lastAlt = {}               -- [i] short form of the slot's token (or nil)
-local useAlt = {}                -- [i] the short form is drawn
 local shownText = {}             -- [i] text currently set on the slot FontString
 local lastId = {}                -- [i] token id resolved for the slot
 local slotColor = {}             -- [i] colour table used when the slot is not dim
@@ -299,7 +298,6 @@ end
 
 -- Slot i shows its full text or its short form (SetText only when the text changes).
 local function SetVariant(i, use)
-  useAlt[i] = use
   local t = Skin.Sub(SLOT_E[i], (use and lastAlt[i]) or lastText[i] or EMPTY)
   if t ~= shownText[i] then
     shownText[i] = t

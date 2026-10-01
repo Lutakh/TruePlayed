@@ -288,7 +288,7 @@ local function PriorRate(char)
   local p = char and char.prior
   if type(p) ~= "table" then return nil end
   local xph = p.xph
-  if type(xph) ~= "number" or not (xph > 0) then return nil end   -- NaN fails too
+  if type(xph) ~= "number" or not (xph > 0) then return nil end   -- luacheck: ignore 581 (NaN fails too)
   return xph / 3600
 end
 
@@ -455,7 +455,7 @@ function Stats.KillsToLevel(char, xp, max, rested, isMax)
   if isMax or (IsXPUserDisabled and IsXPUserDisabled()) then return nil end
   local lk = char and char.lastKill
   local base = type(lk) == "table" and lk.xp
-  if type(base) ~= "number" or not (base > 0) then return nil end
+  if type(base) ~= "number" or not (base > 0) then return nil end   -- luacheck: ignore 581 (NaN fails too)
   if type(xp) ~= "number" or type(max) ~= "number" or max <= 0 then return nil, base end
   local R = max - xp
   if R <= 0 then return 0, base end

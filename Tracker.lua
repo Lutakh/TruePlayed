@@ -256,8 +256,8 @@ end
 -- capped follows char.capLevel and the current level.
 local function SyncCap()
   local char = ns.char
-  local cap = char and char.capLevel
-  capped = type(cap) == "number" and cap == seg.level
+  local capLevel = char and char.capLevel
+  capped = type(capLevel) == "number" and capLevel == seg.level
 end
 
 ---------------------------------------------------------------------------
@@ -1757,16 +1757,16 @@ local function WriteXP(lOld, lNew, gOld, gain, a, r, q, withMid)
   if sess then Add(sess, "xp", gain) end
 
   local ra, rr, rq = a, r, q
-  local l, cap = lOld, gOld
+  local l, room = lOld, gOld
   while l < lNew do
-    local tq = rq < cap and rq or cap; cap = cap - tq
-    local tr = rr < cap and rr or cap; cap = cap - tr
-    local ta = ra < cap and ra or cap
+    local tq = rq < room and rq or room; room = room - tq
+    local tr = rr < room and rr or room; room = room - tr
+    local ta = ra < room and ra or room
     WriteLevelXP(char, l, zone, ta, tr, tq)
     ra, rr, rq = ra - ta, rr - tr, rq - tq
     l = l + 1
     if withMid and l < lNew then
-      cap = MaxOf(char, l) or 0
+      room = MaxOf(char, l) or 0
     else
       l = lNew
     end

@@ -242,7 +242,7 @@ end
 
 T.test("estimate from /played: '~' on the rate tokens, not dimmed, kept while paused", function()
   local ns = EstimateStart()
-  local Tokens, Fmt, L = ns.Tokens, ns.Fmt, ns.L
+  local Tokens, Fmt = ns.Tokens, ns.Fmt
   Tokens.Acquire("test", 3)
   local ctx = Tokens.ctx
   T.eq(ctx.rateStatus, "estimate")
@@ -688,6 +688,7 @@ T.test("kills and eta_kills: '~38 mobs', '~ETA · 38 mobs' and its short form (e
     local eta = Fmt.ETA(ctx.eta)
     text, dim, paused, alt = Tokens.Render("eta_kills")
     T.eq(text, eta .. L.SEP .. format(L.KILLS_FMT, "38"), locale)
+    T.no(paused)
     T.eq(alt, eta, "short form = the ETA alone")
     T.no(dim)
     T.eq(text:sub(1, 1), "~")
@@ -719,9 +720,10 @@ T.test("eta_kills falls back to either part; kills is dim dots without a kill, m
   Tokens.Acquire("test", 3)
   local ctx = Tokens.ctx
   T.eq(ctx.kills, nil)
-  local text, dim, _, alt = Tokens.Render("kills")
+  local text, dim = Tokens.Render("kills")
   T.eq(text, L.DOTS)
   T.ok(dim, "no kill yet: dim")
+  local alt
   text, dim, _, alt = Tokens.Render("eta_kills")
   T.eq(text, Fmt.ETA(ctx.eta), "no kill: the ETA alone")
   T.eq(alt, nil)

@@ -322,7 +322,7 @@ end)
 
 T.test("F2-parity: Classic's rested part is not white when SetGradient silently does nothing", function()
   WithMethod("SetGradient", function() end, function()
-    local ns, frame = Start("actuel", { xp = 2000, rest = 3000 })
+    local _, frame = Start("actuel", { xp = 2000, rest = 3000 })
     Stub.Advance(3)
     local t = frame.tp.tex.rested
     T.ok(t:IsShown(), "rested part shown")
@@ -337,7 +337,7 @@ T.test("F2-parity: Classic's rested part is not white when SetGradient silently 
 end)
 
 T.test("F2-parity: the flat colour comes before the gradient (the gradient is the last colour call)", function()
-  local ns, frame = Start("actuel", { xp = 2000, rest = 3000 })
+  local _, frame = Start("actuel", { xp = 2000, rest = 3000 })
   Stub.Advance(3)
   local t = frame.tp.tex.rested
   T.ok(rawget(t, "_grad") ~= nil, "gradient applied")
@@ -386,7 +386,7 @@ end
 
 -- Rows of the shown private tooltip that do not fit: a cut label (a pair whose label and
 -- value do not fit the inner width) or a single-line row wider than the inner width.
-local function CutRows(ns, Width)
+local function CutRows(ns)
   local tf = ns.TooltipFrame.frame
   local tt = ns.Themes.Active().tt
   local inner = tf:GetWidth() - tt.pad[1] - tt.pad[2]
@@ -408,7 +408,7 @@ local function CutRows(ns, Width)
 end
 
 T.test("F1-fidelity: no tooltip row is cut with the real fonts (every theme, enUS / frFR, short / Shift)", function()
-  RealWidths(function(Width)
+  RealWidths(function()
     local bad = {}
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
@@ -420,7 +420,7 @@ T.test("F1-fidelity: no tooltip row is cut with the real fonts (every theme, enU
               Stub.SetShift(shift)
               ns.Tooltip.ShowFor(frame)
               Stub.Advance(1)
-              for _, s in ipairs(CutRows(ns, Width)) do
+              for _, s in ipairs(CutRows(ns)) do
                 bad[#bad + 1] = format("%s %s %s %s: %s", key, locale, play, shift and "Shift" or "short", s)
               end
               ns.Tooltip.Hide()
@@ -483,7 +483,7 @@ end)
 ---------------------------------------------------------------------------
 
 T.test("F2-fidelity: the warlock XP label is soulHi #a3a4f6 (Demoniste board)", function()
-  local ns, frame = Start("warlock", { xp = 2000 })
+  local _, frame = Start("warlock", { xp = 2000 })
   local xpl = frame.tp.xpl
   T.ok(xpl and xpl:IsShown(), "split XP label shown")
   local r, g, b = xpl:GetTextColor()

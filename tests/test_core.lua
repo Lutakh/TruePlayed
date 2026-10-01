@@ -855,11 +855,12 @@ T.test("Util: IsSecret and SafeRead test secrecy before anything else", function
   T.eq(v, false)
   Stub.player.afk = true
   ok, v = U.SafeRead(UnitIsAFK, "player")
+  T.ok(ok)
   T.eq(v, true)
-  ok, v, why = U.SafeRead(function() error("x") end)
+  ok, _, why = U.SafeRead(function() error("x") end)
   T.no(ok)
   T.eq(why, "error")
-  ok, v, why = U.SafeRead(GetXPExhaustion)
+  ok, _, why = U.SafeRead(GetXPExhaustion)
   T.no(ok)
   T.eq(why, "nil")
   Stub.player.rest = 500
@@ -1566,20 +1567,6 @@ end)
 ---------------------------------------------------------------------------
 -- Changed defaults and sparse settings (feedback F2)
 ---------------------------------------------------------------------------
-
--- Settings as saved in full by 0.1.0-test (the user's file): background = true was
--- the default then.
-local function LegacySettings()
-  return {
-    rateTau = 3600, debug = false, exclude = { inn = false, afk = false, city = false },
-    hidePlayedMsg = false, firstRunDone = true, requestPlayedAtLogin = true,
-    widget = { scale = 1, fontSize = 11, point = { "CENTER", "CENTER", 0, -220 }, style = "bar",
-               shown = true, background = true, slots = { "eta", "xph", "fps_latency" }, fade = false,
-               locked = false, combatHide = false, hideAtMax = false,
-               maxSlots = { "session", "played", "fps_latency" }, height = 8, slot3Pos = "center",
-               pctPos = "follow", width = 360 },
-  }
-end
 
 T.test("defaults: no dark background, readable text, eta + mobs in slot 1", function()
   local ns = Load()

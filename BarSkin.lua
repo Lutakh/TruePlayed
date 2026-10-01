@@ -71,7 +71,7 @@ local capsSpan = {}              -- [span] = true when a `caps` layer of that sp
 
 local ox, oy, W, H = 0, 0, 0, 0  -- track origin (frame BOTTOMLEFT offsets) and size
 local capsOn = false
-local px, rpx, state = 0, 0, 0
+local px, state = 0, 0
 local panelA, panelW, panelHt, panelDirty = 0, 0, 0, true
 -- box style: FILL insets moved per side (l, r, t, b) so that the outermost FILL part fits
 -- the box frame (bar-style insets wrap ornaments the box does not draw)
@@ -776,7 +776,7 @@ function BarSkin.SetState(k)
 end
 
 function BarSkin.Draw(p, r)
-  px, rpx = p, r
+  px = p
   for i = 1, nDyns do
     local R = dyns[i]
     local span = R.span

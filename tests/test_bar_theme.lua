@@ -452,7 +452,7 @@ T.test("futuriste panel: hidden at bgAlpha 0, parts at bgAlpha (bg) and twice it
     T.near(a, 1 * lineA, 1e-6, "panelLine alpha")
   end
   -- the fill covers the frame
-  local l, b, w, h = panel.panelFill[1]:GetRect()
+  local l, _, w, h = panel.panelFill[1]:GetRect()
   T.ok(l ~= nil and w > 0 and h > 0)
   T.eq(f:GetLeft(), l, "top-left corner at the frame's left edge")
   local _, _, fw, fh = f:GetRect()

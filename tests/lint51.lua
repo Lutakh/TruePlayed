@@ -900,12 +900,12 @@ local function analyze(T, isAddon, report, tickers, rel)
           if isOp(j, "=") then
             -- The new locals are visible only after their expression list.
             local at = findExprListEnd(j + 1)
-            local acts = activations[at]
-            if not acts then
-              acts = {}
-              activations[at] = acts
+            local queued = activations[at]
+            if not queued then
+              queued = {}
+              activations[at] = queued
             end
-            acts[#acts + 1] = { blk = blocks[nb], names = names }
+            queued[#queued + 1] = { blk = blocks[nb], names = names }
           else
             for k = 1, #names do
               local nj = names[k]

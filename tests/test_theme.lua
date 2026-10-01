@@ -183,11 +183,11 @@ T.test("theme setting: repair keeps a plausible key of a newer version, drops an
 end)
 
 T.test("theme setting: saved sparsely (the default is dropped, a choice kept) and reloaded", function()
-  local ns = Load(CORE, nil)
+  Load(CORE, nil)
   Stub.LoginSequence()
   Stub.Logout()
   T.eq(Stub.saved.settings.theme, nil, "futuriste = the default: not in the file")
-  ns = Stub.Restart({ files = CORE })
+  local ns = Stub.Restart({ files = CORE })
   T.ok(ns.Core.SetSetting("theme", "mage"))
   Stub.Logout()
   T.eq(Stub.saved.settings.theme, "mage")
