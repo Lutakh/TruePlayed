@@ -12,7 +12,12 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- both bar colours back to the active theme's own (SPEC-themes 5.6): the swatches show
 -- Themes.DefaultColor and follow THEME_CHANGED while the panel is shown.
 -- The theme (SPEC-themes 5.6) is chosen in Display (first control), in the context
--- menu (Theme submenu) or with /tpl theme [name]; all three share THEME_CHOICES.
+-- menu (Theme submenu) or with /tpl theme [name]; all three share ThemeChoices().
+-- The language of the addon (setting "language", C.LANGUAGES) is chosen in Display
+-- (after "Hide at max level") or with /tpl lang [auto | en | fr]: either one only
+-- changes the setting, which Core applies into L at the next UI load (the "Reload UI"
+-- button under the dropdown calls ReloadUI). Localized strings are read from L at use
+-- time, never copied at file load (the language is applied after the files load).
 
 local math_floor, math_abs = math.floor, math.abs
 local type, pairs, ipairs, tonumber, pcall = type, pairs, ipairs, tonumber, pcall
@@ -122,23 +127,36 @@ local THEME_PATH = "theme"
 
 -- Theme choices (SPEC-themes 5.6), in C.THEME_CHOICES order with LITERAL locale keys
 -- (the locale test finds them). One table for the options dropdown, the context menu
--- and /tpl theme; built once at file load (the locales are loaded before this file).
-local THEME_CHOICES = {
-  { value = "futuriste", label = L.THEME_FUTURISTE },
-  { value = "actuel", label = L.THEME_ACTUEL },
-  { value = "heroic", label = L.THEME_HEROIC },
-  { value = "pixel", label = L.THEME_PIXEL },
-  { value = "class", label = L.THEME_CLASS },
-  { value = "warrior", label = L.THEME_WARRIOR },
-  { value = "paladin", label = L.THEME_PALADIN },
-  { value = "hunter", label = L.THEME_HUNTER },
-  { value = "rogue", label = L.THEME_ROGUE },
-  { value = "priest", label = L.THEME_PRIEST },
-  { value = "shaman", label = L.THEME_SHAMAN },
-  { value = "mage", label = L.THEME_MAGE },
-  { value = "warlock", label = L.THEME_WARLOCK },
-  { value = "druid", label = L.THEME_DRUID },
-}
+-- and /tpl theme, built on first use: always after DB_READY, so its labels are in the
+-- language Core applied into L (a table built at file load would keep the client's).
+local ThemeChoices
+do
+  local list
+  function ThemeChoices()
+    if not list then
+      list = {
+        { value = "futuriste", label = L.THEME_FUTURISTE },
+        { value = "actuel", label = L.THEME_ACTUEL },
+        { value = "heroic", label = L.THEME_HEROIC },
+        { value = "pixel", label = L.THEME_PIXEL },
+        { value = "class", label = L.THEME_CLASS },
+        { value = "warrior", label = L.THEME_WARRIOR },
+        { value = "paladin", label = L.THEME_PALADIN },
+        { value = "hunter", label = L.THEME_HUNTER },
+        { value = "rogue", label = L.THEME_ROGUE },
+        { value = "priest", label = L.THEME_PRIEST },
+        { value = "shaman", label = L.THEME_SHAMAN },
+        { value = "mage", label = L.THEME_MAGE },
+        { value = "warlock", label = L.THEME_WARLOCK },
+        { value = "druid", label = L.THEME_DRUID },
+      }
+    end
+    return list
+  end
+end
+
+-- /tpl lang arguments (lowercased by Util.Words) -> "language" setting values.
+local LANG_ARGS = { auto = "auto", en = "enUS", enus = "enUS", fr = "frFR", frfr = "frFR" }
 
 ---------------------------------------------------------------------------
 -- State
@@ -262,8 +280,9 @@ end
 
 -- Display name of a theme setting value; nil for a value that is not a choice.
 local function ThemeLabel(value)
-  for i = 1, #THEME_CHOICES do
-    local ch = THEME_CHOICES[i]
+  local choices = ThemeChoices()
+  for i = 1, #choices do
+    local ch = choices[i]
     if ch.value == value then return ch.label end
   end
   return nil
@@ -282,6 +301,32 @@ local function ThemeCommand(name)
   if not label then return false end
   SetSetting(THEME_PATH, name)
   Util.Print(L.THEME_SET_FMT, label)
+  return true
+end
+
+-- Display name of a "language" setting value, each in its own language (the same in
+-- every locale file); nil for a value that is not a choice.
+local function LanguageLabel(value)
+  if value == "auto" then return L.LANG_AUTO end
+  if value == "enUS" then return L.LANG_ENUS end
+  if value == "frFR" then return L.LANG_FRFR end
+  return nil
+end
+
+-- /tpl lang [auto | en | fr]: without a value, prints the current setting and the
+-- accepted values; with a valid one, sets it (the message says a /reload applies it,
+-- even when the value did not change: the language may still be pending). false = not
+-- a language (the caller prints Unknown).
+local function LanguageCommand(arg)
+  if arg == nil then
+    local cur = GetSetting("language")
+    Util.Print(L.LANG_LIST_FMT, LanguageLabel(cur) or tostring(cur), "auto, en, fr")
+    return true
+  end
+  local value = LANG_ARGS[arg]
+  if not value then return false end
+  SetSetting("language", value)
+  Util.Print(L.LANG_SET_FMT, LanguageLabel(value))
   return true
 end
 
@@ -713,6 +758,29 @@ local function AddBarColorsReset(xpRec, restedRec)
   return Register({ kind = "button", path = BAR_COLORS_RESET, Sync = SyncBarColorsReset }, b)
 end
 
+-- Language: "Reload UI" under the dropdown (the chosen language applies at the next UI
+-- load). Registered under its own pseudo-path ("language" is the dropdown's record);
+-- nothing to sync. Choosing a language never reloads by itself.
+local function OnReloadClick()
+  if type(ReloadUI) == "function" then ReloadUI() end
+end
+
+local function SyncNothing() end
+
+local function AddLanguage()
+  local choices = {}
+  for i = 1, #C.LANGUAGES do
+    local v = C.LANGUAGES[i]
+    choices[i] = { value = v, label = LanguageLabel(v) or v }
+  end
+  AddDropdown(L.OPT_LANGUAGE, "language", choices)
+  AddNote(L.OPT_LANGUAGE_NOTE)
+  local b = MakeButton(content, L.OPT_RELOAD, 170, 22, OnReloadClick)
+  b:SetPoint("TOPLEFT", content, "TOPLEFT", CONTROL_X, cursorY)
+  cursorY = cursorY - 30
+  return Register({ kind = "button", path = "language.reload", Sync = SyncNothing }, b)
+end
+
 -- Buttons ---------------------------------------------------------------------
 
 local function AddButtonRow(defs)
@@ -789,7 +857,7 @@ local function Build()
 
   -- 2. Display (the theme first, SPEC-themes 5.6)
   AddHeader(L.OPT_DISPLAY)
-  AddDropdown(L.OPT_THEME, THEME_PATH, THEME_CHOICES)
+  AddDropdown(L.OPT_THEME, THEME_PATH, ThemeChoices())
   AddNote(L.OPT_THEME_NOTE)
   AddNote(L.OPT_THEME_RESTART_NOTE)
   AddCheckbox(L.OPT_SHOW, "widget.shown")
@@ -815,6 +883,7 @@ local function Build()
   AddCheckbox(L.OPT_COMBAT_HIDE, "widget.combatHide")
   AddCheckbox(L.OPT_FADE, "widget.fade")
   AddCheckbox(L.OPT_HIDE_MAX, "widget.hideAtMax")
+  AddLanguage()
 
   -- 2b. Texts (readability without a background: outline and shadow by default)
   AddHeader(L.OPT_TEXTS)
@@ -1054,8 +1123,9 @@ function Options.BuildContextMenu(_owner, root)
   styleMenu:CreateRadio(L.STYLE_BAR, IsStyle, SetStyleValue, "bar")
   styleMenu:CreateRadio(L.STYLE_BOX, IsStyle, SetStyleValue, "box")
   local themeMenu = root:CreateButton(L.MENU_THEME)
-  for i = 1, #THEME_CHOICES do
-    local ch = THEME_CHOICES[i]
+  local themes = ThemeChoices()
+  for i = 1, #themes do
+    local ch = themes[i]
     themeMenu:CreateRadio(ch.label, IsTheme, SetThemeValue, ch.value)
   end
   root:CreateCheckbox(L.MENU_LOCK, IsSettingOn, ToggleSettingPath, "widget.locked")
@@ -1254,8 +1324,8 @@ local function PrintHelp()
   Util.Print(L.HELP_HEADER)
   local out = DEFAULT_CHAT_FRAME
   local keys = { "HELP_OPTIONS", "HELP_STATS", "HELP_LOCK", "HELP_SHOW", "HELP_STYLE", "HELP_THEME",
-                 "HELP_EXCLUDE", "HELP_CITY", "HELP_PLAYED", "HELP_SYNC", "HELP_RESET", "HELP_DEBUG",
-                 "HELP_PERF" }
+                 "HELP_LANG", "HELP_EXCLUDE", "HELP_CITY", "HELP_PLAYED", "HELP_SYNC", "HELP_RESET",
+                 "HELP_DEBUG", "HELP_PERF" }
   for i = 1, #keys do
     local line = L[keys[i]]
     if out then out:AddMessage("  " .. line) else Util.Print(line) end
@@ -1292,6 +1362,8 @@ function Options.HandleSlash(msg)
     end
   elseif w1 == "theme" then
     if not ThemeCommand(w2) then Unknown(msg) end
+  elseif w1 == "lang" then
+    if not LanguageCommand(w2) then Unknown(msg) end
   elseif EXCLUDE_LABEL[w1] then
     if w2 == nil or w2 == "" then
       SetExclusion(w1, nil)

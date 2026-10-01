@@ -95,6 +95,7 @@ read_globals = {
   "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitIsPlayer", "UnitPlayerControlled",
   "UnitIsTapDenied", "UnitClassification", "UnitCreatureType",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
+  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
 }
 
 -- Offline tests: the stubs define the whole WoW API as globals, so global checks are
