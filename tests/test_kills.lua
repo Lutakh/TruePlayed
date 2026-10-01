@@ -548,6 +548,38 @@ T.test("late SV swap: an older copy of the same record gets only this load's kil
   T.eq(ns.char.lastKill.xp, 62)
 end)
 
+T.test("late SV swap: an older copy and no kill in this load: the newer live ring follows its last kill", function()
+  KillLogin()
+  Kills({ 10 })
+  Stub.Logout()
+  local older = Stub.DeepCopy(Stub.saved)
+  local guid = Stub.player.guid
+  T.eq(older.chars[guid].killRing, { 10 })
+  Stub.Reset({ keepWorld = true })
+  KillLogin(Stub.DeepCopy(older))
+  Kills({ 20, 30 })
+  Stub.Logout()
+  local newer = Stub.DeepCopy(Stub.saved)
+  Stub.Reset({ keepWorld = true })
+  local ns = KillLogin(newer)
+  local live = ns.char.killRing
+  T.eq(live, { 10, 20, 30 })
+  T.eq(ns.char.lastKill.xp, 30)
+  T.eq(ns.Tracker.loadKills, 0, "no kill in this load")
+  -- the older file applied late (WTFix): its ring and its last kill predate the live ones
+  local copy = Stub.DeepCopy(older)
+  _G.TruePlayedDB = copy
+  Stub.Advance(2)
+  T.ok(ns.db == copy, "swapped")
+  T.eq(ns.char.lastKill.xp, 30, "the newer live last kill wins")
+  T.eq(ns.char.killRing, { 10, 20, 30 }, "and its ring with it")
+  T.ok(ns.char.killRing ~= live, "a copy, not the old record's table")
+  local r = K3(ns.Stats, ns.char, 0, 7600, 0)
+  T.eq({ r.avg, r.last }, { 20, 30 }, "the last kill shown is among the averaged ones")
+  Kills({ 40 })
+  T.eq(ns.char.killRing, { 10, 20, 30, 40 })
+end)
+
 T.test("ResetChar clears the ring; kills from before the reset never come back through a swap", function()
   KillLogin()
   Kills({ 10, 20 })
