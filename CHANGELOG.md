@@ -7,6 +7,16 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+### Fixed
+
+- The confirmation window of "Erase this character's data" now shows its buttons in the
+  language of TruePlayed (they stayed in the game's language).
+- When your saved data is read-only (written by a newer version of TruePlayed),
+  `/tpl lang` and the language option now say the change cannot be saved, instead of
+  confirming a language that would never apply.
+- Mobs to kill: after WTFix (or another addon) restores an older copy of the saved data
+  during a session, the average and the last kill now come from the same kills.
+
 ## [1.0.0] - 2026-10-01
 
 First public release, for WoW Forever.
