@@ -5,9 +5,12 @@
 -- load (the default "auto"), so ns.L is French before the settings are known; on any
 -- other client ns.L is left untouched here. Self-contained (tests load it alone): it
 -- needs only GetLocale and ns.L, and creates ns.LOCALES when enUS.lua did not. Values
--- are strings only, with the same keys as enUS.lua.
+-- are strings only, with the same keys as enUS.lua. CODE is the only line of code that
+-- names the language: a copy for another language changes it and the values (see the
+-- recipe at the top of enUS.lua).
 -- Latin-1 characters only (see SPEC-FINAL 2.6).
 local _, ns = ...
+local CODE = "frFR"
 local L = {}
 
 -- General and chat
@@ -336,6 +339,8 @@ L.OPT_RESET_SESSION       = "Réinitialiser la session"
 L.OPT_RESET_RATE          = "Réinitialiser l'XP par heure"
 L.OPT_RESET_CHAR          = "Effacer les données de ce personnage"
 L.CONFIRM_ERASE_CHAR_FMT  = "Effacer toutes les données TruePlayed de %s ? C'est définitif."  -- [fmt] name
+L.ERASE_YES               = "Oui"  -- the erase popup's buttons (the game's YES / NO follow the client)
+L.ERASE_NO                = "Non"
 L.OPT_NOTE_PREINSTALL     = "Le temps joué avant l'installation de TruePlayed ne peut pas être découpé et n'est jamais exclu."
 L.OPT_NOTE_IDLE           = "Les quelques minutes avant que le jeu vous passe AFK automatiquement restent comptées comme actives."
 L.OPT_NOTE_CRASH          = "Après un plantage du jeu (ou du jeu sans TruePlayed), le temps manquant est repris du /played du serveur et réparti d'après vos habitudes ; il est signalé comme reconstitué."
@@ -435,9 +440,9 @@ if type(reg) ~= "table" then
   reg = {}
   ns.LOCALES = reg
 end
-reg.frFR = L
--- The default ("auto") on a French client: French from file load on.
-if GetLocale() == "frFR" then
+reg[CODE] = L
+-- The default ("auto") on a client in this language: this language from file load on.
+if GetLocale() == CODE then
   local dst = ns.L
   if type(dst) == "table" then
     for k, v in pairs(L) do dst[k] = v end

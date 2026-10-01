@@ -1,8 +1,10 @@
 -- tests/test_language.lua - the "language" setting (design/NEXT-LOT.md B): the locale
 -- tables, the adoption order (ADDON_LOADED, a late table at PLAYER_LOGIN, no
--- SavedVariables, read-only), the fallbacks for unknown values, the sparse save, no
--- English left in French mode (and the reverse), the options (dropdown, note, reload
--- button), /tpl lang and its help line, and the locale tables dropped after login.
+-- SavedVariables, read-only, where a new language is refused), the fallbacks for unknown
+-- values and for keys a locale lacks, the sparse save, no English left in French mode
+-- (and the reverse), the options (dropdown, note, reload button), /tpl lang and its help
+-- line, the locale recipe (the listing from C.LANGUAGES, one CODE per locale file), and
+-- the locale tables dropped after login.
 local Stub, T = ...
 
 local format, find, concat = string.format, string.find, table.concat
@@ -257,6 +259,17 @@ T.test("language: read-only mode (newer schema) reads the language and writes no
   SameStrings(ns.L, en, "invalid value: auto (enUS client)")
   T.eq(ns.Core.GetSetting("language"), "auto", "repaired in memory")
   T.eq(sv, snapshot, "nothing written")
+  -- the same on a frFR client: auto = French there (not the English fallback)
+  Stub.Reset()
+  sv = { schema = 99, settings = { language = "xx" }, chars = {} }
+  snapshot = Stub.DeepCopy(sv)
+  ns = Start({ locale = "frFR", db = sv })
+  T.ok(ns.readOnly)
+  SameStrings(ns.L, fr, "invalid value: auto (frFR client)")
+  T.eq(ns.Core.GetSetting("language"), "auto", "repaired in memory (frFR client)")
+  rawset(_G, "TruePlayedDB", sv)
+  Stub.Fire("PLAYER_LOGOUT")
+  T.eq(sv, snapshot, "nothing written (frFR client)")
 
   -- a read-only table arriving at PLAYER_LOGIN
   Stub.Reset()
@@ -269,6 +282,65 @@ T.test("language: read-only mode (newer schema) reads the language and writes no
   T.ok(ns.readOnly and ns.db == sv)
   SameStrings(ns.L, fr, "late read-only table")
   T.eq(sv, snapshot, "nothing written")
+end)
+
+T.test("language: read-only mode refuses a new language (/tpl lang, the dropdown, the cycle button)", function()
+  local sv = { schema = 99, settings = {}, chars = {} }
+  local snapshot = Stub.DeepCopy(sv)
+  local ns = Start({ db = sv, ui = { modern = true } })
+  local L, ui = ns.L, Stub.ui
+  T.ok(ns.readOnly)
+  -- /tpl lang <value>: the read-only message, nothing else, the setting unchanged
+  for _, cmd in ipairs({ "lang fr", "lang en", "lang auto", "lang FRFR", "lang enus" }) do
+    local n = #Stub.printed
+    Stub.RunSlash(cmd)
+    T.eq(#Stub.printed, n + 1, cmd .. ": one line")
+    T.ok(Printed(L.READONLY_ACTION, n + 1), cmd .. ": refused")
+    T.eq(ns.Core.GetSetting("language"), "auto", cmd .. ": unchanged")
+  end
+  -- an unknown value is still unknown; the listing still works
+  local n = #Stub.printed
+  Stub.RunSlash("lang xx")
+  T.ok(Printed(format(L.UNKNOWN_CMD_FMT, "lang xx"), n + 1), "unknown value")
+  n = #Stub.printed
+  Stub.RunSlash("lang")
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr"), n + 1), "the listing")
+  -- the dropdown: the same message, it keeps showing the setting
+  ns.Options.Open()
+  local controls = Controls()
+  local rec = controls.language
+  n = #Stub.printed
+  ui.ClickMenuItem(ui.FindMenuItem(rawget(rec.widget, "_root"), "Fran\195\167ais"))
+  T.eq(ns.Core.GetSetting("language"), "auto", "dropdown: unchanged")
+  T.ok(Printed(L.READONLY_ACTION, n + 1), "dropdown: refused")
+  local root = rawget(rec.widget, "_root")
+  T.ok(ui.IsChecked(ui.FindMenuItem(root, "Auto")), "Auto still checked")
+  T.no(ui.IsChecked(ui.FindMenuItem(root, "Fran\195\167ais")))
+  -- only the language: the other dropdowns still change their setting for the session
+  ui.ClickMenuItem(ui.FindMenuItem(rawget(controls["widget.style"].widget, "_root"), L.STYLE_BOX))
+  T.eq(ns.Core.GetSetting("widget.style"), "box", "another dropdown still applies")
+  -- Reload UI stays a plain reload (it writes nothing and promises nothing)
+  Stub.RunScript(controls["language.reload"].widget, "OnClick", "LeftButton")
+  T.eq(ui.reloads, 1)
+  rawset(_G, "TruePlayedDB", sv)
+  Stub.Fire("PLAYER_LOGOUT")
+  T.eq(sv, snapshot, "nothing written")
+
+  -- the fallback cycle button (no modern dropdown): refused both ways, still "Auto"
+  Stub.Reset()
+  ns = Start({ db = { schema = 99, settings = {}, chars = {} }, ui = { modern = false } })
+  L = ns.L
+  ns.Options.Open()
+  local b = Controls().language.widget
+  for _, button in ipairs({ "LeftButton", "RightButton" }) do
+    n = #Stub.printed
+    b:GetScript("OnClick")(b, button)
+    T.eq(ns.Core.GetSetting("language"), "auto", button .. ": unchanged")
+    T.ok(Printed(L.READONLY_ACTION, n + 1), button .. ": refused")
+  end
+  T.ok(FindRegion("Auto") ~= nil, "the button shows the setting")
+  T.eq(FindRegion("English"), nil)
+  T.eq(FindRegion("Fran\195\167ais"), nil)
 end)
 
 ---------------------------------------------------------------------------
@@ -331,6 +403,25 @@ T.test("language: a language without a locale table falls back to English", func
   T.eq(#Stub.errors, 0)
 end)
 
+-- ApplyLanguage writes English first: a key the chosen locale lacks is English, not the
+-- client's language that ns.L held since file load (a partial locale of a later version).
+T.test("language: a key the chosen locale lacks is English, not the client's language", function()
+  local en, fr = EN(), FR()
+  Stub.InstallUI()
+  Stub.locale = "frFR"
+  local ns = Stub.LoadAddon()
+  SameStrings(ns.L, fr, "French at file load")
+  ns.LOCALES.frFR = { ON = "x" }
+  Stub.LoginSequence({ settle = 3 })
+  T.eq(ns.L.ON, "x", "the locale's own key")
+  local want = {}
+  for k, v in pairs(en) do want[k] = v end
+  want.ON = "x"
+  SameStrings(ns.L, want, "every other key in English")
+  T.eq(ns.L.SOME_MISSING_KEY, "SOME_MISSING_KEY", "the fallback kept")
+  T.eq(#Stub.errors, 0)
+end)
+
 ---------------------------------------------------------------------------
 -- Sparse save
 ---------------------------------------------------------------------------
@@ -371,8 +462,10 @@ end)
 -- private frame or GameTooltip, and Tooltip.Fill), the graph, the statistics window (3
 -- tabs and the account view), the options panel (every FontString and every dropdown
 -- label), the context menu, the chat (login, /tpl help, theme, lang, played, lock,
--- unlock, an unknown command), the erase popup, the broker, every token
--- (Tokens.Render, with its short form) and Tokens.PercentText.
+-- unlock, an unknown command, sync twice and its /played answer), the erase popup (its
+-- text and its buttons), the broker, every token (Tokens.Render, with its short form),
+-- Tokens.PercentText, and the graph without data. On a frFR client the game's YES / NO
+-- are French, as in the game (the stub's are English).
 local function Snapshot(opts)
   Stub.Reset()
   local p = Stub.player
@@ -384,6 +477,10 @@ local function Snapshot(opts)
   end
   local db
   if opts.language then db = { schema = 1, settings = { language = opts.language } } end
+  if opts.client == "frFR" then
+    rawset(_G, "YES", "Oui")
+    rawset(_G, "NO", "Non")
+  end
   local ns = Start({ locale = opts.client, db = db, theme = opts.theme, ui = { modern = true } })
   local out = {}
   local function add(tag, s)
@@ -461,12 +558,20 @@ local function Snapshot(opts)
   ns.Options.ShowContextMenu(bar)
   menu("context menu", Stub.ui.lastMenu)
   -- "lang auto" first: the listing names the setting, the same in both runs from there
+  -- "sync" twice: requested, then throttled; the /played answer 0.1 s later: synced
   for _, cmd in ipairs({ "help", "theme", "lang auto", "lang", "played", "lock", "unlock", "nonsense",
-                         "reset char" }) do
+                         "reset char", "sync", "sync" }) do
     Stub.RunSlash(cmd)
   end
+  Stub.Advance(1)
   for i = 1, #Stub.printed do add("chat " .. i, Stub.printed[i]) end
-  for i = 1, #Stub.popups do add("popup " .. i, Stub.popups[i].text_arg1) end
+  local dialogs = rawget(_G, "StaticPopupDialogs")
+  for i = 1, #Stub.popups do
+    local popup = Stub.popups[i]
+    local d = dialogs[popup.which]
+    add("popup " .. i, popup.text_arg1)
+    add("popup " .. i .. " buttons", tostring(d.button1) .. " / " .. tostring(d.button2))
+  end
   local obj = Stub.ui.ldbObjects.TruePlayed
   if obj then
     add("broker label", obj.label)
@@ -483,6 +588,16 @@ local function Snapshot(opts)
     add("token label " .. id, Tokens.Label(id))
   end
   for _, t in ipairs({ 0, 5, 423, 999, 1000 }) do add("percent " .. t, Tokens.PercentText(t)) end
+  -- last, the graph without a sample in its window: the bar samples from login on, so
+  -- it is hidden (nothing sampled) for longer than the window and the latency hold first
+  ns.Core.SetSetting("widget.shown", false)
+  Stub.Advance(ns.Core.GetSetting("graph.window") + 30)
+  ns.Graph.ShowFor(bar)
+  local tp = ns.Graph.frame.tp
+  add("graph empty readout", tp.readout:GetText())
+  add("graph empty fps", tp.fpsStats:GetText())
+  add("graph empty latency", tp.latStats:GetText())
+  ns.Graph.Hide()
   T.eq(Stub.errors, {}, "no error in the " .. opts.client .. " / " .. tostring(opts.language) .. " run")
   return out
 end
@@ -513,10 +628,14 @@ T.test("language: no English left in French mode (enUS client, language frFR = a
     SameTexts(chosen, native, english, "frFR mode, " .. tag)
     local all = concat(chosen, "\n")
     for _, s in ipairs({ "monstres", "Niveau", "Th\195\168me : ", "Langue : Auto", "Commandes :",
-                         "Langue (Language)", "Recharger l'interface" }) do
+                         "Langue (Language)", "Recharger l'interface", "Collecte des mesures...",
+                         "Demande du /played au serveur...", "Patientez quelques secondes",
+                         "/played synchronis\195\169.", "buttons: Oui / Non" }) do
       T.ok(find(all, s, 1, true) ~= nil, tag .. ": shows " .. s)
     end
-    for _, s in ipairs({ " mobs", "Level ", "XP to go", "Theme: ", "Commands:", "Reload UI" }) do
+    for _, s in ipairs({ " mobs", "Level ", "XP to go", "Theme: ", "Commands:", "Reload UI",
+                         "Collecting samples", "Asking the server", "Please wait", "/played synced",
+                         "Yes / No" }) do
       T.ok(find(all, s, 1, true) == nil, tag .. ": no English " .. s)
     end
   end
@@ -535,8 +654,13 @@ T.test("language: English mode on a frFR client = an enUS client", function()
     local french = Snapshot({ client = "frFR", theme = theme })
     SameTexts(chosen, native, french, "enUS mode, " .. tag)
     local all = concat(chosen, "\n")
-    for _, s in ipairs({ "monstres", "Niveau ", "XP restants", "Th\195\168me", "Commandes", "Recharger" }) do
+    for _, s in ipairs({ "monstres", "Niveau ", "XP restants", "Th\195\168me", "Commandes", "Recharger",
+                         "Collecte", "Demande du", "Patientez", "synchronis", "Oui / Non" }) do
       T.ok(find(all, s, 1, true) == nil, tag .. ": no French " .. s)
+    end
+    for _, s in ipairs({ "Collecting samples...", "Asking the server for /played...", "Please wait a few seconds",
+                         "/played synced.", "buttons: Yes / No" }) do
+      T.ok(find(all, s, 1, true) ~= nil, tag .. ": shows " .. s)
     end
   end
 end)
@@ -764,6 +888,47 @@ T.test("/tpl lang in French", function()
   n = #Stub.printed
   Stub.RunSlash("lang")
   T.ok(Printed("Language: English. Available: auto, en, fr.", n + 1))
+end)
+
+-- The recipe for a new locale (enUS.lua header): the listing is built from C.LANGUAGES
+-- and the aliases, and a copy of frFR.lua needs one edit (its CODE line) to register
+-- another language without touching French.
+T.test("/tpl lang lists C.LANGUAGES; a copy of frFR.lua with another CODE registers that code", function()
+  local ns = Start()
+  local L = ns.L
+  local codes = ns.C.LANGUAGES
+  codes[#codes + 1] = "deDE"
+  local n = #Stub.printed
+  Stub.RunSlash("lang")
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr, deDE"), n + 1),
+    "a code without an alias is listed as its code")
+  codes[#codes] = nil
+
+  local f = assert(io.open(Stub.ROOT .. "Locales/frFR.lua", "rb"))
+  local src = f:read("*a")
+  f:close()
+  local copy, count = src:gsub('\nlocal CODE = "frFR"\n', '\nlocal CODE = "deDE"\n')
+  T.eq(count, 1, "one CODE line")
+  local function Run(client)
+    local done = false
+    local chunk = assert(load(function()
+      if done then return nil end
+      done = true
+      return copy
+    end, "=Locales/deDE.lua"))
+    local frTable = {}
+    local cns = { L = {}, LOCALES = { frFR = frTable } }
+    Stub.locale = client
+    chunk("TruePlayed", cns)
+    return cns, frTable
+  end
+  local fr = FR()
+  local cns, frTable = Run("frFR")
+  T.ok(cns.LOCALES.frFR == frTable, "the French table stays")
+  T.eq(cns.LOCALES.deDE, fr, "the copy registers under its CODE")
+  T.eq(cns.L, {}, "a French client's L is not filled by the copy")
+  cns = Run("deDE")
+  T.eq(cns.L, fr, "a client in the copy's language gets it at file load")
 end)
 
 ---------------------------------------------------------------------------

@@ -325,6 +325,59 @@ T.test("panel, title icon, separators, leaders, gauge and fonts follow the theme
   T.ok(fw >= tt.width[1] and fw <= tt.width[2], "width " .. fw)
 end)
 
+-- SPEC-themes 2.4.2 / 4.2: a part without `sub` is drawn at BACKGROUND -8 + n - 1 (n: its
+-- place in the list). The compact form leaves that default out, so TooltipFrame's own
+-- default is what draws it. Expected values: the source's (Themes/futuriste.lua).
+T.test("futuriste: the tooltip panel parts are drawn at their sublevels (the -8 + n - 1 default included)", function()
+  local ns, w = Start(nil)
+  ns.Tooltip.ShowFor(w)
+  local tp = ns.TooltipFrame.frame.tp
+  local want = { bg = -8, glowTL = -7, scan = -6, grid = -5, line = -4, accTopGlow = -3, accBottomGlow = -3,
+                 accTop = -2, accLeft = -1, accBottom = -2, accRight = -1 }
+  local n = 0
+  for id in pairs(tp.panel) do
+    n = n + 1
+    T.ok(want[id] ~= nil, "part " .. tostring(id) .. " is a futuriste part")
+  end
+  T.eq(n, 11, "the 11 parts")
+  for id, sub in pairs(want) do
+    local h = tp.panel[id]
+    local list = h.GetDrawLayer and { h } or { h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9] }
+    for i = 1, #list do
+      local t = list[i]
+      T.eq({ t:GetDrawLayer() }, { "BACKGROUND", sub }, id .. " [" .. i .. "] draw layer")
+      T.ok(t:IsShown(), id .. " shown")
+    end
+  end
+end)
+
+-- SPEC-themes 4.5: the value column takes tooltip.fonts.value, else fonts.body. Futuriste
+-- writes value = body ({ "body", 15 }); the compact form leaves value out, so TooltipFrame's
+-- fallback is what draws the values: 15, never the generic 13.
+T.test("futuriste: the value cells are drawn at the theme's body size (15), short and Shift", function()
+  local ns, w = Start(nil)
+  local path15, size15 = ns.Themes.Font("body", 15)
+  T.eq(size15, 15)
+  for _, shift in ipairs({ false, true }) do
+    Stub.shift = shift
+    ns.Tooltip.ShowFor(w)
+    local tp = ns.TooltipFrame.frame.tp
+    local n = 0
+    for i = 1, tp.n do
+      local right = tp.rows[i].right
+      local text = right:GetText()
+      if right:IsShown() and text and text ~= "" then
+        n = n + 1
+        local path, size = right:GetFont()
+        T.eq({ path, size }, { path15, 15 }, "row " .. i .. " (" .. tostring(tp.rows[i].kind) .. "): value font")
+      end
+    end
+    T.ok(n >= 5, "value cells drawn: " .. n)
+    ns.Tooltip.Hide(w)
+  end
+  Stub.shift = false
+end)
+
 ---------------------------------------------------------------------------
 -- Performance
 ---------------------------------------------------------------------------

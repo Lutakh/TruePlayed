@@ -508,11 +508,11 @@ local function Slot(ctx, node, def, k, f)
   return out
 end
 
--- A colour that never depends on the fill state.
+-- A colour that never depends on the fill state (also returns its node and def).
 local function Single(ctx, v, default)
   if v == nil then v = default end
   local node, def = ParseColor(ctx, v, false)
-  return Slot(ctx, node, def, 0, 1), node
+  return Slot(ctx, node, def, 0, 1), node, def
 end
 
 ---------------------------------------------------------------------------
@@ -1031,15 +1031,16 @@ local function CompileTooltip(ctx, tt)
 
   local roles = type(tt.colors) == "table" and tt.colors or NO_SOURCE
   local colors = {}
-  local dimNode
+  local dimNode, dimDef
   for i = 1, #TT_ROLES do
     local role = TT_ROLES[i]
-    local c, node = Single(ctx, roles[role], TT_ROLE_DEF[role])
+    local c, node, def = Single(ctx, roles[role], TT_ROLE_DEF[role])
     colors[role] = c
-    if role == "dim" then dimNode = node end
+    if role == "dim" then dimNode, dimDef = node, def end
   end
   out.colors = colors
-  if dimNode and not IsStatic(dimNode) then ctx.prog.dimOf = colors end
+  -- ccDim follows the dim whenever the program rewrites it (Slot: a dynamic node or def)
+  if dimNode and (not IsStatic(dimNode) or (dimDef and not IsStatic(dimDef))) then ctx.prog.dimOf = colors end
 
   local panel = tt.panel
   if type(panel) == "table" and type(panel.parts) == "table" then

@@ -309,10 +309,12 @@ type `/tpl lang en`, `/tpl lang fr` or `/tpl lang auto`, then reload the interfa
 (zones, mobs, instances, characters, the `/played` lines) stay in the game's language,
 and so do the AddOns list texts.
 
-Translations are welcome: copy `Locales/frFR.lua`, translate the values (keep the keys
-and the registration block at the end of the file), add the language code to
-`C.LANGUAGES` in `Core.lua` and its name and `/tpl lang` alias in `Options.lua`, and open
-a pull request.
+Translations are welcome: copy `Locales/frFR.lua` to `Locales/<code>.lua` (for example
+`deDE.lua`), set its `CODE` line to that code and translate the values (keep the keys and
+the registration block at the end of the file). The header of `Locales/enUS.lua` lists the
+few other places a new language goes (the TOC, `C.LANGUAGES` in `Core.lua`, the language
+name and `/tpl lang` alias in `Options.lua`, the `/tpl lang` help line). Then open a pull
+request.
 
 ## Performance
 

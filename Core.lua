@@ -967,7 +967,10 @@ function Core.RepairChar(char)
     end
   end
   -- killRing: base XP of the last kills (Tracker, the average gives the mobs to go); a
-  -- record from before it (or whose ring held no valid entry) starts from its last kill
+  -- record from before it (or whose ring held no valid entry) starts from its last kill.
+  -- Seeded only when absent: an existing ring is never checked against lastKill. Every
+  -- public release writes both (0.1.0-beta.1, the first, ships the ring); only a
+  -- pre-release build could have moved lastKill alone, and the next 10 kills refresh it.
   RepairKillRing(char)
   lk = char.lastKill
   if char.killRing == nil and lk ~= nil and lk.xp >= 1 then char.killRing = { lk.xp } end
