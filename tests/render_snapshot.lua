@@ -12,10 +12,10 @@
 --   diff /tmp/rs-base.txt /tmp/rs-new.txt          (must print nothing)
 -- TZ=UTC: the Sessions tab shows date() texts, which follow the time zone.
 --
--- Coverage: the 13 themes x 8 scenarios (defaults, rested, max level, server cap, box
--- style, custom colours, bgAlpha 0.5 + thick outline + no shadow, unlocked), each loaded
--- with the theme and again after a switch from another theme (pooled regions reused),
--- plus one session switching through every theme with a recolour and a style change.
+-- Coverage: the 13 themes x 7 scenarios (defaults, rested, max level, server cap, custom
+-- colours, bgAlpha 0.5 + thick outline + no shadow, unlocked), each loaded with the theme
+-- and again after a switch from another theme (pooled regions reused), plus one session
+-- switching through every theme with a recolour.
 -- Views of each scenario: the widget, the tooltip short and with Shift (the private
 -- frame, and the GameTooltip for the native theme), the graph, the window (3 tabs) and
 -- the options panel.
@@ -365,12 +365,6 @@ local SCENARIOS = {
         Stub.Advance(30)
       end
     end },
-  { name = "box",
-    setup = function() Stub.player.xp, Stub.player.rest = 2000, 3000 end,
-    play = function(ns)
-      Set(ns, "widget.locked", true)
-      Set(ns, "widget.style", "box")
-    end },
   { name = "colours",
     setup = function() Stub.player.xp, Stub.player.rest = 2000, 3000 end,
     play = function(ns)
@@ -474,7 +468,7 @@ end
 
 local t0 = os.clock()
 
--- 1. Each theme loaded at login, 8 scenarios.
+-- 1. Each theme loaded at login, 7 scenarios.
 for _, key in ipairs(KEYS) do
   for _, sc in ipairs(SCENARIOS) do
     Session(key .. "/" .. sc.name, key, key, sc.setup, sc.play, EmitViews)
@@ -482,7 +476,7 @@ for _, key in ipairs(KEYS) do
 end
 
 -- 2. Each theme reached by a switch from the previous one in KEYS (regions of the
---    previous theme are pooled and reused), 8 scenarios.
+--    previous theme are pooled and reused), 7 scenarios.
 for i, key in ipairs(KEYS) do
   local prev = KEYS[(i - 2) % #KEYS + 1]
   for _, sc in ipairs(SCENARIOS) do
@@ -490,9 +484,9 @@ for i, key in ipairs(KEYS) do
   end
 end
 
--- 3. One session through every theme (twice the list, the second time with user colours
---    and in the box style, back to the bar style at the end), the tooltip shown at each
---    step so that its pools change hands too.
+-- 3. One session through every theme (twice the list, the second time with user colours,
+--    the XP colour reset at the end), the tooltip shown at each step so that its pools
+--    change hands too.
 Session("chain", "actuel", "actuel", function() Stub.player.xp, Stub.player.rest = 2000, 3000 end,
   function(ns) Set(ns, "widget.locked", true) end,
   function(ns, label)
@@ -505,10 +499,8 @@ Session("chain", "actuel", "actuel", function() Stub.player.xp, Stub.player.rest
       if step == "colours" then
         Set(ns, "widget.xpColor", { 0.2, 0.8, 0.3 })
         Set(ns, "widget.restedColor", { 0.8, 0.2, 0.6 })
-        Set(ns, "widget.style", "box")
       elseif step == "bar" then
         Set(ns, "widget.xpColor", false)
-        Set(ns, "widget.style", "bar")
       else
         Set(ns, "theme", step)
       end

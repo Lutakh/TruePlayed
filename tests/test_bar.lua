@@ -337,7 +337,7 @@ T.test("top row: slot 3 left out only when even the short form leaves no room", 
   T.eq(tp.slots[1]:GetText(), SHORT)
 end)
 
-T.test("bottom row: slot 2 short form before dropping it; box style: short form in a half row", function()
+T.test("bottom row: slot 2 short form before dropping it", function()
   local ns, _, tp = Start()
   FixedTokens(ns, { eta_kills = { FULL, SHORT } })
   Set(ns, "widget.slots.2", "eta_kills")
@@ -361,11 +361,7 @@ T.test("bottom row: slot 2 short form before dropping it; box style: short form 
   T.ok(shortSeen, "slot 2 short form used before slot 2 is dropped")
 
   Set(ns, "widget.width", 360)
-  Set(ns, "widget.style", "box")
-  T.eq(s2:GetText(), SHORT, "box: 126 px do not fit the 80 px half row")
   Set(ns, "widget.slots.1", "eta_kills")
-  T.eq(tp.slots[1]:GetText(), FULL, "box: slot 1 has 158 px")
-  Set(ns, "widget.style", "bar")
   T.eq(tp.slots[1]:GetText(), FULL)
 end)
 
@@ -602,7 +598,7 @@ T.test("bar colours: custom XP and rested colours, a lighter rested part, back t
   T.eq(Stub.onUpdateCount, 0)
 end)
 
-T.test("bar colours: the box style and the max level use them too; a flat rested part without gradients", function()
+T.test("bar colours: the max level uses them too; a flat rested part without gradients", function()
   Stub.player.level = 60
   Stub.player.xp, Stub.player.max, Stub.player.rest = 0, 0, 0
   local ns, _, tp = Start()
@@ -610,12 +606,11 @@ T.test("bar colours: the box style and the max level use them too; a flat rested
   local rgb, a = Vertex(tp.tex.fillM)
   T.eq(rgb, Rgb(0.2, 0.9, 0.9), "max level: the XP colour")
   T.ok(a < 1, "dimmed")
-  -- box style, below max level, no gradient API: flat lighter rested colour
+  -- below max level, no gradient API: flat lighter rested colour
   Stub.Reset()
   ns, _, tp = Start({ xp = 1000 })
   rawset(tp.tex.rested, "SetGradient", function() error("no") end)
   rawset(tp.tex.rested, "SetGradientAlpha", function() error("no") end)
-  SetBarColor(ns, "widget.style", "box")
   SetBarColor(ns, "widget.restedColor", { 1, 0, 0 })
   SetRest(800)
   T.eq((Vertex(tp.tex.fillM)), Rgb(1, 0, 0))

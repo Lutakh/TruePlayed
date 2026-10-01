@@ -170,24 +170,18 @@ local function Cols(Lc, W, px, rpx)
   return x0, x0 + w
 end
 
--- Layers of one style that share a (layer, sub) pair and overlap at some reachable size.
-local function Overlaps(th, style, out)
+-- Layers that share a (layer, sub) pair and overlap at some reachable size.
+local function Overlaps(th, out)
   local heights = {}
-  if style == "box" then
-    heights[1] = 2                               -- BOX_LINE
-  else
-    for user = 4, 16 do                          -- widget.height range
-      local H = user + th.bar.hAdd
-      if H < th.bar.hMin then H = th.bar.hMin end
-      heights[#heights + 1] = H
-    end
+  for user = 4, 16 do                            -- widget.height range
+    local H = user + th.bar.hAdd
+    if H < th.bar.hMin then H = th.bar.hMin end
+    heights[#heights + 1] = H
   end
-  local W = style == "box" and 160 or 200
+  local W = 200
   local states = { { 80, 140 }, { 10, 190 }, { 150, 160 } }
   local list = {}
-  for _, Lc in ipairs(th.bar.layers) do
-    if Lc.when == nil or Lc.when == style then list[#list + 1] = Lc end
-  end
+  for _, Lc in ipairs(th.bar.layers) do list[#list + 1] = Lc end
   local reported = {}
   for i = 1, #list do
     for j = i + 1, #list do
@@ -212,7 +206,7 @@ local function Overlaps(th, style, out)
         local key = a.id .. "/" .. b.id
         if hit and not reported[key] then
           reported[key] = true
-          Add(out, "%s style: layers %s and %s overlap (H = %d) on the same %s %d", style, a.id, b.id,
+          Add(out, "layers %s and %s overlap (H = %d) on the same %s %d", a.id, b.id,
             hit, a.layer, a.sub)
         end
       end
@@ -251,9 +245,6 @@ local function CheckLayers(th, out)
       if not (type(b) == "table" and IsUnit(b[1]) and IsUnit(b[2]) and b[1] < b[2]) then
         Add(out, "%s: band must be { f0, f1 } with 0 <= f0 < f1 <= 1", tostring(id))
       end
-    end
-    if Lc.when ~= nil and Lc.when ~= "bar" and Lc.when ~= "box" then
-      Add(out, "%s: when %s", tostring(id), tostring(Lc.when))
     end
     -- what is drawn in each fill state: the vertex colour, or the gradient and its flat colour
     for k = 0, 2 do
@@ -441,8 +432,7 @@ for _, key in ipairs(KEYS) do
     CheckLayers(th, problems)
     if type(th.bar.panel) == "table" then CheckParts(th.bar.panel.parts, "bar.panel.parts", problems) end
     if not th.native then CheckParts(th.tt.panel.parts, "tooltip.panel.parts", problems) end
-    Overlaps(th, "bar", problems)
-    Overlaps(th, "box", problems)
+    Overlaps(th, problems)
     CheckColors(th, src, problems)
     -- `base` (the fill colour of the current state) only means something in bar layers
     for _, path in ipairs(FindBase(src, "", {}, {})) do
@@ -493,7 +483,7 @@ T.test("theme data: the checks above catch broken data (fixture)", function()
   T.match(joined, "tooltip%.fonts%.note: shows arbitrary text", "tooltip note in display warns")
   T.match(joined, "tooltip%.colors%.title: 'base' is only valid in bar%.layers", "base outside layers warns")
   local problems = {}
-  Overlaps(th, "bar", problems)
+  Overlaps(th, problems)
   CheckLayers(th, problems)
   local text = table.concat(problems, "\n")
   T.match(text, "layers track and trackLow overlap", "overlap found")

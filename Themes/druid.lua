@@ -46,11 +46,9 @@
 --     droite")
 --   bar.panel: background panel (widget.bgAlpha): moss in the board's faint vertical gradient (one
 --     ramp over the 9-slice), wood-brown border; 29 px past the frame sides so that the vines sit
---     on it, as on the board (the box style fits it to the box)
+--     on it, as on the board
 --   text.size: board: 15 px bottom row, 14 px top row (bar drawn x1.5); Uncial keeps the board's
 --     size ratio to the text; the game font (numbers) looks larger, so it gets 1 px less
---   text.boxSize: box: slots 2 and 3 are 80 px wide; a 3-digit FPS and latency fit at font size 11
---     and 2-digit ones up to 14, as in Classic
 --   tooltip.panel: moss panel in a 4 px wood frame, vines on two corners
 --   tooltip.panel.parts > inner: moss panel: a flat rounded 9-slice, its vertical gradient on a
 --     plain rectangle that leaves out the corner rows (a gradient on a 9-slice repeats in each row)
@@ -97,39 +95,39 @@ return {
     maxAlpha = 0.35,
     layers = {
       { id = "wood", span = "track", nine = { "bar_wood", 8, 8 }, pad = { 4, 4 }, top = -4, bottom = -4,
-        layer = "BACKGROUND", sub = 0, when = "bar" },
+        layer = "BACKGROUND", sub = 0 },
       { id = "track", span = "track", layer = "BORDER", sub = 0, color = "bark" },
       { id = "trackTop", span = "track", band = { 0, 0.55 }, layer = "BORDER", sub = 1,
-        grad = { "VERTICAL", "#000000@0", "#000000@.43" }, when = "bar" },
+        grad = { "VERTICAL", "#000000@0", "#000000@.43" } },
       { id = "trackLow", span = "track", band = { 0.55, 1 }, layer = "BORDER", sub = 1,
-        grad = { "VERTICAL", "#000000@.37", "#000000@0" }, when = "bar" },
+        grad = { "VERTICAL", "#000000@.37", "#000000@0" } },
       { id = "trackShadow", span = "track", top = 0, h = 3, layer = "BORDER", sub = 2,
-        grad = { "VERTICAL", "#000000@0", "#000000@.5" }, when = "bar" },
+        grad = { "VERTICAL", "#000000@0", "#000000@.5" } },
       { id = "rested", span = "rested", layer = "ARTWORK", sub = 0,
         grad = { "HORIZONTAL", "rested+.15@.8", "rested+.35@0" }, flat = "rested+.25@.45" },
       { id = "restSheen", span = "rested", band = { 0, 0.5 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.18" }, when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.18" } },
       { id = "restMist", span = "rested", file = "mist", layer = "ARTWORK", sub = 2,
-        color = "rested+.8@.45", when = "bar" },
+        color = "rested+.8@.45" },
       { id = "fill", span = "fill", layer = "ARTWORK", sub = 3,
         grad = { "HORIZONTAL", "base-.3", "base+.22" }, flat = "base" },
       { id = "fillVeins", span = "fill", file = "veins", tile = "HV", layer = "ARTWORK", sub = 4,
-        color = "#ffffff@.06", when = "bar" },
+        color = "#ffffff@.06" },
       { id = "fillTop", span = "fill", band = { 0, 0.4 }, layer = "ARTWORK", sub = 5,
-        grad = { "VERTICAL", "#ffffff@.08", "#ffffff@.3" }, when = "bar" },
+        grad = { "VERTICAL", "#ffffff@.08", "#ffffff@.3" } },
       { id = "fillMid", span = "fill", band = { 0.4, 0.55 }, layer = "ARTWORK", sub = 5,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.08" }, when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.08" } },
       { id = "fillLow", span = "fill", band = { 0.55, 1 }, layer = "ARTWORK", sub = 5,
-        grad = { "VERTICAL", "#000000@.28", "#000000@0" }, when = "bar" },
+        grad = { "VERTICAL", "#000000@.28", "#000000@0" } },
       { id = "notches", span = "track", ticks = { n = 10 }, layer = "ARTWORK", sub = 6,
-        color = "ink@.6", when = "bar" },
+        color = "ink@.6" },
       { id = "markerGlow", span = "fillEnd", file = "common/glow", w = 10, top = -2, bottom = -2,
-        layer = "OVERLAY", sub = 0, color = "orange@.55", when = "bar" },
-      { id = "marker", span = "fillEnd", w = 2, layer = "OVERLAY", sub = 1, color = "orange", when = "bar" },
+        layer = "OVERLAY", sub = 0, color = "orange@.55" },
+      { id = "marker", span = "fillEnd", w = 2, layer = "OVERLAY", sub = 1, color = "orange" },
       { id = "vineL", span = "trackStart", file = "vine", w = 44, align = "left", dx = -36,
-        top = -13, h = 44, layer = "OVERLAY", sub = 2, when = "bar" },
+        top = -13, h = 44, layer = "OVERLAY", sub = 2 },
       { id = "vineR", span = "trackEnd", file = "vine", flipX = true, w = 44, align = "right", dx = 36,
-        top = -13, h = 44, layer = "OVERLAY", sub = 2, when = "bar" },
+        top = -13, h = 44, layer = "OVERLAY", sub = 2 },
     },
     panel = { parts = {
       { id = "panelFill", nine = { "round", 6, 7 }, inset = { -29, -29, 0, 0 },
@@ -143,7 +141,6 @@ return {
              xpLabel = "body", xp = "num", sep = "body", marker = "num", hint = "body" },
     size = { s1 = 2, s2 = 2, s3 = 2, level = 3, levelValue = 2, xpLabel = 3, xp = 2,
              sep = 3, marker = 0, hint = 0 },
-    boxSize = { s1 = 3, s2 = -1, s3 = 1 },
     split = true, splitGap = 6, levelFmt = "upper",
     colors = { label = "orange", value = "cream", levelLabel = "orange", levelValue = "cream",
                xpText = "cream", sep = "sand", marker = "orangeHi", hint = "parch", slot3 = "creamSoft",

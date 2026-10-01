@@ -140,7 +140,6 @@ T.test("_G writes are limited to the whitelist", function()
   Stub.RunSlash("help")
   Stub.RunSlash("played")
   Stub.RunSlash("perf")
-  Stub.RunSlash("style box")
   Stub.Advance(65)
   Stub.Logout()
   for k in pairs(_G) do
@@ -275,7 +274,6 @@ T.test("every SETTINGS_CHANGED path of 3.17 applies without error", function()
     { "exclude.afk", true }, { "exclude.inn", true }, { "exclude.city", true },
     { "widget.locked", true }, { "widget.bgAlpha", 0.5 }, { "widget.combatHide", true },
     { "widget.fade", true }, { "widget.hideAtMax", true },
-    { "widget.style", "box" }, { "widget.style", "bar" },
     { "widget.point", { "TOPLEFT", "TOPLEFT", 100, -100 } },
     { "widget.scale", 1.5 }, { "widget.width", 400 }, { "widget.height", 12 }, { "widget.fontSize", 14 },
     { "widget.slots.1", "session" }, { "widget.slots.2", "played" }, { "widget.slots.3", "fps" },
@@ -318,7 +316,7 @@ T.test("every SETTINGS_CHANGED path of 3.17 applies without error", function()
   T.eq(Stub.onUpdateCount, 0)
 end)
 
-T.test("bar and box styles, slot 3 position and % marker", function()
+T.test("bar: slot 3 position and % marker", function()
   local ns = Start({ ui = { ldb = false } })
   Stub.GrantXP(3800)                           -- 50 % of 7600
   Stub.Advance(2)
@@ -341,12 +339,6 @@ T.test("bar and box styles, slot 3 position and % marker", function()
   T.eq((tp.slots[3]:GetPoint(1)), "BOTTOMLEFT")
   ns.Core.SetSetting("widget.slot3Pos", "center")
   T.eq((tp.slots[3]:GetPoint(1)), "BOTTOM")
-  -- compact box
-  ns.Core.SetSetting("widget.style", "box")
-  T.eq(f:GetWidth(), 180)
-  T.eq((tp.slots[1]:GetPoint(1)), "TOPLEFT")
-  Stub.Advance(3)
-  ns.Core.SetSetting("widget.style", "bar")
   T.eq(f:GetWidth(), W + 16)
   T.eq(Stub.onUpdateCount, 0)
 end)
@@ -406,7 +398,7 @@ T.test("left click toggles the window, right click opens the context menu", func
   T.ok(ns.Window.IsShown(), "click after a drag")
 end)
 
-T.test("context menu: exclusions, style, lock, stats, hide, options", function()
+T.test("context menu: exclusions, lock, stats, hide, options", function()
   local ns = Start()
   local L = ns.L
   local ui = Stub.ui
@@ -423,9 +415,7 @@ T.test("context menu: exclusions, style, lock, stats, hide, options", function()
   T.eq(ns.settings.exclude.inn, true)
   ui.ClickMenuItem(ui.FindMenuItem(root, L.MENU_EXCLUDE_CITY))
   T.eq(ns.settings.exclude.city, true)
-  ui.ClickMenuItem(ui.FindMenuItem(root, L.STYLE_BOX))
-  T.eq(ns.settings.widget.style, "box")
-  T.ok(ui.IsChecked(ui.FindMenuItem(root, L.STYLE_BOX)))
+  T.eq(ui.FindMenuItem(root, "Style"), nil, "no style entry (the compact box was removed)")
   ui.ClickMenuItem(ui.FindMenuItem(root, L.MENU_LOCK))
   T.eq(ns.settings.widget.locked, true)
   ui.ClickMenuItem(ui.FindMenuItem(root, L.MENU_STATS))
@@ -477,12 +467,8 @@ T.test("every /tpl sub-command", function()
   T.eq(ns.settings.widget.shown, false)
   Run("show", L.WIDGET_SHOWN)
   T.eq(ns.settings.widget.shown, true)
-  Run("style box", Frag(L.STYLE_SET_FMT))
-  T.eq(ns.settings.widget.style, "box")
-  Run("style bar")
-  T.eq(ns.settings.widget.style, "bar")
-  Run("style", Frag(L.STYLE_SET_FMT))
-  T.eq(ns.settings.widget.style, "box", "no argument toggles the style")
+  Run("style box", format(L.UNKNOWN_CMD_FMT, "style box"))
+  T.eq(ns.settings.widget.style, nil, "/tpl style was removed with the compact box")
   Run("afk on", Frag(L.EXCL_STATE_FMT))
   T.eq(ns.settings.exclude.afk, true)
   Run("afk off")
@@ -594,11 +580,12 @@ T.test("options panel: lazy content and modern controls", function()
   local controls = rawget(cat.frame, "controls")
   T.ok(type(controls) == "table", "content built on first show")
   -- dropdown
-  local dd = controls["widget.style"].widget
-  local item = ui.FindMenuItem(rawget(dd, "_root"), ns.L.STYLE_BOX)
+  T.eq(controls["widget.style"], nil, "no style dropdown (the compact box was removed)")
+  local dd = controls["widget.slot3Pos"].widget
+  local item = ui.FindMenuItem(rawget(dd, "_root"), ns.L.POS_LEFT)
   T.ok(item ~= nil and item.kind == "radio")
   ui.ClickMenuItem(item)
-  T.eq(ns.settings.widget.style, "box")
+  T.eq(ns.settings.widget.slot3Pos, "left")
   local slot = controls["widget.slots.1"].widget
   ui.ClickMenuItem(ui.FindMenuItem(rawget(slot, "_root"), ns.Tokens.Label("played")))
   T.eq(ns.settings.widget.slots[1], "played")
@@ -636,11 +623,11 @@ T.test("options panel: fallback controls when the templates are absent", functio
   ns.Options.Open()
   local controls = rawget(Stub.ui.categories[1].frame, "controls")
   T.ok(type(controls) == "table")
-  local b = controls["widget.style"].widget
+  local b = controls["widget.slot3Pos"].widget
   b:GetScript("OnClick")(b, "LeftButton")
-  T.eq(ns.settings.widget.style, "box")
+  T.eq(ns.settings.widget.slot3Pos, "left")
   b:GetScript("OnClick")(b, "RightButton")
-  T.eq(ns.settings.widget.style, "bar")
+  T.eq(ns.settings.widget.slot3Pos, "center")
   local tau = controls["rateTau"].widget
   tau:GetScript("OnClick")(tau, "LeftButton")         -- normal (3600) -> fast (1200)
   T.eq(ns.settings.rateTau, 1200)
@@ -1073,8 +1060,8 @@ T.test("options: dropdown menus are regenerated only when their value changed", 
   local width = controls["widget.width"].widget
   for v = 150, 600, 10 do width:SetValue(v) end
   T.eq(ui.generateMenus, base, "dragging the width slider regenerates no menu")
-  local dd = controls["widget.style"].widget
-  ui.ClickMenuItem(ui.FindMenuItem(rawget(dd, "_root"), ns.L.STYLE_BOX))
+  local dd = controls["widget.slot3Pos"].widget
+  ui.ClickMenuItem(ui.FindMenuItem(rawget(dd, "_root"), ns.L.POS_LEFT))
   T.ok(ui.generateMenus - base <= 1, "one changed value: one menu at most")
   base = ui.generateMenus
   ns.Core.SetSetting("widget.slots.1", "played")        -- changed elsewhere (/tpl, menu)
@@ -1083,20 +1070,20 @@ T.test("options: dropdown menus are regenerated only when their value changed", 
   T.ok(ui.IsChecked(item))
 end)
 
-T.test("box style: slots 2 and 3 share the second row without overlapping", function()
-  local ns = Start({ ui = { ldb = false }, locale = "frFR" })
-  ns.Core.SetSetting("widget.slots.2", "played")
-  ns.Core.SetSetting("widget.slots.3", "played_server")
-  ns.Core.SetSetting("widget.fontSize", 16)
-  ns.Core.SetSetting("widget.style", "box")
-  Stub.Advance(20)
-  local tp = Widget().tp
-  local s2, s3 = tp.slots[2], tp.slots[3]
-  T.ok(s2:GetWidth() > 0 and s3:GetWidth() > 0, "bounded widths")
-  T.ok(s2:GetWidth() + s3:GetWidth() <= 180 - 2 * 6, "the two halves fit in the box")
-  ns.Core.SetSetting("widget.style", "bar")
-  T.eq(s2:GetWidth(), 0, "bar style: free width again")
-  T.eq(s3:GetWidth(), 0)
+-- The compact box style was removed after 1.0.x: a file saved by 1.0.x with style = "box"
+-- loads without error, draws the bar, and the key leaves the file at the next save.
+T.test("a stored compact box style (1.0.x) loads as the bar", function()
+  local ns = Start({ ui = { ldb = false }, db = { schema = 1, sparseSettings = true,
+    settings = { firstRunDone = true, widget = { style = "box", locked = true, width = 300 } } } })
+  Stub.Advance(5)
+  local f, tp = Widget(), Widget().tp
+  T.eq(ns.settings.widget.style, nil, "the setting is gone")
+  T.eq(f:GetWidth(), 300 + 16, "the bar's width, not the box's")
+  T.ok(tp.bl:IsShown() and tp.brx:IsShown(), "level and XP texts drawn (the box hid them)")
+  T.eq((tp.slots[1]:GetPoint(1)), "BOTTOMRIGHT", "slot 1 top right, as on the bar")
+  T.eq(#Stub.errors, 0)
+  Stub.Logout()
+  T.eq(Stub.saved.settings.widget, { locked = true, width = 300 }, "saved sparse, without the style")
 end)
 
 ---------------------------------------------------------------------------

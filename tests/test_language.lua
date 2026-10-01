@@ -317,8 +317,8 @@ T.test("language: read-only mode refuses a new language (/tpl lang, the dropdown
   T.ok(ui.IsChecked(ui.FindMenuItem(root, "Auto")), "Auto still checked")
   T.no(ui.IsChecked(ui.FindMenuItem(root, "Fran\195\167ais")))
   -- only the language: the other dropdowns still change their setting for the session
-  ui.ClickMenuItem(ui.FindMenuItem(rawget(controls["widget.style"].widget, "_root"), L.STYLE_BOX))
-  T.eq(ns.Core.GetSetting("widget.style"), "box", "another dropdown still applies")
+  ui.ClickMenuItem(ui.FindMenuItem(rawget(controls["widget.slot3Pos"].widget, "_root"), L.POS_LEFT))
+  T.eq(ns.Core.GetSetting("widget.slot3Pos"), "left", "another dropdown still applies")
   -- Reload UI stays a plain reload (it writes nothing and promises nothing)
   Stub.RunScript(controls["language.reload"].widget, "OnClick", "LeftButton")
   T.eq(ui.reloads, 1)
@@ -854,18 +854,18 @@ T.test("/tpl lang lists, /tpl lang <value> sets (case-insensitive), anything els
   end
   T.eq(L.ON, "on", "the strings change at the next UI load only")
   T.eq(Stub.ui.reloads, 0, "the command never reloads")
-  -- help: the language line right after the theme line, the theme line after the style line
+  -- help: the language line right after the theme line, the theme line after the show line
   n = #Stub.printed
   Stub.RunSlash("help")
-  local styleAt, themeAt, langAt
+  local showAt, themeAt, langAt
   for i = n + 1, #Stub.printed do
     local line = Stub.printed[i]
-    if find(line, L.HELP_STYLE, 1, true) then styleAt = i end
+    if find(line, L.HELP_SHOW, 1, true) then showAt = i end
     if find(line, L.HELP_THEME, 1, true) then themeAt = i end
     if find(line, L.HELP_LANG, 1, true) then langAt = i end
   end
-  T.ok(styleAt ~= nil and themeAt ~= nil and langAt ~= nil, "style, theme and lang lines")
-  T.eq(themeAt, styleAt + 1, "HELP_THEME after HELP_STYLE")
+  T.ok(showAt ~= nil and themeAt ~= nil and langAt ~= nil, "show, theme and lang lines")
+  T.eq(themeAt, showAt + 1, "HELP_THEME after HELP_SHOW")
   T.eq(langAt, themeAt + 1, "HELP_LANG after HELP_THEME")
   T.ok(find(L.HELP_LANG, "/tpl lang", 1, true) ~= nil)
 end)

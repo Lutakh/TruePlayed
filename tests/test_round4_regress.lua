@@ -1,6 +1,5 @@
 -- tests/test_round4_regress.lua - regressions found by the fourth verification round of
--- the themes (design/SPEC-themes.md): slice coordinates after style round trips, the
--- private tooltip of a hidden owner, the truncated tooltip label after a rebuild, what a
+-- the themes (design/SPEC-themes.md): the private tooltip of a hidden owner, the truncated tooltip label after a rebuild, what a
 -- theme switch keeps of the previous compiled theme (P5), the work done by a user colour
 -- change, the colour of a gradient layer on a client that ignores SetGradient.
 -- The stub measures 6 px per character (colour codes left out). Themes.Compile returns the
@@ -59,57 +58,6 @@ local function Bounded(orig, self)
   if b > 0 and w > b then return b end
   return w
 end
-
-local function TC(t)
-  local tc = rawget(t, "_tc") or { 0, 1, 0, 1 }       -- never set: the whole texture
-  local o = {}
-  for i = 1, #tc do o[i] = format("%.4f", tc[i]) end
-  return table.concat(o, ",")
-end
-
--- Texture coordinates and visibility of every texture of a handle (a texture or a list).
-local function Dump(h)
-  local out = {}
-  if type(h) == "table" and not h.GetObjectType then
-    for i, t in ipairs(h) do out[i] = TC(t) .. (t:IsShown() and "" or " (hidden)") end
-  elseif type(h) == "table" then
-    out[1] = TC(h) .. (h:IsShown() and "" or " (hidden)")
-  end
-  return out
-end
-
-local function DumpAll(tex)
-  local out = {}
-  for id, h in pairs(tex) do
-    if id ~= "veil" then
-      for i, s in ipairs(Dump(h)) do out[id .. "[" .. i .. "]"] = s end
-    end
-  end
-  return out
-end
-
----------------------------------------------------------------------------
--- R1: bar -> box -> bar round trips keep the slice coordinates of three / nine layers
----------------------------------------------------------------------------
-
-T.test("R1: style round trips in one theme keep every texture as a fresh build draws it", function()
-  for _, key in ipairs(KEYS) do
-    Stub.Reset()
-    local ns, frame = Start(key)
-    local fresh = DumpAll(frame.tp.tex)
-    for cycle = 1, 3 do
-      Set(ns, "widget.style", "box")
-      Set(ns, "widget.style", "bar")
-      local now = DumpAll(frame.tp.tex)
-      local bad = {}
-      for id, s in pairs(fresh) do
-        if now[id] ~= s then bad[#bad + 1] = format("%s: fresh %s, now %s", id, s, tostring(now[id])) end
-      end
-      table.sort(bad)
-      T.eq(bad, {}, format("%s, round trip %d", key, cycle))
-    end
-  end
-end)
 
 ---------------------------------------------------------------------------
 -- R2: the private tooltip of an owner hidden without OnLeave (addon compartment)
@@ -225,22 +173,19 @@ local function Mark(root, skip)
 end
 
 local function Exercise(ns, frame)
-  for _, style in ipairs({ "box", "bar" }) do
-    Set(ns, "widget.style", style)
-    Stub.RunScript(frame, "OnEnter")
-    Stub.Advance(1)
-    Stub.SetShift(true)
-    Stub.Advance(1)
-    Stub.SetShift(false)
-    Stub.Advance(1)
-    Stub.RunScript(frame, "OnLeave")
-    ns.Graph.ShowFor(frame)
-    Stub.Advance(1)
-    ns.Graph.Hide()
-    ns.Window.Show()
-    Stub.Advance(1)
-    ns.Window.Hide()
-  end
+  Stub.RunScript(frame, "OnEnter")
+  Stub.Advance(1)
+  Stub.SetShift(true)
+  Stub.Advance(1)
+  Stub.SetShift(false)
+  Stub.Advance(1)
+  Stub.RunScript(frame, "OnLeave")
+  ns.Graph.ShowFor(frame)
+  Stub.Advance(1)
+  ns.Graph.Hide()
+  ns.Window.Show()
+  Stub.Advance(1)
+  ns.Window.Hide()
 end
 
 T.test("PERF-1: after a theme switch no table of the previous compiled theme stays alive", function()
@@ -570,39 +515,6 @@ T.test("F4-fidelity: four shaman stones at 12.5 / 37.5 / 62.5 / 87.5 %, clear of
 end)
 
 ---------------------------------------------------------------------------
--- F5 (fidelity): the box style's half slots (80 px) hold the FPS / latency text
----------------------------------------------------------------------------
-
--- As Classic does: a 3-digit FPS and latency at the default font size (with 2 px to
--- spare for the client's own metrics), the usual 2-digit ones up to font size 14. Slots 2
--- and 3 alike (any token can go in either).
-T.test("F5-fidelity: box slots 2 and 3 fit the FPS / latency text as Classic does", function()
-  RealWidths(function()
-    local bad = {}
-    for _, key in ipairs(KEYS) do
-      Stub.Reset()
-      local ns, frame = Start(key)
-      Set(ns, "widget.style", "box")
-      local SEP = ns.L.SEP
-      local cases = { { 11, "144 fps" .. SEP .. "120 ms", 78 }, { 14, "60 fps" .. SEP .. "42 ms", 80 } }
-      for _, c in ipairs(cases) do
-        Set(ns, "widget.fontSize", c[1])
-        for i = 2, 3 do
-          local s = frame.tp.slots[i]
-          local bound = rawget(s, "_width") or 0
-          s:SetText(c[2])                               -- measured in the slot's own font
-          local w = s:GetUnboundedStringWidth()
-          if w > c[3] or bound < 80 then
-            bad[#bad + 1] = format("%s fs %d slot %d: %q %.1f px in %d (limit %d)", key, c[1], i, c[2], w, bound, c[3])
-          end
-        end
-      end
-    end
-    T.eq(bad, {}, "box slot texts cut")
-  end)
-end)
-
----------------------------------------------------------------------------
 -- F6 (fidelity): centred separator ornaments keep their proportions
 ---------------------------------------------------------------------------
 
@@ -666,8 +578,8 @@ T.test("compile: ui roles must not follow the user colours; sep center and ticks
       media = { line = { 256, 8, grey = true }, dash = { 16, 2, grey = true } },
       bar = { layers = {
         { id = "track", layer = "BORDER" },
-        { id = "ticks", ticks = ticks, sub = 3, when = "bar" },
-        { id = "dash", file = "dash", sub = 4, when = "bar" },
+        { id = "ticks", ticks = ticks, sub = 3 },
+        { id = "dash", file = "dash", sub = 4 },
       } },
       tooltip = { fonts = { title = { "display", 13 }, body = { "body", 14 }, note = { "body", 12 },
                             hint = { "body", 12 } },

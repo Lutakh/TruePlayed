@@ -319,7 +319,8 @@ T.test("SetSetting: SETTINGS_CHANGED only on change, clamping, cached mask", fun
   Core.SetSetting("widget.fontSize", 8.6); T.eq(w.fontSize, 9)
 
   local before = #got
-  T.no(Core.SetSetting("widget.style", "round"))
+  T.no(Core.SetSetting("widget.slot3Pos", "round"))
+  T.no(Core.SetSetting("widget.style", "box"), "the compact box style was removed")
   T.no(Core.SetSetting("rateTau", 1234))
   T.no(Core.SetSetting("widget.slots.2", "bogus"))
   T.no(Core.SetSetting("widget.shown", "yes"))
@@ -331,7 +332,7 @@ T.test("SetSetting: SETTINGS_CHANGED only on change, clamping, cached mask", fun
   T.no(Core.SetSetting("exclude.afk", nil))
   T.eq(#got, before, "no message for ignored values")
 
-  T.ok(Core.SetSetting("widget.style", "box"))
+  T.ok(Core.SetSetting("widget.slot3Pos", "left"))
   T.ok(Core.SetSetting("rateTau", 1200))
   T.ok(Core.SetSetting("widget.slots.2", "fps"))
   T.eq(w.slots, { "eta_kills", "fps", "fps_latency" })
@@ -342,7 +343,8 @@ T.test("SetSetting: SETTINGS_CHANGED only on change, clamping, cached mask", fun
   T.eq(got[#got][1], "widget.point")
   T.ok(got[#got][2] == w.point, "payload is the stored value")
 
-  T.eq(Core.GetSetting("widget.style"), "box")
+  T.eq(Core.GetSetting("widget.slot3Pos"), "left")
+  T.eq(Core.GetSetting("widget.style"), nil)
   T.eq(Core.GetSetting("widget.slots.2"), "fps")
   T.eq(Core.GetSetting("rateTau"), 1200)
   T.eq(Core.GetSetting("widget.nothing"), nil)
@@ -364,10 +366,13 @@ T.test("RepairDB clamps or resets invalid settings and keeps valid ones", functi
   T.eq(s.widget.scale, 1.0)
   T.eq(s.widget.slots, { "eta", "xph", "future_token" }, "unknown ids from newer versions are kept")
   T.eq(s.widget.point, { "CENTER", "CENTER", 0, -220 })
-  T.eq(s.widget.style, "box")
+  T.eq(s.widget.style, nil, "the removed style setting (a stored box) is dropped: the bar")
   T.eq(s.rateTau, 3600)
   T.eq(s.exclude, { afk = false, inn = false, city = false })
   T.eq(s.debug, false)
+  Stub.Logout()
+  T.eq(Stub.saved.settings.widget.style, nil, "the removed style setting leaves the file")
+  T.eq(#Stub.errors, 0)
 end)
 
 ---------------------------------------------------------------------------

@@ -40,8 +40,6 @@
 --   bar.panel: navy window behind the bar, framed like the track (board: 14 px wider than the track
 --     on each side, lines at 1.5 x the body opacity)
 --   text.size: level: Press Start 2P snaps to 8 px up to a font size of 14 and to 16 px above
---   text.boxSize: box: slots 2 and 3 are 80 px wide; a 3-digit FPS and latency fit at font size 11
---     and 2-digit ones up to 14, as in Classic
 --   text.shadow: hard pixel drop shadow
 --   tooltip.width: max width: the widest French XP rows (estimate and warm-up notes) fit uncut
 --   tooltip.panel: JRPG window: hard offset shadow, stepped body, 3 rings
@@ -75,35 +73,32 @@ return {
     maxAlpha = 0.35,
     layers = {
       { id = "frame", span = "track", nine = { "frame", 4, 4 }, pad = { 3, 3 }, top = -3, bottom = -3,
-        layer = "BORDER", sub = -1, when = "bar" },
+        layer = "BORDER", sub = -1 },
       { id = "track", span = "track", layer = "BORDER", sub = 0, color = "blockLo" },
       { id = "trackMid", span = "track", top = 0, bottom = 2, layer = "BORDER", sub = 1,
-        color = "blockMid", when = "bar" },
+        color = "blockMid" },
       { id = "trackTop", span = "track", top = 0, h = 2, layer = "BORDER", sub = 2,
-        color = "blockHi", when = "bar" },
-      { id = "rested", span = "rested", layer = "ARTWORK", sub = 0,
-        grad = { "HORIZONTAL", "rested+.25", "rested+.25@.2" }, flat = "rested+.25@.6", when = "box" },
+        color = "blockHi" },
       { id = "restBody", span = "rested", top = 1, bottom = 1, layer = "ARTWORK", sub = 0,
-        grad = { "HORIZONTAL", "rested+.25", "rested+.25@.2" }, flat = "rested+.25@.6", when = "bar" },
+        grad = { "HORIZONTAL", "rested+.25", "rested+.25@.2" }, flat = "rested+.25@.6" },
       { id = "restDither", span = "rested", file = "checker", tile = "HV", top = 1, bottom = 1,
         layer = "ARTWORK", sub = 1, grad = { "HORIZONTAL", "rested+.55", "rested+.55@.2" },
-        flat = "rested+.55@.6", when = "bar" },
+        flat = "rested+.55@.6" },
       { id = "restTop", span = "rested", top = 0, h = 1, layer = "ARTWORK", sub = 2,
-        grad = { "HORIZONTAL", "rested+.8", "rested+.8@.2" }, flat = "rested+.8@.6", when = "bar" },
+        grad = { "HORIZONTAL", "rested+.8", "rested+.8@.2" }, flat = "rested+.8@.6" },
       { id = "restLow", span = "rested", band = { 0.92, 1 }, layer = "ARTWORK", sub = 2,
-        grad = { "HORIZONTAL", "rested", "rested@.2" }, flat = "rested@.6", when = "bar" },
-      { id = "fill", span = "fill", layer = "ARTWORK", sub = 3, color = "base", when = "box" },
-      { id = "fillLow", span = "fill", layer = "ARTWORK", sub = 3, color = "base-.35", when = "bar" },
+        grad = { "HORIZONTAL", "rested", "rested@.2" }, flat = "rested@.6" },
+      { id = "fillLow", span = "fill", layer = "ARTWORK", sub = 3, color = "base-.35" },
       { id = "fillMid", span = "fill", top = 0, bottom = 3, layer = "ARTWORK", sub = 4,
-        color = "base", when = "bar" },
+        color = "base" },
       { id = "fillHi", span = "fill", top = 0, h = 2, layer = "ARTWORK", sub = 5,
-        color = "base+.45", when = "bar" },
+        color = "base+.45" },
       { id = "blocks", span = "track", ticks = { n = 20 }, layer = "ARTWORK", sub = 6,
-        color = "ink", when = "bar" },
+        color = "ink" },
       { id = "marker", span = "fillEnd", w = 1, align = "right", layer = "ARTWORK", sub = 7,
-        color = "#ffffff", when = "bar" },
+        color = "#ffffff" },
       { id = "arrow", span = "fillEnd", nine = { "arrow", 7, 7 }, w = 15, dx = -1, top = 0, bottom = -8,
-        layer = "OVERLAY", sub = 0, when = "bar" },
+        layer = "OVERLAY", sub = 0 },
     },
     panel = { parts = {
       { id = "panelFill", inset = { -1, -1, 5, 6 }, color = "navy", alpha = "bg", sub = -8 },
@@ -115,7 +110,6 @@ return {
              xpLabel = "body", xp = "body", sep = "body", marker = "body", hint = "body" },
     size = { s1 = 1, s2 = 1, s3 = 1, level = -3, levelValue = 1, xpLabel = 1, xp = 1,
              sep = 1, marker = 1, hint = 0 },
-    boxSize = { s1 = 2, s2 = -2, s3 = -2 },
     split = true, splitGap = 6, levelFmt = "upper",
     colors = { label = "yellow", value = "value", levelLabel = "yellow", levelValue = "value",
                xpText = "value", sep = "lavender", marker = "value", hint = "lavender",

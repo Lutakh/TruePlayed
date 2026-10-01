@@ -111,10 +111,9 @@ niveau, **votre temps en donjon, en raid et en JcJ**.
 - **Choisissez ce qu'affiche la barre** : trois infos parmi 19 (temps avant le niveau,
   monstres à tuer, XP par heure, % du niveau par heure, XP restante, XP de repos, temps sur
   ce niveau, session, total, /played du serveur, AFK de la session, moyenne par niveau,
-  temps dans la zone, temps en instance, FPS, latence...). Barre d'XP complète ou encadré
-  compact, taille, échelle, opacité du fond (0 % par défaut), masquage en combat,
-  estompage, masquage au niveau maximum. Les textes ne se chevauchent jamais, même sur une
-  barre étroite.
+  temps dans la zone, temps en instance, FPS, latence...). Taille, échelle, opacité du
+  fond (0 % par défaut), masquage en combat, estompage, masquage au niveau maximum. Les
+  textes ne se chevauchent jamais, même sur une barre étroite.
 - **Des textes lisibles** : contour fin et ombre par défaut (contour aucun / fin / épais),
   et la couleur de texte de votre choix avec le sélecteur de couleur du jeu.
 - **Couleurs de la barre** : la couleur de la barre d'XP et celle de l'XP de repos au
@@ -145,7 +144,6 @@ niveau, **votre temps en donjon, en raid et en JcJ**.
 | `/tpl stats` | Fenêtre de statistiques (`levels`, `zones`, `sessions`) |
 | `/tpl lock` / `unlock` | Verrouiller ou déplacer la barre |
 | `/tpl show` / `hide` | Afficher ou masquer la barre |
-| `/tpl style bar` / `box` | Barre complète ou encadré compact |
 | `/tpl theme [nom]` | Afficher ou changer le thème (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
 | `/tpl lang [fr\|en\|auto]` | Afficher ou choisir la langue de TruePlayed (après `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (sans argument : bascule) |

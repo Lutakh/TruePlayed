@@ -108,7 +108,7 @@ les textures.
 - **Les trois façons de changer** :
   - Options (`/tpl`) > Affichage > **Thème** : c'est le premier réglage de la section,
     suivi de deux notes (ce que change le thème, et le redémarrage après une mise à jour).
-  - Clic droit sur la barre > **Thème**, juste sous « Style » : les 14 choix, celui en
+  - Clic droit sur la barre > **Thème**, juste sous les exclusions : les 14 choix, celui en
     cours coché.
   - `/tpl theme` : le chat affiche `Thème : Futuriste. Disponibles : futuriste, actuel,
     heroic, ...`. `/tpl theme mage` passe en Mage et affiche `Thème : Mage`.
@@ -142,14 +142,12 @@ peuvent pas être reproduits en jeu : c'est normal).
 4. **Opacité du fond** à 0 %, 50 % puis 100 % (Options > Textes) : à 0 % la barre seule ;
    à 50 % et 100 %, le panneau du thème apparaît derrière (cadre, coins, filets) et
    s'opacifie.
-5. **Encadré compact** (`/tpl style box`) : la barre devient une ligne fine, sans ornements
-   (c'est voulu), et les textes ne se chevauchent pas. Revenez avec `/tpl style bar`.
-6. **Infobulle** : survol simple puis Maj enfoncée. Classique utilise l'infobulle du jeu ;
+5. **Infobulle** : survol simple puis Maj enfoncée. Classique utilise l'infobulle du jeu ;
    les autres thèmes ont leur propre cadre (titre, séparateurs et, selon le thème, une
    jauge de répartition en couleurs et des pointillés entre libellés et valeurs). Le
    contenu est le même que dans l'infobulle classique, dans le même ordre ; rien ne
    déborde du cadre.
-7. **Graphique et fenêtre** : survolez les FPS (graphique) puis ouvrez `/tpl stats` :
+6. **Graphique et fenêtre** : survolez les FPS (graphique) puis ouvrez `/tpl stats` :
    le titre prend la police du thème, les couleurs suivent le thème. Les tableaux gardent
    la police du jeu (c'est voulu). Notez si un titre est coupé.
 
@@ -171,10 +169,6 @@ peuvent pas être reproduits en jeu : c'est normal).
 
 Ces points ne peuvent être confirmés qu'en jeu. Faites-les en plus de la fiche ci-dessus.
 
-- **Aller-retour barre / encadré** : dans chaque thème, tapez trois fois de suite
-  `/tpl style box` puis `/tpl style bar`. La barre revient exactement comme avant : les
-  ornements, les coins, les graduations et le remplissage sont au même endroit et ne sont
-  ni étirés ni inversés.
 - **Infobulle du menu des addons** (thème autre que Classique) : ouvrez le menu des addons
   de la minicarte, survolez TruePlayed, puis fermez le menu par un clic ailleurs ou par
   Échap, sans survoler autre chose. L'infobulle disparaît en une seconde au plus.
@@ -184,9 +178,6 @@ Ces points ne peuvent être confirmés qu'en jeu. Faites-les en plus de la fiche
   (la ligne la plus longue). Aucune ligne ne finit par « ... » et aucune ne touche le
   bord. Changez une couleur ou de thème, puis rouvrez l'infobulle : elle a la même
   largeur qu'avant.
-- **Encadré compact** (`/tpl style box`) avec une taille de texte de 11 puis de 14 : les
-  FPS et la latence (`144 fps · 120 ms`) tiennent en entier dans leurs cases. Dans
-  certains thèmes, le texte de ces deux cases est un peu plus petit : c'est voulu.
 - **Chaman** : 4 pierres sur la barre, à 12,5 %, 37,5 %, 62,5 % et 87,5 % de la
   longueur. Aucune ne touche le texte du haut, avec une taille de texte de 11, de 14 ou
   de 16.
@@ -194,7 +185,7 @@ Ces points ne peuvent être confirmés qu'en jeu. Faites-les en plus de la fiche
   milieu (feuille, flèche, rune, symbole) garde ses proportions à toutes les largeurs.
   Seuls les filets de part et d'autre s'allongent.
 - **Démoniste** : le libellé de l'XP est violet clair (`#a3a4f6`), comme sur la planche.
-- **Fond à 60 %** (style barre), en Druide, Chasseur, Voleur et Prêtre : les ornements des
+- **Fond à 60 %**, en Druide, Chasseur, Voleur et Prêtre : les ornements des
   deux bouts restent sur le panneau, sans dépasser à gauche ni à droite.
 - **Bords des textures** : aucun liseré noir ou sombre autour des ornements, des cadres
   et des lueurs, surtout avec une grande barre.

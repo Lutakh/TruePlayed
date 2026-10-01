@@ -549,10 +549,9 @@ local SPAN_KIND = { track = "range", fill = "range", rested = "range",
                     fillEnd = "anchor", restEnd = "anchor", trackStart = "anchor", trackEnd = "anchor" }
 local DRAW_LAYERS = { BACKGROUND = true, BORDER = true, ARTWORK = true, OVERLAY = true }
 local ALIGNS = { center = true, left = true, right = true }
-local WHENS = { bar = true, box = true }
 local LAYER_FIELDS = Set({ "id", "span", "layer", "sub", "file", "rect", "flipX", "flipY", "rot", "tile",
   "blend", "color", "grad", "flat", "alpha", "maxAlpha", "top", "h", "bottom", "band", "pad",
-  "capInset", "w", "align", "dx", "caps", "three", "nine", "ticks", "when" })
+  "capInset", "w", "align", "dx", "caps", "three", "nine", "ticks" })
 local BAR_FIELDS = Set({ "pad", "gap", "height", "maxAlpha", "layers", "panel" })
 local PART_FIELDS = Set({ "id", "file", "nine", "rect", "flipX", "flipY", "tile", "blend", "color", "grad",
   "flat", "anchor", "inset", "x", "y", "w", "h", "alpha", "layer", "sub" })
@@ -600,7 +599,6 @@ local function CompileLayer(ctx, src, i, ids, barMaxAlpha)
   Lc.span = span
   Lc.layer = Choice(ctx, src.layer, "ARTWORK", DRAW_LAYERS, where .. ".layer")
   Lc.sub = Num(ctx, src.sub, 0, where .. ".sub", -8, 7, true)
-  Lc.when = Choice(ctx, src.when, nil, WHENS, where .. ".when")
 
   -- texture
   if kind == "three" or kind == "nine" then
@@ -825,7 +823,6 @@ end
 local TEXT_ELEMS = { "s1", "s2", "s3", "level", "levelValue", "xpLabel", "xp", "sep", "marker", "hint" }
 local TEXT_SIZE = { s1 = 2, s2 = 0, s3 = -1, level = 0, levelValue = 0, xpLabel = 0, xp = 0, sep = 0,
                     marker = -1, hint = -1 }
-local BOX_SIZE = { s1 = 2, s2 = -1, s3 = -1 }
 local TEXT_ROLES = { "label", "value", "levelLabel", "levelValue", "xpText", "sep", "marker", "hint",
                      "slot2", "slot3", "dimmed" }
 local TEXT_ROLE_DEF = { label = "label", value = "value", levelLabel = "label", levelValue = "value",
@@ -835,7 +832,7 @@ local FONT_ROLES = { display = true, body = true, num = true, game = true }
 -- Elements that render arbitrary strings: never the display role (SPEC 8.3; `hint` shows a
 -- free locale sentence, so it is included too).
 local NO_DISPLAY = { s1 = true, s2 = true, s3 = true, xp = true, sep = true, levelValue = true, hint = true }
-local TEXT_FIELDS = Set({ "font", "size", "boxSize", "split", "splitGap", "levelFmt", "colors", "shadow" })
+local TEXT_FIELDS = Set({ "font", "size", "split", "splitGap", "levelFmt", "colors", "shadow" })
 local LEVEL_FMTS = { upper = true, title = true }
 
 local function ElemMap(ctx, src, where, defaults, valid, check)
@@ -878,7 +875,6 @@ local function CompileText(ctx, text)
   end
   local function IsDelta(_, v) return IsNum(v) and v % 1 == 0 and v >= -8 and v <= 16 end
   out.size = ElemMap(ctx, text.size, "text.size", TEXT_SIZE, valid, IsDelta)
-  out.boxSize = ElemMap(ctx, text.boxSize, "text.boxSize", BOX_SIZE, Set({ "s1", "s2", "s3" }), IsDelta)
   if text.split ~= nil and type(text.split) ~= "boolean" then Warn(ctx, "text.split must be a boolean") end
   out.split = text.split == true
   out.splitGap = Num(ctx, text.splitGap, 4, "text.splitGap", 0, 32, true)
@@ -1418,7 +1414,7 @@ local function Layer(L, barMaxA)
   if pad and pad[1] == 0 and pad[2] == 0 then pad = nil end
   local tk = L.ticks
   return CanonPaint({ id = L.id, kind = L.kind or "tex", span = span, layer = L.layer or "ARTWORK", sub = L.sub or 0,
-    when = L.when, tex = Spec(L.tex), top = L.top or 0, bottom = L.bottom or 0, h = L.h, band = Copy(L.band),
+    tex = Spec(L.tex), top = L.top or 0, bottom = L.bottom or 0, h = L.h, band = Copy(L.band),
     pad = Copy(pad), capInset = L.capInset == true, w = L.w, align = L.align or "center", dx = L.dx or 0,
     ticks = tk and { n = tk.n, w = tk.w or 1, clip = tk.clip, mid = tk.mid == true } or nil,
     stateful = stateful and true or false }, L, stateful and 2 or 0,
@@ -1469,12 +1465,11 @@ function TV.Canon(th)
               panel = type(bar.panel) == "table" and Parts(bar.panel.parts) or (bar.panel or "backdrop") }
   local text = th.text
   local tx = { split = text.split == true, splitGap = text.splitGap or 4, levelFmt = text.levelFmt or "upper",
-               font = {}, size = {}, boxSize = {}, colors = Map(text.colors, Rgba) }
+               font = {}, size = {}, colors = Map(text.colors, Rgba) }
   for _, e in ipairs(TEXT_ELEMS) do
     tx.font[e] = text.font[e]
     tx.size[e] = text.size[e]
   end
-  for _, e in ipairs({ "s1", "s2", "s3" }) do tx.boxSize[e] = text.boxSize[e] end
   local sh = text.shadow
   tx.shadow = { x = sh.x, y = sh.y, c = Rgba(sh.c) }
   out.text = tx

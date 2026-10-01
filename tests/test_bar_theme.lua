@@ -77,31 +77,28 @@ local function SortedKeys(t)
   return out
 end
 
--- Every layer of the theme kept by `style` has its handles in tp.tex (caps / three:
--- id .. "L" / "M" / "R"; nine: 9 textures; ticks: N - 1), and nothing else is there
--- but the veil.
-local function CheckHandles(ns, tp, style)
+-- Every layer of the theme has its handles in tp.tex (caps / three: id .. "L" / "M" /
+-- "R"; nine: 9 textures; ticks: N - 1), and nothing else is there but the veil.
+local function CheckHandles(ns, tp)
   local th = ns.Themes.Active()
   local want = { veil = true }
   for _, Lc in ipairs(th.bar.layers) do
-    if Lc.when == nil or Lc.when == style then
-      local id, kind = Lc.id, Lc.kind
-      if kind == "caps" or kind == "three" then
-        for _, s in ipairs({ "L", "M", "R" }) do
-          T.ok(IsTexture(tp.tex[id .. s]), th.key .. ": tex." .. id .. s)
-          want[id .. s] = true
-        end
-      elseif kind == "nine" or kind == "ticks" then
-        local list = tp.tex[id]
-        T.eq(type(list), "table", th.key .. ": tex." .. id)
-        local nTicks = Lc.ticks and (Lc.ticks.mid and Lc.ticks.n or Lc.ticks.n - 1)
-        T.eq(#list, kind == "nine" and 9 or nTicks, th.key .. ": tex." .. id .. " count")
-        for i = 1, #list do T.ok(IsTexture(list[i]), th.key .. ": tex." .. id .. "[" .. i .. "]") end
-        want[id] = true
-      else
-        T.ok(IsTexture(tp.tex[id]), th.key .. ": tex." .. id)
-        want[id] = true
+    local id, kind = Lc.id, Lc.kind
+    if kind == "caps" or kind == "three" then
+      for _, s in ipairs({ "L", "M", "R" }) do
+        T.ok(IsTexture(tp.tex[id .. s]), th.key .. ": tex." .. id .. s)
+        want[id .. s] = true
       end
+    elseif kind == "nine" or kind == "ticks" then
+      local list = tp.tex[id]
+      T.eq(type(list), "table", th.key .. ": tex." .. id)
+      local nTicks = Lc.ticks and (Lc.ticks.mid and Lc.ticks.n or Lc.ticks.n - 1)
+      T.eq(#list, kind == "nine" and 9 or nTicks, th.key .. ": tex." .. id .. " count")
+      for i = 1, #list do T.ok(IsTexture(list[i]), th.key .. ": tex." .. id .. "[" .. i .. "]") end
+      want[id] = true
+    else
+      T.ok(IsTexture(tp.tex[id]), th.key .. ": tex." .. id)
+      want[id] = true
     end
   end
   for k in pairs(tp.tex) do T.ok(want[k], th.key .. ": no stale handle tex." .. tostring(k)) end
@@ -256,7 +253,7 @@ for _, key in ipairs(KEYS) do
   T.test("theme " .. key .. ": builds, every layer handle, 2.4 frame size, quiet allocation-free steady ticks", function()
     local ns, f, tp = Start({ theme = key, xp = 2000, rest = 3000 })
     T.eq(ns.Themes.ActiveKey(), key, "theme active")
-    CheckHandles(ns, tp, "bar")
+    CheckHandles(ns, tp)
     local w, h = BarFrameSize(ns, 360, 8, 11)
     T.eq({ f:GetSize() }, { w, h }, "frame size (2.4)")
     T.ok(tp.tex.veil:IsShown(), "unlocked: veil")
@@ -269,15 +266,7 @@ for _, key in ipairs(KEYS) do
     T.eq(Stub.calls.SetFont, fonts, "no SetFont over 60 steady ticks")
     local kb = T.alloc(function() Stub.Advance(1) end, 600)
     T.ok(kb <= 2, format("%s: %.2f KB over 600 ticks", key, kb))
-
-    -- box style: the layers without `when = "bar"` only
-    Set(ns, "widget.style", "box")
-    CheckHandles(ns, tp, "box")
-    T.no(tp.bl:IsShown())
-    T.ok(tp.blv == nil or not tp.blv:IsShown(), "no level value in the box")
-    T.ok(tp.xpl == nil or not tp.xpl:IsShown(), "no XP label in the box")
-    Set(ns, "widget.style", "bar")
-    CheckHandles(ns, tp, "bar")
+    CheckHandles(ns, tp)
     T.eq(#Stub.errors, 0)
     T.eq(Stub.onUpdateCount, 0)
   end)
@@ -287,15 +276,12 @@ end
 -- Region pools (B1, P4)
 ---------------------------------------------------------------------------
 
-T.test("pools: after one cycle through the 13 themes (bar and box), another cycle creates no region", function()
+T.test("pools: after one cycle through the 13 themes, another cycle creates no region", function()
   local ns = Start({ theme = "actuel", xp = 2000, rest = 3000 })
   Set(ns, "widget.bgAlpha", 0.5)             -- panel parts drawn too
   Set(ns, "widget.pctPos", "level")          -- split level values too
   local function Cycle()
     for _, key in ipairs(KEYS) do Set(ns, "theme", key) end
-    Set(ns, "widget.style", "box")
-    for _, key in ipairs(KEYS) do Set(ns, "theme", key) end
-    Set(ns, "widget.style", "bar")
   end
   Cycle()
   local before = Copy(Stub.created)
@@ -648,21 +634,13 @@ T.test("switch to the classic theme at run time: classic handles, backdrop, text
   SameDrawing(switched, Drawn(f2), "switched at run time = classic at login")
 end)
 
-T.test("switch back and forth: the futuriste drawing is the same as at login, box style too", function()
+T.test("switch back and forth: the futuriste drawing is the same as at login", function()
   local ns, f = Start({ xp = 2000, rest = 3000 })
   Set(ns, "widget.bgAlpha", 0.5)
   local first = Drawn(f)
   Set(ns, "theme", "actuel")
-  Set(ns, "widget.style", "box")
   Set(ns, "theme", "futuriste")
-  local box = Drawn(f)
-  Set(ns, "widget.style", "bar")
-  SameDrawing(Drawn(f), first, "futuriste after actuel and the box")
-  Stub.Reset()
-  local ns2, f2 = Start({ xp = 2000, rest = 3000 })
-  Set(ns2, "widget.bgAlpha", 0.5)
-  Set(ns2, "widget.style", "box")
-  SameDrawing(box, Drawn(f2), "box style after switches = box style at login")
+  SameDrawing(Drawn(f), first, "futuriste after actuel")
 end)
 
 T.test("THEME_CHANGED: the widget follows the theme; the theme setting itself is left to Themes (S8)", function()
@@ -699,10 +677,20 @@ end)
 T.test("levelFmt title: one level text with the percent or the cap tag, label + value when split", function()
   local ns, f, tp = Start({ theme = "actuel", xp = 2000 })
   local L, Tokens = ns.L, ns.Tokens
-  local th = ns.Themes.Active()
-  th.text.levelFmt = "title"                     -- test-only change of the compiled theme
-  Set(ns, "widget.style", "box")                 -- a style change rebuilds the skin
-  Set(ns, "widget.style", "bar")
+  -- test-only: every theme compiled from here on has levelFmt = "title" (Compile reads
+  -- Themes.Source); a theme switch rebuilds the skin with it
+  local source = ns.Themes.Source
+  ns.Themes.Source = function(key)
+    local ok, src = source(key)
+    if ok and type(src) == "table" then
+      src.text = src.text or {}
+      src.text.levelFmt = "title"
+    end
+    return ok, src
+  end
+  Set(ns, "theme", "futuriste")
+  Set(ns, "theme", "actuel")
+  T.eq(ns.Themes.Active().text.levelFmt, "title")
   Set(ns, "widget.width", 600)
   T.eq(tp.bl:GetText(), format(L.LEVEL_TITLE_FMT, 10))
   Set(ns, "widget.pctPos", "level")
@@ -710,10 +698,8 @@ T.test("levelFmt title: one level text with the percent or the cap tag, label + 
   T.eq(tp.bl:GetText(), format(L.LEVEL_TITLE_FMT, 10) .. L.SEP .. pct)
   -- split + title
   Set(ns, "theme", "futuriste")
-  th = ns.Themes.Active()
-  th.text.levelFmt = "title"
-  Set(ns, "widget.style", "box")
-  Set(ns, "widget.style", "bar")
+  T.eq(ns.Themes.Active().text.levelFmt, "title")
+  T.ok(ns.Themes.Active().text.split, "a split theme")
   T.eq(tp.bl:GetText(), format(L.LEVEL_TITLE_FMT, 10))
   T.eq(tp.blv:GetText(), pct)
   T.eq(#Stub.errors, 0)

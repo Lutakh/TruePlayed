@@ -13,7 +13,7 @@
 --     shared tables and frames (GameTooltip, UIParent, the chat frame, Enum, C_Map,
 --     C_Timer, string, table, math) gain no field at all.
 -- Scenarios walk through most code paths: login, XP and level-ups, every state, the
--- widget (both styles), tooltips (short and Shift), the statistics window (every tab
+-- widget, tooltips (short and Shift), the statistics window (every tab
 -- and view), the options panel (Settings + modern controls, and the standalone
 -- fallback), the context menu, every slash command, the broker, the compartment
 -- functions, the experimental /played hide, combat hide, crash and /reload restarts,
@@ -298,7 +298,7 @@ end
 
 local SETTINGS = {
   { "exclude.afk", true }, { "exclude.inn", true }, { "exclude.city", true },
-  { "widget.style", "box" }, { "widget.style", "bar" }, { "widget.scale", 1.25 },
+  { "widget.scale", 1.25 },
   { "widget.width", 420 }, { "widget.height", 12 }, { "widget.fontSize", 13 },
   { "widget.bgAlpha", 0.5 }, { "widget.bgAlpha", 0 }, { "widget.bgAlpha", 1 },
   { "widget.textColor", { 1, 0.82, 0 } }, { "widget.textColor", { r = 0.2, g = 0.9, b = 0.4 } },
@@ -338,7 +338,7 @@ end
 
 local SLASH = {
   "", "help", "stats", "stats zones", "stats sessions", "stats sessions", "lock", "unlock",
-  "hide", "show", "style box", "style bar", "style", "style", "afk on", "afk off", "afk",
+  "hide", "show", "afk on", "afk off", "afk",
   "afk", "inn", "inn", "city on", "city off", "citytoggle", "citytoggle", "played",
   "sync", "reset pos", "reset session", "reset rate", "reset nothing", "debug", "played",
   "debug", "perf", "bogus command",
@@ -642,6 +642,7 @@ Scenario("SavedVariables applied between the last tick and PLAYER_LOGOUT", funct
   Stub.Logout()
 end)
 
+-- The read-only table keeps a compact box style (removed after 1.0.x): read, never used.
 Scenario("read-only (newer schema), frFR", function()
   Stub.InstallUI()
   Stub.locale = "frFR"
@@ -746,8 +747,8 @@ Scenario("language option: frFR on an enUS client, enUS on a frFR client", funct
 end)
 
 -- Themes (SPEC-themes 8.3): the shipped default (no Stub.theme hook), then every setting
--- value, each with the tooltip (short and Shift), the graph and the window; both styles,
--- custom bar colours and a recolour while shown; the options and /tpl theme.
+-- value, each with the tooltip (short and Shift), the graph and the window; custom bar
+-- colours and a recolour while shown; the options and /tpl theme.
 local function ShowEverything(ns)
   local bar = ns.Bar.frame
   if bar then
@@ -792,10 +793,8 @@ Scenario("every theme (setting values, tooltip, graph, window, options, /tpl the
   end
   for _, key in ipairs({ "futuriste", "pixel", "warlock", "druid", "actuel", "class" }) do
     ns.Core.SetSetting("theme", key)
-    ns.Core.SetSetting("widget.style", "box")
     Stub.Advance(2)
     ShowEverything(ns)
-    ns.Core.SetSetting("widget.style", "bar")
     ns.Core.SetSetting("widget.xpColor", { 1, 0.5, 0 })
     ns.Core.SetSetting("widget.restedColor", { 0.1, 0.8, 0.3 })
     Stub.Advance(2)

@@ -64,9 +64,9 @@ records every played second, knows what you were doing, and lets you decide what
   to kill, mobs to kill, XP per hour, % of level per hour, XP to go, rested XP, time this
   level, session, total, server /played, AFK this session, average per level, time in
   zone, instance time this session, total instance time, FPS, latency, FPS + latency).
-  Bar or compact box style, width, height, scale, text size, background opacity (0 % by
-  default: the bar alone), hide in combat, fade when the mouse is away, hide at max level
-  (not at a temporary server level cap).
+  Width, height, scale, text size, background opacity (0 % by default: the bar alone),
+  hide in combat, fade when the mouse is away, hide at max level (not at a temporary
+  server level cap).
   The level percentage has one decimal, like the tooltip. Texts never overlap, even on a
   narrow bar: numbers get shorter first, then the least useful text makes room. At max
   level the XP infos are replaced by the ones you choose.
@@ -200,7 +200,6 @@ choose **Lock**.
 | `/tpl stats [levels\|zones\|sessions]` | Open or close the statistics window |
 | `/tpl lock` / `/tpl unlock` | Lock the bar, or unlock it to move it |
 | `/tpl show` / `/tpl hide` | Show or hide the bar |
-| `/tpl style bar\|box` | Full XP bar or compact box |
 | `/tpl theme [name]` | Show the theme and the theme names, or change the theme (see [Themes](#themes)) |
 | `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`, see [Languages](#languages)) |
 | `/tpl afk [on\|off]` | Exclude AFK time (no argument: toggle) |

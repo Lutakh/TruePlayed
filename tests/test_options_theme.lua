@@ -253,19 +253,21 @@ end)
 -- Context menu
 ---------------------------------------------------------------------------
 
-T.test("context menu: a Theme submenu after Style, one radio per choice", function()
+T.test("context menu: a Theme submenu after the exclusions, one radio per choice", function()
   local ns = Start()
   local L, ui = ns.L, Stub.ui
   ns.Options.ShowContextMenu(ns.Bar.frame)
   local root = ui.lastMenu
-  local styleAt, themeAt
+  local cityAt, themeAt, lockAt
   for i = 1, #root.children do
     local item = root.children[i]
-    if item.text == L.MENU_STYLE then styleAt = i end
+    if item.text == L.MENU_EXCLUDE_CITY then cityAt = i end
     if item.text == L.MENU_THEME then themeAt = i end
+    if item.text == L.MENU_LOCK then lockAt = i end
   end
-  T.ok(styleAt ~= nil and themeAt ~= nil, "Style and Theme entries")
-  T.eq(themeAt, styleAt + 1, "Theme right after the Style submenu")
+  T.ok(cityAt ~= nil and themeAt ~= nil and lockAt ~= nil, "exclusion, Theme and Lock entries")
+  T.ok(themeAt > cityAt, "Theme after the exclusions")
+  T.eq(lockAt, themeAt + 1, "Lock right after the Theme submenu")
   local menu = root.children[themeAt]
   T.eq(menu.kind, "button")
   T.eq(#menu.children, #KEYS, "one entry per choice")
@@ -330,15 +332,15 @@ T.test("/tpl theme lists, /tpl theme <name> sets, anything else is unknown", fun
   Stub.RunSlash("theme actuel")
   T.eq(ns.settings.theme, "actuel")
   T.ok(Printed(format(L.THEME_SET_FMT, L.THEME_ACTUEL), n + 1))
-  -- help: the theme line right after the style line
+  -- help: the theme line right after the show / hide line
   n = #Stub.printed
   Stub.RunSlash("help")
-  local styleAt
+  local showAt
   for i = n + 1, #Stub.printed do
-    if find(Stub.printed[i], L.HELP_STYLE, 1, true) then styleAt = i end
+    if find(Stub.printed[i], L.HELP_SHOW, 1, true) then showAt = i end
   end
-  T.ok(styleAt ~= nil, "help lists the style command")
-  T.ok(find(Stub.printed[styleAt + 1] or "", L.HELP_THEME, 1, true) ~= nil, "HELP_THEME after HELP_STYLE")
+  T.ok(showAt ~= nil, "help lists the show command")
+  T.ok(find(Stub.printed[showAt + 1] or "", L.HELP_THEME, 1, true) ~= nil, "HELP_THEME after HELP_SHOW")
   T.eq(Stub.onUpdateCount, 0)
 end)
 

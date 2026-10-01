@@ -7,6 +7,12 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+### Removed
+
+- The **compact box** style of the bar (option, right-click menu entry and `/tpl style`):
+  the XP bar is the only look. If you used the box, TruePlayed now shows the bar, with
+  your other settings unchanged.
+
 ### Fixed
 
 - The confirmation window of "Erase this character's data" now shows its buttons in the

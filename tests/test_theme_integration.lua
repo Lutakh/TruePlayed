@@ -1,10 +1,10 @@
 -- tests/test_theme_integration.lua - the themes across modules (design/SPEC-themes.md,
--- phase 2): every setting value switched at run time with the bar (both styles), the
--- tooltip (short and Shift), the graph and the window; the panel of the box style; one
--- gradient ramp across sliced pieces (bar panel and tooltip); the half-texel cuts of a
--- stretched slice; the user's own configuration (big font, wide and thick bar, French,
--- a level-20 druid at a server level cap) under the default, "class" and Classic themes;
--- the rebuild equivalence of a theme / style switch with a fresh load.
+-- phase 2): every setting value switched at run time with the bar, the tooltip (short
+-- and Shift), the graph and the window; the insets of the bar panel; one gradient ramp
+-- across sliced pieces (bar panel and tooltip); the half-texel cuts of a stretched
+-- slice; the user's own configuration (big font, wide and thick bar, French, a level-20
+-- druid at a server level cap) under the default, "class" and Classic themes; the
+-- rebuild equivalence of a theme switch with a fresh load.
 -- The stub measures 6 px per character (colour codes left out).
 local Stub, T = ...
 
@@ -102,7 +102,7 @@ end
 -- Every setting value at run time
 ---------------------------------------------------------------------------
 
-T.test("every setting value at run time: bar and box, tooltip short / Shift, graph, window", function()
+T.test("every setting value at run time: bar, tooltip short / Shift, graph, window", function()
   local ns, frame = Start({ rest = 3000 })
   local Themes, C = ns.Themes, ns.C
   T.eq(Themes.ActiveKey(), "futuriste", "shipped default")
@@ -111,13 +111,10 @@ T.test("every setting value at run time: bar and box, tooltip short / Shift, gra
     local key = (value == "class") and "druid" or value
     T.eq(Themes.ActiveKey(), key, value .. ": active theme")
     local th = Themes.Active()
-    for _, style in ipairs({ "box", "bar" }) do
-      Set(ns, "widget.style", style)
-      T.eq(StaleTextures(frame), {}, key .. " " .. style .. ": no stale texture")
-      for i = 1, 3 do
-        local s = frame.tp.slots[i]
-        T.ok(s:IsShown() and (s:GetText() or "") ~= "", format("%s %s: slot %d drawn", key, style, i))
-      end
+    T.eq(StaleTextures(frame), {}, key .. ": no stale texture")
+    for i = 1, 3 do
+      local s = frame.tp.slots[i]
+      T.ok(s:IsShown() and (s:GetText() or "") ~= "", format("%s: slot %d drawn", key, i))
     end
     T.ok(frame.tp.bl:IsShown() and frame.tp.bl:GetText() ~= "", key .. ": level text")
     -- tooltip: GameTooltip for the native theme, the private frame for the others
@@ -182,10 +179,10 @@ T.test("every setting value at run time: bar and box, tooltip short / Shift, gra
 end)
 
 ---------------------------------------------------------------------------
--- Box style panel, sliced gradients, half-texel cuts
+-- Bar panel insets, sliced gradients, half-texel cuts
 ---------------------------------------------------------------------------
 
-T.test("box style: the outermost FILL panel part fits the box; bar style keeps the theme's insets", function()
+T.test("bar panel: the FILL parts keep the theme's insets", function()
   local ns, frame = Start()
   local Themes = ns.Themes
   Set(ns, "widget.bgAlpha", 0.5)
@@ -194,36 +191,29 @@ T.test("box style: the outermost FILL panel part fits the box; bar style keeps t
     local th = Themes.Active()
     local parts = type(th.bar.panel) == "table" and th.bar.panel.parts or nil
     if parts then
-      for _, style in ipairs({ "box", "bar" }) do
-        Set(ns, "widget.style", style)
-        local fw, fh = frame:GetWidth(), frame:GetHeight()
-        local minL, minB, maxR, maxT
-        for _, P in ipairs(parts) do
-          if P.anchor == "FILL" then
-            local h = frame.tp.panel[P.id]
-            local pieces = h.GetObjectType and { h } or h
-            for _, t in ipairs(pieces) do
-              if t:IsShown() then
-                local l, b, w, hh = t:GetRect()
-                l, b = l - frame:GetLeft(), b - frame:GetBottom()
-                minL = math.min(minL or l, l); minB = math.min(minB or b, b)
-                maxR = math.max(maxR or l + w, l + w); maxT = math.max(maxT or b + hh, b + hh)
-              end
+      local fw, fh = frame:GetWidth(), frame:GetHeight()
+      local minL, minB, maxR, maxT
+      for _, P in ipairs(parts) do
+        if P.anchor == "FILL" then
+          local h = frame.tp.panel[P.id]
+          local pieces = h.GetObjectType and { h } or h
+          for _, t in ipairs(pieces) do
+            if t:IsShown() then
+              local l, b, w, hh = t:GetRect()
+              l, b = l - frame:GetLeft(), b - frame:GetBottom()
+              minL = math.min(minL or l, l); minB = math.min(minB or b, b)
+              maxR = math.max(maxR or l + w, l + w); maxT = math.max(maxT or b + hh, b + hh)
             end
           end
-        end
-        if style == "box" then
-          T.eq({ minL, minB, maxR, maxT }, { 0, 0, fw, fh }, key .. ": box panel = the box")
-        else
-          local m = { math.huge, math.huge, math.huge, math.huge }
-          for _, P in ipairs(parts) do
-            if P.anchor == "FILL" then
-              for i = 1, 4 do m[i] = math.min(m[i], P.inset and P.inset[i] or 0) end   -- (no inset: 0)
-            end
-          end
-          T.eq({ minL, minB, maxR, maxT }, { m[1], m[4], fw - m[2], fh - m[3] }, key .. ": bar insets")
         end
       end
+      local m = { math.huge, math.huge, math.huge, math.huge }
+      for _, P in ipairs(parts) do
+        if P.anchor == "FILL" then
+          for i = 1, 4 do m[i] = math.min(m[i], P.inset and P.inset[i] or 0) end   -- (no inset: 0)
+        end
+      end
+      T.eq({ minL, minB, maxR, maxT }, { m[1], m[4], fw - m[2], fh - m[3] }, key .. ": bar insets")
     end
   end
 end)
@@ -366,7 +356,7 @@ T.test("user configuration: font 14, width 370, height 15, French, level-20 drui
   T.eq(#Stub.errors, 0, "no Lua error")
 end)
 
-T.test("slot 2 colour role: the boards' rate colour in the bar style, label in the box, user colour wins", function()
+T.test("slot 2 colour role: the boards' rate colour, user colour wins", function()
   local ns, frame = Start()
   Set(ns, "widget.slots.2", "session")                -- not dimmed while playing
   local s2 = frame.tp.slots[2]
@@ -379,16 +369,12 @@ T.test("slot 2 colour role: the boards' rate colour in the bar style, label in t
     th.text.colors.value[3] end }), "futuriste: slot 2 = value (default role)")
   Set(ns, "theme", "rogue")
   T.eq(Color(s2), { 0xa6, 0xe8, 0x7a }, "rogue: the board's green rate")
-  Set(ns, "widget.style", "box")
-  local lab = ns.Themes.Active().text.colors.label
-  T.eq(Color(s2), Color({ GetTextColor = function() return lab[1], lab[2], lab[3] end }), "box: label")
-  Set(ns, "widget.style", "bar")
   Set(ns, "widget.textColor", { 1, 0, 0 })
   T.eq(Color(s2), { 255, 0, 0 }, "a user text colour overrides every role")
 end)
 
 ---------------------------------------------------------------------------
--- Rebuild equivalence: after a theme (and style) switch, with the tooltip shown short,
+-- Rebuild equivalence: after a theme switch, with the tooltip shown short,
 -- Shift and hidden under the previous theme, the bar and the tooltip draw exactly what
 -- a fresh load in the new theme draws (no pooled region keeps a previous theme's
 -- coordinates, size, layer, blend, colour or gradient).
@@ -511,17 +497,16 @@ local function SnapGT()
   return out
 end
 
--- Loads the addon (theme `initial`, style `style0`), plays `steps`, then snaps the bar,
+-- Loads the addon (theme `initial`), plays `steps`, then snaps the bar,
 -- the short tooltip, the Shift tooltip and the short one again (the private frame and
 -- the GameTooltip).
-local function Drawn(initial, style0, steps)
+local function Drawn(initial, steps)
   Stub.Reset()
-  local settings = { firstRunDone = true, widget = { bgAlpha = 0.6, locked = true, style = style0 } }
+  local settings = { firstRunDone = true, widget = { bgAlpha = 0.6, locked = true } }
   settings.theme = initial
   local ns, frame = Start({ rest = 3000, xp = 2000, db = { schema = 1, settings = settings } })
   for _, st in ipairs(steps) do
     if st.theme then ns.Core.SetSetting("theme", st.theme) end
-    if st.style then ns.Core.SetSetting("widget.style", st.style) end
     if st.tip == "short" then Stub.RunScript(frame, "OnEnter") end
     if st.tip == "shift" then Stub.SetShift(true) end
     if st.tip == "unshift" then Stub.SetShift(false) end
@@ -541,41 +526,25 @@ local function Drawn(initial, style0, steps)
   return snaps
 end
 
-T.test("rebuild equivalence: a theme / style switch draws exactly what a fresh load draws", function()
+T.test("rebuild equivalence: a theme switch draws exactly what a fresh load draws", function()
   local pairsAB = { { "mage", "futuriste" }, { "warrior", "rogue" }, { "futuriste", "druid" },
                     { "druid", "actuel" }, { "actuel", "warlock" }, { "pixel", "heroic" },
                     { "priest", "hunter" }, { "shaman", "paladin" } }
   local runs = 0
-  for _, style in ipairs({ "bar", "box" }) do
-    local other = style == "bar" and "box" or "bar"
-    for _, ab in ipairs(pairsAB) do
-      local A, B = ab[1], ab[2]
-      -- the fresh load runs as many seconds as the switch (the Shift lines depend on time)
-      local fresh = {}
-      for n = 6, 7 do
-        local idle = {}
-        for i = 1, n do idle[i] = {} end
-        fresh[n] = Drawn(B, style, idle)
-      end
-      T.ok(#fresh[6].bar > 5 and (#fresh[6].tip > 10 or #fresh[6].gtTip > 10),
-        B .. ": the snapshots describe the drawing")
-      local tipSteps = { { theme = A }, { tip = "short" }, { tip = "shift" }, { tip = "unshift" }, { tip = "hide" } }
-      local variants = {
-        { style0 = style, extra = { { theme = B } } },
-        { style0 = other, extra = { { style = style }, { theme = B } } },
-        { style0 = other, extra = { { theme = B }, { style = style } } },
-      }
-      for vi, v in ipairs(variants) do
-        local steps = {}
-        for _, s in ipairs(tipSteps) do steps[#steps + 1] = s end
-        for _, s in ipairs(v.extra) do steps[#steps + 1] = s end
-        local got = Drawn(nil, v.style0, steps)
-        runs = runs + 1
-        for _, view in ipairs({ "bar", "tip", "shift", "short2", "gtTip", "gtShift", "gtShort2" }) do
-          T.eq(got[view], fresh[#steps][view], format("%s: %s -> %s (variant %d), %s", style, A, B, vi, view))
-        end
-      end
+  for _, ab in ipairs(pairsAB) do
+    local A, B = ab[1], ab[2]
+    local steps = { { theme = A }, { tip = "short" }, { tip = "shift" }, { tip = "unshift" }, { tip = "hide" },
+                    { theme = B } }
+    -- the fresh load runs as many seconds as the switch (the Shift lines depend on time)
+    local idle = {}
+    for i = 1, #steps do idle[i] = {} end
+    local fresh = Drawn(B, idle)
+    T.ok(#fresh.bar > 5 and (#fresh.tip > 10 or #fresh.gtTip > 10), B .. ": the snapshots describe the drawing")
+    local got = Drawn(nil, steps)
+    runs = runs + 1
+    for _, view in ipairs({ "bar", "tip", "shift", "short2", "gtTip", "gtShift", "gtShort2" }) do
+      T.eq(got[view], fresh[view], format("%s -> %s, %s", A, B, view))
     end
   end
-  T.eq(runs, 48, "runs")
+  T.eq(runs, 8, "runs")
 end)

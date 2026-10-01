@@ -47,10 +47,8 @@
 --   bar.layers > markerGlow: end of the fill: gold glow, gold needle with its tab hanging under the
 --     sheath
 --   bar.panel: background panel (widget.bgAlpha): rounded dark violet plate, 29 px past the frame
---     sides so that it wraps the daggers, as on the board (the box style fits it to the box)
+--     sides so that it wraps the daggers, as on the board
 --   text.font: display (IM Fell English SC) only on DISPLAY_KEYS texts: the level label
---   text.boxSize: box: slots 2 and 3 are 80 px wide; a 3-digit FPS and latency fit at font size 11
---     and 2-digit ones up to 14, as in Classic
 --   tooltip.panel.parts > plate: smoky plate: dark base, lighter smoke near the top-left, saddle
 --     stitches 4 px inside the plate (one dashed row / column at the edge of each stretched box),
 --     inner shadow, steel frame
@@ -99,39 +97,38 @@ return {
     maxAlpha = 0.35,
     layers = {
       { id = "sheath", span = "track", nine = { "sheath", 12, 6 }, pad = { 5, 5 }, top = -5, bottom = -5,
-        layer = "BORDER", sub = -4, when = "bar" },
+        layer = "BORDER", sub = -4 },
       { id = "stitch", span = "track", file = "stitch", tile = "H", pad = { -2, -2 }, top = -2, bottom = -2,
-        layer = "BORDER", sub = -3, color = "stitch@.5", when = "bar" },
-      { id = "track", span = "track", layer = "BORDER", sub = 0, color = "#141018", when = "box" },
-      { id = "trackBed", span = "track", nine = { "track_bed", 6, 3 }, layer = "BORDER", sub = 0, when = "bar" },
+        layer = "BORDER", sub = -3, color = "stitch@.5" },
+      { id = "trackBed", span = "track", nine = { "track_bed", 6, 3 }, layer = "BORDER", sub = 0 },
       { id = "rested", span = "rested", layer = "ARTWORK", sub = -3,
         grad = { "HORIZONTAL", "rested+.15@.8", "rested+.35@0" }, flat = "rested+.25@.45" },
       { id = "restSheen", span = "rested", band = { 0, 0.5 }, layer = "ARTWORK", sub = -2,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.18" }, flat = "#ffffff@.09", when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.18" }, flat = "#ffffff@.09" },
       { id = "restMist", span = "rested", file = "mist", layer = "ARTWORK", sub = -1,
-        color = "rested+.8@.45", when = "bar" },
+        color = "rested+.8@.45" },
       { id = "fill", span = "fill", layer = "ARTWORK", sub = 0,
         grad = { "HORIZONTAL", "base-.3", "base+.22" }, flat = "base" },
       { id = "fillTop", span = "fill", band = { 0, 0.4 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#ffffff@.08", "#ffffff@.3" }, flat = "#ffffff@.18", when = "bar" },
+        grad = { "VERTICAL", "#ffffff@.08", "#ffffff@.3" }, flat = "#ffffff@.18" },
       { id = "fillMid", span = "fill", band = { 0.4, 0.55 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.08" }, flat = "#ffffff@.04", when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.08" }, flat = "#ffffff@.04" },
       { id = "fillLow", span = "fill", band = { 0.55, 1 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#000000@.3", "#000000@0" }, flat = "#000000@.15", when = "bar" },
+        grad = { "VERTICAL", "#000000@.3", "#000000@0" }, flat = "#000000@.15" },
       { id = "fillSmoke", span = "fill", file = "smoke", tile = "HV", layer = "ARTWORK", sub = 2,
-        color = "#ffffff@.05", when = "bar" },
+        color = "#ffffff@.05" },
       { id = "fillBubbles", span = "fill", file = "bubbles", tile = "HV", layer = "ARTWORK", sub = 3,
-        color = "#ffffff@.4", when = "bar" },
+        color = "#ffffff@.4" },
       { id = "ticks", span = "track", ticks = { n = 10 }, layer = "ARTWORK", sub = 4,
-        color = "ink@.6", when = "bar" },
+        color = "ink@.6" },
       { id = "daggerL", span = "trackStart", file = "dagger", w = 34, align = "right",
-        top = -2, bottom = -2, layer = "OVERLAY", sub = 0, when = "bar" },
+        top = -2, bottom = -2, layer = "OVERLAY", sub = 0 },
       { id = "daggerR", span = "trackEnd", file = "dagger", flipX = true, w = 34, align = "left",
-        top = -2, bottom = -2, layer = "OVERLAY", sub = 0, when = "bar" },
+        top = -2, bottom = -2, layer = "OVERLAY", sub = 0 },
       { id = "markerGlow", span = "fillEnd", file = "common/glow", w = 10,
-        layer = "OVERLAY", sub = 1, color = "gold@.5", when = "bar" },
+        layer = "OVERLAY", sub = 1, color = "gold@.5" },
       { id = "marker", span = "fillEnd", nine = { "marker", 12, 6 }, w = 12, bottom = -10,
-        layer = "OVERLAY", sub = 2, when = "bar" },
+        layer = "OVERLAY", sub = 2 },
     },
     panel = { parts = {
       { id = "panelRim", nine = { "panel_rim", 6, 6 }, inset = { -29, -29, 0, 0 }, color = "#18121e",
@@ -147,7 +144,6 @@ return {
              xpLabel = "body", xp = "body", sep = "body", marker = "body", hint = "body" },
     size = { s1 = 1, s2 = 1, s3 = 0, level = 2, levelValue = 1, xpLabel = 1, xp = 1,
              sep = 1, marker = 0, hint = 0 },
-    boxSize = { s1 = 2, s2 = -1, s3 = -1 },
     split = true, splitGap = 4, levelFmt = "upper",
     colors = { label = "gold", value = "value", levelLabel = "gold", levelValue = "value",
                xpText = "value", sep = "seam", marker = "gold", hint = "lilac", slot3 = "lilac",

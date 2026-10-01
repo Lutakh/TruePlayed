@@ -131,7 +131,6 @@ end
 local TEXT_ELEMS = { "s1", "s2", "s3", "level", "levelValue", "xpLabel", "xp", "sep", "marker", "hint" }
 local TEXT_SIZE = { s1 = 2, s2 = 0, s3 = -1, level = 0, levelValue = 0, xpLabel = 0, xp = 0, sep = 0,
                     marker = -1, hint = -1 }
-local BOX_SIZE = { s1 = 2, s2 = -1, s3 = -1 }
 
 -- The metatables of the compiled records (their __index: the defaults).
 local MT = {}
@@ -153,10 +152,9 @@ do
   MT.font = { __index = {} }                              -- every text element: "body"
   for i = 1, #TEXT_ELEMS do MT.font.__index[TEXT_ELEMS[i]] = "body" end
   MT.size = { __index = TEXT_SIZE }
-  MT.boxSize = { __index = BOX_SIZE }
   MT.shadow = { __index = { x = 1, y = -1 } }
   MT.text = { __index = { font = setmetatable({}, MT.font), size = setmetatable({}, MT.size),
-    boxSize = setmetatable({}, MT.boxSize), split = false, splitGap = 4, levelFmt = "upper",
+    split = false, splitGap = 4, levelFmt = "upper",
     shadow = setmetatable({ c = { 0, 0, 0, 0.8 } }, MT.shadow) } }
   MT.bar = { __index = { pad = 8, gap = 3, hAdd = 0, hMin = 4, maxAlpha = 0.35, panel = "backdrop" } }
   MT.fonts = { __index = function(t, k)                   -- num defaults to body
@@ -713,7 +711,6 @@ local SPAN_KIND = { track = "range", fill = "range", rested = "range",
                     fillEnd = "anchor", restEnd = "anchor", trackStart = "anchor", trackEnd = "anchor" }
 local DRAW_LAYERS = { BACKGROUND = true, BORDER = true, ARTWORK = true, OVERLAY = true }
 local ALIGNS = { center = true, left = true, right = true }
-local WHENS = { bar = true, box = true }
 local CLIPS = { fill = true }
 local POINTS = Set({ "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM",
   "BOTTOMRIGHT" })
@@ -746,7 +743,6 @@ local function CompileLayer(ctx, src, i, barMaxAlpha)
   if layer ~= "ARTWORK" then Lc.layer = layer end
   local sub = Num(src.sub, 0, -8, 7, true)
   if sub ~= 0 then Lc.sub = sub end
-  Lc.when = Choice(src.when, nil, WHENS)
 
   -- texture
   if kind == "three" or kind == "nine" then
@@ -900,7 +896,6 @@ local FONT_ROLES = { display = true, body = true, num = true, game = true }
 -- free locale sentence, so it is included too).
 local NO_DISPLAY = { s1 = true, s2 = true, s3 = true, xp = true, sep = true, levelValue = true, hint = true }
 local TEXT_VALID = Set(TEXT_ELEMS)
-local BOX_VALID = Set({ "s1", "s2", "s3" })
 local LEVEL_FMTS = { upper = true, title = true }
 
 local function IsRole(_, v) return FONT_ROLES[v] == true end
@@ -931,7 +926,6 @@ local function CompileText(ctx, text)
     if next(font) ~= nil then out.font = font end
   end
   out.size = ElemMap(text.size, MT.size, TEXT_VALID, IsDelta)
-  out.boxSize = ElemMap(text.boxSize, MT.boxSize, BOX_VALID, IsDelta)
   if text.split == true then out.split = true end
   local splitGap, levelFmt = Num(text.splitGap, 4, 0, 32, true), Choice(text.levelFmt, "upper", LEVEL_FMTS)
   if splitGap ~= 4 then out.splitGap = splitGap end

@@ -260,7 +260,6 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
   exclude = { afk = false, inn = false, city = false },
   widget = {
     shown = true,
-    style = "bar",                          -- "bar" | "box"
     locked = false,                         -- unlocked on first run to place the bar
     point = { "CENTER", "CENTER", 0, -220 },-- point, relativePoint (UIParent), x, y
     scale = 1.0, width = 360, height = 8, fontSize = 11,
@@ -1022,7 +1021,6 @@ DefineSetting("widget.fade", "bool")
 DefineSetting("widget.hideAtMax", "bool")
 DefineSetting("widget.shadow", "bool")
 DefineSetting("widget.qualityColors", "bool")
-DefineSetting("widget.style", "enum", { values = { bar = true, box = true } })
 DefineSetting("widget.outline", "enum", { values = SetOf(C.OUTLINES) })
 DefineSetting("widget.point", "point")
 DefineSetting("widget.scale", "num", { min = 0.5, max = 2.0, inv = 20 })   -- step 0.05
@@ -1155,9 +1153,13 @@ end
 
 -- widget.background (on/off dark background, up to 0.1.0-beta) became the
 -- widget.bgAlpha opacity: a background that was on keeps the opacity it had.
-local function MigrateBackground(settings)
+-- widget.style ("bar" | "box", up to 1.0.x) is gone: the bar is the only look, so a
+-- stored "box" shows the bar and the key leaves the file at the next save.
+local function MigrateWidget(settings)
   local w = settings.widget
-  if type(w) ~= "table" or w.background == nil then return end
+  if type(w) ~= "table" then return end
+  w.style = nil
+  if w.background == nil then return end
   if w.background == true and w.bgAlpha == nil then w.bgAlpha = C.LEGACY_BG_ALPHA end
   w.background = nil
 end
@@ -1165,7 +1167,7 @@ end
 -- Full settings repair: renamed values, types, missing keys, then every known
 -- path validated (invalid -> default, out of range -> clamped).
 local function RepairSettings(settings)
-  MigrateBackground(settings)
+  MigrateWidget(settings)
   FixTypes(settings, C.DEFAULTS)
   Util.CopyDefaults(settings, C.DEFAULTS)
   for _, spec in pairs(SETTINGS) do

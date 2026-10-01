@@ -51,8 +51,6 @@
 --     the totems (board: 44 px beyond the bar at 1.5x)
 --   text.size: board: top row 14 px, bottom row 15 px (at 1.5x); Nunito Sans reads like the game
 --     font one size up; the thin Metamorphous level label matches the bold numbers at the same size
---   text.boxSize: box: slots 2 and 3 are 80 px wide; a 3-digit FPS and latency fit at font size 11
---     and 2-digit ones up to 14, as in Classic
 --   tooltip.width: max width: the widest French XP rows (estimate and warm-up notes) fit uncut
 --   tooltip.colors.levelValueRested, rested: board: % stays blue
 --   tooltip.panel.parts > rim: stone rim (1 px ink outline + 3 px stone) with incised lines, dark
@@ -97,9 +95,9 @@ return {
     maxAlpha = 0.35,
     layers = {
       { id = "frame", span = "track", nine = { "rim", 7, 7 }, pad = { 4, 4 }, top = -4, bottom = -4,
-        layer = "BORDER", sub = -4, when = "bar" },
+        layer = "BORDER", sub = -4 },
       { id = "frameTex", span = "track", file = "stone_tex", tile = "HV", pad = { 3, 3 }, top = -3, bottom = -3,
-        layer = "BORDER", sub = -3, when = "bar" },
+        layer = "BORDER", sub = -3 },
       { id = "track", span = "track", band = { 0, 0.55 }, layer = "BORDER", sub = -2,
         grad = { "VERTICAL", "#141b25", "#0a0e14" }, flat = "#0f141c" },
       { id = "trackLow", span = "track", band = { 0.55, 1 }, layer = "BORDER", sub = -2,
@@ -107,26 +105,26 @@ return {
       { id = "rested", span = "rested", layer = "ARTWORK", sub = 1,
         grad = { "HORIZONTAL", "rested+.15@.8", "rested+.35@0" }, flat = "rested+.25@.45" },
       { id = "restedHi", span = "rested", band = { 0, 0.5 }, layer = "ARTWORK", sub = 2,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.18" }, when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.18" } },
       { id = "fill", span = "fill", layer = "ARTWORK", sub = 3,
         grad = { "HORIZONTAL", "base-.3", "base+.22" }, flat = "base" },
       { id = "fillTop", span = "fill", band = { 0, 0.4 }, layer = "ARTWORK", sub = 4,
-        grad = { "VERTICAL", "#ffffff@.08", "#ffffff@.3" }, when = "bar" },
+        grad = { "VERTICAL", "#ffffff@.08", "#ffffff@.3" } },
       { id = "fillMid", span = "fill", band = { 0.4, 0.55 }, layer = "ARTWORK", sub = 4,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.08" }, when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.08" } },
       { id = "fillLow", span = "fill", band = { 0.55, 1 }, layer = "ARTWORK", sub = 4,
-        grad = { "VERTICAL", "#000000@.28", "#000000@0" }, when = "bar" },
+        grad = { "VERTICAL", "#000000@.28", "#000000@0" } },
       { id = "ticks", span = "track", ticks = { n = 10 }, layer = "ARTWORK", sub = 5,
-        color = "#080c12@.6", when = "bar" },
+        color = "#080c12@.6" },
       { id = "markerGlow", span = "fillEnd", file = "common/glow", w = 14, layer = "ARTWORK", sub = 6,
-        blend = "ADD", color = "blue@.9", when = "bar" },
-      { id = "marker", span = "fillEnd", w = 2, layer = "ARTWORK", sub = 7, color = "spark", when = "bar" },
+        blend = "ADD", color = "blue@.9" },
+      { id = "marker", span = "fillEnd", w = 2, layer = "ARTWORK", sub = 7, color = "spark" },
       { id = "stones", span = "track", ticks = { n = 4, w = 16, mid = true }, file = "stud", top = -10, h = 16,
-        layer = "OVERLAY", sub = 1, when = "bar" },
+        layer = "OVERLAY", sub = 1 },
       { id = "totemL", span = "trackStart", file = "totem", w = 22, align = "right", dx = -3,
-        top = -16, bottom = -15, layer = "OVERLAY", sub = 0, when = "bar" },
+        top = -16, bottom = -15, layer = "OVERLAY", sub = 0 },
       { id = "totemR", span = "trackEnd", file = "totem", flipX = true, w = 22, align = "left", dx = 3,
-        top = -16, bottom = -15, layer = "OVERLAY", sub = 0, when = "bar" },
+        top = -16, bottom = -15, layer = "OVERLAY", sub = 0 },
     },
     panel = { parts = {
       { id = "panelFill", nine = { "round", 7, 7 }, inset = { -20, -20, 0, 0 },
@@ -140,7 +138,6 @@ return {
              xpLabel = "body", xp = "body", sep = "body", marker = "body", hint = "body" },
     size = { s1 = 1, s2 = 2, s3 = 1, level = 2, levelValue = 2, xpLabel = 2, xp = 2,
              sep = 2, marker = -1, hint = 0 },
-    boxSize = { s1 = 2, s2 = -2, s3 = -2 },
     split = true, splitGap = 5, levelFmt = "upper",
     colors = { label = "blueLbl", value = "value", levelLabel = "accent", levelValue = "value",
                xpText = "value", sep = "mist", marker = "blueHi", hint = "label", slot3 = "frost",

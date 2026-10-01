@@ -48,11 +48,8 @@
 --   bar.layers > markerGlow: end of the fill: white and lavender glow, white needle with its tab
 --     under the frame
 --   bar.panel: background panel (widget.bgAlpha): rounded dark violet plate with a pale edge, 20 px
---     past the frame sides so that it wraps the halo and the eclipse, as on the board (the box
---     style fits it to the box)
+--     past the frame sides so that it wraps the halo and the eclipse, as on the board
 --   text.font: display (Philosopher) only on DISPLAY_KEYS texts: the level label
---   text.boxSize: box: slots 2 and 3 are 80 px wide; a 3-digit FPS and latency fit at font size 11
---     and 2-digit ones up to 14, as in Classic
 --   tooltip.width: max width: the widest French XP rows (estimate and warm-up notes) fit uncut
 --   tooltip.panel.parts > plate: dark violet plate: warm light at the top-left, violet shade at the
 --     bottom-right, inner shadow, pearl frame
@@ -103,39 +100,38 @@ return {
     maxAlpha = 0.35,
     layers = {
       { id = "frame", span = "track", nine = { "frame", 14, 7 }, pad = { 6, 6 }, top = -6, bottom = -6,
-        layer = "BORDER", sub = -4, when = "bar" },
+        layer = "BORDER", sub = -4 },
       { id = "groove", span = "track", file = "groove", tile = "H", pad = { 3, 3 }, top = -3, bottom = -3,
-        layer = "BORDER", sub = -3, color = "#786c96@.28", when = "bar" },
-      { id = "track", span = "track", layer = "BORDER", sub = 0, color = "#17122a", when = "box" },
-      { id = "trackBed", span = "track", nine = { "track_bed", 6, 3 }, layer = "BORDER", sub = 0, when = "bar" },
+        layer = "BORDER", sub = -3, color = "#786c96@.28" },
+      { id = "trackBed", span = "track", nine = { "track_bed", 6, 3 }, layer = "BORDER", sub = 0 },
       { id = "rested", span = "rested", layer = "ARTWORK", sub = -4,
         grad = { "HORIZONTAL", "rested+.15@.8", "rested+.35@0" }, flat = "rested+.25@.45" },
       { id = "restSheen", span = "rested", band = { 0, 0.5 }, layer = "ARTWORK", sub = -3,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.2" }, flat = "#ffffff@.1", when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.2" }, flat = "#ffffff@.1" },
       { id = "restGlow", span = "rested", file = "glow", layer = "ARTWORK", sub = -2,
-        color = "rested+.85@.42", when = "bar" },
+        color = "rested+.85@.42" },
       { id = "restSparkle", span = "rested", file = "sparkle", tile = "HV", layer = "ARTWORK", sub = -1,
-        color = "#ffffff@.85", when = "bar" },
+        color = "#ffffff@.85" },
       { id = "fill", span = "fill", layer = "ARTWORK", sub = 0,
         grad = { "HORIZONTAL", "base-.3", "base+.22" }, flat = "base" },
       { id = "fillTop", span = "fill", band = { 0, 0.4 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#ffffff@.1", "#ffffff@.34" }, flat = "#ffffff@.2", when = "bar" },
+        grad = { "VERTICAL", "#ffffff@.1", "#ffffff@.34" }, flat = "#ffffff@.2" },
       { id = "fillMid", span = "fill", band = { 0.4, 0.55 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.1" }, flat = "#ffffff@.05", when = "bar" },
+        grad = { "VERTICAL", "#ffffff@0", "#ffffff@.1" }, flat = "#ffffff@.05" },
       { id = "fillLow", span = "fill", band = { 0.55, 1 }, layer = "ARTWORK", sub = 1,
-        grad = { "VERTICAL", "#000000@.26", "#000000@0" }, flat = "#000000@.13", when = "bar" },
+        grad = { "VERTICAL", "#000000@.26", "#000000@0" }, flat = "#000000@.13" },
       { id = "fillRays", span = "fill", file = "rays", tile = "H", layer = "ARTWORK", sub = 2,
-        color = "#ffffff@.07", when = "bar" },
+        color = "#ffffff@.07" },
       { id = "ticks", span = "track", ticks = { n = 10 }, layer = "ARTWORK", sub = 3,
-        color = "ink@.55", when = "bar" },
+        color = "ink@.55" },
       { id = "halo", span = "trackStart", file = "halo", w = 29, align = "right", dx = 5,
-        top = -8, bottom = -8, layer = "OVERLAY", sub = 0, when = "bar" },
+        top = -8, bottom = -8, layer = "OVERLAY", sub = 0 },
       { id = "eclipse", span = "trackEnd", file = "eclipse", w = 29, align = "left", dx = -5,
-        top = -8, bottom = -8, layer = "OVERLAY", sub = 0, when = "bar" },
+        top = -8, bottom = -8, layer = "OVERLAY", sub = 0 },
       { id = "markerGlow", span = "fillEnd", file = "common/glow", w = 14,
-        layer = "OVERLAY", sub = 1, blend = "ADD", color = "#d8ccff@.55", when = "bar" },
+        layer = "OVERLAY", sub = 1, blend = "ADD", color = "#d8ccff@.55" },
       { id = "marker", span = "fillEnd", nine = { "marker", 12, 6 }, w = 12, bottom = -11,
-        layer = "OVERLAY", sub = 2, when = "bar" },
+        layer = "OVERLAY", sub = 2 },
     },
     panel = { parts = {
       { id = "panelRim", nine = { "panel_rim", 7, 7 }, inset = { -20, -20, 0, 0 }, color = "#1b1729",
@@ -151,7 +147,6 @@ return {
              xpLabel = "body", xp = "body", sep = "body", marker = "body", hint = "body" },
     size = { s1 = 1, s2 = 1, s3 = 0, level = 2, levelValue = 1, xpLabel = 1, xp = 1,
              sep = 1, marker = 0, hint = 0 },
-    boxSize = { s1 = 2, s2 = -2, s3 = -2 },
     split = true, splitGap = 4, levelFmt = "upper",
     colors = { label = "#ffffff", value = "value", levelLabel = "#ffffff", levelValue = "value",
                xpText = "value", sep = "seam", marker = "#ffffff", hint = "haze", slot3 = "haze",

@@ -84,11 +84,11 @@ local function Fixture(fonts)
         { id = "track", layer = "BORDER", grad = { "VERTICAL", "#03060e@.93", "#0c1426@.88" },
           flat = "#070d1a@.9" },
         { id = "glow", span = "fill", three = { "common/glow", 16, 8 }, pad = { 8, 8 }, top = -6,
-          bottom = -6, layer = "BORDER", sub = -2, blend = "ADD", color = "base@.55", when = "bar" },
+          bottom = -6, layer = "BORDER", sub = -2, blend = "ADD", color = "base@.55" },
         { id = "rested", span = "rested", sub = 1, grad = { "HORIZONTAL", "rested+.5@.62", "rested+.5@0" } },
         { id = "fill", span = "fill", sub = 3, color = "base" },
         { id = "band", span = "fill", band = { 0, 0.28 }, sub = 4, grad = { "VERTICAL", "#ffffff@.12", "#ffffff@.72" } },
-        { id = "ticks", ticks = { n = 10 }, layer = "BORDER", sub = 2, color = "#a5f3fc@.26", when = "bar" },
+        { id = "ticks", ticks = { n = 10 }, layer = "BORDER", sub = 2, color = "#a5f3fc@.26" },
         { id = "segs", ticks = { n = 10, clip = "fill" }, sub = 6, color = "ink@.5", alpha = 0.5 },
         { id = "line", file = "line", tile = "H", top = 0, h = 1, sub = 5 },
         { id = "frame", nine = { "frame", 8, 8 }, pad = { 1, 1 }, top = -1, bottom = -1, sub = 7 },
@@ -525,7 +525,7 @@ T.test("Compile is pure and gives the 2.8 form (kinds, spans, dyn, per-state col
   T.ok(fill.c[1] ~= fill.c[2] and not TV.Same(R3(fill.c[2]), R3(TV.Color(th, fill, 2)), ""), "three states")
   T.eq(fill.tex.path, ns.C.TEX_WHITE)
   T.eq({ fill.layer, fill.sub, fill.tex.blend }, { "ARTWORK", 2, "BLEND" })
-  T.eq({ hi.top, hi.h, hi.bottom, hi.capInset, hi.when }, { 0, 1, 0, true, "bar" })
+  T.eq({ hi.top, hi.h, hi.bottom, hi.capInset }, { 0, 1, 0, true })
   local tick = Layer(th, "restTick")
   T.eq({ tick.w, tick.align, tick.dx }, { 1, "right", 0 })
   T.eq(th.text.font.s1, "body")
@@ -533,8 +533,6 @@ T.test("Compile is pure and gives the 2.8 form (kinds, spans, dyn, per-state col
                  marker = -1, hint = -1 }
   for e, v in pairs(size) do T.eq(th.text.size[e], v, "text.size." .. e) end
   T.eq(next(th.text.size), nil, "the defaults: nothing stored")
-  for e, v in pairs({ s1 = 2, s2 = -1, s3 = -1 }) do T.eq(th.text.boxSize[e], v, "text.boxSize." .. e) end
-  T.eq(next(th.text.boxSize), nil)
   T.eq({ th.text.split, th.text.splitGap, th.text.levelFmt }, { false, 4, "upper" })
   T.eq(R3(th.text.shadow.c), { 0, 0, 0, 800 })
   T.eq({ th.text.shadow.x, th.text.shadow.y }, { 1, -1 })

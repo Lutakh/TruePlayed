@@ -6,6 +6,10 @@ keeps every existing test green. Report the choice in your final answer as `ASSU
 When you need a change in a file you do not own, report it as `REQUEST: <file>: <change>`.
 Never edit that file yourself.
 
+Note (after 1.0.x): the compact box style of the widget was removed (design/NEXT-LOT.md,
+backlog 2). What this SPEC says about the box style, the layer field `when` (every layer is
+drawn) and `text.boxSize` is history: the compiler no longer reads those fields.
+
 Language rules: code, comments, identifiers, test names and this SPEC are in English. The
 user-facing strings live in `Locales/enUS.lua` and `Locales/frFR.lua` only.
 `docs/TEST-EN-JEU-fr.md` stays in French.

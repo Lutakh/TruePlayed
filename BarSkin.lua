@@ -9,19 +9,16 @@ local C = ns.C
 --   * Init(frame, tex, panel, newMeter) once, at widget creation. `tex` and `panel` are the
 --     handle tables frame.tp.tex / frame.tp.panel: Build clears and refills them, keeping
 --     their identity (tex.veil, owned by Bar.lua, survives);
---   * Build(th, style) at creation, on a theme change and on a style change: pooled regions
---     are given to the layers of th.bar.layers kept by the style (`when`) and to the panel
---     parts; regions left over are hidden and kept for later builds (regions are created
---     only when a pool is empty, never destroyed);
---   * Layout(ox, oy, W, H, isBar) when the geometry changes: rows of every layer, static
+--   * Build(th) at creation and on a theme change: pooled regions are given to the layers
+--     of th.bar.layers and to the panel parts; regions left over are hidden and kept for
+--     later builds (regions are created only when a pool is empty, never destroyed);
+--   * Layout(ox, oy, W, H) when the geometry changes: rows of every layer, static
 --     layers (track, trackStart, trackEnd, ticks) placed, dynamic ones redrawn by the next
 --     Draw;
 --   * SetState(k) when the fill state changes (0 normal, 1 rested, 2 max level) and
 --     Draw(px, rpx) when px, rpx or the state change - never on a steady tick;
 --   * Recolor() after THEME_CHANGED "colors" (compiled colours rewritten in place);
---   * Panel(alpha, w, h) at layout: the panel parts, hidden as a whole at alpha 0; in the
---     box style the FILL insets are moved per side so that the outermost FILL part fits
---     the box (the bar-style insets wrap ornaments the box does not draw);
+--   * Panel(alpha, w, h) at layout: the panel parts, hidden as a whole at alpha 0;
 --   * SetMeterFonts / Measure / Sub: text widths in the font of each text element.
 -- Performance: SetState, Draw, Measure and Sub create no table and no closure; a vertex
 -- colour or a gradient is set only when its values change (cached per layer), a gradient
@@ -47,8 +44,7 @@ local ANCHOR_X = { TOPLEFT = 0, TOP = 0.5, TOPRIGHT = 1, LEFT = 0, CENTER = 0.5,
 local ANCHOR_Y = { TOPLEFT = 1, TOP = 1, TOPRIGHT = 1, LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
                    BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0 }
 -- measured text elements (SPEC-themes 2.5); the level value and the XP label in split themes only
-local METER_BAR = { "s1", "s2", "s3", "level", "levelValue", "xpLabel", "xp", "sep", "marker" }
-local METER_BOX = { "s1", "s2", "s3" }
+local METER_ELEMS = { "s1", "s2", "s3", "level", "levelValue", "xpLabel", "xp", "sep", "marker" }
 local SPLIT_ONLY = { levelValue = true, xpLabel = true }
 local NO_LAYERS = {}
 
@@ -62,7 +58,6 @@ local freePlain, freeMasked = {}, {}   -- hidden textures ready for reuse
 local info = {}                  -- [texture] = { owner, layer, sub, blend, fresh, tw, th }
 
 local th                         -- compiled theme of the current build
-local style = "bar"
 local recOf, partOf = {}, {}     -- [compiled layer / part] = record (current theme only)
 local recs, nRecs = {}, 0        -- layer records of the current build, in draw order
 local dyns, nDyns = {}, 0        -- the ones Draw looks at
@@ -73,13 +68,10 @@ local ox, oy, W, H = 0, 0, 0, 0  -- track origin (frame BOTTOMLEFT offsets) and 
 local capsOn = false
 local px, state = 0, 0
 local panelA, panelW, panelHt, panelDirty = 0, 0, 0, true
--- box style: FILL insets moved per side (l, r, t, b) so that the outermost FILL part fits
--- the box frame (bar-style insets wrap ornaments the box does not draw)
-local insetShift = { 0, 0, 0, 0 }
 
 local meters = {}                -- measuring FontStrings (pool, never shown: alpha 0)
 local mRole, mDelta, nMeters = {}, {}, 0   -- [i] role and size delta of meter i
-local meterOf = { bar = {}, box = {} }     -- [style][element] = meter index
+local meterOf = {}               -- [element] = meter index
 
 local xpKey, restKey = nil, nil  -- user colours the skin was last synced with
 
@@ -607,8 +599,6 @@ local function PlacePart(R, fw, fh)
       l, r = ins[1] or ins.l or 0, ins[2] or ins.r or 0
       t, b = ins[3] or ins.t or 0, ins[4] or ins.b or 0
     end
-    local sh = insetShift
-    l, r, t, b = l + sh[1], r + sh[2], t + sh[3], b + sh[4]
     x, y, w, h = l, b, fw - l - r, fh - t - b
   else
     w, h = P.w or 0, P.h or 0
@@ -665,24 +655,6 @@ local function BuildPanel()
   end
   for i = n + 1, nParts do parts[i] = nil end
   nParts = n
-  local sh = insetShift
-  sh[1], sh[2], sh[3], sh[4] = 0, 0, 0, 0
-  if style == "box" then
-    local m1, m2, m3, m4 = nil, nil, nil, nil
-    for i = 1, n do
-      local P = parts[i].L
-      local ins = P.inset
-      if (P.anchor or "FILL") == "FILL" then
-        local l, r = ins and (ins[1] or ins.l) or 0, ins and (ins[2] or ins.r) or 0
-        local t, b = ins and (ins[3] or ins.t) or 0, ins and (ins[4] or ins.b) or 0
-        if not m1 or l < m1 then m1 = l end
-        if not m2 or r < m2 then m2 = r end
-        if not m3 or t < m3 then m3 = t end
-        if not m4 or b < m4 then m4 = b end
-      end
-    end
-    if m1 then sh[1], sh[2], sh[3], sh[4] = -m1, -m2, -m3, -m4 end
-  end
   panelDirty = true
 end
 
@@ -701,24 +673,19 @@ local function MeterIndex(role, delta)
   return i
 end
 
--- Bar elements first, then box: under the classic theme this gives the three meters of
--- the classic look (font + 2, font, font - 1), each element measured in its own font.
+-- Under the classic theme this gives the meters of the classic look (font + 2, font,
+-- font - 1), each element measured in its own font.
 local function AssignMeters()
   local text = th.text
-  local font, size, boxSize = text.font, text.size, text.boxSize
+  local font, size = text.font, text.size
   local split = text.split
   nMeters = 0
-  local bar, box = meterOf.bar, meterOf.box
-  for k in pairs(bar) do bar[k] = nil end
-  for i = 1, #METER_BAR do
-    local e = METER_BAR[i]
+  for k in pairs(meterOf) do meterOf[k] = nil end
+  for i = 1, #METER_ELEMS do
+    local e = METER_ELEMS[i]
     if split or not SPLIT_ONLY[e] then
-      bar[e] = MeterIndex(font[e] or "body", size[e] or 0)
+      meterOf[e] = MeterIndex(font[e] or "body", size[e] or 0)
     end
-  end
-  for i = 1, #METER_BOX do
-    local e = METER_BOX[i]
-    box[e] = MeterIndex(font[e] or "body", boxSize[e] or 0)
   end
 end
 
@@ -731,7 +698,7 @@ function BarSkin.Init(f, texTable, panelTable, newMeter)
   rounded = type(f.CreateMaskTexture) == "function"
 end
 
-function BarSkin.Build(newTh, newStyle)
+function BarSkin.Build(newTh)
   if newTh ~= th then
     for L, R in pairs(recOf) do
       Release(R)
@@ -745,29 +712,24 @@ function BarSkin.Build(newTh, newStyle)
     th = newTh
     AssignMeters()
   end
-  style = newStyle
   for k in pairs(capsSpan) do capsSpan[k] = nil end
   local layers = th.bar and th.bar.layers or NO_LAYERS
   local n, nd = 0, 0
   for i = 1, #layers do
     local L = layers[i]
     local R = recOf[L]
-    if L.when == nil or L.when == style then
-      if not R then
-        R = NewRec(L)
-        recOf[L] = R
-      end
-      if not R.on then Acquire(R, "ARTWORK", 0) end
-      n = n + 1
-      recs[n] = R
-      if R.dynamic then
-        nd = nd + 1
-        dyns[nd] = R
-      end
-      if R.kind == "caps" then capsSpan[R.span] = true end
-    elseif R then
-      Release(R)
+    if not R then
+      R = NewRec(L)
+      recOf[L] = R
     end
+    if not R.on then Acquire(R, "ARTWORK", 0) end
+    n = n + 1
+    recs[n] = R
+    if R.dynamic then
+      nd = nd + 1
+      dyns[nd] = R
+    end
+    if R.kind == "caps" then capsSpan[R.span] = true end
   end
   for i = n + 1, nRecs do recs[i] = nil end
   for i = nd + 1, nDyns do dyns[i] = nil end
@@ -797,9 +759,9 @@ function BarSkin.Build(newTh, newStyle)
   BuildPanel()
 end
 
-function BarSkin.Layout(x, y, w, h, isBar)
+function BarSkin.Layout(x, y, w, h)
   ox, oy, W, H = x, y, w, h
-  capsOn = rounded and isBar and true or false
+  capsOn = rounded
   for i = 1, nRecs do
     local R = recs[i]
     Rows(R)
@@ -870,9 +832,9 @@ function BarSkin.SetMeterFonts(fontSize, outline)
   end
 end
 
--- Width of `text` in the font of element e (style "bar" or "box"), measured on a meter.
-function BarSkin.Measure(e, box, text)
-  local m = meters[(box and meterOf.box or meterOf.bar)[e] or 1]
+-- Width of `text` in the font of element e, measured on a meter.
+function BarSkin.Measure(e, text)
+  local m = meters[meterOf[e] or 1]
   if not m then return 0 end
   m:SetText(text)
   return m:GetStringWidth() or 0

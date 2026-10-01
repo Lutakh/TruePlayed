@@ -35,7 +35,7 @@ return {
         flat = { "rested+.35@.40", def = { 0.35, 0.62, 1.0, 0.40 } } },
       { id = "fill", span = "fill", caps = true, layer = "ARTWORK", sub = 2, color = "base" },
       { id = "fillHi", span = "fill", capInset = true, top = 0, h = 1,
-        layer = "ARTWORK", sub = 3, color = { 1, 1, 1, 0.10 }, when = "bar" },
+        layer = "ARTWORK", sub = 3, color = { 1, 1, 1, 0.10 } },
       { id = "restTick", span = "restEnd", w = 1, align = "right",
         layer = "ARTWORK", sub = 4, color = { "rested+.6@.9", def = { 0.6, 0.75, 1, 0.9 } } },
     },

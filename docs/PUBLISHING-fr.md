@@ -185,7 +185,7 @@ est la vérification complète à refaire avant chaque version.
      retapez `/tpl debug` pour couper les messages ;
    - vol au-dessus d'Orgrimmar ou de Hurlevent : notez dans l'infobulle détaillée (Maj) les
      lignes « Ville » et « En vol » avant et après le vol ; seule « En vol » doit augmenter ;
-   - style « Encadré compact », largeur minimale, taille de texte 16, info 3 à gauche puis
+   - largeur minimale, taille de texte 16, info 3 à gauche puis
      au centre, pourcentage « Suit la barre » : aucun texte ne se chevauche ;
    - Échap > Options > AddOns > TruePlayed ouvre les options ; `/tpl` ouvre la même page ;
      le bouton TruePlayed du menu des addons (clic gauche : options, clic droit :

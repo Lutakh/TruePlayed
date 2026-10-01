@@ -105,9 +105,8 @@ zone** and, at any level, **your time in dungeons, raids and PvP**.
 - **Choose what the bar shows**: three infos among 19 (time to level, mobs to kill, XP per
   hour, % of level per hour, XP to go, rested XP, time this level, session, total, server
   /played, AFK this session, average per level, time in zone, instance time, FPS,
-  latency...). Full XP bar or compact box, size, scale, background opacity (0 % by
-  default), hide in combat, fade, hide at max level. Texts never overlap, even on a
-  narrow bar.
+  latency...). Size, scale, background opacity (0 % by default), hide in combat, fade,
+  hide at max level. Texts never overlap, even on a narrow bar.
 - **Readable texts**: thin outline and shadow by default (outline none / thin / thick),
   and the text colour of your choice with the game's colour picker.
 - **Bar colours**: the XP bar and rested colours of your choice, over any theme, with a
@@ -134,7 +133,6 @@ zone** and, at any level, **your time in dungeons, raids and PvP**.
 | `/tpl stats` | Statistics window (`levels`, `zones`, `sessions`) |
 | `/tpl lock` / `unlock` | Lock or move the bar |
 | `/tpl show` / `hide` | Show or hide the bar |
-| `/tpl style bar` / `box` | Full bar or compact box |
 | `/tpl theme [name]` | Show or change the theme (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
 | `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (no argument: toggle) |

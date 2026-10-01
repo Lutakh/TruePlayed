@@ -123,7 +123,6 @@ local XP_COLOR_PATH = "widget.xpColor"
 local RESTED_COLOR_PATH = "widget.restedColor"
 local BAR_COLORS_RESET = "widget.barColors"       -- record key of the bar colours reset button
 local SWATCH_BACKDROP = { bgFile = C.TEX_WHITE, edgeFile = C.TEX_WHITE, edgeSize = 1 }
-local STYLE_LABEL = { bar = "STYLE_BAR", box = "STYLE_BOX" }
 local STATS_TABS = { levels = true, zones = true, sessions = true }
 local THEME_PATH = "theme"
 
@@ -272,14 +271,6 @@ local function SetExclusion(key, value)
   if value == nil then value = not GetSetting(path) end
   SetSetting(path, value and true or false)
   Util.Print(L.EXCL_STATE_FMT, L[EXCLUDE_LABEL[key]], value and L.ON or L.OFF)
-end
-
-local function SetStyle(value)
-  if value ~= "bar" and value ~= "box" then
-    value = (GetSetting("widget.style") == "box") and "bar" or "box"
-  end
-  SetSetting("widget.style", value)
-  Util.Print(L.STYLE_SET_FMT, L[STYLE_LABEL[value]])
 end
 
 -- Display name of a theme setting value; nil for a value that is not a choice.
@@ -883,8 +874,6 @@ local function Build()
   AddNote(L.OPT_THEME_NOTE)
   AddNote(L.OPT_THEME_RESTART_NOTE)
   AddCheckbox(L.OPT_SHOW, "widget.shown")
-  AddDropdown(L.OPT_STYLE, "widget.style",
-    { { value = "bar", label = L.STYLE_BAR }, { value = "box", label = L.STYLE_BOX } })
   AddDropdown(L.OPT_SLOT1, "widget.slots.1", TokenChoices(true))
   AddDropdown(L.OPT_SLOT2, "widget.slots.2", TokenChoices(true))
   AddDropdown(L.OPT_SLOT3, "widget.slots.3", TokenChoices(true))
@@ -1110,14 +1099,6 @@ local function ToggleSettingPath(path)
   SetSetting(path, not GetSetting(path))
 end
 
-local function IsStyle(value)
-  return GetSetting("widget.style") == value
-end
-
-local function SetStyleValue(value)
-  SetSetting("widget.style", value)
-end
-
 local function IsTheme(value)
   return GetSetting(THEME_PATH) == value
 end
@@ -1141,9 +1122,6 @@ function Options.BuildContextMenu(_owner, root)
   root:CreateCheckbox(L.MENU_EXCLUDE_INN, IsSettingOn, ToggleSettingPath, "exclude.inn")
   root:CreateCheckbox(L.MENU_EXCLUDE_CITY, IsSettingOn, ToggleSettingPath, "exclude.city")
   if root.CreateDivider then root:CreateDivider() end
-  local styleMenu = root:CreateButton(L.MENU_STYLE)
-  styleMenu:CreateRadio(L.STYLE_BAR, IsStyle, SetStyleValue, "bar")
-  styleMenu:CreateRadio(L.STYLE_BOX, IsStyle, SetStyleValue, "box")
   local themeMenu = root:CreateButton(L.MENU_THEME)
   local themes = ThemeChoices()
   for i = 1, #themes do
@@ -1349,7 +1327,7 @@ end
 local function PrintHelp()
   Util.Print(L.HELP_HEADER)
   local out = DEFAULT_CHAT_FRAME
-  local keys = { "HELP_OPTIONS", "HELP_STATS", "HELP_LOCK", "HELP_SHOW", "HELP_STYLE", "HELP_THEME",
+  local keys = { "HELP_OPTIONS", "HELP_STATS", "HELP_LOCK", "HELP_SHOW", "HELP_THEME",
                  "HELP_LANG", "HELP_EXCLUDE", "HELP_CITY", "HELP_PLAYED", "HELP_SYNC", "HELP_RESET",
                  "HELP_DEBUG", "HELP_PERF" }
   for i = 1, #keys do
@@ -1380,12 +1358,6 @@ function Options.HandleSlash(msg)
     local shown = (w1 == "show")
     ns.Bar.SetShown(shown)
     Util.Print(shown and L.WIDGET_SHOWN or L.WIDGET_HIDDEN)
-  elseif w1 == "style" then
-    if w2 == nil or w2 == "" or w2 == "bar" or w2 == "box" then
-      SetStyle(w2)
-    else
-      Unknown(msg)
-    end
   elseif w1 == "theme" then
     if not ThemeCommand(w2) then Unknown(msg) end
   elseif w1 == "lang" then

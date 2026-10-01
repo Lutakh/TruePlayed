@@ -2,7 +2,7 @@ local ADDON, ns = ...
 local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 local Themes, Skin = ns.Themes, ns.BarSkin
 
--- Bar.lua - the on-screen widget (style "bar" = the mockup, style "box" = compact).
+-- Bar.lua - the on-screen widget: the XP bar (the mockup).
 --
 -- Performance contract (SPEC 6):
 --   * no per-frame script; the widget listens to TICK only while it is visible and active;
@@ -20,7 +20,7 @@ local Themes, Skin = ns.Themes, ns.BarSkin
 --     rested, max level) changes only on XP / exhaustion / level events. The XP and
 --     rested colours (theme or widget.xpColor / widget.restedColor) are compiled by
 --     Themes, which sends THEME_CHANGED "colors" when they change;
---   * bar style, bottom row "LEVEL 20   0.3%        XP: 58 / 23,200 · ~4.5k/h": the right
+--   * bottom row "LEVEL 20   0.3%        XP: 58 / 23,200 · ~4.5k/h": the right
 --     part (XP text, separator, pause mark, slot 2) never reaches the level text. Text
 --     widths are measured (GetStringWidth on hidden-proof "meter" FontStrings) only
 --     when a text changes, then the right part degrades in steps until it fits: short
@@ -28,7 +28,7 @@ local Themes, Skin = ns.Themes, ns.BarSkin
 --     one, e.g. eta_kills -> the ETA alone), no slot 2, and at last slot 2 alone or
 --     nothing. The % marker (one decimal, like the tooltip) only takes the space left;
 --     with pctPos = "level", a level text wider than the bar drops its percent;
---   * bar style, top row: slot 1 (top right, with its pause mark) is bounded to the
+--   * top row: slot 1 (top right, with its pause mark) is bounded to the
 --     inner width; slot 3 (top centre or left) is shifted away from slot 1. A token
 --     with a short form uses it (slot 1 first) rather than leaving slot 3 out; slot 3 is
 --     hidden only when it cannot be drawn clear of slot 1 even then;
@@ -64,10 +64,6 @@ Bar.frame = nil
 
 local NSLOTS       = 3
 local SLOT_E       = { "s1", "s2", "s3" }   -- text element of each slot (SPEC-themes 2.5)
-local BOX_PAD      = 6      -- box style inner padding
-local BOX_WIDTH    = 180    -- box style fixed width (scale applies)
-local BOX_LINE     = 2      -- box style progress line height
-local BOX_GAP      = 8      -- box style gap between slot 2 and slot 3
 local SEP_GAP      = 4      -- gap on each side of the separator between the XP text and slot 2
 local MARKER_GAP   = 6      -- min gap between the % marker and its neighbours
 local EDGE_GAP     = 6      -- min gap between the level text and the right part of the bottom row
@@ -75,8 +71,6 @@ local TOP_GAP      = 8      -- min gap between slot 3 and slot 1 (top row)
 local MARK_W       = 7      -- pause mark width
 local MARK_GAP     = 3      -- gap between a pause mark and its slot text
 local MARK_SPACE   = MARK_W + MARK_GAP
-local BOX_S1_W     = BOX_WIDTH - 2 * BOX_PAD - MARK_SPACE          -- box style slot 1 width
-local BOX_HALF     = math_floor((BOX_WIDTH - 2 * BOX_PAD - BOX_GAP) / 2)   -- box style slots 2 / 3
 local FADE_ALPHA   = 0.35
 local VEIL_ALPHA   = 0.20
 local EMPTY        = ""
@@ -91,7 +85,7 @@ local VISIBILITY_PATHS = {
   ["widget.shown"] = true, ["widget.hideAtMax"] = true, ["widget.combatHide"] = true,
 }
 local LAYOUT_PATHS = {
-  ["widget.style"] = true, ["widget.scale"] = true, ["widget.width"] = true,
+  ["widget.scale"] = true, ["widget.width"] = true,
   ["widget.height"] = true, ["widget.fontSize"] = true, ["widget.background"] = true,
   ["widget.bgAlpha"] = true, ["widget.outline"] = true, ["widget.shadow"] = true,
   ["widget.slot3Pos"] = true, ["widget.pctPos"] = true,
@@ -143,10 +137,9 @@ local sp = {
 }
 
 -- applied layout
-local style = "bar"
-local pad = 8                    -- frame padding (bar style: the theme's bar.pad)
+local pad = 8                    -- frame padding (the theme's bar.pad)
 local ox, oy, lineW, lineH = 8, 0, 300, 8     -- progress line origin and size
-local topY = 0                   -- bottom of the top row (bar style)
+local topY = 0                   -- bottom of the top row
 local usePctMarker, usePctLevel = false, false
 local slot3Left = false
 local fontSize = 11
@@ -159,7 +152,7 @@ local customOn = false
 local customRGB = { 1, 1, 1 }
 local dimColor = C.COLORS.dim
 
--- measured widths (bar style; refreshed only when the measured text changes)
+-- measured widths (refreshed only when the measured text changes)
 local slotW = { 0, 0, 0 }
 local slotWAlt = { 0, 0, 0 }     -- widths of the short forms
 local wBL, wSep, wMarker = 0, 0, 0
@@ -303,10 +296,10 @@ local function SetVariant(i, use)
   end
 end
 
--- Width of slot text t in the slot's font for the current style (never shown: a meter).
+-- Width of slot text t in the slot's font (never shown: a meter).
 local function SlotWidth(i, t)
   local e = SLOT_E[i]
-  return Skin.Measure(e, style ~= "bar", Skin.Sub(e, t))
+  return Skin.Measure(e, Skin.Sub(e, t))
 end
 
 -- Compact XP numbers for a narrow bar: 58, 950, 8.2k, 23.2k, 210k (8,2k in French).
@@ -406,7 +399,7 @@ local function ApplyTextColors()
     SetColor(sp.xpl, custom or tc.label)
   end
   slotColor[1] = custom or tc.value
-  if style == "bar" then slotColor[2] = custom or tc.slot2 or tc.value else slotColor[2] = custom or tc.label end
+  slotColor[2] = custom or tc.slot2 or tc.value
   slotColor[3] = custom or tc.slot3
   for i = 1, NSLOTS do lastDim[i] = nil end    -- the next Refresh sets the slot colours
 end
@@ -462,7 +455,7 @@ local function ApplyPosition()
 end
 
 ---------------------------------------------------------------------------
--- Bar style layout of the text rows (widths measured on text changes only)
+-- Layout of the text rows (widths measured on text changes only)
 ---------------------------------------------------------------------------
 
 local function SetBrxShown(on)
@@ -677,17 +670,6 @@ local function PlaceMarker()
   end
 end
 
--- Box style: a slot whose token has a short form uses it when the full text is wider
--- than the slot.
-local function ChooseBoxVariant(i)
-  local use = false
-  if lastAlt[i] ~= nil then
-    local bound = (i == 1) and BOX_S1_W or BOX_HALF
-    use = slotW[i] > bound
-  end
-  SetVariant(i, use)
-end
-
 -- Level text (bottom left): "LEVEL 20", with the percent text `pct` (pctPos = "level")
 -- or the cap tag (isCap); levelFmt "title" gives "Level 20 · ...". Split themes draw
 -- the level label and that value as two texts (bl, blv). A level text wider than the
@@ -699,10 +681,10 @@ local function LevelText(level, pct, isCap)
   local text, vt, wl, wv = nil, nil, 0, 0
   if sp.on then
     text = Skin.Sub("level", label)
-    wl = Skin.Measure("level", false, text)
+    wl = Skin.Measure("level", text)
     if value then
       vt = Skin.Sub("levelValue", value)
-      wv = Skin.Measure("levelValue", false, vt)
+      wv = Skin.Measure("levelValue", vt)
       if wl + sp.gap + wv > lineW then vt = nil end
     end
     wBL = vt and (wl + sp.gap + wv) or wl
@@ -716,13 +698,13 @@ local function LevelText(level, pct, isCap)
         text = format(L.LEVEL_CAP_FMT, level)
       end
       text = Skin.Sub("level", text)
-      wBL = Skin.Measure("level", false, text)
+      wBL = Skin.Measure("level", text)
       -- narrow bar, big font: the level alone rather than a text running past the edge
       if wBL > lineW then text = nil end
     end
     if text == nil then
       text = Skin.Sub("level", label)
-      wBL = Skin.Measure("level", false, text)
+      wBL = Skin.Measure("level", text)
     end
   end
   if text ~= sp.blText then
@@ -766,8 +748,8 @@ local function XPTexts(show, xp, max)
     local full = Skin.Sub("xp", format(L.XP_BARE_FMT, Fmt.Number(xp), Fmt.Number(max)))
     local short = Skin.Sub("xp", format(L.XP_BARE_FMT, cx, cm))
     xpText[1], xpText[2], xpText[3] = full, short, short
-    valW[1] = Skin.Measure("xp", false, full)
-    valW[2] = Skin.Measure("xp", false, short)
+    valW[1] = Skin.Measure("xp", full)
+    valW[2] = Skin.Measure("xp", short)
     valW[3] = valW[2]
     local lw = sp.wXPL + sp.gap
     xpW[1], xpW[2], xpW[3] = lw + valW[1], lw + valW[2], valW[2]
@@ -776,7 +758,7 @@ local function XPTexts(show, xp, max)
     xpText[2] = Skin.Sub("xp", format(L.XP_FMT, cx, cm))
     xpText[3] = Skin.Sub("xp", format(L.XP_BARE_FMT, cx, cm))
     for i = 1, 3 do
-      local w = Skin.Measure("xp", false, xpText[i])
+      local w = Skin.Measure("xp", xpText[i])
       xpW[i], valW[i] = w, w
     end
   end
@@ -832,7 +814,6 @@ function Bar.UpdateXP()
     Skin.Draw(px, rpx)
   end
 
-  if style ~= "bar" then return end
   local Tokens = ns.Tokens
 
   -- bottom-left: level (and the % with one decimal when pctPos = "level"; "CAP" at a
@@ -866,7 +847,7 @@ function Bar.UpdateXP()
     pctKey = tenths
     local text = Skin.Sub("marker", Tokens.PercentText(tenths))
     marker:SetText(text)
-    wMarker = Skin.Measure("marker", false, text)
+    wMarker = Skin.Measure("marker", text)
     markerDirty = true
   end
   if bottomDirty then LayoutBottom() end
@@ -880,7 +861,6 @@ end
 function Bar.Refresh()
   if not frame or not active then return end
   local Tokens = ns.Tokens
-  local isBar = style == "bar"
   for i = 1, NSLOTS do
     local id = Tokens.Resolve(i)
     local text, dim, paused, alt = Tokens.Render(id)
@@ -894,15 +874,9 @@ function Bar.Refresh()
     if hitWant[i] and not qualityOn then text = Tokens.Plain(text) end
     if text ~= lastText[i] or alt ~= lastAlt[i] then
       lastText[i], lastAlt[i] = text, alt
-      if isBar or alt ~= nil then
-        slotW[i] = SlotWidth(i, text)
-        slotWAlt[i] = (alt ~= nil) and SlotWidth(i, alt) or 0
-      end
-      if isBar then
-        if i == 2 then bottomDirty = true else topDirty = true end
-      else
-        ChooseBoxVariant(i)
-      end
+      slotW[i] = SlotWidth(i, text)
+      slotWAlt[i] = (alt ~= nil) and SlotWidth(i, alt) or 0
+      if i == 2 then bottomDirty = true else topDirty = true end
     end
     dim = (dim or paused) and true or false
     if dim ~= lastDim[i] then
@@ -913,23 +887,19 @@ function Bar.Refresh()
     if paused ~= lastPaused[i] then
       lastPaused[i] = paused
       ApplyMark(i)
-      if isBar then
-        if i == 2 then bottomDirty = true else topDirty = true end
-      end
+      if i == 2 then bottomDirty = true else topDirty = true end
     end
   end
-  if isBar then
-    if bottomDirty then LayoutBottom() end
-    if topDirty then LayoutTop() end
-    if markerDirty then PlaceMarker() end
-  end
+  if bottomDirty then LayoutBottom() end
+  if topDirty then LayoutTop() end
+  if markerDirty then PlaceMarker() end
 end
 
 ---------------------------------------------------------------------------
 -- Public: layout
 ---------------------------------------------------------------------------
 
--- Text anchors, measures and caches start over (new style, fonts or sizes).
+-- Text anchors, measures and caches start over (new theme, fonts or sizes).
 local function ResetTextLayout()
   local s1, s2, s3 = slotFS[1], slotFS[2], slotFS[3]
   s1:ClearAllPoints(); s2:ClearAllPoints(); s3:ClearAllPoints()
@@ -943,7 +913,7 @@ local function ResetTextLayout()
 end
 
 -- Split texts of the theme (2.5): blv / xpl are created at the first split build and
--- hidden whenever the theme or the style does not draw them.
+-- hidden whenever the theme does not draw them.
 local function SetupSplit()
   local text = th.text
   sp.on = text.split and true or false
@@ -970,7 +940,7 @@ local function HideSplit()
   end
 end
 
--- Bar style (the mockup): sizes, fonts and fixed anchors (SPEC-themes 2.4 geometry: the
+-- The bar (the mockup): sizes, fonts and fixed anchors (SPEC-themes 2.4 geometry: the
 -- theme's padding, gaps and track height, rows sized by the theme's fonts). The right part
 -- of each row is placed by LayoutBottom / LayoutTop from the measured texts. Returns the
 -- frame size.
@@ -1033,15 +1003,14 @@ local function ApplyBarStyle(w)
   if st == "" then st = "\194\183" end
   st = Skin.Sub("sep", st)
   sepFS:SetText(st)
-  wSep = Skin.Measure("sep", false, st)
-  s1:SetWidth(0); s2:SetWidth(0); s3:SetWidth(0)   -- free widths (the box style bounds them)
+  wSep = Skin.Measure("sep", st)
   ElemFont(marker, "marker", size.marker)
   usePctMarker = (w.pctPos ~= "level")
   usePctLevel = not usePctMarker
   if sp.on then
     local xl = Skin.Sub("xpLabel", L.XP_LABEL)
     sp.xpl:SetText(xl)
-    sp.wXPL = Skin.Measure("xpLabel", false, xl)
+    sp.wXPL = Skin.Measure("xpLabel", xl)
   end
   -- widths of the current slot texts (and short forms) in the new fonts
   for i = 1, NSLOTS do
@@ -1050,47 +1019,6 @@ local function ApplyBarStyle(w)
     slotWAlt[i] = (a ~= nil) and SlotWidth(i, a) or 0
   end
   topDirty, bottomDirty = true, true
-  return fw, fh
-end
-
--- Compact box: fixed width, slot 1 on top, slots 2 and 3 side by side below. Returns the
--- frame size.
-local function ApplyBoxStyle()
-  local s1, s2, s3 = slotFS[1], slotFS[2], slotFS[3]
-  local size = th.text.boxSize
-  local rowH1 = ElemFont(s1, "s1", size.s1) + 2
-  local rowH2 = math_max(ElemFont(s2, "s2", size.s2), ElemFont(s3, "s3", size.s3)) + 2
-  local fw, fh = BOX_WIDTH, BOX_PAD + rowH1 + 1 + rowH2 + 3 + BOX_LINE + BOX_PAD
-  frame:SetSize(fw, fh)
-  ox, oy, lineW, lineH = BOX_PAD, BOX_PAD, BOX_WIDTH - 2 * BOX_PAD, BOX_LINE
-
-  s1:SetJustifyH("LEFT")
-  s1:SetPoint("TOPLEFT", frame, "TOPLEFT", BOX_PAD, -BOX_PAD)
-  AnchorMark(1, "right")
-  s2:SetJustifyH("LEFT")
-  s2:SetPoint("TOPLEFT", frame, "TOPLEFT", BOX_PAD, -(BOX_PAD + rowH1 + 1))
-  AnchorMark(2, "right")
-  s3:SetJustifyH("RIGHT")
-  s3:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -BOX_PAD, -(BOX_PAD + rowH1 + 1))
-  AnchorMark(3, "left")
-  -- slot 1 keeps its pause mark inside the box; slots 2 and 3 share the second row:
-  -- each gets half of it (long texts end with "..." instead of overlapping)
-  s1:SetWidth(BOX_S1_W)
-  s2:SetWidth(BOX_HALF); s3:SetWidth(BOX_HALF)
-
-  bl:Hide(); brx:Hide()
-  brxShown = false
-  HideSplit()
-  usePctMarker, usePctLevel = false, false
-  -- short forms where the full text is wider than its slot (measured in the box fonts)
-  for i = 1, NSLOTS do
-    local a = lastAlt[i]
-    if a ~= nil then
-      slotW[i] = SlotWidth(i, lastText[i] or EMPTY)
-      slotWAlt[i] = SlotWidth(i, a)
-    end
-    ChooseBoxVariant(i)
-  end
   return fw, fh
 end
 
@@ -1103,14 +1031,13 @@ function Bar.ApplyLayout()
   -- replaced, DB_SWAPPED): Themes recolours, THEME_CHANGED "colors" follows (K12)
   if Skin.SyncUserColors(w) and t == th and skinGen ~= false then Themes.Recolor() end
 
-  local newStyle = (w.style == "box") and "box" or "bar"
-  local rebuild = skinGen == false or t ~= th or newStyle ~= style
-  th, style = t, newStyle
+  local rebuild = skinGen == false or t ~= th
+  th = t
   fontSize = math_floor(Clamp(w.fontSize, 9, 16, 11))
   frame:SetScale(Clamp(w.scale, 0.5, 2.0, 1.0))
   ReadTextStyle(w)
   if rebuild then
-    Skin.Build(t, style)                         -- regions of the theme's layers and panel
+    Skin.Build(t)                                -- regions of the theme's layers and panel
     SetupSplit()
     ApplyVeil()
   elseif t.gen ~= skinGen then
@@ -1121,14 +1048,9 @@ function Bar.ApplyLayout()
   for i = 1, #allTexts do ApplyShadow(allTexts[i]) end
 
   ResetTextLayout()
-  local fw, fh
-  if style == "bar" then
-    fw, fh = ApplyBarStyle(w)
-  else
-    fw, fh = ApplyBoxStyle()
-  end
+  local fw, fh = ApplyBarStyle(w)
   ApplyBackground(w, fw, fh)
-  Skin.Layout(ox, oy, lineW, lineH, style == "bar")   -- static layers placed
+  Skin.Layout(ox, oy, lineW, lineH)              -- static layers placed
 
   ElemFont(hint, "hint", math_max(9, fontSize + (th.text.size.hint or -1)) - fontSize)
   hint:SetText(Skin.Sub("hint", L.UNLOCKED_HINT))
