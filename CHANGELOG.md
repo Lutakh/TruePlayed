@@ -25,8 +25,27 @@ alone, theme textures can be missing and the theme fonts are replaced by the gam
   the names). The change is immediate.
 - 23 fonts under the SIL Open Font License 1.1, with their licences in
   `Media/Fonts/LICENSES` (credits in the README).
+- **Language option**: Options > Display > **Language (Langue)**, with **Auto** (the
+  game's language, the default), **English** and **Français**, each written in its own
+  language. The new language applies after a UI reload: use the **Reload UI** button
+  under the option, or type `/reload`. Names that come from the game (zones, mobs,
+  instances, characters) stay in the game's language. Also `/tpl lang en|fr|auto`
+  (`/tpl lang` alone shows the current choice).
 
 ### Changed
+
+- **Mobs to kill now uses the average of your last 10 kills** (their XP without the
+  rested bonus) instead of the last kill alone, so the number no longer jumps with every
+  mob's level. The tooltip shows both: "Mobs to kill: ~38 (average: 47 XP, last: 30 XP)".
+  After the update, the last kill you already had starts the average. The rested XP is
+  taken into account as before.
+- **Less memory**: themes are kept in a compact form, about 70 % smaller, and the theme
+  files are kept as short texts that are only turned into a theme when one is applied.
+  With the same data, TruePlayed uses about 150 to 210 KB less after login (offline
+  measure: Futuristic 1410 to 1201 KB, Classic 1222 to 1073 KB). Every theme looks
+  exactly as before.
+- In 10 themes, the tooltip can grow a few pixels wider when needed, so that the longer
+  "Mobs to kill" line is never cut, even with very large numbers in French.
 
 - **The default look is now Futuristic, for everyone**, existing installations included.
   **`/tpl theme actuel`** (or "Classic" in the options or the right-click menu) brings back
@@ -34,6 +53,10 @@ alone, theme textures can be missing and the theme fonts are replaced by the gam
 - The XP bar, rested and text colours you pick still replace the theme's. The reset
   buttons are now called **Theme colours** and bring back the colours of the active
   theme.
+
+### Fixed
+
+- After a theme switch, two colour tables of the previous theme could stay in memory.
 
 ## [0.1.0-beta.1] - YYYY-MM-DD
 

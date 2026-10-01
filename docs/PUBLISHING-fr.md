@@ -159,9 +159,10 @@ est la vérification complète à refaire avant chaque version.
    - donjon, raid ou champ de bataille : l'infobulle affiche « En instance » et la
      répartition cite « Donjons », « Raids » ou « JcJ » ; `/tpl stats zones` montre le
      bloc « Instances les plus jouées » avec le type après le nom ;
-   - un monstre tué (aussi dans un donjon) : « Monstres à tuer : ~N (dernier : X XP) »
-     dans l'infobulle et `~temps · N monstres` en haut à droite ; une quête rendue ne
-     change pas « dernier » ;
+   - un monstre tué (aussi dans un donjon) : « Monstres à tuer : ~N (moyenne : M XP,
+     dernier : X XP) » dans l'infobulle (M = moyenne des 10 derniers) et
+     `~temps · N monstres` en haut à droite ; une quête rendue ne change ni « moyenne » ni
+     « dernier » ;
    - personnage reposé : barre bleue avec une partie bleu clair, ligne « Reposé » ; le
      repos consommé, la barre redevient violette ;
    - survol des FPS ou de la latence : le graphique s'affiche, le survol d'un point donne
@@ -170,6 +171,10 @@ est la vérification complète à refaire avant chaque version.
    - Options > Textes : couleur du texte (« Annuler » puis « Couleurs d'origine »),
      contour Aucun / Fin / Épais, opacité du fond de 0 à 100 % ;
    - accents, `·`, `«`, `»` et `~` s'affichent sans carrés ;
+   - Options > Affichage > « Langue (Language) » : choisissez English, cliquez
+     « Recharger l'interface » : tous les textes de TruePlayed (barre, infobulle, fenêtre,
+     options, menu du clic droit, chat) sont en anglais, les noms de zones restent en
+     français ; `/tpl lang auto` puis `/reload` ramène le français ;
    - `/tpl perf` : notez la ligne « Mémoire », rejouez une heure, retapez `/tpl perf` : le
      chiffre doit rester **stable** (il compte le code de l'addon, environ 0,5 Mo, plus les
      données de tous vos personnages : il grandit avec le nombre de personnages, ce n'est

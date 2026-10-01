@@ -80,10 +80,10 @@ niveau, **votre temps en donjon, en raid et en JcJ**.
 - **Plafonds de niveau temporaires** (bêta de WoW Forever) : après 3 monstres de suite
   sans XP, la barre affiche « NIVEAU 20 · PLAFOND », l'infobulle l'explique, et tout
   redevient normal tout seul dès que l'XP revient.
-- **Monstres à tuer** : combien de monstres comme le dernier tué il vous reste pour
-  monter de niveau, en tenant compte de l'XP de repos (un monstre tué reposé rapporte le
-  double) : « ~5 h 05 · 38 monstres » sur la barre, « Monstres à tuer : ~38 (dernier :
-  610 XP) » dans l'infobulle.
+- **Monstres à tuer** : combien de monstres comme vos 10 derniers (leur XP moyenne) il vous
+  reste pour monter de niveau, en tenant compte de l'XP de repos (un monstre tué reposé
+  rapporte le double) : « ~5 h 05 · 38 monstres » sur la barre, « Monstres à tuer : ~38
+  (moyenne : 47 XP, dernier : 30 XP) » dans l'infobulle.
 - **L'XP de repos comme sur la barre du jeu** : la barre prend la couleur du repos quand
   vous êtes reposé, avec une partie plus claire jusqu'où va votre XP de repos ;
   « Reposé : 11 600 XP (50 %) » dans l'infobulle.
@@ -177,9 +177,9 @@ qu'au démarrage, pas au `/reload`.
 /played, utilisée juste après l'installation, jusqu'à ce que TruePlayed ait mesuré une
 dizaine de minutes de votre propre jeu. L'infobulle le précise.
 
-**Comment sont comptés les monstres à tuer ?** D'après l'XP du dernier monstre tué (sans
-son bonus de repos), l'XP qu'il vous reste et votre XP de repos. L'XP de quête et
-d'exploration ne compte pas comme un monstre tué.
+**Comment sont comptés les monstres à tuer ?** D'après l'XP moyenne de vos 10 derniers
+monstres tués (sans leur bonus de repos), l'XP qu'il vous reste et votre XP de repos.
+L'XP de quête et d'exploration ne compte pas comme un monstre tué.
 
 **Pourquoi mon ancien temps en donjon apparaît-il comme du monde ?** Les donjons, raids
 et JcJ sont comptés à part depuis la version 0.1.0-beta.1 ; le temps en instance
@@ -212,7 +212,10 @@ la demande de RXPGuides peut être masqué une fois par RXPGuides.
 
 ## Langues
 
-Anglais et français. Les traductions sont les bienvenues sur GitHub.
+Anglais et français. TruePlayed suit la langue du jeu ; pour en choisir une autre :
+Options > Affichage > Langue (Language) ou `/tpl lang fr|en|auto`, puis rechargez
+l'interface. Les noms fournis par le jeu (zones, monstres) restent dans la langue du jeu.
+Les traductions sont les bienvenues sur GitHub.
 
 ## Problèmes et suggestions
 
