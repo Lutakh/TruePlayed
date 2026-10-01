@@ -5,9 +5,19 @@
 -- Also registers an English copy of the strings as ns.LOCALES.enUS (outside L): Core
 -- applies the language chosen by the "language" setting into L when the settings are
 -- adopted (English first, then the chosen locale over it), then drops ns.LOCALES at
--- PLAYER_LOGIN. A new locale file registers ns.LOCALES.<code> the way frFR.lua does,
--- and its code joins C.LANGUAGES (Core), the LANG_* names and the /tpl lang aliases
--- (Options).
+-- PLAYER_LOGIN.
+-- A new language <code> (a GetLocale() value such as deDE) needs, and only needs:
+--   1. Locales/<code>.lua: a copy of frFR.lua with its CODE local set to "<code>" (the
+--      registration and the file-load check both read it), every value translated;
+--   2. TruePlayed_Camelot.toc: the file listed after Locales/frFR.lua;
+--   3. Core.lua: <code> appended to C.LANGUAGES (the setting's values, the order of the
+--      options dropdown and of the /tpl lang listing);
+--   4. every locale file: a LANG_<CODE> key holding the language's name written in that
+--      language (the same text in every file), and Options.lua LanguageLabel returning
+--      it for <code>;
+--   5. Options.lua LANG_ALIAS: the short /tpl lang alias (optional: without one, the
+--      listing shows the code and the command takes the code);
+--   6. every locale file: the HELP_LANG text, which lists the /tpl lang values.
 -- Keys marked [fmt] are format patterns: %s / %d arguments, literal percent as %%.
 -- Latin-1 characters only (see SPEC-FINAL 2.6).
 local _, ns = ...

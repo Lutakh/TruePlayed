@@ -5,9 +5,12 @@
 -- load (the default "auto"), so ns.L is French before the settings are known; on any
 -- other client ns.L is left untouched here. Self-contained (tests load it alone): it
 -- needs only GetLocale and ns.L, and creates ns.LOCALES when enUS.lua did not. Values
--- are strings only, with the same keys as enUS.lua.
+-- are strings only, with the same keys as enUS.lua. CODE is the only line of code that
+-- names the language: a copy for another language changes it and the values (see the
+-- recipe at the top of enUS.lua).
 -- Latin-1 characters only (see SPEC-FINAL 2.6).
 local _, ns = ...
+local CODE = "frFR"
 local L = {}
 
 -- General and chat
@@ -435,9 +438,9 @@ if type(reg) ~= "table" then
   reg = {}
   ns.LOCALES = reg
 end
-reg.frFR = L
--- The default ("auto") on a French client: French from file load on.
-if GetLocale() == "frFR" then
+reg[CODE] = L
+-- The default ("auto") on a client in this language: this language from file load on.
+if GetLocale() == CODE then
   local dst = ns.L
   if type(dst) == "table" then
     for k, v in pairs(L) do dst[k] = v end

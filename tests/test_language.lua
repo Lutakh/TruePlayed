@@ -766,6 +766,47 @@ T.test("/tpl lang in French", function()
   T.ok(Printed("Language: English. Available: auto, en, fr.", n + 1))
 end)
 
+-- The recipe for a new locale (enUS.lua header): the listing is built from C.LANGUAGES
+-- and the aliases, and a copy of frFR.lua needs one edit (its CODE line) to register
+-- another language without touching French.
+T.test("/tpl lang lists C.LANGUAGES; a copy of frFR.lua with another CODE registers that code", function()
+  local ns = Start()
+  local L = ns.L
+  local codes = ns.C.LANGUAGES
+  codes[#codes + 1] = "deDE"
+  local n = #Stub.printed
+  Stub.RunSlash("lang")
+  T.ok(Printed(format(L.LANG_LIST_FMT, "Auto", "auto, en, fr, deDE"), n + 1),
+    "a code without an alias is listed as its code")
+  codes[#codes] = nil
+
+  local f = assert(io.open(Stub.ROOT .. "Locales/frFR.lua", "rb"))
+  local src = f:read("*a")
+  f:close()
+  local copy, count = src:gsub('\nlocal CODE = "frFR"\n', '\nlocal CODE = "deDE"\n')
+  T.eq(count, 1, "one CODE line")
+  local function Run(client)
+    local done = false
+    local chunk = assert(load(function()
+      if done then return nil end
+      done = true
+      return copy
+    end, "=Locales/deDE.lua"))
+    local frTable = {}
+    local cns = { L = {}, LOCALES = { frFR = frTable } }
+    Stub.locale = client
+    chunk("TruePlayed", cns)
+    return cns, frTable
+  end
+  local fr = FR()
+  local cns, frTable = Run("frFR")
+  T.ok(cns.LOCALES.frFR == frTable, "the French table stays")
+  T.eq(cns.LOCALES.deDE, fr, "the copy registers under its CODE")
+  T.eq(cns.L, {}, "a French client's L is not filled by the copy")
+  cns = Run("deDE")
+  T.eq(cns.L, fr, "a client in the copy's language gets it at file load")
+end)
+
 ---------------------------------------------------------------------------
 -- Memory: the locale tables are dropped after login
 ---------------------------------------------------------------------------

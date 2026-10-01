@@ -155,8 +155,10 @@ do
   end
 end
 
--- /tpl lang arguments (lowercased by Util.Words) -> "language" setting values.
-local LANG_ARGS = { auto = "auto", en = "enUS", enus = "enUS", fr = "frFR", frfr = "frFR" }
+-- Short /tpl lang alias of a C.LANGUAGES value, shown by the listing; the full code is
+-- accepted too, in any case (Util.Words lowercases). A value without an alias is listed
+-- and typed as its code.
+local LANG_ALIAS = { auto = "auto", enUS = "en", frFR = "fr" }
 
 ---------------------------------------------------------------------------
 -- State
@@ -314,19 +316,26 @@ local function LanguageLabel(value)
 end
 
 -- /tpl lang [auto | en | fr]: without a value, prints the current setting and the
--- accepted values; with a valid one, sets it (the message says a /reload applies it,
--- even when the value did not change: the language may still be pending). false = not
--- a language (the caller prints Unknown).
+-- accepted values (built from C.LANGUAGES and LANG_ALIAS); with a valid one, sets it
+-- (the message says a /reload applies it, even when the value did not change: the
+-- language may still be pending). false = not a language (the caller prints Unknown).
 local function LanguageCommand(arg)
+  local codes = C.LANGUAGES
   if arg == nil then
+    local names = {}
+    for i = 1, #codes do names[i] = LANG_ALIAS[codes[i]] or codes[i] end
     local cur = GetSetting("language")
-    Util.Print(L.LANG_LIST_FMT, LanguageLabel(cur) or tostring(cur), "auto, en, fr")
+    Util.Print(L.LANG_LIST_FMT, LanguageLabel(cur) or tostring(cur), table_concat(names, ", "))
     return true
   end
-  local value = LANG_ARGS[arg]
+  local value
+  for i = 1, #codes do
+    local v = codes[i]
+    if arg == LANG_ALIAS[v] or arg == v:lower() then value = v end
+  end
   if not value then return false end
   SetSetting("language", value)
-  Util.Print(L.LANG_SET_FMT, LanguageLabel(value))
+  Util.Print(L.LANG_SET_FMT, LanguageLabel(value) or value)
   return true
 end
 
