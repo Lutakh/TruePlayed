@@ -132,6 +132,7 @@ zone** and, at any level, **your time in dungeons, raids and PvP**.
 | `/tpl show` / `hide` | Show or hide the bar |
 | `/tpl style bar` / `box` | Full bar or compact box |
 | `/tpl theme [name]` | Show or change the theme (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
+| `/tpl lang [en\|fr\|auto]` | Show or choose the language of TruePlayed (applies after `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (no argument: toggle) |
 | `/tpl citytoggle` | Count the current zone as a city (or not) |
 | `/tpl played` | Summary in the chat |

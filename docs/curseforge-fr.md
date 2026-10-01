@@ -147,6 +147,7 @@ niveau, **votre temps en donjon, en raid et en JcJ**.
 | `/tpl show` / `hide` | Afficher ou masquer la barre |
 | `/tpl style bar` / `box` | Barre complète ou encadré compact |
 | `/tpl theme [nom]` | Afficher ou changer le thème (`futuriste`, `actuel`, `heroic`, `pixel`, `class`, `warrior`, `paladin`, `hunter`, `rogue`, `priest`, `shaman`, `mage`, `warlock`, `druid`) |
+| `/tpl lang [fr\|en\|auto]` | Afficher ou choisir la langue de TruePlayed (après `/reload`) |
 | `/tpl afk` / `inn` / `city` `[on\|off]` | Exclusions (sans argument : bascule) |
 | `/tpl citytoggle` | Compter la zone actuelle comme une ville (ou non) |
 | `/tpl played` | Récapitulatif dans le chat |
