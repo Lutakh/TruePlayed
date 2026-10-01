@@ -70,8 +70,8 @@ local MAX_KILLS = 1000000          -- sanity bound on the mobs-to-go count
 
 ---------------------------------------------------------------------------
 -- Context (reused table; fields listed in 3.11, plus hasChar, valid, zoneKey, stateKey,
--- kills / killXP (mobs to the next level and the base XP of the last kill, nil when
--- unknown), instSession / instTotal (instance seconds under the mask, nil without a
+-- kills / killXP (mobs to the next level and the average base XP of the last 10 kills,
+-- nil when unknown), instSession / instTotal (instance seconds under the mask, nil without a
 -- character), stalled / stallSecs (rate status "stalled" and the counted seconds since
 -- the last XP gain) and isServerCap / capLevel / capMisses (max level because of a
 -- detected server level cap, Tracker.GetCapInfo))
@@ -329,7 +329,8 @@ function Tokens.UpdateContext(now)
   c.instSession = Stats.InstanceTime(session, mask)
   c.instTotal = Stats.InstanceTime(char.life, mask)
 
-  -- mobs to the next level from the last kill (rest-aware; nil without a kill or at max)
+  -- mobs to the next level from the average of the last 10 kills (rest-aware; nil without
+  -- a kill or at max)
   local kills, killXP
   if c.valid and not isMax then
     kills, killXP = Stats.KillsToLevel(char, c.xp, c.max, c.rested)
@@ -567,7 +568,7 @@ local function KillsPart(n)
   return killsText
 end
 
--- Mobs to the next level, an estimate from the last kill: "~38 mobs".
+-- Mobs to the next level, an estimate from the average of the last 10 kills: "~38 mobs".
 R.kills = function()
   if ctx.isMax then return MaxText(), true end
   local n = ctx.kills
