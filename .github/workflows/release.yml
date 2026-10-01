@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag such as v0.1.0-beta.1 builds the zip and uploads it to CurseForge,
+# Pushing a tag such as v1.0.0 builds the zip and uploads it to CurseForge,
 # Wago (when a key is set) and GitHub Releases. Tag types (BigWigs packager):
 #   -beta.N -> Beta, a tag containing "alpha" -> Alpha, a plain version -> Release.
 #   WARNING: -rc.N is published as a Release.

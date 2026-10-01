@@ -183,7 +183,7 @@ monstres tués (sans leur bonus de repos), l'XP qu'il vous reste et votre XP de 
 L'XP de quête et d'exploration ne compte pas comme un monstre tué.
 
 **Pourquoi mon ancien temps en donjon apparaît-il comme du monde ?** Les donjons, raids
-et JcJ sont comptés à part depuis la version 0.1.0-beta.1 ; le temps en instance
+et JcJ sont comptés à part depuis la version 1.0.0 ; le temps en instance
 d'avant ne peut pas être distingué.
 
 **Pourquoi quelques minutes AFK comptent-elles comme actives ?** Le jeu ne vous passe AFK
