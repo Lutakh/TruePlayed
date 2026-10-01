@@ -123,7 +123,8 @@ Targets and approach:
     warlock 35.7 KB (5.4: +8 to 12 %; 5.1: futuriste 51.6 KB). With named-field records the
     floor is about 28 KB for warlock; packed positional records would save about 3 KB on 5.5
     and nothing on 5.4. `tests/test_theme_memory.lua` holds per-theme budgets of the measured
-    sizes; **decision pending**: accept these sizes as the target, or ask for packed records.
+    sizes. **Decision (author, 2026-10-01): the measured sizes are accepted as the target**;
+    the per-theme budgets (measured + about 10 %) guard them.
   - After login (offline, Lua 5.5): futuriste 1410 -> 1201 KB, actuel 1222 -> 1073 KB.
 - **B. Language option**: done (setting `language`, applied at ADDON_LOADED and again at
   PLAYER_LOGIN, locale tables dropped after login, options dropdown + Reload UI button,
@@ -132,3 +133,14 @@ Targets and approach:
 - **C. Kill average**: done (`char.killRing`, 10 entries, seeded from `lastKill`). The exact
   French tooltip string is wider than the old one: `tooltip.width[2]` of 10 themes grew by 4 to
   36 px so that the widest row still fits; normal tooltips do not change.
+
+## Backlog (author, 2026-10-01)
+Goal: as much choice and customisation as possible for players who do not want the XP bar.
+1. **Translations** into every locale the game supports (short words: no cut text). Next lot.
+2. **Remove the compact box style** of the bar (nobody would use it: players pick the XP bar,
+   the minimap button or the mini display). Next lot, with 1.
+3. **Minimap button**: left click shows the information (the bar's tooltip), right click
+   opens a menu (options, statistics, ...).
+4. **Mini display**: a small movable frame for a screen corner, showing 2 or 3 compact infos
+   chosen by the player; on hover, the same tooltip as the bar; it follows the theme chosen
+   for the bar.
