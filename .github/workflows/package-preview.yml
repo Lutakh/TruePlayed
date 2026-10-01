@@ -6,8 +6,6 @@ name: Package preview
 # (Actions > Package preview > Run workflow, on any branch).
 on:
   workflow_dispatch:
-  push:                                  # TEMPORARY: validation run, removed in the next commit
-    branches: ['claude/loving-curie-g0yajy']
 
 permissions:
   contents: read
