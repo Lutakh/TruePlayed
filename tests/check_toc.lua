@@ -3,7 +3,7 @@
 -- Runs on Lua 5.1 and 5.5. Exit code 0 = OK, 1 = at least one FAIL.
 --
 -- Checks:
---   * TruePlayed_Camelot.toc exists; no base TruePlayed.toc;
+--   * TruePlayed_Camelot.toc and the identical generic TruePlayed.toc exist;
 --   * required lines (Interface in the Forever range, SavedVariables, LoadSavedVariablesFirst,
 --     OptionalDeps: WTFix, the three AddonCompartment functions, Title, Version);
 --   * FAIL on "## X-WTFix-Managed" (injected by the WTFix launcher into symlinked addons);
@@ -180,8 +180,8 @@ if not listed then
   warn("could not list the repository files (no git, no find): partial checks only")
 end
 
-if fileSet[ADDON .. ".toc"] then
-  fail("%s.toc must not exist: v0.1 ships only %s (SPEC 1.1)", ADDON, MAIN_TOC)
+if readFile(ROOT .. ADDON .. ".toc") ~= readFile(ROOT .. MAIN_TOC) then
+  fail("%s.toc must exist and match %s for addon manager discovery", ADDON, MAIN_TOC)
 end
 
 local mainText = readFile(ROOT .. MAIN_TOC)
@@ -211,7 +211,7 @@ for _, name in ipairs(tocs) do
         end
       end
     end
-    if name ~= MAIN_TOC and not string.find(name, "^" .. ADDON .. "_%a+%.toc$") then
+    if name ~= MAIN_TOC and name ~= ADDON .. ".toc" and not string.find(name, "^" .. ADDON .. "_%a+%.toc$") then
       warn("%s: unexpected TOC file name", name)
     end
   end

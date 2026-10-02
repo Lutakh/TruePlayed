@@ -7,7 +7,7 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
-## [1.0.1] - YYYY-MM-DD
+## [1.0.1] - 2026-10-02
 
 **Quit the game and launch it again after updating** (a `/reload` is not enough): this
 version adds files (the new languages), and the game loads new files only at start.
@@ -34,6 +34,9 @@ version adds files (the new languages), and the game loads new files only at sta
   your other settings unchanged.
 
 ### Fixed
+
+- Added a generic TruePlayed.toc alongside the Forever TOC to improve addon manager
+  discovery. Both contain the same metadata and load order (interface 16001).
 
 - The confirmation window of "Erase this character's data" now shows its buttons in the
   language of TruePlayed (they stayed in the game's language).
