@@ -408,6 +408,32 @@ fichier apparaît dans l'onglet « Files » du projet, d'abord « Under review �
 
 ## 13. En cas de problème
 
+### Disponibilité dans le client CurseForge — retour confirmé le 2026-10-02
+
+La 1.0.0 était approuvée, de type Release et marquée Forever 1.60.1, mais
+n'apparaissait pas dans la recherche du client CurseForge. Elle ne contenait que
+`TruePlayed_Camelot.toc`. La 1.0.1 ajoute `TruePlayed.toc`, une copie identique du TOC
+Forever ; après publication, l'auteur a confirmé que l'addon était visible dans le
+client. Conserver cette structure pour les prochaines versions, même si le suffixe
+`_Camelot` est valide pour le jeu. Ce retour confirme le résultat pour TruePlayed,
+sans prouver à lui seul le fonctionnement interne de l'indexation CurseForge.
+
+- Le ZIP doit contenir un seul dossier racine `TruePlayed/`, avec directement
+  `TruePlayed.toc` et `TruePlayed_Camelot.toc`.
+- Modifier **les deux TOC ensemble** : ils doivent rester strictement identiques
+  (métadonnées, interface, identifiant CurseForge, fichiers et ordre de chargement).
+  `lua tests/check_toc.lua` vérifie cette égalité.
+- Garder `## X-Curse-Project-ID: 1721055` et publier un tag sans suffixe beta/alpha
+  pour obtenir une Release, avec la version de jeu Forever appropriée.
+- Vérifier le paquet généré, puis le succès de l'envoi à CurseForge dans le journal
+  du workflow Release ; attendre l'approbation du fichier avant de vérifier sa
+  présence dans le client, sur l'instance **Forever**.
+- Au moment du correctif, le client installé était en `1.60.1.70170` et utilisait
+  toujours l'interface `16001`. Un nouveau numéro de build ne signifie pas forcément
+  une nouvelle interface : vérifier avec `/dump select(4, GetBuildInfo())`, puis
+  mettre à jour les deux TOC et `EXPECTED_INTERFACE` seulement si nécessaire.
+
+
 - **L'Action est rouge** : cliquez sur l'étape en échec pour lire le message.
   - « Unit tests », « TOC check », « Encoding check », « Lua 5.1 portability lint » :
     relancez la même commande en local (étape 3) pour voir le détail.
