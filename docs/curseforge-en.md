@@ -33,6 +33,12 @@ show only once those files are on `main` (`media-src/curseforge/page/README.md` 
 to rebuild them). Links are written `[text](url)`: a bare address followed by text on the
 next line is read as one broken link by CurseForge.
 
+**Which file to paste.** CurseForge's description editor is visual: Markdown pasted into it
+is not converted (that is what broke the old issues link and layout). Paste instead
+`docs/curseforge-en.html` (the same description in HTML, made by
+`python3 media-src/curseforge/description-html.py docs/curseforge-en.md > docs/curseforge-en.html`)
+into the editor's source-code view (the `<>` button), replacing everything there.
+
 ---
 
 ![TruePlayed: your real /played](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/hero.png)
@@ -112,3 +118,5 @@ after installing or updating.
 [Report a bug](https://github.com/Lutakh/TruePlayed/issues/new) · [Suggest an idea](https://github.com/Lutakh/TruePlayed/issues/new) · [Source code](https://github.com/Lutakh/TruePlayed)
 
 Translations were made without native speakers: corrections are very welcome.
+
+TruePlayed was developed with the help of Claude (Anthropic), who also drew the logo.

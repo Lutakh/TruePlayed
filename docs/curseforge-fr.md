@@ -112,3 +112,5 @@ après une installation ou une mise à jour.
 [Code source](https://github.com/Lutakh/TruePlayed)
 
 Les traductions ont été faites sans locuteurs natifs : vos corrections sont les bienvenues.
+
+TruePlayed a été développé avec l'aide de Claude (Anthropic), qui a aussi dessiné le logo.

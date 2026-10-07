@@ -257,8 +257,10 @@ tête du résumé, dans la description, les mots-clés et le badge du logo.
 3. Remplissez les champs avec le contenu de `docs/curseforge-en.md` :
    - **Name** : `TruePlayed` ;
    - **Summary** : la phrase « Summary » du fichier, qui commence par « WoW Forever » ;
-   - **Description** : tout ce qui suit le premier trait `---` du fichier (éditeur
-     Markdown), tel quel. Ses images (`media-src/curseforge/page/*.png`) sont lues sur la
+   - **Description** : le contenu de `docs/curseforge-en.html` (la même description en
+     HTML), collé dans la vue « code source » de l'éditeur (bouton `<>`), à la place de
+     tout ce qui s'y trouve. Ne collez pas le Markdown dans l'éditeur visuel : il n'est
+     pas converti (c'est ce qui cassait le lien des signalements et la mise en page). Ses images (`media-src/curseforge/page/*.png`) sont lues sur la
      branche `main` de GitHub : elles n'apparaissent qu'une fois ces fichiers sur `main`.
      Les captures du jeu, elles, vont dans l'onglet **Images** du projet ;
    - **Class** : Addons ; **catégorie principale** : Quests & Leveling ; **catégorie
