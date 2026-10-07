@@ -20,7 +20,7 @@
 --     os.exit(true|false), metamethods 5.1 ignores (__len, __pairs, __gc...),
 --     math.random (tests must be deterministic);
 --   * assignments to a for-loop control variable (read-only in Lua 5.5);
--- and, in addon files only (everything outside tests/):
+-- and, in addon files only (everything outside tests/ and media-src/, the offline tools):
 --   * xpcall with extra arguments (5.1 does not pass them);
 --   * a function declared with `...` that never uses `...` (5.1 builds an `arg` table);
 --   * globals: reads outside the SPEC 2.3 allowlist, writes outside the SPEC 2.2 whitelist
@@ -1171,7 +1171,7 @@ for _, rel in ipairs(files) do
       end
       local ignoreLines = {}
       local T = lex(src, report, ignoreLines)
-      analyze(T, not find(rel, "^tests/"), report, tickers, rel)
+      analyze(T, not find(rel, "^tests/") and not find(rel, "^media%-src/"), report, tickers, rel)
       local findings = {}
       for k = 1, #raw do
         if not ignoreLines[raw[k].line] then

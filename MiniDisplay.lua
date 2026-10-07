@@ -38,6 +38,7 @@ Mini.frame = nil
 local N = 3                       -- infos at most
 local BASE_SIZE = 11              -- text size the theme's size deltas apply to (the bar's default)
 local PAD_X, PAD_Y = 8, 5
+local PANEL_BLEED = 2   -- px a theme panel may reach past the frame (PlacePart)
 local GAP = 5                     -- on each side of a separator (horizontal layout)
 local ROW_GAP = 2                 -- between two lines (vertical layout)
 local LINE_H, LINE_GAP = 3, 3     -- the XP line, and its gap below the texts
@@ -249,7 +250,14 @@ local function PlacePart(R, fw, fh)
   if anchor == "FILL" then
     local ins = P.inset
     local l, r, t, b = 0, 0, 0, 0
-    if ins then l, r, t, b = ins[1] or 0, ins[2] or 0, ins[3] or 0, ins[4] or 0 end
+    -- The bar's panel insets fit the bar, not the mini display: inside the bar frame
+    -- (heroic: 9 px from its top and bottom, where the bar keeps its texts) or far
+    -- outside it (druid, warrior: around the end caps). The mini display's texts fill its
+    -- frame, so its panel covers the frame, plus at most a 2 px border bleed.
+    if ins then
+      l, r = math_max(math_min(ins[1] or 0, 0), -PANEL_BLEED), math_max(math_min(ins[2] or 0, 0), -PANEL_BLEED)
+      t, b = math_max(math_min(ins[3] or 0, 0), -PANEL_BLEED), math_max(math_min(ins[4] or 0, 0), -PANEL_BLEED)
+    end
     x, y, w, h = l, b, fw - l - r, fh - t - b
   else
     w, h = P.w or 0, P.h or 0

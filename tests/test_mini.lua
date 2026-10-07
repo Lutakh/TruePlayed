@@ -355,6 +355,21 @@ T.test("theme: the bar's fonts, colours, shadow and panel; a theme switch restyl
     else
       T.eq(rawget(f, "_backdrop"), nil, key .. ": no backdrop under the panel")
     end
+    -- the panel covers the frame (texts inside it), reaching past it by 2 px at most:
+    -- the bar's own insets (heroic: 9 px inside, druid: far outside) do not apply
+    local parts = th.bar.panel and th.bar.panel.parts or {}
+    local fw, fh = f:GetWidth(), f:GetHeight()
+    local j = 0
+    for i, P in ipairs(parts) do
+      j = j + 1
+      if P.kind ~= "nine" and (P.anchor or "FILL") == "FILL" then
+        local w, h = tp.panel[j]:GetSize()
+        T.ok(w >= fw and w <= fw + 4 and h >= fh and h <= fh + 4,
+          format("%s: panel part %d is %.1f x %.1f over a %.1f x %.1f frame", key, i, w, h, fw, fh))
+      elseif P.kind == "nine" then
+        j = j + 8
+      end
+    end
     local bad = {}
     CheckLayout(f, key, bad)
     T.eq(bad, {}, key .. ": layout")

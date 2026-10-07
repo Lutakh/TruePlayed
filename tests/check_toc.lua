@@ -315,9 +315,11 @@ if #main.files == 0 then
   fail("%s: lists no file", MAIN_TOC)
 end
 
--- 5. Every addon source file outside tests/ is listed.
+-- 5. Every addon source file outside tests/ and media-src/ (offline tools, not packaged:
+-- .pkgmeta ignores media-src) is listed.
 for _, p in ipairs(files) do
   if (string.find(p, "%.lua$") or string.find(p, "%.xml$")) and not string.find(p, "^tests/")
+    and not string.find(p, "^media%-src/")
     and exists(p) and not listedSet[p] then
     fail("'%s' is an addon file but %s does not list it", p, MAIN_TOC)
   end
