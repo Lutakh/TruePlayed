@@ -257,10 +257,10 @@ tête du résumé, dans la description, les mots-clés et le badge du logo.
 3. Remplissez les champs avec le contenu de `docs/curseforge-en.md` :
    - **Name** : `TruePlayed` ;
    - **Summary** : la phrase « Summary » du fichier, qui commence par « WoW Forever » ;
-   - **Description** : tout ce qui suit le trait `---` du fichier (éditeur Markdown).
-     **Supprimez la section « Screenshots »** (elle est marquée « REMOVE ») : les images
-     vont dans l'onglet **Images** du projet. Vous pouvez ajouter en dessous la version
-     française de `docs/curseforge-fr.md` (même remarque pour « Captures d'écran ») ;
+   - **Description** : tout ce qui suit le premier trait `---` du fichier (éditeur
+     Markdown), tel quel. Ses images (`media-src/curseforge/page/*.png`) sont lues sur la
+     branche `main` de GitHub : elles n'apparaissent qu'une fois ces fichiers sur `main`.
+     Les captures du jeu, elles, vont dans l'onglet **Images** du projet ;
    - **Class** : Addons ; **catégorie principale** : Quests & Leveling ; **catégorie
      supplémentaire** : Miscellaneous ;
    - **License** : MIT ;
