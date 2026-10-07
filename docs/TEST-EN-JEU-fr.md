@@ -3,6 +3,37 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## Retours du 7 octobre : aide des colonnes, instances, « Other »
+
+Cette partie **ajoute un fichier** (l'icône `Media/Themes/common/help.tga`) : quittez et
+relancez le jeu.
+
+### L'aide des colonnes
+
+1. `/tpl stats` : chaque en-tête de colonne a un petit « ? » cerclé juste après son nom,
+   dans les onglets Niveaux, Zones, Sessions et dans la vue du compte.
+2. Survolez un en-tête : une bulle donne le nom de la colonne puis son explication (par
+   exemple « Server » : le /played du jeu pour ce niveau, qui compte tout). Le « ? » survolé
+   prend la couleur d'accent du thème.
+3. Changez de thème : les « ? » suivent les couleurs du thème. Vérifiez que le texte des
+   bulles revient à la ligne proprement et qu'aucun « ? » ne touche la colonne suivante, en
+   anglais et en français.
+
+### Instances et « Other »
+
+1. **Onglet Zones** : la ligne « Other » (« Autres ») des continents n'apparaît plus, et
+   « Instances » devient « Donjons » (« Dungeons » en anglais), le nom du breakdown. Une
+   ligne « Raids » ou « JcJ » (« PvP ») apparaît dès que vous avez du temps en raid ou en
+   champ de bataille. Même chose dans l'infobulle avec Maj.
+2. « Instances les plus jouées » : « Undercity (dungeon) » a disparu ; « Ruines de
+   Lordaeron » et « Gouffre de Ragefeu » restent, **avec leur nom anglais** si le jeu est en
+   anglais (Ruins of Lordaeron, Ragefire Chasm).
+3. **Onglet Niveaux** : les niveaux 25 et 26 n'ont plus de « < 1m » dans « Inst. » (ces
+   secondes, estimées après une déconnexion, sont passées dans la zone principale du
+   niveau). Les niveaux 18 et 23 gardent leur temps de donjon.
+4. Entrez dans un donjon depuis une capitale, puis ressortez : la capitale ne doit jamais
+   apparaître dans « Instances les plus jouées ».
+
 ## Lot 8 (partie B) : infobulle et fenêtre de statistiques revues
 
 Cette partie **n'ajoute aucun fichier** : recopiez le dossier ; un `/reload` suffit si la

@@ -172,6 +172,35 @@ T.test("city overrides: db.cities and /tpl citytoggle", function()
   T.eq(none, nil); T.eq(err, "nozone")
 end)
 
+T.test("zoning into a dungeon: the tick on the open-world map goes to the instance, a battleground keeps its map", function()
+  local ns = Login()
+  Stub.SetMap(1458)                             -- Undercity
+  Stub.Advance(5)
+  -- the game reports the instance one tick before the map: still Undercity's map
+  Stub.SetInstance(true, "party", 2999, 1458)
+  local k, z = State(ns)
+  T.eq(k, "d"); T.eq(z, "i2999", "the instance key, not Undercity")
+  Stub.Advance(1)
+  Stub.SetInstance(true, "party", 2999, nil)    -- inside: no map
+  Stub.Advance(10)
+  local zones = ns.char.zones
+  T.eq(zones[1458].s.d, nil, "no dungeon time in Undercity")
+  T.eq(zones.i2999.s.d, 11)
+  -- leaving: the map comes back while the instance is still reported
+  Stub.SetInstance(true, "party", 2999, 1458)
+  k, z = State(ns)
+  T.eq(z, "i2999")
+  Stub.SetInstance(true, "raid", 409, 1413)     -- a raid on an open-world map: the same
+  T.eq(select(2, State(ns)), "i409")
+  -- a battleground has a Zone-typed map of its own: kept
+  Stub.SetInstance(true, "pvp", 30, 1413)
+  k, z = State(ns)
+  T.eq(k, "p"); T.eq(z, 1413)
+  -- a dungeon map is its own zone key, as before
+  Stub.SetInstance(true, "party", 389, 90001)
+  T.eq(select(2, State(ns)), 90001)
+end)
+
 T.test("/tpl citytoggle inside an instance changes nothing (instances are never cities)", function()
   local ns = Login()
   Stub.SetInstance(true, "party", 389, 90001)   -- Ragefire Chasm, under Orgrimmar

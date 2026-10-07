@@ -1545,11 +1545,11 @@ for _, modern in ipairs({ true, false }) do
   end)
 end
 
-T.test("window: continents for the character and the account, instances and other apart", function()
+T.test("window: continents for the character and the account, instances apart, no Other row", function()
   local rec = RecordWithCity()
   rec.zones[1453] = { s = { c = 500, C = 50 }, xp = 0, name = "Stormwind City" }
   rec.zones.i389 = { s = { w = 700, W = 30 }, xp = 900, name = "Ragefire Chasm" }
-  rec.zones.o = { s = { w = 90 }, xp = 0 }   -- listed: at least C.CONT_MIN_SECS (lot 8)
+  rec.zones.o = { s = { w = 90 }, xp = 0 }   -- no continent: never listed, even past C.CONT_MIN_SECS
   local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = rec } } })
   local L, Fmt = ns.L, ns.Fmt
   Stub.Advance(15)
@@ -1557,19 +1557,20 @@ T.test("window: continents for the character and the account, instances and othe
   local tp = StatsTP()
   T.eq(tp.cells[tp.rows[1]][1]:GetText(), L.SECTION_CONTINENTS)
   local names = {}
-  for i = 2, 5 do names[#names + 1] = tp.cells[tp.rows[i]][1]:GetText() end
-  T.eq(names, { "Kalimdor", L.CONT_INSTANCES, "Eastern Kingdoms", L.CONT_OTHER }, "sorted by time")
+  for i = 2, 4 do names[#names + 1] = tp.cells[tp.rows[i]][1]:GetText() end
+  T.eq(names, { "Kalimdor", L.BD_DUNGEON, "Eastern Kingdoms" }, "sorted by time")
+  T.eq(RowWith(tp, "Other"), nil, "no Other row")
   T.eq(Cells(tp, RowWith(tp, "Kalimdor")),
     { "Kalimdor", Fmt.Duration(9000700), Fmt.Duration(9000700), Fmt.Duration(100), "" })
-  T.eq(Cells(tp, RowWith(tp, L.CONT_INSTANCES)),
-    { L.CONT_INSTANCES, Fmt.Duration(730), Fmt.Duration(730), Fmt.Duration(30), "" })
-  T.eq(tp.cells[tp.rows[6]][1]:GetText(), L.CITIES_HEADER, "the capitals block follows")
+  T.eq(Cells(tp, RowWith(tp, L.BD_DUNGEON)),
+    { L.BD_DUNGEON, Fmt.Duration(730), Fmt.Duration(730), Fmt.Duration(30), "" })
+  T.eq(tp.cells[tp.rows[5]][1]:GetText(), L.CITIES_HEADER, "the capitals block follows")
   -- city excluded: Eastern Kingdoms (city time only) keeps its row, dashed, last
   ns.Core.SetSetting("exclude.city", true)
   T.eq(tp.filter:GetText(), format(L.WIN_FILTER_FMT, ns.Stats.MaskLabel(4)), "header names the exclusion")
   names = {}
-  for i = 2, 5 do names[#names + 1] = tp.cells[tp.rows[i]][1]:GetText() end
-  T.eq(names, { "Kalimdor", L.CONT_INSTANCES, L.CONT_OTHER, "Eastern Kingdoms" })
+  for i = 2, 4 do names[#names + 1] = tp.cells[tp.rows[i]][1]:GetText() end
+  T.eq(names, { "Kalimdor", L.BD_DUNGEON, "Eastern Kingdoms" })
   T.eq(Cells(tp, RowWith(tp, "Eastern Kingdoms")),
     { "Eastern Kingdoms", "-", Fmt.Duration(550), Fmt.Duration(50), "" })
   -- account view: every character's zones merged (the current one plays in Durotar)

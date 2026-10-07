@@ -112,6 +112,7 @@ Themes.DISPLAY_KEYS = { "LEVEL_SHORT_FMT", "LEVEL_TITLE_FMT", "LEVEL_PCT_FMT", "
 -- Media shared by every theme (6.1): "common/<name>" = Media/Themes/common/<name>.tga.
 local COMMON_MEDIA = {
   glow = { 64, 32, grey = true },   -- soft horizontal glow, 3-sliced with 16-texel caps
+  help = { 32, 32, grey = true },   -- circled "?" (Window.lua column header help icons)
 }
 Themes.COMMON_MEDIA = COMMON_MEDIA
 

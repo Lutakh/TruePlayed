@@ -8,7 +8,7 @@ Each version section becomes the release notes shown on CurseForge.
 ## [Unreleased]
 
 **Quit the game and launch it again after updating** (a `/reload` is not enough): this
-version adds three files, and the game loads new files only at start.
+version adds four files, and the game loads new files only at start.
 
 ### Added
 
@@ -50,6 +50,10 @@ version adds three files, and the game loads new files only at start.
   background opacity, scale, lock, fade and hide in combat. Hover it for the tooltip,
   click it for the statistics, right-click it for the menu. `/tpl mini` or Options turn it
   on, with or without the XP bar.
+- **Help on every column** of the statistics window: a small circled "?" next to each
+  column header; hover the header to read what the column shows and how it is counted
+  (for instance "Server" is the game's own /played for that level, which counts
+  everything, while "Time" leaves out what you exclude).
 - Options: a "Minimap button and mini display" section with all their settings.
 - Right-click menu: a "Show" submenu turns the XP bar, the mini display and the minimap
   button on or off, from any of them; "Hide" hides the one you right-clicked.
@@ -73,6 +77,11 @@ version adds three files, and the game loads new files only at start.
   under the played time. The short tooltip keeps the average of your last 5 levels.
 - Continents with less than a minute of time (a few seconds on a loading screen) are no
   longer listed in the tooltip and the Zones tab; their time is kept.
+- Continents (tooltip and Zones tab): the "Instances" row is split into "Dungeons",
+  "Raids" and "PvP", the names of the breakdown; each instance counts under its main kind.
+- The "Other" continent row is gone (tooltip and Zones tab): it held the time the game
+  did not place on a continent (mostly flights where it only gives the continent). That
+  time still counts in every total and in its zone rows.
 - The breakdown in the tooltip shows at most 4 parts per line once professions or dead
   time appear, so that the longer names fit.
 
@@ -87,6 +96,17 @@ version adds three files, and the game loads new files only at start.
   meanwhile, the font is tried again a few seconds after entering the world, and the
   theme fonts are applied again when it loads. Only a font that still fails is reported,
   once, in one chat line naming every file that failed.
+- Zones tab, "Most played instances": a capital or a zone could be listed as a dungeon
+  (e.g. "Undercity (dungeon)", with the XP of the whole city) because the game reports the
+  instance a second before the map when you zone in. That second now goes to the
+  instance, and a zone with only a few seconds of instance time is no longer listed.
+- Instance names are shown in the language of your game client: they kept the language
+  the game had when you played them.
+- Time rebuilt after a crash or a disconnection no longer puts a few seconds in your most
+  played dungeon at levels where you never entered it ("< 1m" in the Levels tab's
+  "Inst." column): instance time is rebuilt only when you were last seen inside that
+  instance. The seconds already recorded this way are moved to the level's main zone at
+  the next login (only at levels where your sessions show no instance time).
 
 ## [1.0.1] - 2026-10-02
 

@@ -889,7 +889,11 @@ function API.GetInstanceInfo()
   local p = Stub.player
   return p.instanceName or "", p.instanceType or "none", 0, "", 5, 0, false, p.instanceID or 0
 end
-function API.GetRealZoneText() return Stub.player.zoneText end
+function API.GetRealZoneText(id)
+  local p = Stub.player
+  if id ~= nil and not p.zoneTextIgnoresArg then return p.instanceNames[id] or "" end
+  return p.zoneText
+end
 
 local function GetBestMapForUnit(unit)
   Count("GetBestMapForUnit")
@@ -1092,6 +1096,9 @@ local function NewPlayer()
     rest = 0, afk = false, resting = false, taxi = false, dead = false, mapID = 1411,
     inInstance = false, instanceType = "none", instanceID = 0, instanceName = "",
     zoneText = "Durotar", xpDisabled = false, maxLevel = 60, expMaxLevel = 60,
+    -- GetRealZoneText(instanceID): the instance names of the client's language; an old
+    -- client may ignore the argument (the current zone text)
+    instanceNames = {}, zoneTextIgnoresArg = false,
   }
 end
 

@@ -359,6 +359,172 @@ T.test("zones: the capitals Time column is the capital's time under the exclusio
 end)
 
 ---------------------------------------------------------------------------
+-- Column help: a "?" icon after every header, its tooltip on hover
+---------------------------------------------------------------------------
+
+local function VColor(t) local r, g, b = t:GetVertexColor() return { r, g, b } end
+local function C3(c) return { c[1], c[2], c[3] } end
+
+-- Every visible header of the shown layout: the cell covers the column and takes the
+-- mouse, the text leaves room for the icon, the icon follows the text inside the column
+-- (stub GetStringWidth: 6 px a character), tinted ui.dim; hovering shows the column name
+-- and its own tip, tints the icon ui.accent, leaving hides the tooltip. Returns the number
+-- of headers checked.
+local function CheckHelp(ns, tp, what)
+  local L = ns.L
+  local ui = ns.Themes.Active().ui
+  local lay, room = tp.layout, tp.iconRoom
+  for c = 1, lay.n do
+    local col = lay.cols[c]
+    local fs, cell, icon = tp.header[c], tp.headerCells[c], tp.headerIcons[c]
+    local where = what .. " " .. col.id
+    T.ok(cell:IsShown() and cell:IsMouseEnabled(), where .. ": mouse cell shown")
+    local p = rawget(cell, "_points")[1]
+    T.eq({ p.point, p.relPoint, p.x }, { "BOTTOMLEFT", "TOPLEFT", col.x }, where .. ": cell at the column")
+    T.eq(cell:GetWidth(), col.cw, where .. ": cell as wide as the column")
+    T.eq(fs:GetWidth(), col.cw - room, where .. ": the text leaves room for the icon")
+    T.eq(fs:GetText(), L[col.key])
+    T.match(icon:GetTexture(), "\\Media\\Themes\\common\\help%.tga$", where .. ": the addon's icon")
+    T.ok(icon:IsVisible(), where .. ": icon visible")
+    local ip = rawget(icon, "_points")[1]
+    T.ok(ip.rel == fs and ip.point == "LEFT" and ip.relPoint == "LEFT", where .. ": icon after the text")
+    T.eq(ip.x, math.min(6 * #L[col.key], col.cw - room) + 2, where .. ": right after the text")
+    T.ok(ip.x + icon:GetWidth() <= col.cw, where .. ": icon inside its column")
+    T.eq(VColor(icon), C3(ui.dim), where .. ": icon in the theme's dim colour")
+    cell:GetScript("OnEnter")(cell)
+    T.ok(GameTooltip:GetOwner() == cell and GameTooltip:IsShown(), where .. ": tooltip shown")
+    local lines = GameTooltip._lines
+    T.eq(#lines, 2, where .. ": title and explanation")
+    T.eq(lines[1][1], L[col.key], where .. ": title = column name")
+    T.eq(lines[2][1], L[col.tip], where .. ": explanation")
+    T.ok(type(L[col.tip]) == "string" and L[col.tip] ~= col.tip, where .. ": tip text exists")
+    T.eq(VColor(icon), C3(ui.accent), where .. ": hovered icon in the accent colour")
+    cell:GetScript("OnLeave")(cell)
+    T.no(GameTooltip:IsShown(), where .. ": hidden on leave")
+    T.eq(VColor(icon), C3(ui.dim), where .. ": back to dim")
+  end
+  for c = lay.n + 1, #tp.headerCells do T.no(tp.headerCells[c]:IsShown(), what .. ": unused cell " .. c .. " hidden") end
+  return lay.n
+end
+
+T.test("window: every column header has a help icon and a tooltip saying what the column holds", function()
+  local ns = Login()
+  -- every optional column of the Levels and Sessions tabs but the instances
+  for _ = 1, 12 do Stub.Advance(60); Stub.Kill(200) end
+  Stub.SetAFK(true); Stub.Advance(120); Stub.SetAFK(false)
+  Stub.SetResting(true); Stub.Advance(60); Stub.SetResting(false)
+  Stub.SetMap(1454); Stub.Advance(60); Stub.SetMap(1411)
+  Stub.Die(); Stub.Advance(30); Stub.Resurrect(false)
+  Stub.OpenTradeSkill(); Stub.Advance(60); Stub.CloseTradeSkill()
+  Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)
+  for _ = 1, 8 do Stub.Advance(60); Stub.Kill(200) end    -- a complete level: account XP/h
+  Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)
+  Stub.Advance(2)
+  ns.Window.Show("levels")
+  local tp = TP()
+  local n = CheckHelp(ns, tp, "levels")
+  T.ok(n >= 12, "levels: most columns shown (" .. n .. ")")
+  local seen = {}
+  for _, id in ipairs(Ids(tp)) do seen[id] = true end
+  for _, id in ipairs({ "eta", "afk", "inn", "city", "dead", "prof" }) do T.ok(seen[id], "levels: " .. id .. " shown") end
+  for _, tab in ipairs({ "zones", "sessions" }) do
+    ns.Window.Toggle(tab)
+    CheckHelp(ns, tp, tab)
+  end
+  ns.Window.SetView("account")
+  CheckHelp(ns, tp, "account sessions (no column)")
+  ns.Window.Toggle("levels")
+  CheckHelp(ns, tp, "account levels")
+  -- the same column in another tab explains its own content
+  local function TipOf(id)
+    local col = tp.layout.cols[tp.layout.pos[id]]
+    return col.tip
+  end
+  T.eq(TipOf("xph"), "COL_XPH_ACCOUNT_TIP")
+  ns.Window.SetView("current")
+  T.eq(TipOf("xph"), "COL_XPH_TIP")
+  T.eq(TipOf("time"), "COL_TIME_TIP")
+  ns.Window.Toggle("zones")
+  T.eq(TipOf("time"), "COL_TIME_ZONES_TIP")
+  ns.Window.Toggle("sessions")
+  T.eq(TipOf("xph"), "COL_XPH_SESSIONS_TIP")
+  T.eq(TipOf("xp"), "COL_XP_SESSIONS_TIP")
+  T.eq(Stub.onUpdateCount, 0)
+end)
+
+T.test("window: a hovered header follows its column, its tooltip goes with the column or the window", function()
+  local ns = Login()
+  local L = ns.L
+  Stub.Advance(120)
+  ns.Window.Show("levels")
+  local tp = TP()
+  -- the second header hovered while the tab changes: the new column's tooltip
+  local cell = tp.headerCells[2]
+  cell:GetScript("OnEnter")(cell)
+  T.eq(GameTooltip._lines[2][1], L.COL_TIME_TIP)
+  ns.Window.Toggle("zones")
+  T.ok(GameTooltip:GetOwner() == cell and GameTooltip:IsShown(), "still the owner")
+  T.eq(GameTooltip._lines[1][1], L.COL_TIME)
+  T.eq(GameTooltip._lines[2][1], L.COL_TIME_ZONES_TIP, "the zones tab's own explanation")
+  cell:GetScript("OnLeave")(cell)
+  -- the last header hovered when its column goes away: tooltip hidden, icon back to dim
+  ns.Window.Toggle("levels")
+  local n = tp.layout.n
+  cell = tp.headerCells[n]
+  cell:GetScript("OnEnter")(cell)
+  T.eq(GameTooltip._lines[1][1], L.COL_REACHED)
+  ns.Window.SetView("account")
+  T.ok(tp.layout.n < n, "fewer columns")
+  T.no(cell:IsShown(), "cell hidden")
+  T.no(GameTooltip:IsShown(), "its tooltip hidden")
+  T.eq(VColor(tp.headerIcons[n]), C3(ns.Themes.Active().ui.dim))
+  -- hovered when the window closes
+  ns.Window.SetView("current")
+  cell = tp.headerCells[1]
+  cell:GetScript("OnEnter")(cell)
+  ns.Window.Hide()
+  T.no(GameTooltip:IsShown(), "hidden with the window")
+  -- a row tooltip is not taken for a header one (and the other way round)
+  ns.Window.Show("levels")
+  local row = tp.rows[1]
+  row:GetScript("OnEnter")(row)
+  T.eq(GameTooltip._lines[1][1], format(L.LEVEL_SPAN_FMT, 10, 11))
+  cell:GetScript("OnLeave")(cell)
+  T.ok(GameTooltip:IsShown(), "leaving a header keeps a row's tooltip")
+  row:GetScript("OnLeave")(row)
+end)
+
+T.test("window: the help icons follow the theme; nothing is created again", function()
+  local ns = Login()
+  Stub.Advance(120)
+  ns.Window.Show("levels")
+  local tp = TP()
+  local Themes = ns.Themes
+  local count = #tp.headerIcons
+  for _, key in ipairs({ "futuriste", "druid", "actuel" }) do
+    ns.Core.SetSetting("theme", key)
+    local ui = Themes.Active().ui
+    for c = 1, tp.layout.n do
+      T.eq(VColor(tp.headerIcons[c]), C3(ui.dim), key .. ": icon " .. c)
+      T.eq({ tp.header[c]:GetTextColor() }, C3(ui.label), key .. ": header " .. c)
+    end
+    local cell = tp.headerCells[1]
+    cell:GetScript("OnEnter")(cell)
+    T.eq(VColor(tp.headerIcons[1]), C3(ui.accent), key .. ": hovered")
+    cell:GetScript("OnLeave")(cell)
+  end
+  -- a theme switch while a header is hovered keeps it highlighted
+  local cell = tp.headerCells[2]
+  cell:GetScript("OnEnter")(cell)
+  ns.Core.SetSetting("theme", "futuriste")
+  T.eq(VColor(tp.headerIcons[2]), C3(Themes.Active().ui.accent))
+  T.eq(VColor(tp.headerIcons[1]), C3(Themes.Active().ui.dim))
+  cell:GetScript("OnLeave")(cell)
+  T.eq(#tp.headerIcons, count, "no icon created by the theme switches")
+  T.eq(Stub.onUpdateCount, 0)
+end)
+
+---------------------------------------------------------------------------
 -- Options
 ---------------------------------------------------------------------------
 

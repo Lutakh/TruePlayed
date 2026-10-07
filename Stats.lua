@@ -10,12 +10,13 @@
 local ADDON, ns = ...
 local L, C = ns.L, ns.C
 
-local type, pairs, next = type, pairs, next
+local type, pairs, next, tonumber, pcall, select = type, pairs, next, tonumber, pcall, select
 local floor = math.floor
 local table_sort, table_concat = table.sort, table.concat
 local string_sub, string_byte = string.sub, string.byte
 local GetTime = GetTime
 local C_Map = C_Map
+local GetRealZoneText, GetInstanceInfo = GetRealZoneText, GetInstanceInfo
 local wipe = wipe or function(t) for k in pairs(t) do t[k] = nil end return t end
 
 local Stats = {}
@@ -39,13 +40,16 @@ local PRIOR_WEIGHT = C.PRIOR_WEIGHT
 local XP_STALL = C.XP_STALL
 local MAX_ZONE_DEPTH = C.MAX_ZONE_DEPTH
 local MT_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or C.MAPTYPE_CONTINENT
+local MT_DUNGEON = (Enum and Enum.UIMapType and Enum.UIMapType.Dungeon) or C.MAPTYPE_DUNGEON
 local BYTE_I = 105       -- string.byte("i"): instance zone keys "i<instanceID>"
+local BYTE_N = 110       -- string.byte("n"): zone-text keys "n<text>"
 
 local EMPTY_EMA = { a = 0, r = 0, q = 0, d = 0 }   -- read-only stand-in for a missing entry
 
 -- Private caches (never saved).
 local nameOf = {}        -- zoneKey -> localized name, or false when the map has no name
 local contOf = {}        -- numeric zoneKey -> continent uiMapID, or false (none found)
+local dungeonOf = {}     -- numeric zoneKey -> true when its map is Dungeon-typed, else false
 local maskLabels = {}    -- mask -> "AFK · city" (built once per mask)
 local levelList = {}     -- scratch list of level numbers (alloc functions only)
 local accN, accT, accX, accD = {}, {}, {}, {}  -- scratch accumulators (AccountLevelAverages)
@@ -528,8 +532,27 @@ local function IsCityKey(zoneKey, zoneBucket)
 end
 Stats.IsCityKey = IsCityKey
 
+-- Name of an instance key "i<instanceID>" in the client's language: GetRealZoneText takes
+-- the instance map ID. Refused when it is the current zone's text while we are not in
+-- that instance (a client ignoring the argument would name every instance after the
+-- current zone). nil when unknown: the caller keeps the name recorded when it was played.
+local function InstanceName(zoneKey)
+  local id = tonumber(string_sub(zoneKey, 2))
+  if not id or id <= 0 or not GetRealZoneText then return nil end
+  local ok, text = pcall(GetRealZoneText, id)
+  if not ok or type(text) ~= "string" or text == "" then return nil end
+  local okHere, here = pcall(GetRealZoneText)
+  if okHere and here == text then
+    local curID = GetInstanceInfo and select(8, GetInstanceInfo())
+    if curID ~= id then return nil end
+  end
+  return text
+end
+
 -- Display name of a zone key. C_Map is consulted only for numeric keys (critique #6),
--- once per key (cached; C_Map.GetMapInfo allocates).
+-- once per key (cached; C_Map.GetMapInfo allocates). An instance key is named in the
+-- client's language (InstanceName) before the name recorded in its bucket, which is in
+-- the language the game had when the instance was played.
 local function ZoneName(zoneKey, zoneBucket)
   if zoneKey == nil then return L.ZONE_UNKNOWN end
   if type(zoneKey) == "number" then
@@ -544,17 +567,22 @@ local function ZoneName(zoneKey, zoneBucket)
     return (zoneBucket and zoneBucket.name) or L.ZONE_UNKNOWN
   end
   if zoneKey == "o" then return L.ZONE_OTHER end
-  local bn = zoneBucket and zoneBucket.name
-  if bn then return bn end
-  -- "n<zone text>" keys carry their own name (4.3); derive it once.
+  -- once per key: the localized name of an instance, or the text of a "n<zone text>"
+  -- key, which carries its own name (4.3)
+  local isInst = type(zoneKey) == "string" and string_byte(zoneKey, 1) == BYTE_I
   local n = nameOf[zoneKey]
   if n == nil then
     n = false
-    if type(zoneKey) == "string" and string_sub(zoneKey, 1, 1) == "n" and #zoneKey > 1 then
+    if isInst then
+      n = InstanceName(zoneKey) or false
+    elseif type(zoneKey) == "string" and string_byte(zoneKey, 1) == BYTE_N and #zoneKey > 1 then
       n = string_sub(zoneKey, 2)
     end
     nameOf[zoneKey] = n
   end
+  if isInst and n then return n end
+  local bn = zoneBucket and zoneBucket.name
+  if bn then return bn end
   return n or L.ZONE_UNKNOWN
 end
 Stats.ZoneName = ZoneName
@@ -679,12 +707,26 @@ end
 
 local instSpare = {}   -- row tables trimmed from a TopInstances `out`, reused
 
+-- True when a numeric zone key is a Dungeon-typed map. Cached per key: C_Map is called
+-- on a cache miss only (GetMapInfo allocates).
+local function IsDungeonMap(zoneKey)
+  local d = dungeonOf[zoneKey]
+  if d ~= nil then return d end
+  local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(zoneKey)
+  d = (info and info.mapType == MT_DUNGEON) and true or false
+  dungeonOf[zoneKey] = d
+  return d
+end
+
 -- Most played instances of a zone map (char.zones, levels[L].z or an AccountZones
 -- result): rows { key, name, secs, kind } in out[1..count], secs = instance seconds
 -- under mask (> 0), kind = the bucket's main instance kind, sorted by secs desc (ties:
 -- raw instance time, numeric keys first, key). `out` rows are reused and the surplus
 -- is kept in a small private pool, so repeated calls do not grow memory. The merged
--- "o" bucket is never listed. Tooltip / window builds only. Returns count.
+-- "o" bucket is never listed, nor a map zone (numeric key) that is not a dungeon map
+-- and holds less instance time than other time: an open-world zone or a capital where
+-- the game reported the instance a tick before the map while zoning in (Undercity for
+-- a second). Tooltip / window builds only. Returns count.
 function Stats.TopInstances(zoneMap, mask, n, out)
   if type(out) ~= "table" then return 0 end
   n = n or 5
@@ -692,10 +734,14 @@ function Stats.TopInstances(zoneMap, mask, n, out)
   if type(zoneMap) == "table" and n > 0 then
     for k, z in pairs(zoneMap) do
       local s = type(z) == "table" and z.s
-      if s and k ~= "o" then
+      local raw = s and k ~= "o"
+        and (s.d or 0) + (s.D or 0) + (s.r or 0) + (s.R or 0) + (s.p or 0) + (s.P or 0) or 0
+      if raw > 0 and type(k) == "number" and raw * 2 < SumAll(z) and not IsDungeonMap(k) then
+        raw = 0
+      end
+      if raw > 0 then
         local secs = InstanceTime(z, mask)
         if secs > 0 then
-          local raw = (s.d or 0) + (s.D or 0) + (s.r or 0) + (s.R or 0) + (s.p or 0) + (s.P or 0)
           if count < n then
             local row = out[count + 1]
             if type(row) ~= "table" then
@@ -797,18 +843,29 @@ local function ContinentOf(zoneKey)
   return c
 end
 
--- Row key of a zone key: continent uiMapID, "inst" (instance keys "i<id>") or
--- "other" (name keys "n<text>", the neutral "o" bucket, maps without a continent).
-local function ContinentRowKey(zoneKey)
+-- Rows of the instance kinds, named like the breakdown parts (Dungeons, Raids, PvP).
+local KIND_ROW = { d = "dungeon", r = "raid", p = "pvp" }
+local KIND_ROW_NAME = { dungeon = "BD_DUNGEON", raid = "BD_RAID", pvp = "BD_PVP" }
+
+-- Row key of a zone key: for an instance key "i<id>" the row of its main kind
+-- ("dungeon", "raid" or "pvp"; "dungeon" when it holds no instance time); a map played
+-- mostly in an instance (a dungeon or battleground map) the row of that kind too; any
+-- other map its continent uiMapID; else "other" (name keys "n<text>", the neutral "o"
+-- bucket, maps without a continent).
+local function ContinentRowKey(zoneKey, z)
   local tk = type(zoneKey)
-  if tk == "number" then return ContinentOf(zoneKey) or "other" end
-  if tk == "string" and string_byte(zoneKey, 1) == BYTE_I then return "inst" end
-  return "other"
+  if tk == "string" and string_byte(zoneKey, 1) == BYTE_I then
+    return KIND_ROW[InstanceKind(z.s) or "d"]
+  end
+  if tk ~= "number" then return "other" end
+  local kind = InstanceKind(z.s)
+  if kind and InstanceTime(z, 0) * 2 >= SumAll(z) then return KIND_ROW[kind] end
+  return ContinentOf(zoneKey) or "other"
 end
 
 local function ContinentName(key)
-  if key == "inst" then return L.CONT_INSTANCES end
-  if key == "other" then return L.CONT_OTHER end
+  local kindName = KIND_ROW_NAME[key]
+  if kindName then return L[kindName] end
   return ZoneName(key, nil)             -- C_Map name, cached in nameOf
 end
 
@@ -820,6 +877,8 @@ end
 -- levels[L].z or an AccountZones result) under `mask`. Fills the array `out`
 -- (its previous rows are reused or dropped) with rows { key, name, secs }, secs > 0,
 -- sorted by secs descending; returns the row count. Tooltip / window builds only.
+-- Time without a continent ("other": flights where the game gave only the continent,
+-- the neutral bucket) is left out: a row the player cannot place means nothing to them.
 function Stats.Continents(zoneMap, mask, out)
   if type(out) ~= "table" then return 0 end
   wipe(contSecs)
@@ -828,8 +887,8 @@ function Stats.Continents(zoneMap, mask, out)
       if type(z) == "table" then
         local secs = Sum(z, mask)
         if secs > 0 then
-          local ck = ContinentRowKey(k)
-          contSecs[ck] = (contSecs[ck] or 0) + secs
+          local ck = ContinentRowKey(k, z)   -- secs > 0: z.s is a table
+          if ck ~= "other" then contSecs[ck] = (contSecs[ck] or 0) + secs end
         end
       end
     end
@@ -1235,4 +1294,5 @@ end
 function Stats.ResetCaches()
   wipe(nameOf)
   wipe(contOf)
+  wipe(dungeonOf)
 end

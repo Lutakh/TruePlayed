@@ -312,11 +312,12 @@ T.test("detailed tooltip: continents section with the exclusions applied", funct
     if lines[i][1] == L.SECTION_CONTINENTS then head = i end
   end
   T.ok(head ~= nil, "continents header")
-  -- Durotar + Orgrimmar are both on Kalimdor (stub maps), then the instance, then the rest
+  -- Durotar + Orgrimmar are both on Kalimdor (stub maps), then the instance; the time
+  -- without a continent (the neutral bucket) is not listed
   local kal = 20000 + 1200 + 800 + 400 + 1500 + 600 + 300 + 60
   T.eq(lines[head + 1], { "Kalimdor", Fmt.Duration(kal) })
-  T.eq(lines[head + 2], { L.CONT_INSTANCES, Fmt.Duration(900) })
-  T.eq(lines[head + 3], { L.CONT_OTHER, Fmt.Duration(90) })
+  T.eq(lines[head + 2], { L.BD_DUNGEON, Fmt.Duration(900) })
+  T.no(HasText(lines, "Other"), "no Other row")
   T.no(HasText(Fill(ns, false), L.SECTION_CONTINENTS), "detailed view only")
   ns.Core.SetSetting("exclude.city", true)
   lines = Fill(ns, true)
@@ -330,9 +331,8 @@ T.test("detailed tooltip: continents section with the exclusions applied", funct
     if lines[i][1] == L.SECTION_CONTINENTS then head = i end
   end
   T.eq(lines[head + 1], { "Kalimdor", Fmt.Duration(kal - 1500 - 600) })
-  T.eq(lines[head + 2], { L.CONT_INSTANCES, Fmt.Duration(900) })
-  T.eq(lines[head + 3], { L.CONT_OTHER, Fmt.Duration(90) })
-  T.eq(lines[head + 4], { "Eastern Kingdoms", Fmt.Duration(0) })
+  T.eq(lines[head + 2], { L.BD_DUNGEON, Fmt.Duration(900) })
+  T.eq(lines[head + 3], { "Eastern Kingdoms", Fmt.Duration(0) })
   -- all three exclusions and only city time: the section still lists the continent
   ns.char.zones = { [1453] = ns.char.zones[1453] }
   ns.Core.SetSetting("exclude.afk", true)

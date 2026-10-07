@@ -57,7 +57,7 @@ local SAME_OK = {
   THEME_PALADIN = true, THEME_MAGE = true, LANG_AUTO = true, MENU_OPTIONS = true, REACT_NORMAL = true,
   ERASE_NO = true, OPT_EXCLUSIONS = true, PCTH_FMT = true, COL_DATE = true, DATE_AUTO_FMT = true,
   -- cognates (frFR since 1.0)
-  BD_RAID = true, CONT_INSTANCES = true, HELP_OPTIONS = true, KIND_RAID = true, SECTION_CONTINENTS = true,
+  BD_RAID = true, HELP_OPTIONS = true, KIND_RAID = true, SECTION_CONTINENTS = true,
   THEME_HEROIC = true, BD_DUNGEON = true, TT_OF_WHICH_AFK_FMT = true, XP_FMT = true, XP_LABEL = true,
   -- minimap button and mini display (backlog 3 and 4): "Info %d" as OPT_SLOT2, "Options" (fr)
   OPT_MINI_INFO_FMT = true, CLICK_OPTIONS = true,
@@ -969,6 +969,72 @@ T.test("widths: every column of the statistics window (headers and values), no o
       if #Stub.errors > 0 then bad[#bad + 1] = code .. ": " .. tostring(Stub.errors[1]) end
     end
     Report(bad, "window columns")
+  end)
+end)
+
+-- Column help (Window.lua): the columns of every layout (tp.layouts, shown or not), each
+-- with its header and header tooltip texts in every language; a tooltip text is short (a
+-- few wrapped tooltip lines), and every column header followed by its help icon fits the
+-- column's minimum width (the widest that layout can be narrowed to), measured like the
+-- headers above.
+local LAYOUT_NAMES = { "levels", "account", "zones", "sessions" }
+local TIP_MAX = 150            -- characters of a header tooltip text
+
+local function WindowLayouts()
+  Stub.Reset()
+  local ns = StartIn("enUS")
+  ns.Window.Show("levels")
+  local tp = rawget(_G, "TruePlayedStatsFrame").tp
+  ns.Window.Hide()
+  return tp.layouts, tp.iconRoom, OBJECT_SIZE[rawget(tp.header[1], "_fontObject")]
+end
+
+T.test("locales: every column of the statistics window has its header tooltip text in every language", function()
+  local layouts = WindowLayouts()
+  local n, tips = 0, {}
+  for _, code in ipairs(ALL) do
+    local L = LocaleTable(code)
+    for _, name in ipairs(LAYOUT_NAMES) do
+      local all = layouts[name].all
+      T.ok(#all > 0, name .. ": columns")
+      for _, col in ipairs(all) do
+        local where = format("%s %s %s", code, name, col.id)
+        local tip = L[col.tip]
+        T.ok(type(L[col.key]) == "string" and L[col.key] ~= "", where .. ": header text")
+        T.ok(type(tip) == "string" and tip ~= "", where .. ": tooltip text " .. col.tip)
+        if type(tip) == "string" then
+          T.ok(Chars(tip) <= TIP_MAX, format("%s: %d characters, %d at most", where, Chars(tip), TIP_MAX))
+        end
+        tips[col.tip] = true
+        n = n + 1
+      end
+    end
+  end
+  T.eq(n, 32 * #ALL, "32 columns in 4 layouts")
+  local keys = 0
+  for _ in pairs(tips) do keys = keys + 1 end
+  T.eq(keys, 26, "tooltip keys (one per meaning)")
+  T.eq(#layouts.none.all, 0, "the account view of the Sessions tab has no column")
+end)
+
+T.test("widths: every column header and its help icon fit the column in every language", function()
+  RealWidths(function(Width)
+    local layouts, room, size = WindowLayouts()
+    T.eq(size, 10, "headers in GameFontHighlightSmall")
+    T.ok(room >= 10, "icon room " .. tostring(room))
+    local bad = {}
+    for _, code in ipairs(ALL) do
+      local L = LocaleTable(code)
+      for _, name in ipairs(LAYOUT_NAMES) do
+        for _, col in ipairs(layouts[name].all) do
+          local w = Width(nil, size, L[col.key]) + room
+          if w > col.w - 1 then
+            bad[#bad + 1] = format("%s %s %s: %q + icon %.0f > %d", code, name, col.id, L[col.key], w, col.w - 1)
+          end
+        end
+      end
+    end
+    Report(bad, "headers with their help icon")
   end)
 end)
 

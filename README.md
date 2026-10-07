@@ -50,8 +50,8 @@ records every played second, knows what you were doing, and lets you decide what
 - **Time per zone** (Elwynn Forest, Stranglethorn Vale...): a Zones tab with every zone
   you played in (filtered time, raw time, AFK, XP), the **zones of each level** (hover a
   level in the Levels tab), the time in your current zone in the tooltip, your **time per
-  continent** (Kalimdor, Eastern Kingdoms, instances; a continent with less than a minute
-  is not listed) and your **most visited capitals**. Exclusions apply to zones too.
+  continent** (Kalimdor, Eastern Kingdoms, then dungeons, raids and PvP apart; a continent
+  with less than a minute is not listed) and your **most visited capitals**. Exclusions apply to zones too.
 - **Played and session totals**, with the live server `/played` next to them.
 - **Instance time**: dungeons, raids and PvP (battlegrounds, arenas) are recorded apart
   from the open world, AFK included. The tooltip shows your instance time (and each kind
@@ -105,7 +105,8 @@ records every played second, knows what you were doing, and lets you decide what
   exclusions in use. It is as wide as its columns need; drag its bottom-right corner to
   make it larger (the size is kept). Dates show the year, hours and minutes in the format
   you choose (Options > Statistics window: the format of your language, DD/MM/YYYY,
-  MM/DD/YYYY or YYYY-MM-DD, and a 24-hour or 12-hour clock).
+  MM/DD/YYYY or YYYY-MM-DD, and a 24-hour or 12-hour clock). Hover a column header (the
+  small "?" next to it) to read what the column shows.
 - **Crash recovery**: SavedVariables are only written at logout. After a crash (or a
   session played without TruePlayed), the missing time is taken back from the server
   `/played`, split between levels with the exact XP you gained, split between activities
@@ -339,7 +340,8 @@ as active play.
 **Why does a continent with a few seconds not show?**
 A continent with less than a minute of time (often a few seconds on a loading screen or
 right after creating a character) is not listed in the tooltip and the Zones tab. Its
-time is kept and still counts in every total.
+time is kept and still counts in every total. The same goes for the time the game does
+not place on any continent (mostly flights where it only gives the continent).
 
 **How do I read the Levels tab?**
 The row "19 » 20" is the time you spent at level 19, until you reached 20. "Reached" is

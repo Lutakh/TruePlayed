@@ -94,6 +94,7 @@ local dropSecs, dropKey, dropZone, dropLevel = 0, nil, nil, nil
 -- false for an unresolved map (continent, world: see ResolveMiss).
 local zoneOf, capOf, instKey, nameKey, nameOf = {}, {}, {}, {}, {}
 local aboveOf = {}     -- mapID -> true when above the zone level (repair of old records only)
+local dungeonKey = {}  -- zoneKey -> true when it is a Dungeon-typed map (set by ResolveMiss)
 
 -- Unresolved maps (5.5, feedback F4): while GetBestMapForUnit gives a continent
 -- (first seconds after login, after a loading screen) no zone bucket is created.
@@ -572,6 +573,7 @@ local function ResolveMiss(mapID)
     local mt = info.mapType
     if mt == MT_ZONE or mt == MT_DUNGEON then
       zoneKey, zoneName = id, info.name
+      if mt == MT_DUNGEON then dungeonKey[id] = true end
       local parent = info.parentMapID
       if mt == MT_DUNGEON and capKey == nil and parent and parent ~= 0 and IsCityMap(parent) then
         capKey = parent
@@ -675,6 +677,14 @@ local function Compute(now)
     end
   else
     zoneKey, isCity = ResolveZone(mapID, inInstance)
+    if zoneKey ~= nil and inInstance and not dungeonKey[zoneKey] then
+      -- a dungeon or raid on an open-world map: zoning in or out, the game reports the
+      -- instance a tick before or after the map (Undercity for a second on the way into
+      -- an instance below it). The instance key, never the open-world zone. Battlegrounds
+      -- keep their own map (a Zone-typed map of their own).
+      local kind = INSTANCE_KIND[itype]
+      if kind == "d" or kind == "r" then zoneKey = InstanceKey() end
+    end
     if zoneKey == nil then
       if inInstance then
         zoneKey, isCity = InstanceKey(), false
@@ -1193,33 +1203,14 @@ local function CityZoneFor(char, zone)
   return "o"
 end
 
--- Target of the estimated share of an instance kind ("d", "r" or "p" and its AFK
--- key): the last zone when it holds that kind, else the character's main zone of
--- that kind, else "o". An estimate never makes an open-world zone look like an
--- instance (most played instances, Stats.TopInstances).
-local function InstZoneFor(char, zone, kind)
-  local lo, up = kind, KEY[kind][true]
-  local function Secs(zb)
-    local s = type(zb) == "table" and zb.s
-    if type(s) ~= "table" then return 0 end
-    return (s[lo] or 0) + (s[up] or 0)
-  end
-  if zone ~= "o" and Secs(char.zones[zone]) > 0 then return zone end
-  local best, bestSecs = nil, 0
-  for k, zb in pairs(char.zones) do
-    local v = Secs(zb)
-    if v > 0 and k ~= "o" and (best == nil or v > bestSecs or (v == bestSecs and KeyLess(k, best))) then
-      best, bestSecs = k, v
-    end
-  end
-  return best or "o"
-end
-
 -- Re-adds G lost seconds (server total minus what we know) into real state
 -- keys. Segments dropped in this load go back where they were played; the rest
 -- is split across levels (server level time + exact XP) and by this character's
 -- own historical proportions, attributed to the last known zone (city share: to
--- a capital, see CityZoneFor).
+-- a capital, see CityZoneFor). An instance kind gets a share only when the last
+-- known state was that kind (a crash inside the instance, credited to it): the
+-- gap of a character last seen outside never puts a few seconds in its most played
+-- dungeon (levels where it never set foot in it).
 -- P1 = valid server levelPlayed of the current level, or nil.
 function Tracker.EstimateGap(char, G, P1)
   if ns.readOnly or type(char) ~= "table" or type(G) ~= "number" or G <= 0 then return end
@@ -1234,12 +1225,17 @@ function Tracker.EstimateGap(char, G, P1)
 
   -- 2. state proportions (read BEFORE crediting anything; never "u") ----
   -- Dead and professions time get no share (C.IS_ACTIVITY): a rebuilt gap is time
-  -- the addon did not see, split over the places only.
+  -- the addon did not see, split over the places only. Instance kinds: only the
+  -- kind of the last known state (see above).
+  local last = char.last
+  local lastKind = IS_INSTANCE[(type(last) == "table" and last.key) or seg.key]
   local hist, histTotal = {}, 0
   for i = 1, N_TRACKED do
     local k = TRACKED_KEYS[i]
     local v = char.life.s[k] or 0
     if v < 0 or C.IS_ACTIVITY[k] then v = 0 end
+    local kind = IS_INSTANCE[k]
+    if kind and kind ~= lastKind then v = 0 end
     hist[i] = math_floor(v)
     histTotal = histTotal + hist[i]
   end
@@ -1323,7 +1319,6 @@ function Tracker.EstimateGap(char, G, P1)
   if zone == nil then zone = NameKey() end
   local zb = CharZone(char, zone)
   local cityZone, czb   -- target of the city share, resolved on first use
-  local instZone = {}   -- instance kind -> target zone of its share, resolved on first use
 
   -- 4. credit (not the session, not the delta) --------------------------
   for oi = 1, #order do
@@ -1343,7 +1338,6 @@ function Tracker.EstimateGap(char, G, P1)
         if p > 0 then
           Bump(char.life.s, k, p)
           Bump(lb.s, k, p)
-          local kind = IS_INSTANCE[k]
           if IS_CITY[k] then
             if cityZone == nil then
               cityZone = CityZoneFor(char, zone)
@@ -1351,15 +1345,7 @@ function Tracker.EstimateGap(char, G, P1)
             end
             Bump(GetSub(lb.z, cityZone).s, k, p)
             Bump(czb.s, k, p)
-          elseif kind then
-            local iz = instZone[kind]
-            if iz == nil then
-              iz = InstZoneFor(char, zone, kind)
-              instZone[kind] = iz
-            end
-            Bump(GetSub(lb.z, iz).s, k, p)
-            Bump(CharZone(char, iz).s, k, p)
-          else
+          else   -- an instance share too: the last zone is that instance (step 2)
             Bump(lz.s, k, p)
             Bump(zb.s, k, p)
           end

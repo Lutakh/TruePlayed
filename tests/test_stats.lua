@@ -991,39 +991,39 @@ local function ContinentZones()
   }
 end
 
-T.test("Continents: Kalimdor, Eastern Kingdoms, instances, other; sorted; mask applied", function()
+T.test("Continents: Kalimdor, Eastern Kingdoms, instances; time without a continent left out; sorted; mask applied", function()
   local ns, Stats = Load()
   local L = ns.L
   local zones = ContinentZones()
   local out = {}
   local n = Stats.Continents(zones, 0, out)
-  T.eq(n, 5)
-  T.eq(#out, 5)
+  T.eq(n, 4)
+  T.eq(#out, 4)
   T.eq(out[1].key, 1414); T.eq(out[1].name, "Kalimdor"); T.eq(out[1].secs, 1200 + 400 + 100 + 2 + 60)
   T.eq(out[2].key, 1415); T.eq(out[2].name, "Eastern Kingdoms"); T.eq(out[2].secs, 500 + 450)
-  T.eq(out[3].key, "inst"); T.eq(out[3].name, L.CONT_INSTANCES); T.eq(out[3].secs, 330)
-  T.eq(out[4].key, "other"); T.eq(out[4].name, L.CONT_OTHER); T.eq(out[4].secs, 7 + 3 + 11)
-  T.eq(out[5].key, 2521); T.eq(out[5].name, "Zephras", "a continent-typed key is its own continent")
-  T.eq(out[5].secs, 5)
+  T.eq(out[3].key, "dungeon"); T.eq(out[3].name, L.BD_DUNGEON); T.eq(out[3].secs, 330)
+  T.eq(out[4].key, 2521); T.eq(out[4].name, "Zephras", "a continent-typed key is its own continent")
+  T.eq(out[4].secs, 5)
   local sum = 0
   for i = 1, n do sum = sum + out[i].secs end
   local all = 0
   for _, z in pairs(zones) do all = all + Stats.SumAll(z) end
-  T.eq(sum, all, "every second in exactly one row")
+  T.eq(sum, all - (7 + 3 + 11), "every second in one row, but the zone-text key, the neutral bucket and the unknown map")
   -- AFK and city excluded (mask 5): Tanaris (AFK only) gives nothing, the order changes
   n = Stats.Continents(zones, 5, out)
-  T.eq(n, 5)
+  T.eq(n, 4)
   T.eq(out[1].key, 1414); T.eq(out[1].secs, 1000 + 100 + 2)
   T.eq(out[2].key, 1415); T.eq(out[2].secs, 400)
-  T.eq(out[3].key, "inst"); T.eq(out[3].secs, 320)
-  T.eq(out[4].key, "other"); T.eq(out[4].secs, 21)
-  T.eq(out[5].key, 2521); T.eq(out[5].secs, 5)
+  T.eq(out[3].key, "dungeon"); T.eq(out[3].secs, 320)
+  T.eq(out[4].key, 2521); T.eq(out[4].secs, 5)
   -- ties: numeric keys first
   n = Stats.Continents({ i1 = { s = { w = 5 } }, [1411] = { s = { w = 5 } }, o = { s = { w = 5 } } }, 0, out)
-  T.eq(n, 3); T.eq(out[1].key, 1414); T.eq(out[2].key, "inst"); T.eq(out[3].key, "other")
+  T.eq(n, 2); T.eq(out[1].key, 1414); T.eq(out[2].key, "dungeon")
+  -- nothing but time without a continent: no row
+  T.eq(Stats.Continents({ o = { s = { w = 5 } }, nZephras = { s = { w = 9 } } }, 0, out), 0); T.eq(#out, 0)
   -- only rows with time; rows dropped from out
   n = Stats.Continents({ i1 = { s = { w = 5 } }, [1411] = { s = { W = 9 } } }, 1, out)
-  T.eq(n, 1); T.eq(#out, 1); T.eq(out[1].key, "inst")
+  T.eq(n, 1); T.eq(#out, 1); T.eq(out[1].key, "dungeon")
   T.eq(Stats.Continents(nil, 0, out), 0); T.eq(#out, 0)
   T.eq(Stats.Continents({}, 0, out), 0)
   -- an account zone map works too
@@ -1034,7 +1034,43 @@ T.test("Continents: Kalimdor, Eastern Kingdoms, instances, other; sorted; mask a
   Stub.locale = "frFR"
   local ns2, Stats2 = Load()
   Stats2.Continents(ContinentZones(), 0, out)
-  T.eq(out[3].name, ns2.L.CONT_INSTANCES); T.eq(out[4].name, ns2.L.CONT_OTHER)
+  T.eq(out[3].name, ns2.L.BD_DUNGEON)
+end)
+
+T.test("Continents: dungeons, raids and PvP apart, named like the breakdown", function()
+  local ns, Stats = Load()
+  local L = ns.L
+  local zones = {
+    [1411] = { s = { w = 5000 }, xp = 0 },                          -- Kalimdor
+    [1458] = { s = { c = 2222, d = 1 }, xp = 0 },                   -- Undercity, a tick of dungeon
+    i2999 = { s = { d = 2700, w = 1 }, xp = 0 },                    -- a dungeon
+    i389 = { s = { d = 1700, D = 100 }, xp = 0 },                   -- another dungeon
+    [90001] = { s = { d = 500, w = 10 }, xp = 0 },                  -- a dungeon map (under Orgrimmar)
+    i409 = { s = { r = 3000, R = 200, x = 60 }, xp = 0 },           -- a raid (dead time too)
+    i30 = { s = { p = 900, P = 100 }, xp = 0 },                     -- a battleground instance
+    [987654] = { s = { p = 400 }, xp = 0, name = "A battleground" }, -- a battleground map
+    i489 = { s = { p = 10, d = 20 }, xp = 0 },                      -- mixed: its main kind
+  }
+  local out = {}
+  local function Row(key)
+    for i = 1, #out do if out[i].key == key then return out[i] end end
+  end
+  local n = Stats.Continents(zones, 0, out)
+  T.eq(n, 5)
+  T.eq(Row(1414).secs, 5000, "Kalimdor: the dungeon map is not in it")
+  T.eq(Row(1415).secs, 2223, "Eastern Kingdoms: Undercity stays in it")
+  T.eq(Row("dungeon").name, L.BD_DUNGEON); T.eq(Row("dungeon").secs, 2701 + 1800 + 510 + 30)
+  T.eq(Row("raid").name, L.BD_RAID); T.eq(Row("raid").secs, 3260)
+  T.eq(Row("pvp").name, L.BD_PVP); T.eq(Row("pvp").secs, 1000 + 400)
+  T.eq(out[1].key, "dungeon", "sorted by time")
+  -- AFK excluded
+  Stats.Continents(zones, 1, out)
+  T.eq(Row("dungeon").secs, 2701 + 1700 + 510 + 30); T.eq(Row("raid").secs, 3060); T.eq(Row("pvp").secs, 1300)
+  -- French names
+  Stub.locale = "frFR"
+  local _, Stats2 = Load()
+  Stats2.Continents(zones, 0, out)
+  T.eq(Row("dungeon").name, "Donjons"); T.eq(Row("raid").name, "Raids"); T.eq(Row("pvp").name, "JcJ")
 end)
 
 T.test("Continents: C_Map once per zone key, rows reused, no garbage across calls", function()
@@ -1197,6 +1233,43 @@ T.test("TopInstances: repeated calls allocate nothing once warm", function()
   T.ok(kb < 0.5, format("allocated %.3f KB", kb))
   T.eq(#out, 5)
   T.eq(out[1].key, "i12")
+end)
+
+T.test("TopInstances: an open-world zone or a capital with a tick of instance time is not an instance", function()
+  local _, Stats = Load()
+  local zones = {
+    [1458] = { s = { c = 2222, d = 1 }, xp = 21922 },     -- Undercity: zoning into an instance below it
+    [1413] = { s = { w = 5000, D = 2 }, xp = 0 },         -- the Barrens: the same, AFK
+    [90001] = { s = { w = 3000, d = 10 }, xp = 0 },       -- a dungeon map (old records counted w): listed
+    [987654] = { s = { p = 600, w = 100 }, xp = 0, name = "A battleground" },   -- mostly PvP: listed
+    [987655] = { s = { p = 50, w = 100 }, xp = 0, name = "Not one" },           -- mostly world: not
+    i2999 = { s = { d = 3 }, xp = 0, name = "Ruins" },    -- an instance key: always an instance
+  }
+  local out = {}
+  local n = Stats.TopInstances(zones, 0, 10, out)
+  local keys = {}
+  for i = 1, n do keys[#keys + 1] = out[i].key end
+  T.eq(keys, { 987654, 90001, "i2999" })
+end)
+
+T.test("ZoneName: an instance is named in the client's language, else as recorded", function()
+  local _, Stats = Load()
+  Stub.player.instanceNames[2999] = "Ruins of Lordaeron"
+  T.eq(Stats.ZoneName("i2999", { name = "Ruines de Lordaeron" }), "Ruins of Lordaeron", "client language first")
+  T.eq(Stats.ZoneName("i2999", nil), "Ruins of Lordaeron", "cached")
+  T.eq(Stats.ZoneName("i389", { name = "Gouffre de Ragefeu" }), "Gouffre de Ragefeu", "unknown to the client: recorded")
+  T.eq(Stats.ZoneName("i0", { name = "Somewhere" }), "Somewhere", "no instance ID")
+  T.eq(Stats.ZoneName("nAshenvale", { name = "Orneval" }), "Orneval", "a zone-text key keeps its recorded name")
+  T.eq(Stats.ZoneName("nAshenvale", nil), "Ashenvale")
+  -- a client that ignores the argument answers the current zone: not an instance name
+  local _, Stats2 = Load()
+  Stub.player.zoneTextIgnoresArg = true
+  Stub.player.zoneText = "Durotar"
+  T.eq(Stats2.ZoneName("i43", { name = "Wailing Caverns" }), "Wailing Caverns")
+  -- ... unless we are in that instance (its name is the current zone text)
+  Stub.player.instanceID = 389
+  Stub.player.zoneText = "Ragefire Chasm"
+  T.eq(Stats2.ZoneName("i389", { name = "Gouffre de Ragefeu" }), "Ragefire Chasm")
 end)
 
 T.test("AccountInstanceTime sums every record's instance time under the mask, and history rows carry it", function()

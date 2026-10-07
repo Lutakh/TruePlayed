@@ -26,6 +26,12 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- the time column; the footer adds the instance total when there is one. Dates follow
 -- the settings window.dateFmt and window.clock (Fmt.DateTime).
 -- Continents with less than C.CONT_MIN_SECS of total time are not listed.
+-- Column help: every column header is followed by a small circled "?" (the addon's
+-- Media/Themes/common/help.tga, tinted ui.dim, ui.accent while hovered); hovering the
+-- header cell (an invisible frame the width of the column, the only mouse-enabled part of
+-- the header) shows the column name and what it holds (locale key col.tip) in the
+-- GameTooltip. The cells and icons are created with their header FontString, placed again
+-- only when the layout changes, and recoloured by Window.ApplyTheme.
 -- Requirement B: the view is the current character unless the user picks another
 -- character or the account view; every Show resets it to the current character.
 -- Themes (SPEC-themes 4.6): Window.ApplyTheme sets the backdrop colours and the title
@@ -63,39 +69,52 @@ local ZONE_ROWS = 1000
 local TIP_ZONES = 5                -- zones listed in a level row tooltip
 local DIRTY_REBUILD_TICKS = 30     -- min ticks between two rebuilds caused by XP gains
 local GRIP_TEX = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
+-- Column help icon (Themes.COMMON_MEDIA.help, 32 x 32 white art tinted at fill time),
+-- drawn ICON_GAP after the header text; a header text has the column width minus
+-- ICON_ROOM, so the icon always stays inside its column.
+local HELP_TEX = "Interface\\AddOns\\" .. (ns.ADDON or ADDON or "TruePlayed") .. "\\Media\\Themes\\common\\help.tga"
+local ICON_SIZE, ICON_GAP = 10, 2
+local ICON_ROOM = ICON_GAP + ICON_SIZE
+local HEADER_H = 16                -- height of a header cell (the mouse area of a column header)
+local TIP_TEXT = { 1, 0.82, 0 }    -- explanation lines of a header tooltip (the game's normal gold)
 
 local TAB_ORDER = { "levels", "zones", "sessions" }
 local TAB_KEY = { levels = "TAB_LEVELS", zones = "TAB_ZONES", sessions = "TAB_SESSIONS" }
 local KIND_KEY = { d = "KIND_DUNGEON", r = "KIND_RAID", p = "KIND_PVP" }   -- Stats.TopInstances kinds
 
 -- Columns: id (what the builders fill), locale key of the header, width (the minimum of
--- the flexible column), optional (shown only when a row has a value), flexible. The widths
--- fit the widest header and value of every language (tests/test_locales.lua).
-local function Col(id, key, w, opt, flex)
-  return { id = id, key = key, w = w, opt = opt or false, flex = flex or false, j = "LEFT", x = 0, cw = w }
+-- the flexible column), optional (shown only when a row has a value), flexible, locale key
+-- of the header tooltip (default: the header key .. "_TIP"; a column whose meaning differs
+-- from one tab to another has its own, COL_<X>_<TAB>_TIP). The widths fit the widest
+-- header followed by its help icon (ICON_ROOM) and the widest value of every language
+-- (tests/test_locales.lua). Headers are left-justified: the icon follows the text.
+local function Col(id, key, w, opt, flex, tip)
+  return { id = id, key = key, tip = tip or (key .. "_TIP"), w = w, opt = opt or false, flex = flex or false,
+           j = "LEFT", x = 0, cw = w }
 end
 -- A layout: every column of a tab, the visible ones (cols, set by EndRows), the cell index
 -- of each visible id (pos), and a version bumped whenever the placement changes.
 local function Layout(all) return { all = all, cols = {}, pos = {}, n = 0, ver = 0, need = 0 } end
 local LAYOUTS = {
   levels = Layout({
-    Col("level", "COL_LEVEL", 46), Col("time", "COL_TIME", 64), Col("eta", "COL_ETA", 62, true),
+    Col("level", "COL_LEVEL", 56), Col("time", "COL_TIME", 64), Col("eta", "COL_ETA", 62, true),
     Col("cum", "COL_CUM", 68, true), Col("server", "COL_SERVER", 62, true), Col("xph", "COL_XPH", 52, true),
     Col("afk", "COL_AFK", 58, true), Col("inn", "COL_INN", 58, true), Col("city", "COL_CITY", 58, true),
     Col("inst", "COL_INST", 58, true), Col("dead", "COL_DEAD", 82, true), Col("prof", "COL_PROF", 58, true),
     Col("zone", "COL_MAIN_ZONE", 130, false, true), Col("reached", "COL_REACHED", 100),
   }),
   account = Layout({
-    Col("level", "COL_LEVEL", 46), Col("chars", "COL_CHARS", 60), Col("avg", "COL_AVG", 100),
-    Col("xph", "COL_XPH", 80, true),
+    Col("level", "COL_LEVEL", 56), Col("chars", "COL_CHARS", 60), Col("avg", "COL_AVG", 100),
+    Col("xph", "COL_XPH", 80, true, false, "COL_XPH_ACCOUNT_TIP"),
   }),
   zones = Layout({   -- instance rows carry their kind after the name: a wide first column
-    Col("zone", "COL_ZONE", 240, false, true), Col("time", "COL_TIME", 64), Col("raw", "COL_RAW", 64),
-    Col("afk", "COL_AFK", 64, true), Col("xp", "COL_XP", 76, true),
+    Col("zone", "COL_ZONE", 240, false, true), Col("time", "COL_TIME", 64, false, false, "COL_TIME_ZONES_TIP"),
+    Col("raw", "COL_RAW", 64), Col("afk", "COL_AFK", 64, true), Col("xp", "COL_XP", 76, true),
   }),
   sessions = Layout({
     Col("date", "COL_DATE", 100), Col("dur", "COL_DURATION", 64), Col("levels", "COL_LEVELS", 72),
-    Col("xp", "COL_XP", 70, true), Col("xph", "COL_XPH", 52, true), Col("afk", "COL_AFK", 58, true),
+    Col("xp", "COL_XP", 70, true, false, "COL_XP_SESSIONS_TIP"),
+    Col("xph", "COL_XPH", 52, true, false, "COL_XPH_SESSIONS_TIP"), Col("afk", "COL_AFK", 58, true),
     Col("inst", "COL_INST", 58, true), Col("dead", "COL_DEAD", 82, true), Col("prof", "COL_PROF", 58, true),
   }),
   none = Layout({}),               -- the account view of the Sessions tab (a message only)
@@ -124,7 +143,10 @@ local filterFS, hintFS             -- active exclusions (header), Levels tab hin
 local titleFS, titleSize = nil, 12 -- window title (display font of the theme, GameFontNormal size)
 local titleThemed = false          -- the title font was set by a theme (not GameFontNormal)
 local tabBtns = {}
-local headerFS = {}
+local headerFS = {}                -- [c] = header FontString of visible column c
+local headerCell = {}              -- [c] = its mouse cell (Frame, the column's width)
+local headerIcon = {}              -- [c] = its help icon (Texture of the cell)
+local cellIndex = {}               -- [cell] = c
 local btnText = {}                 -- [button] = FontString
 local rows = {}                    -- pooled row frames
 local rowCells = {}                -- [row] = { FontString... }
@@ -846,12 +868,50 @@ local function ViewLabel(char)
   return format(L.CHAR_FMT, Util.CharName(char), math_floor(tonumber(char.level) or 0))
 end
 
--- Column header FontString (created at Create for the first columns, later on demand).
-local function NewHeader()
+local function TintIcon(c, color)
+  local icon = headerIcon[c]
+  if icon then icon:SetVertexColor(color[1], color[2], color[3]) end
+end
+
+-- Header tooltip: the column name, then what the column holds (allocation-free: two
+-- locale strings). The cell's column is read from the applied header layout.
+local function OnHeaderEnter(self)
+  local c = cellIndex[self]
+  local lay = headerLayout
+  local col = c and lay and c <= lay.n and lay.cols[c] or nil
+  if not col then return end
+  local tt = GameTooltip
+  tt:SetOwner(self, "ANCHOR_TOP")
+  tt:SetText(L[col.key], 1, 1, 1)
+  tt:AddLine(L[col.tip], TIP_TEXT[1], TIP_TEXT[2], TIP_TEXT[3], true)
+  tt:Show()
+  TintIcon(c, UI.accent)
+end
+
+local function OnHeaderLeave(self)
+  local c = cellIndex[self]
+  if c then TintIcon(c, UI.dim) end
+  if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+end
+
+-- Column header c (created at Create for the first columns, later on demand): its
+-- FontString, and its mouse cell holding the help icon (both hidden until placed).
+local function NewHeader(c)
   local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   fs:SetWordWrap(false)
   local lc = UI.label
   fs:SetTextColor(lc[1], lc[2], lc[3])
+  local cell = CreateFrame("Frame", nil, frame)
+  cell:Hide()
+  cell:EnableMouse(true)
+  cell:SetScript("OnEnter", OnHeaderEnter)
+  cell:SetScript("OnLeave", OnHeaderLeave)
+  local icon = cell:CreateTexture(nil, "ARTWORK")
+  icon:SetSize(ICON_SIZE, ICON_SIZE)
+  icon:SetTexture(HELP_TEX)
+  headerFS[c], headerCell[c], headerIcon[c] = fs, cell, icon
+  cellIndex[cell] = c
+  TintIcon(c, UI.dim)
   return fs
 end
 
@@ -874,28 +934,43 @@ local function UpdateHeader(char, mask)
   end
 end
 
--- Column headers of the visible columns (placed again only when the layout changed).
+-- Column headers of the visible columns (placed again only when the layout changed): the
+-- text gets the column width minus ICON_ROOM, the help icon follows the text, and the
+-- mouse cell covers the column. A hovered header whose column changed shows the new
+-- column's tooltip; a hidden one drops its tooltip.
 local function ApplyHeaders(layout)
   if headerLayout == layout and headerVer == layout.ver then return end
   headerLayout, headerVer = layout, layout.ver
   local n = layout.n
+  local owner = GameTooltip:GetOwner()
   for c = 1, math_max(n, #headerFS) do
     local fs = headerFS[c]
     local col = c <= n and layout.cols[c] or nil
     if col then
-      if fs == nil then
-        fs = NewHeader()
-        headerFS[c] = fs
-      end
+      if fs == nil then fs = NewHeader(c) end
+      local room = col.cw - ICON_ROOM
       fs:ClearAllPoints()
       fs:SetPoint("BOTTOMLEFT", scroll, "TOPLEFT", col.x, 4)
-      fs:SetWidth(col.cw)
+      fs:SetWidth(room)
       fs:SetJustifyH(col.j)
       fs:SetText(L[col.key])
       fs:Show()
+      local tw = fs:GetStringWidth() or 0
+      if tw > room then tw = room end
+      local icon, cell = headerIcon[c], headerCell[c]
+      icon:ClearAllPoints()
+      icon:SetPoint("LEFT", fs, "LEFT", tw + ICON_GAP, 0)
+      cell:ClearAllPoints()
+      cell:SetPoint("BOTTOMLEFT", scroll, "TOPLEFT", col.x, 2)       -- the text and the icon
+      cell:SetSize(col.cw, HEADER_H)
+      cell:Show()
+      if owner == cell then OnHeaderEnter(cell) end
     elseif fs ~= nil then
       fs:SetText("")
       fs:Hide()
+      local cell = headerCell[c]
+      if owner == cell then OnHeaderLeave(cell) end
+      cell:Hide()
     end
   end
 end
@@ -1043,7 +1118,11 @@ local function Deactivate()
   ns.UnregisterMessage("SETTINGS_CHANGED", Window)
   ns.UnregisterMessage("XP_CHANGED", Window)
   local owner = GameTooltip:GetOwner()
-  if owner and rowTip[owner] then GameTooltip:Hide() end
+  if owner and cellIndex[owner] then
+    OnHeaderLeave(owner)
+  elseif owner and rowTip[owner] then
+    GameTooltip:Hide()
+  end
 end
 
 ---------------------------------------------------------------------------
@@ -1178,7 +1257,7 @@ local function Create()
   content:SetSize(contentW, 1)
   scroll:SetScrollChild(content)
 
-  for c = 1, 10 do headerFS[c] = NewHeader() end
+  for c = 1, 10 do NewHeader(c) end
 
   grip = CreateFrame("Button", nil, frame)
   grip:SetSize(16, 16)
@@ -1203,7 +1282,8 @@ local function Create()
   -- Read-only handles for the offline tests (our own frame).
   frame.tp = { viewText = viewFS, prev = prevBtn, next = nextBtn, erase = eraseBtn, tabs = tabBtns,
                footer1 = footer1, footer2 = footer2, empty = emptyFS, rows = rows, cells = rowCells,
-               header = headerFS, filter = filterFS, hint = hintFS, title = titleFS, grip = grip,
+               header = headerFS, headerCells = headerCell, headerIcons = headerIcon, iconRoom = ICON_ROOM,
+               layouts = LAYOUTS, filter = filterFS, hint = hintFS, title = titleFS, grip = grip,
                layout = curLayout }
 
   Window.ApplyTheme()
@@ -1219,7 +1299,8 @@ end
 
 -- Theme of the window (SPEC-themes 4.6): backdrop colours (the module keeps its own
 -- alphas), the title in the display font at its size, the label colour of the static
--- texts; a shown window is refilled so its cells take the new colours.
+-- texts, the dim colour of the header help icons (accent for a hovered one); a shown
+-- window is refilled so its cells take the new colours.
 function Window.ApplyTheme()
   if not frame then return end
   local ui = ReadUI()
@@ -1241,6 +1322,8 @@ function Window.ApplyTheme()
   hintFS:SetTextColor(lc[1], lc[2], lc[3])
   footer2:SetTextColor(lc[1], lc[2], lc[3])
   for c = 1, #headerFS do headerFS[c]:SetTextColor(lc[1], lc[2], lc[3]) end
+  local owner = GameTooltip:GetOwner()
+  for c = 1, #headerIcon do TintIcon(c, owner == headerCell[c] and ui.accent or ui.dim) end
   if frame:IsShown() then Window.Refresh() end
 end
 

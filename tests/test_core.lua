@@ -502,6 +502,66 @@ T.test("RepairChar keeps the newest C.SESSION_RING sessions", function()
   T.eq(char.sessions[30].xp, 35)
 end)
 
+T.test("RepairChar moves the instance time an older crash estimate gave to levels without any", function()
+  local ns = Load()
+  local function Level(s, z, est) return { s = s, z = z, xp = 0, d = 0, est = est } end
+  local char = {
+    level = 26,
+    life = { s = { w = 50000, d = 3000, D = 20, c = 800 }, xp = 0 },
+    zones = {
+      i2999 = { s = { d = 2700, D = 6 }, xp = 258, name = "Ruins" },
+      [1413] = { s = { w = 30000 }, xp = 0 },
+      [1442] = { s = { w = 20000 }, xp = 0 },
+      [1456] = { s = { c = 800 }, xp = 0 },
+      i43 = { s = { d = 300, D = 14 }, xp = 0 },
+    },
+    levels = {
+      -- a real dungeon run (a session at that level holds dungeon time): kept
+      [18] = Level({ w = 4000, d = 2695 }, { [1413] = { s = { w = 4000 }, xp = 0 },
+                                            i2999 = { s = { d = 2695 }, xp = 0 } }, 3000),
+      -- estimates only: the 3 + 4 s go to the level's main open-world zone
+      [25] = Level({ w = 7000, d = 3, c = 9 }, { [1413] = { s = { w = 6000 }, xp = 0 },
+                                                 [1442] = { s = { w = 1000 }, xp = 0 },
+                                                 [1456] = { s = { c = 9 }, xp = 0 },
+                                                 i2999 = { s = { d = 3 }, xp = 0 } }, 82),
+      [26] = Level({ w = 9000, d = 2, D = 6 }, { [1442] = { s = { w = 9000 }, xp = 0 },
+                                                 i2999 = { s = { d = 2, D = 6 }, xp = 0 } }, 130),
+      -- more instance time than estimated time: real, kept
+      [24] = Level({ w = 5000, d = 300, D = 14 }, { [1413] = { s = { w = 5000 }, xp = 0 },
+                                                    i43 = { s = { d = 300, D = 14 }, xp = 0 } }, 20),
+      -- the oldest stored session began at this level: not covered, kept
+      [10] = Level({ w = 1000, d = 5 }, { [1413] = { s = { w = 1000 }, xp = 0 },
+                                          i2999 = { s = { d = 5 }, xp = 0 } }, 100),
+    },
+    sessions = {
+      { l0 = 10, l1 = 18, s = { w = 9000 }, xp = 0, d = 0 },
+      { l0 = 18, l1 = 20, s = { w = 1000, d = 2695 }, xp = 0, d = 0 },
+      { l0 = 20, l1 = 23, s = { w = 9000, d = 300, D = 14 }, xp = 0, d = 0 },
+      { l0 = 25, l1 = 26, s = { w = 3000 }, xp = 0, d = 0 },
+    },
+    cur = { l0 = 26, s = { w = 6000 }, xp = 0, d = 0 },
+  }
+  local function Total(s) local n = 0 for _, v in pairs(s) do n = n + v end return n end
+  local life0 = Total(char.life.s)
+  ns.Core.RepairChar(char)
+  local lv = char.levels
+  T.eq(lv[25].s, { w = 7003, c = 9 }); T.eq(lv[25].z[1413].s, { w = 6003 }, "the main open-world zone")
+  T.eq(lv[25].z[1456].s, { c = 9 }, "the city share is not touched")
+  T.eq(lv[25].z.i2999.s, {})
+  T.eq(lv[26].s, { w = 9002, W = 6 }); T.eq(lv[26].z[1442].s, { w = 9002, W = 6 }, "AFK part as AFK")
+  T.eq(lv[18].z.i2999.s, { d = 2695 }, "a real run is kept")
+  T.eq(lv[24].z.i43.s, { d = 300, D = 14 }, "more than the estimate: kept")
+  T.eq(lv[10].z.i2999.s, { d = 5 }, "a level not covered by the stored sessions: kept")
+  T.eq(char.zones.i2999.s, { d = 2695 })
+  T.eq(char.zones[1413].s, { w = 30003 }); T.eq(char.zones[1442].s, { w = 20002, W = 6 })
+  T.eq(char.life.s, { w = 50005, W = 6, d = 2995, D = 14, c = 800 })
+  T.eq(Total(char.life.s), life0, "life total kept")
+  -- idempotent
+  local copy = ns.Util.DeepCopy(char)
+  ns.Core.RepairChar(char)
+  T.eq(char.levels, copy.levels); T.eq(char.zones, copy.zones); T.eq(char.life, copy.life)
+end)
+
 ---------------------------------------------------------------------------
 -- Late swap (5.16)
 ---------------------------------------------------------------------------

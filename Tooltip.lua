@@ -394,9 +394,10 @@ local function FillDetails(tt, char, mask, bd)
     end
   end
 
-  -- continents of the character (instances and unplaced time apart): every continent with
-  -- time is listed, valued under the exclusions like the zones above; a continent whose
-  -- time is all excluded (e.g. only city time with the city excluded) comes last. A
+  -- continents of the character (dungeons, raids and PvP apart, unplaced time left out):
+  -- every continent with time is listed, valued under the exclusions like the zones
+  -- above; a continent whose time is all excluded (e.g. only city time with the city
+  -- excluded) comes last. A
   -- continent with less than C.CONT_MIN_SECS of total time (a few seconds of loading
   -- screen) is not listed.
   local ncont = 0

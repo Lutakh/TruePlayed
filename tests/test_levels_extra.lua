@@ -241,28 +241,33 @@ T.test("continents with less than a minute are not listed (tooltip and Zones tab
   Stub.Advance(120)                                   -- Durotar (Kalimdor): 2 minutes
   local zones = ns.char.zones
   zones[1453] = { s = { w = 30 }, xp = 0 }            -- Stormwind: Eastern Kingdoms, 30 s
-  zones.o = { s = { w = 59 }, xp = 0 }                -- "Other": 59 s
+  zones.i389 = { s = { w = 59 }, xp = 0 }             -- "Instances": 59 s
+  zones.o = { s = { w = 600 }, xp = 0 }               -- no continent: never listed
   local lines = Fill(ns, true)
   T.ok(Has(lines, L.SECTION_CONTINENTS))
   T.ok(Has(lines, "Kalimdor"))
   T.no(Has(lines, "Eastern Kingdoms"), "30 s: not listed")
-  T.no(Has(lines, L.CONT_OTHER), "59 s: not listed")
-  T.ok(zones[1453] and zones.o, "the data stays")
+  T.no(Has(lines, L.BD_DUNGEON), "59 s: not listed")
+  T.no(Has(lines, "Other"), "time without a continent: not listed")
+  T.ok(zones[1453] and zones.i389 and zones.o, "the data stays")
   ns.Window.Show("zones")
   local tp = StatsTP()
   T.ok(RowWith(tp, "Kalimdor"))
   T.eq(RowWith(tp, "Eastern Kingdoms"), nil)
-  T.eq(RowWith(tp, L.CONT_OTHER), nil)
+  T.eq(RowWith(tp, L.BD_DUNGEON), nil)
+  T.eq(RowWith(tp, "Other"), nil)
   T.ok(RowWith(tp, "Stormwind City " .. L.CITY_MARK), "the zone itself is still listed")
   -- a minute: listed (also with the time excluded by a mask, dashed)
-  zones.o.s.w = 60
+  zones.i389.s.w = 60
   zones[1453].s = { c = 60 }
   ns.Core.SetSetting("exclude.city", true)
   ns.Window.Refresh()
-  T.ok(RowWith(tp, L.CONT_OTHER), "60 s: listed")
+  T.ok(RowWith(tp, L.BD_DUNGEON), "60 s: listed")
+  T.eq(RowWith(tp, "Other"), nil)
   T.eq(tp.cells[RowWith(tp, "Eastern Kingdoms")][2]:GetText(), "-", "excluded city time: dashed")
   lines = Fill(ns, true)
-  T.ok(Has(lines, L.CONT_OTHER)); T.ok(Has(lines, "Eastern Kingdoms"))
+  T.ok(Has(lines, L.BD_DUNGEON)); T.ok(Has(lines, "Eastern Kingdoms"))
+  T.no(Has(lines, "Other"))
   -- nothing but short continents: no Continents block at all
   for k in pairs(zones) do zones[k] = nil end
   zones[1411] = { s = { w = 20 }, xp = 0 }

@@ -76,9 +76,15 @@ local function History(extra)
   return Stub.Restart({})
 end
 
-local function EstimatedSplit(before, G)
+-- Instance kinds weigh only when the last known state was that kind (lastKind "d",
+-- "r", "p" or nil): a gap of a player last seen outside gets no instance share.
+local KIND = { d = "d", D = "d", r = "r", R = "r", p = "p", P = "p" }
+local function EstimatedSplit(before, G, lastKind)
   local w = {}
-  for i, k in ipairs(TRACKED) do w[i] = before[k] or 0 end
+  for i, k in ipairs(TRACKED) do
+    w[i] = before[k] or 0
+    if KIND[k] and KIND[k] ~= lastKind then w[i] = 0 end
+  end
   return LR(G, w)
 end
 
@@ -593,26 +599,36 @@ T.test("19. a dropped segment is re-added where it was played (key, zone, level)
   T.eq(SumAll(ch.life.s), total)
 end)
 
-T.test("20. instance history: the gap's dungeon / raid / PvP shares go to instance zones only", function()
+-- Session 1 with dungeon, raid and PvP history, ending in `lastPlace` (a function);
+-- session 2 in the Barrens, then a crash: the reconcile of session 3 rebuilds the gap.
+local function InstanceHistoryCrash(lastPlace)
   History(function()
     Stub.SetInstance(true, "party", 389, 90001); Stub.Advance(1200)   -- Ragefire Chasm
     Stub.SetAFK(true); Stub.Advance(120); Stub.SetAFK(false)
     Stub.SetInstance(true, "raid", 409, nil); Stub.Advance(900)       -- Molten Core
     Stub.SetInstance(true, "pvp", 30, nil); Stub.Advance(600)         -- a battleground
-    Stub.SetInstance(false, nil, 0, 1411); Stub.Advance(60)
+    lastPlace()
   end)
-  Stub.SetMap(1413)                         -- session 2: 3 h in the Barrens, then a crash
+  Stub.SetInstance(false, nil, 0, 1413)     -- session 2: 3 h in the Barrens, then a crash
   for _ = 1, 180 do
     Stub.Advance(60)
     Stub.GrantXP(20)
   end
   local ns = Stub.Restart({ crash = true })
-  local ch, saved = ns.char, Saved()
   Stub.Advance(3)
+  return ns
+end
+
+T.test("20. instance history, last seen outside: the gap gets no instance share", function()
+  local ns = InstanceHistoryCrash(function()
+    Stub.SetInstance(false, nil, 0, 1411); Stub.Advance(60)
+  end)
+  local ch, saved = ns.char, Saved()
   T.eq(saved.last.zone, 1411, "last zone: Durotar, open world")
   local before = Copy(ch.life.s)
   local z0 = {}
   for _, k in ipairs({ 1411, 90001, "i409", "i30", 1454 }) do z0[k] = Copy(ch.zones[k].s) end
+  local lz0 = Copy(ch.levels[10].z[90001].s)
   local total = Sync()
   local G = total - SumAll(before)
   local split = EstimatedSplit(before, G)
@@ -620,20 +636,48 @@ T.test("20. instance history: the gap's dungeon / raid / PvP shares go to instan
   for i, k in ipairs(TRACKED) do
     T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "key " .. k)
   end
-  T.ok(split[IDX.d] > 0 and split[IDX.D] > 0 and split[IDX.r] > 0 and split[IDX.p] > 0, "instance shares")
+  T.ok(before.d > 0 and before.r > 0 and before.p > 0, "instance history")
+  local function Delta(k, key) return (ch.zones[k].s[key] or 0) - (z0[k][key] or 0) end
+  for _, key in ipairs({ "d", "D", "r", "R", "p", "P" }) do
+    T.eq(split[IDX[key]], 0, "no share: " .. key)
+    T.eq(Delta(1411, key), 0, "no instance time in the open-world zone: " .. key)
+    T.eq(Delta(90001, key), 0, "the dungeon unchanged: " .. key)
+    T.eq(Delta("i409", key), 0, "the raid unchanged: " .. key)
+    T.eq(Delta("i30", key), 0, "the battleground unchanged: " .. key)
+  end
+  T.eq(ch.levels[10].z[90001].s, lz0, "level-zone bucket of the dungeon unchanged")
+  T.eq(Delta(1411, "w"), split[IDX.w], "open-world share to the last zone")
+  local bd = ns.Stats.Breakdown(ch.life, {})
+  T.eq(bd.active + bd.afk + bd.inn + bd.city, bd.tracked)
+end)
+
+T.test("20b. crash inside a dungeon: its kind's share goes to that dungeon, no other kind", function()
+  local ns = InstanceHistoryCrash(function()
+    Stub.SetInstance(true, "party", 389, 90001); Stub.Advance(60)     -- back in Ragefire Chasm
+  end)
+  local ch, saved = ns.char, Saved()
+  T.eq(saved.last.zone, 90001, "last zone: the dungeon")
+  T.eq(saved.last.key, "d")
+  local before = Copy(ch.life.s)
+  local z0 = {}
+  for _, k in ipairs({ 1411, 90001, "i409", "i30" }) do z0[k] = Copy(ch.zones[k].s) end
+  local total = Sync()
+  local G = total - SumAll(before)
+  local split = EstimatedSplit(before, G, "d")
+  T.eq(SumAll(ch.life.s), total, "SumAll(life) == server total")
+  for i, k in ipairs(TRACKED) do
+    T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "key " .. k)
+  end
+  T.ok(split[IDX.d] > 0 and split[IDX.D] > 0, "dungeon shares")
   local function Delta(k, key) return (ch.zones[k].s[key] or 0) - (z0[k][key] or 0) end
   T.eq(Delta(90001, "d"), split[IDX.d]); T.eq(Delta(90001, "D"), split[IDX.D])
-  T.eq(Delta("i409", "r"), split[IDX.r])
-  T.eq(Delta("i30", "p"), split[IDX.p])
-  for _, key in ipairs({ "d", "D", "r", "R", "p", "P" }) do
-    T.eq(Delta(1411, key), 0, "no instance time in the open-world zone: " .. key)
+  for _, key in ipairs({ "r", "R", "p", "P" }) do
+    T.eq(split[IDX[key]], 0, "no share: " .. key)
+    T.eq(Delta("i409", key), 0, "the raid unchanged: " .. key)
+    T.eq(Delta("i30", key), 0, "the battleground unchanged: " .. key)
   end
-  T.eq(Delta(1411, "w"), split[IDX.w], "open-world share to the last zone")
-  local lz = ch.levels[10].z
-  T.ok((lz[90001].s.d or 0) >= split[IDX.d], "level-zone bucket of the dungeon")
   local rows = {}
-  local n = ns.Stats.TopInstances(ch.zones, 0, 10, rows)
-  T.eq(n, 3, "only real instances are listed")
+  T.eq(ns.Stats.TopInstances(ch.zones, 0, 10, rows), 3, "only real instances are listed")
   T.eq(rows[1].key, 90001); T.eq(rows[1].kind, "d")
   local bd = ns.Stats.Breakdown(ch.life, {})
   T.eq(bd.active + bd.afk + bd.inn + bd.city, bd.tracked)

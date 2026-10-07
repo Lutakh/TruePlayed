@@ -609,8 +609,9 @@ local function IsUnder(o, root)
 end
 
 -- Every region of the window as a string, plus its backdrop (see test_graph.lua).
--- chrome = true: the parts lot 8 did not redesign only (no row, cell, column header or
--- resize grip, no frame width: the columns and the size of the window changed then).
+-- chrome = true: the parts lot 8 did not redesign only (no row, cell, column header with
+-- its help cell and icon, or resize grip, no frame width: the columns and the size of the
+-- window changed then).
 local function Snapshot(root, chrome)
   local out = {}
   local tp = rawget(root, "tp")
@@ -618,11 +619,12 @@ local function Snapshot(root, chrome)
   local skip = {}
   if chrome and tp then
     for _, fs in pairs(tp.header) do skip[fs] = true end
+    for _, cell in pairs(tp.headerCells or {}) do skip[cell] = true end
     if tp.grip then skip[tp.grip] = true end
   end
   local function Skipped(o)
     if not chrome then return false end
-    if skip[o] or o == content then return true end
+    if skip[o] or skip[rawget(o, "_parent")] or o == content then return true end
     if content and IsUnder(o, content) then return true end
     if tp.grip and IsUnder(o, tp.grip) then return true end
     return false

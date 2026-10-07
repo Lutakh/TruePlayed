@@ -949,6 +949,9 @@ Changed values:
 - File names are lowercase, `[a-z0-9_]`.
 - E1 provides `common/glow.tga` (64 x 32, grey, a soft horizontal glow made for 3-slicing
   with 16-texel caps).
+- `common/help.tga` (32 x 32, grey): the circled "?" after each column header of the
+  statistics window (Window.lua), shown at 10 x 10 and tinted with the theme's `ui`
+  colours (dim, accent while hovered).
 
 ### 6.2 File rules (checked by `tests/check_media.lua`)
 - Uncompressed TGA:

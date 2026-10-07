@@ -932,6 +932,113 @@ local function RepairEma(char)
   end
 end
 
+-- Instance seconds of a seconds map (dungeons, raids, PvP).
+local function InstanceSecs(s)
+  if type(s) ~= "table" then return 0 end
+  local n = 0
+  for i = 1, #C.INSTANCE_KEYS do
+    local v = s[C.INSTANCE_KEYS[i]]
+    if IsNum(v) and v > 0 then n = n + v end
+  end
+  return n
+end
+
+-- True when a stored session (or the current one) that overlaps level L holds instance
+-- time. lmax: the level of an open session without l1.
+local function SessionInstanceAt(char, L, lmax)
+  local function Holds(e)
+    if type(e) ~= "table" or not IsNum(e.l0) or e.l0 > L then return false end
+    local l1 = IsNum(e.l1) and e.l1 or lmax
+    return l1 >= L and InstanceSecs(e.s) > 0
+  end
+  local sessions = char.sessions
+  for i = 1, #sessions do
+    if Holds(sessions[i]) then return true end
+  end
+  return Holds(char.cur)
+end
+
+-- Main open-world zone key of a level-zone map: the largest zone without instance or
+-- city time (map zones first, KeyLess-like order on ties), else "o".
+local function MainOpenZone(z)
+  local best, bestSecs = nil, -1
+  for k, zb in pairs(z) do
+    local s = zb.s
+    if k ~= "o" and InstanceSecs(s) == 0 and not ((s.c or 0) + (s.C or 0) > 0) then
+      local v = 0
+      for _, sv in pairs(s) do if IsNum(sv) then v = v + sv end end
+      local better = v > bestSecs
+      if v == bestSecs and best ~= nil then
+        local tk, tb = type(k), type(best)
+        if tk ~= tb then better = tk == "number" else better = k < best end
+      end
+      if best == nil or better then best, bestSecs = k, v end
+    end
+  end
+  return best or "o"
+end
+
+-- Moves v seconds of key `from` to key `to` in a seconds map.
+local function Shift(s, from, to, v)
+  if IsNum(s[from]) then
+    s[from] = s[from] - v
+    if s[from] <= 0 then s[from] = nil end
+  end
+  s[to] = (s[to] or 0) + v
+end
+
+-- Estimated instance time of earlier versions: EstimateGap split a crash gap by the
+-- whole history of the character, instance kinds included, so a few seconds of its most
+-- played dungeon showed at levels where it never entered it ("< 1m" in Inst.). That time
+-- becomes open-world time (w, or W for its AFK part) in the level's main open-world zone
+-- when the stored sessions prove the level held no instance time: they cover the whole
+-- level (the oldest began at an earlier level), none that overlaps it holds instance
+-- time, and the level's instance time is at most its estimated time. Totals are kept
+-- (level, character zones, life). Idempotent: nothing is left to move on the next load.
+local function RepairEstimatedInstances(char)
+  local sessions, levels = char.sessions, char.levels
+  if type(sessions) ~= "table" or type(levels) ~= "table" then return end
+  local minL
+  for i = 1, #sessions do
+    local l0 = sessions[i].l0
+    if IsNum(l0) and (minL == nil or l0 < minL) then minL = l0 end
+  end
+  local cur = char.cur
+  if type(cur) == "table" and IsNum(cur.l0) and (minL == nil or cur.l0 < minL) then minL = cur.l0 end
+  if minL == nil then return end
+  local lmax = IsNum(char.level) and char.level or math.huge
+  local life, zones = char.life, char.zones
+  for L, lb in pairs(levels) do
+    local inst = InstanceSecs(lb.s)
+    if L > minL and inst > 0 and IsNum(lb.est) and inst <= lb.est and not SessionInstanceAt(char, L, lmax) then
+      local target = MainOpenZone(lb.z)
+      local tz = lb.z[target]
+      if tz == nil then tz = Core.NewZone(); lb.z[target] = tz end
+      local cz = zones[target]
+      if cz == nil then cz = Core.NewZone(); zones[target] = cz end
+      for k, zb in pairs(lb.z) do
+        for i = 1, #C.INSTANCE_KEYS do
+          local ik = C.INSTANCE_KEYS[i]
+          local v = zb.s[ik]
+          if IsNum(v) and v > 0 then
+            local open = C.IS_AFK[ik] and "W" or "w"
+            zb.s[ik] = nil
+            tz.s[open] = (tz.s[open] or 0) + v
+            local kz = zones[k]
+            if kz and IsNum(kz.s[ik]) then
+              kz.s[ik] = kz.s[ik] - v
+              if kz.s[ik] <= 0 then kz.s[ik] = nil end
+            end
+            cz.s[open] = (cz.s[open] or 0) + v
+            Shift(lb.s, ik, open, v)
+            Shift(life.s, ik, open, v)
+          end
+        end
+      end
+    end
+  end
+end
+
 -- Records already repaired during this UI load (weak keys): EnsureChar skips a
 -- second full pass right after RepairDB.
 local repaired = setmetatable({}, { __mode = "k" })
@@ -979,6 +1086,8 @@ function Core.RepairChar(char)
     if char[f] ~= nil and type(char[f]) ~= "table" then char[f] = nil end
   end
   if char.cur then RepairBucket(char.cur, SESSION_FIELDS) end
+  if char.level ~= nil and not IsNum(char.level) then char.level = nil end
+  RepairEstimatedInstances(char)
   if char.srv and not IsNum(char.srv.total) then char.srv = nil end
   local base = char.base
   if base and not IsNum(base.total) then
@@ -988,7 +1097,6 @@ function Core.RepairChar(char)
   end
   local snap = char.xpSnap
   if snap and not (IsNum(snap.level) and IsNum(snap.xp) and IsNum(snap.max)) then char.xpSnap = nil end
-  if char.level ~= nil and not IsNum(char.level) then char.level = nil end
   -- prior = { xph, at, v }: pre-install XP/h estimate (optional, Tracker 5.11); v = 2 when
   -- computed from the completed levels only (any other v is dropped: recomputed)
   local prior = char.prior
