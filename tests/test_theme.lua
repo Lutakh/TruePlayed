@@ -817,27 +817,107 @@ T.test("SetFont: one probe, then the game call only when path, size or flags cha
   T.ok(kb < 0.01, string.format("steady SetFont allocated %.3f KB", kb))
 end)
 
-T.test("missing font file: game font instead, one message per session, entry marked", function()
+-- Lot 8: a failed SetFont is not final (the client may fail to load a font while the game
+-- starts): the game font meanwhile, a retry 2 ticks after entering the world and another
+-- 10 ticks later, and only then the entry is missing and ONE line names every file.
+T.test("missing font file: game font while pending, retried, then one message naming every file", function()
   local ns = LoadEngine({ register = FontFixtures() })
   Stub.LoginSequence()
   local Th = ns.Themes
-  Stub.missingFonts[Th.FONTS.Rajdhani.path] = true
-  Stub.missingFonts[Th.FONTS.Orbitron.path] = true
+  local raj, orb = Th.FONTS.Rajdhani, Th.FONTS.Orbitron
+  Stub.missingFonts[raj.path] = true
+  Stub.missingFonts[orb.path] = true
   local f = CreateFrame("Frame")
   local a, b, c = f:CreateFontString(), f:CreateFontString(), f:CreateFontString()
   local n0 = #Stub.printed
   T.eq(Th.SetFont(a, "body", 12, "thin"), GAME)
   T.eq({ a:GetFont() }, { GAME, 12, "OUTLINE" })
-  T.ok(Th.FONTS.Rajdhani.missing)
-  T.eq(#Stub.printed, n0 + 1)
-  T.ok(Stub.printed[#Stub.printed]:find(ns.L.CHAT_PREFIX, 1, true) == 1)
-  T.ok(Stub.printed[#Stub.printed]:find("Rajdhani-SemiBold.ttf", 1, true) ~= nil, "names the file")
-  T.eq(Th.Font("body", 12), GAME, "resolution skips the missing entry")
+  T.no(raj.missing, "not declared missing at the first failure")
+  T.eq(#Stub.printed, n0, "no message yet")
+  T.eq(Th.Font("body", 12), GAME, "the game font while the retry is due")
+  local calls = Stub.calls.SetFont
   Th.SetFont(b, "body", 12, "thin")
-  Th.SetFont(c, "display", 12, "thin")                 -- another missing file
+  T.eq(Stub.calls.SetFont, calls + 1, "pending: the game font only, no failing call again")
+  Th.SetFont(c, "display", 12, "thin")                 -- another failing file
   T.eq(c:GetFont(), GAME)
+  Stub.Advance(2)
+  T.no(raj.missing, "the first retry failed: one more is due")
+  T.eq(#Stub.printed, n0)
+  Stub.Advance(10)
+  T.ok(raj.missing and orb.missing, "missing after the last retry")
+  T.eq(#Stub.printed, n0 + 1, "one message")
+  local msg = Stub.printed[#Stub.printed]
+  T.ok(msg:find(ns.L.CHAT_PREFIX, 1, true) == 1)
+  T.ok(msg:find(orb.file .. ", " .. raj.file, 1, true) ~= nil, "names every file, comma-separated: " .. msg)
+  T.eq(Th.Font("body", 12), GAME, "resolution skips the missing entry")
+  calls = Stub.calls.SetFont
+  Stub.Advance(60)
   T.eq(#Stub.printed, n0 + 1, "one message per session")
+  T.eq(Stub.calls.SetFont, calls, "no retry any more")
   T.eq(#Stub.errors, 0)
+end)
+
+T.test("font that fails once at load: retried after entering the world, theme fonts applied again", function()
+  local ns = LoadEngine({ register = FontFixtures() })
+  local Th = ns.Themes
+  local raj = Th.FONTS.Rajdhani
+  local fails = 1
+  Stub.missingFonts = setmetatable({}, { __index = function(_, path)
+    if path == raj.path and fails > 0 then
+      fails = fails - 1
+      return true
+    end
+    return nil
+  end })
+  local fs = CreateFrame("Frame"):CreateFontString()
+  T.eq(Th.SetFont(fs, "body", 12, "thin"), GAME, "the first load fails: the game font")
+  local changed = {}
+  ns.RegisterMessage("THEME_CHANGED", "test", function(_, key, prev, kind) changed[#changed + 1] = { key, prev, kind } end)
+  Stub.Advance(5)
+  T.eq(#changed, 0, "no retry before entering the world")
+  Stub.LoginSequence()
+  Stub.Advance(3)
+  T.eq(#changed, 1, "the retry loaded it: the theme is applied again")
+  T.eq(changed[1][3], "theme")
+  T.eq(changed[1][1], changed[1][2], "the same theme")
+  T.no(raj.missing)
+  T.eq(Th.SetFont(fs, "body", 12, "thin"), raj.path, "a consumer applying its fonts gets the theme font")
+  T.eq((fs:GetFont()), raj.path)
+  T.eq(#Stub.printed, 0, "no message")
+  T.eq(#Stub.errors, 0)
+end)
+
+T.test("druid theme, both fonts failing once at login: the bar shows them after the retry", function()
+  Stub.InstallUI({ ldb = false })
+  Stub.theme = "druid"
+  local base = "Interface\\AddOns\\TruePlayed\\Media\\Fonts\\"
+  local left = {}
+  Stub.missingFonts = setmetatable({}, { __index = function(_, path)
+    if type(path) == "string" and path:find(base, 1, true) == 1 and not left[path] then
+      left[path] = true                               -- each bundled file fails once
+      return true
+    end
+    return nil
+  end })
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.Advance(1)
+  local function Fonts()
+    local set = {}
+    for _, o in ipairs(Stub.regions) do
+      if rawget(o, "_type") == "FontString" and rawget(o, "_font") then set[rawget(o, "_font")] = true end
+    end
+    return set
+  end
+  local th = ns.Themes.Active()
+  local body = ns.Themes.FONTS[th.fonts.body].path
+  local display = ns.Themes.FONTS[th.fonts.display].path
+  T.ok(Fonts()[body] and Fonts()[display], "the theme fonts are used after the retry")
+  T.ok(next(left) ~= nil, "they failed first")
+  for _, line in ipairs(Stub.printed) do
+    T.no(line:find(ns.L.THEME_FONT_MISSING:sub(1, 20), 1, true), "no font message: " .. line)
+  end
+  T.eq(Stub.onUpdateCount, 0)
 end)
 
 T.test("missing font: no detection when the game font itself does not report success (K7)", function()

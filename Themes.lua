@@ -15,7 +15,8 @@
 --   * SetFont, Font, Subst, HasSubst, SetTex, Tile, PlaceThree, PlaceNine and Gradient
 --     allocate nothing; SetFont, Tile and the Place helpers skip the game calls that would
 --     not change anything (per-region weak caches);
---   * nothing here runs on TICK.
+--   * nothing here runs on TICK, except the retry of a theme font that failed to load
+--     (listened to only while such a retry is due, see Themes.FontFailed).
 -- The compiler is robust and silent: bad data falls back on the defaults. The warnings
 -- of a theme source come from the test-only validator (tests/theme_validate.lua, M2).
 local ADDON, ns = ...
@@ -1460,7 +1461,25 @@ local fsPath = setmetatable({}, WEAK_K)
 local fsSize = setmetatable({}, WEAK_K)
 local fsFlags = setmetatable({}, WEAK_K)
 local probe = nil              -- nil: not probed yet; true: SetFont reports success
-local missingWarned = false
+
+-- A font file whose SetFont failed is not declared missing at once: the client may fail
+-- to load a font while the game starts (seen at the first launch after an update, the
+-- file being fine). The entry is PENDING: every SetFont uses the game font meanwhile
+-- (no repeated failing calls), and once the world is entered (PLAYER_ENTERING_WORLD) the
+-- file is tried again on a private probe FontString, RETRY_TICKS[i] ticks later (the
+-- shared 1 s TICK, listened to only while a retry is due). A retry that loads it: the
+-- entry is usable again and THEME_CHANGED "theme" makes every consumer apply the theme
+-- fonts again. Still failing after the last retry: the entry is missing for the session
+-- and ONE chat line names every file that failed (comma-separated).
+local RETRY_TICKS = { 2, 10 }  -- ticks after entering the world (or after a later failure)
+local pendingFonts = {}        -- [entry] = true: failed, not declared missing yet
+local nPending = 0
+local worldIn = false          -- PLAYER_ENTERING_WORLD seen
+local retryStep = 0            -- RETRY_TICKS index of the next retry
+local retryWait = 0            -- ticks counted toward it
+local retryListening = false
+local probeFS = nil            -- private FontString of the retries (created on first use)
+local missingNames = {}        -- files declared missing and named in a warning
 
 local function GameFont()
   return STANDARD_TEXT_FONT or GAME_FONT_FALLBACK
@@ -1475,7 +1494,7 @@ local function RoleEntry(role)
   local name = fonts[role] or fonts.body
   if name == nil or name == "game" then return nil end
   local e = FONTS[name]
-  if not e or e.missing then return nil end
+  if not e or e.missing or pendingFonts[e] then return nil end
   local loc = GetLocale and GetLocale()
   if loc == "koKR" or loc == "zhCN" or loc == "zhTW" then return nil end
   if loc == "ruRU" and not e.cyr then return nil end
@@ -1493,13 +1512,80 @@ function Themes.Font(role, size)
   return e.path, size, e.mono == true
 end
 
+local OnRetryTick
+
+local function ListenRetry(on)
+  if on == retryListening or not ns.RegisterMessage then return end
+  retryListening = on
+  if on then
+    ns.RegisterMessage("TICK", Themes, OnRetryTick)
+  else
+    ns.UnregisterMessage("TICK", Themes)
+  end
+end
+
+-- The files still pending are declared missing and named in one chat line.
+local function GiveUp()
+  local names = nil
+  for e in pairs(pendingFonts) do
+    pendingFonts[e] = nil
+    e.missing = true
+    missingNames[#missingNames + 1] = e.file
+    names = true
+  end
+  nPending = 0
+  if names then
+    table.sort(missingNames)
+    if ns.Util and ns.Util.Print then ns.Util.Print(L.THEME_FONT_MISSING, table_concat(missingNames, ", ")) end
+  end
+end
+
+-- One retry: each pending file is set on the probe; the ones that load are usable again
+-- and the theme fonts are applied again; after the last retry the others are missing.
+local function RetryFonts()
+  if not probeFS and CreateFrame then
+    local f = CreateFrame("Frame")
+    f:Hide()
+    probeFS = f:CreateFontString(nil, "BACKGROUND")
+  end
+  local loaded = false
+  for e in pairs(pendingFonts) do
+    if probeFS and probeFS:SetFont(e.path, 12, "") then
+      pendingFonts[e] = nil
+      nPending = nPending - 1
+      loaded = true
+    end
+  end
+  retryStep, retryWait = retryStep + 1, 0
+  if nPending <= 0 or retryStep > #RETRY_TICKS then
+    ListenRetry(false)
+    GiveUp()
+    retryStep = 0
+  end
+  if loaded and activeTh then ns.SendMessage("THEME_CHANGED", activeKey, activeKey, "theme") end
+end
+
+OnRetryTick = function()
+  if not worldIn or nPending <= 0 then return end
+  retryWait = retryWait + 1
+  if retryWait >= RETRY_TICKS[retryStep] then RetryFonts() end
+end
+
+-- SetFont failed on a bundled file: pending (game font meanwhile), a retry is scheduled.
 function Themes.FontFailed(path)
   local e = FONT_BY_PATH[path]
-  if not e then return end
-  e.missing = true
-  if missingWarned then return end
-  missingWarned = true
-  if ns.Util and ns.Util.Print then ns.Util.Print(L.THEME_FONT_MISSING, e.file) end
+  if not e or e.missing or pendingFonts[e] then return end
+  pendingFonts[e] = true
+  nPending = nPending + 1
+  if retryStep == 0 then retryStep, retryWait = 1, 0 end
+  ListenRetry(true)
+end
+
+if ns.RegisterEvent then
+  ns.RegisterEvent("PLAYER_ENTERING_WORLD", Themes, function()
+    worldIn = true
+    ns.UnregisterEvent("PLAYER_ENTERING_WORLD", Themes)
+  end)
 end
 
 -- outline: "none" | "thin" | "thick" (widget.outline; anything else = thin, as Bar).
@@ -1512,7 +1598,7 @@ function Themes.SetFont(fs, role, size, outline)
   local ok = fs:SetFont(path, sz, flags)
   if not ok and probe and FONT_BY_PATH[path] then
     Themes.FontFailed(path)
-    path, sz = Themes.Font(role, size)      -- the game font now
+    path, sz = Themes.Font(role, size)      -- the game font now (pending or missing)
     fs:SetFont(path, sz, flags)
   end
   fsPath[fs], fsSize[fs], fsFlags[fs] = path, sz, flags
