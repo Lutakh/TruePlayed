@@ -39,6 +39,8 @@ globals = {
   "TruePlayed_OnAddonCompartmentLeave",
   "TruePlayedWidget",       -- named frame (Bar)
   "TruePlayedStatsFrame",   -- named frame (Window)
+  "TruePlayedMinimapButton",  -- named frame (MinimapButton)
+  "TruePlayedMiniDisplay",  -- named frame (MiniDisplay)
 }
 
 read_globals = {
@@ -96,6 +98,9 @@ read_globals = {
   "UnitIsTapDenied", "UnitClassification", "UnitCreatureType",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
+  -- minimap button (MinimapButton.lua: its parent, the drop angle, the minimap shape of
+  -- minimap addons; read when the button is created, placed or dropped)
+  "Minimap", "GetCursorPosition", "GetMinimapShape",
 }
 
 -- Themes.lua alone reads the chunk loaders: it compiles the theme source texts in an empty
@@ -106,6 +111,12 @@ files["Themes.lua"] = {
 
 -- Offline tests: the stubs define the whole WoW API as globals, so global checks are
 -- off there; the other checks (unused values, shadowing, unreachable code) still apply.
+-- Offline tools that render images of the addon for the CurseForge page (never shipped).
+files["media-src"] = {
+  std = "+lua51",
+  read_globals = { "os", "io", "dofile" },
+}
+
 files["tests"] = {
   std = "+lua51",
   allow_defined = true,
