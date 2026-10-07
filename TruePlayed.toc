@@ -42,6 +42,7 @@ Core.lua
 Format.lua
 Stats.lua
 Tracker.lua
+Activity.lua
 Played.lua
 Tokens.lua
 Themes.lua

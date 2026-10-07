@@ -527,6 +527,15 @@ local function StartPlay(theme, code, play)
   elseif play == "stall" then
     for _ = 1, 8 do Stub.Advance(30); Stub.Kill(171) end
     Stub.Advance(900)
+  elseif play == "activity" then
+    -- lot 8: every breakdown part but the instances, 12 deaths and 1 h 05 dead, crafting
+    for _ = 1, 20 do Stub.Advance(60); Stub.Kill(171) end
+    for _ = 1, 12 do Stub.Die(); Stub.Advance(65); Stub.ReleaseSpirit(); Stub.Advance(260); Stub.Resurrect(true) end
+    Stub.OpenTradeSkill(); Stub.Advance(1500); Stub.CloseTradeSkill()
+    Stub.SetAFK(true); Stub.Advance(900); Stub.SetAFK(false)
+    Stub.SetTaxi(true); Stub.Advance(600); Stub.SetTaxi(false)
+    Stub.SetMap(1454); Stub.Advance(600); Stub.SetMap(1411)
+    Stub.SetResting(true); Stub.Advance(600); Stub.SetResting(false)
   elseif play == "cap" then
     for _ = 1, 3 do Stub.KillNoXP() end
   end
@@ -563,7 +572,7 @@ T.test("widths: no tooltip row is cut (every theme, every new locale, short / Sh
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
         for _, code in ipairs(NEW) do
-          for _, play in ipairs({ "kills", "none", "long", "stall", "cap" }) do
+          for _, play in ipairs({ "kills", "none", "long", "stall", "cap", "activity" }) do
             Stub.Reset()
             local ns, frame = StartPlay(key, code, play)
             for _, shift in ipairs({ false, true }) do

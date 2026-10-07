@@ -96,6 +96,11 @@ read_globals = {
   -- at combat start / end and on target changes only)
   "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitIsPlayer", "UnitPlayerControlled",
   "UnitIsTapDenied", "UnitClassification", "UnitCreatureType",
+  -- activity states (Activity.lua, lot 8): dead (a hunter's Feign Death is not), the
+  -- profession spells by name (C_Spell.GetSpellName or GetSpellInfo, events only), a
+  -- window open while standing still, the craft window's name (Beast Training is not a
+  -- profession). Guarded: any of them may be nil.
+  "UnitIsFeignDeath", "GetSpellInfo", "C_Spell", "GetUnitSpeed", "GetCraftName",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
   -- minimap button (MinimapButton.lua: its parent, the drop angle, the minimap shape of

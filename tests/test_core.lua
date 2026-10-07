@@ -774,6 +774,8 @@ T.test("C.INCLUDED matches the exclusion-mask arithmetic", function()
     -- instance keys behave like w / W: only the AFK exclusion removes their AFK part
     for _, k in ipairs({ "d", "r", "p" }) do T.eq(row[k], true, k) end
     for _, k in ipairs({ "D", "R", "P" }) do T.eq(row[k], not afk, k) end
+    -- dead and professions: never excluded
+    T.eq(row.x, true); T.eq(row.f, true)
     local n = 0
     for _ in pairs(row) do n = n + 1 end
     T.eq(n, #C.STATE_KEYS, "one entry per state key")
@@ -784,10 +786,12 @@ T.test("C.INCLUDED matches the exclusion-mask arithmetic", function()
   T.eq(C.KEY.r[true], "R"); T.eq(C.KEY.p[true], "P")
 end)
 
-T.test("state key lists: 15 keys, instance keys, active and AFK partitions", function()
+T.test("state key lists: 17 keys, instance keys, active, AFK and activity partitions", function()
   local C = Load().C
-  T.eq(C.STATE_KEYS, { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "u" })
-  T.eq(C.TRACKED_KEYS, { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T" })
+  T.eq(C.STATE_KEYS, { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "x", "f", "u" })
+  T.eq(C.TRACKED_KEYS, { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "x", "f" })
+  T.eq(C.DEAD_KEYS, { "x" }); T.eq(C.PROF_KEYS, { "f" })
+  T.eq(C.IS_ACTIVITY, { x = true, f = true })
   T.eq(C.ACTIVE_KEYS, { "w", "d", "r", "p", "t" })
   T.eq(C.AFK_KEYS, { "W", "D", "R", "P", "I", "C", "T" })
   T.eq(C.INSTANCE_KEYS, { "d", "D", "r", "R", "p", "P" })
@@ -795,10 +799,11 @@ T.test("state key lists: 15 keys, instance keys, active and AFK partitions", fun
   T.eq(C.INSTANCE_KIND, { party = "d", scenario = "d", raid = "r", pvp = "p", arena = "p" })
   T.eq(C.IS_INSTANCE.D, "d"); T.eq(C.IS_INSTANCE.r, "r"); T.eq(C.IS_INSTANCE.P, "p")
   T.eq(C.IS_INSTANCE.w, nil)
-  -- every tracked key is exactly one of: active, AFK, inn (active), city (active)
+  -- every tracked key is exactly one of: active, AFK, inn (active), city (active), dead,
+  -- professions
   for _, k in ipairs(C.TRACKED_KEYS) do
     local n = 0
-    for _, list in ipairs({ C.ACTIVE_KEYS, C.AFK_KEYS, { "i" }, { "c" } }) do
+    for _, list in ipairs({ C.ACTIVE_KEYS, C.AFK_KEYS, { "i" }, { "c" }, C.DEAD_KEYS, C.PROF_KEYS }) do
       for _, x in ipairs(list) do if x == k then n = n + 1 end end
     end
     T.eq(n, 1, "partition " .. k)

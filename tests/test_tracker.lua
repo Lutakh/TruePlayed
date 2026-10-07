@@ -2027,7 +2027,7 @@ T.test("user's SV (round 3): prior v1 -> v2 ~5.7k XP/h, 8 h at the cap = stalled
   T.near(ch.noXP, 12 + 2212 + 182 + 2547, 1, "non-AFK time of the level without XP")
   T.ok((ns.Tracker.GetStall()))
   T.eq(ch.levels[20].xs, { w = 2547, W = 91, i = 12, c = 2212, t = 182,
-                           d = 0, D = 0, r = 0, R = 0, p = 0, P = 0, I = 0, C = 0, T = 0 })
+                           d = 0, D = 0, r = 0, R = 0, p = 0, P = 0, I = 0, C = 0, T = 0, x = 0, f = 0 })
   T.eq(ch.prior.v, nil, "v1 until the first XP read")
   Stub.Advance(3)                               -- XP baseline: v1 recomputed once as v2
   T.eq(ch.prior.v, 2)

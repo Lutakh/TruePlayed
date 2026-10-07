@@ -11,8 +11,8 @@
 -- "~value" followed by the dimmed L.RATE_ESTIMATE; without any data the XP per hour
 -- line says how much counted play is still needed, never a bare "...".
 -- The breakdown line lists the parts of the tracked time in a fixed order (world,
--- dungeons, raids, PvP, flight, AFK, inn, city), leaving out the parts that round to
--- 0 %, BD_PER_LINE parts per line. Instance time (dungeons, raids, PvP) also has its
+-- dungeons, raids, PvP, flight, professions, dead, AFK, inn, city), leaving out the parts
+-- that round to 0 %, BD_PER_LINE parts per line. Instance time (dungeons, raids, PvP) also has its
 -- own lines: the filtered total in the short view, each kind with its AFK part and
 -- the account total in the detailed view.
 -- A frozen rate (status "stalled": no XP gained for a while) is shown dimmed with
@@ -41,6 +41,8 @@ local RECENT_LEVELS = C.RECENT_LEVELS
 local TOP_ROWS = 3
 local CONT_ROWS = 5
 local BD_PER_LINE = 5           -- breakdown parts per tooltip line
+local BD_PER_LINE_ACT = 4       -- at most, once a professions or dead part shows (lot 8):
+                                -- lines balanced, so that the longer labels still fit
 
 local shownFor = nil            -- owner of our tooltip while it is shown
 local shownHint = nil           -- hint line of the shown tooltip (nil = L.TT_HINT)
@@ -53,11 +55,12 @@ local bdFracs, bdKeys = {}, {}  -- reused breakdown fractions and gauge keys
 
 -- Breakdown parts, fixed order: locale key of the label, Stats.Breakdown field, gauge
 -- colour key. The flight part (active flight, "t") has no field of its own: active
--- minus the rest.
+-- minus the rest. Professions and dead (Activity.lua) are not part of active.
 local BD_ORDER = {
   { "BD_WORLD", "world", "world" }, { "BD_DUNGEON", "dungeon", "dungeon" }, { "BD_RAID", "raid", "raid" },
-  { "BD_PVP", "pvp", "pvp" }, { "BD_TAXI", false, "taxi" }, { "BD_AFK", "afk", "afk" },
-  { "BD_INN", "inn", "inn" }, { "BD_CITY", "city", "city" },
+  { "BD_PVP", "pvp", "pvp" }, { "BD_TAXI", false, "taxi" }, { "BD_PROF", "prof", "prof" },
+  { "BD_DEAD", "dead", "dead" }, { "BD_AFK", "afk", "afk" }, { "BD_INN", "inn", "inn" },
+  { "BD_CITY", "city", "city" },
 }
 
 -- Classic palette: Themes.CLASSIC_TT. The local copy (same roles, from C.COLORS) is
@@ -199,10 +202,11 @@ end
 
 -- Texts of the visible breakdown parts ("World 62%", ...) in the fixed order, over
 -- the tracked time; parts that round to 0 % are left out. Fills `out` (reused, the
--- surplus is cleared) and returns the count. Tooltip builds and /tpl played only.
+-- surplus is cleared) and returns the count, and true when a professions or dead part
+-- is among them. Tooltip builds and /tpl played only.
 function Tooltip.BreakdownParts(bd, out)
   out = out or {}
-  local n = 0
+  local n, act = 0, false
   local tracked = bd and bd.tracked or 0
   if tracked > 0 then
     for i = 1, #BD_ORDER do
@@ -211,15 +215,17 @@ function Tooltip.BreakdownParts(bd, out)
       if floor(secs / tracked * 100 + 0.5) >= 1 then
         n = n + 1
         out[n] = format(L.BD_PART_FMT, L[part[1]], Fmt.Percent(secs / tracked, 0))
+        if part[2] == "prof" or part[2] == "dead" then act = true end
       end
     end
   end
   for i = #out, n + 1, -1 do out[i] = nil end
-  return n
+  return n, act
 end
 
 -- Fractions of the same visible parts (same order, same 0 % filter as BreakdownParts)
--- and their gauge colour keys (world, dungeon, raid, pvp, taxi, afk, inn, city). Fills
+-- and their gauge colour keys (world, dungeon, raid, pvp, taxi, prof, dead, afk, inn,
+-- city). Fills
 -- the reused `fracs` and `keys` (the surplus is cleared) and returns the count.
 -- Allocation free.
 function Tooltip.BreakdownFracs(bd, fracs, keys)
@@ -348,6 +354,15 @@ local function FillServer(tt, ctx, char)
   end
 end
 
+-- Total (unfiltered) seconds of a continent row key, from the raw rows of this build.
+local function ContRawSecs(key, nraw)
+  for i = 1, nraw do
+    local r = rowsContRaw[i]
+    if r.key == key then return r.secs end
+  end
+  return 0
+end
+
 -- Detailed part (Shift), inserted before the hint. One blank line opens it; the
 -- blocks below are separated by their accent headers only.
 local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
@@ -374,11 +389,17 @@ local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
 
   -- continents of the character (instances and unplaced time apart): every continent with
   -- time is listed, valued under the exclusions like the zones above; a continent whose
-  -- time is all excluded (e.g. only city time with the city excluded) comes last
+  -- time is all excluded (e.g. only city time with the city excluded) comes last. A
+  -- continent with less than C.CONT_MIN_SECS of total time (a few seconds of loading
+  -- screen) is not listed.
   local ncont = 0
   if zones then
     local nraw = Stats.Continents(zones, 0, rowsContRaw) or 0
-    if nraw > 0 then
+    local nbig = 0
+    for i = 1, nraw do
+      if rowsContRaw[i].secs >= C.CONT_MIN_SECS then nbig = nbig + 1 end
+    end
+    if nbig > 0 then
       local rows, nf = rowsContRaw, nraw
       if mask ~= 0 then
         rows = rowsCont
@@ -388,8 +409,10 @@ local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
       for i = 1, nf do
         if ncont >= CONT_ROWS then break end
         local row = rows[i]
-        Pair(tt, row.name, Dur(row.secs))
-        ncont = ncont + 1
+        if ContRawSecs(row.key, nraw) >= C.CONT_MIN_SECS then
+          Pair(tt, row.name, Dur(row.secs))
+          ncont = ncont + 1
+        end
       end
       for i = 1, nraw do
         if ncont >= CONT_ROWS then break end
@@ -401,7 +424,7 @@ local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
             break
           end
         end
-        if not listed then
+        if not listed and raw.secs >= C.CONT_MIN_SECS then
           Pair(tt, raw.name, Dur(0))
           ncont = ncont + 1
         end
@@ -452,8 +475,12 @@ local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
   end
   Pair(tt, L.TT_AFK, Dur(bd.afk))
   Pair(tt, L.TT_TAXI, Dur(bd.taxi))
+  -- professions (only once there is any), deaths with the time spent dead or a ghost
+  if (bd.prof or 0) > 0 then Pair(tt, L.TT_PROF, Dur(bd.prof)) end
   local life = char.life
-  Pair(tt, L.TT_DEATHS, Fmt.Number(type(life) == "table" and life.d or 0))
+  local deaths = Fmt.Number(type(life) == "table" and life.d or 0)
+  if (bd.dead or 0) > 0 then deaths = format("%s (%s)", deaths, Dur(bd.dead)) end
+  Pair(tt, L.TT_DEATHS, deaths)
   if bd.untracked > 0 then
     Pair(tt, L.TT_UNTRACKED, format("%s (%s)", Dur(bd.untracked), L.TT_UNTRACKED_NOTE))
   end
@@ -566,7 +593,12 @@ local function FillBody(tt, detailed, hint)
   -- BD_PER_LINE parts per line (continuation lines have no label)
   Sep(tt, "block")
   local bd = Stats.Breakdown(life, breakdown)
-  local nParts = Tooltip.BreakdownParts(bd, bdParts)
+  local nParts, act = Tooltip.BreakdownParts(bd, bdParts)
+  local perLine = BD_PER_LINE
+  if act then   -- longer labels: at most BD_PER_LINE_ACT parts a line, lines balanced
+    local nLines = floor((nParts + BD_PER_LINE_ACT - 1) / BD_PER_LINE_ACT)
+    perLine = floor((nParts + nLines - 1) / nLines)
+  end
   if nParts == 0 then
     PairDim(tt, L.TT_BREAKDOWN, L.TT_NO_RATE)
   else
@@ -577,8 +609,8 @@ local function FillBody(tt, detailed, hint)
       and tt:TP_Gauge(L.TT_BREAKDOWN, bdFracs, bdKeys, nParts) then
       labelled = false
     end
-    for first = 1, nParts, BD_PER_LINE do
-      local last = first + BD_PER_LINE - 1
+    for first = 1, nParts, perLine do
+      local last = first + perLine - 1
       if last > nParts then last = nParts end
       if labelled then
         Pair(tt, L.TT_BREAKDOWN, table_concat(bdParts, L.SEP, first, last))

@@ -177,9 +177,16 @@ C.LANGUAGES_NATIVE_ONLY = { ruRU = true, koKR = true, zhCN = true, zhTW = true }
 -- state keys. Lowercase = active, uppercase = AFK. d / r / p (dungeon or scenario,
 -- raid, battleground or arena) apply only inside an instance, where inn and city
 -- never apply; w is the open world (and instances of an unknown type).
+-- Activity keys (Activity.lua), one key each, never excluded by a mask: x = dead or a
+-- ghost, f = professions (gathering, crafting, fishing, first aid...). Precedence of the
+-- state of a second: dead > AFK > professions > flight > instance > city > inn > world
+-- (AFK while dead is dead; AFK while crafting is the AFK key of the place).
 C.MASK_AFK, C.MASK_INN, C.MASK_CITY = 1, 2, 4
-C.STATE_KEYS   = { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "u" }
-C.TRACKED_KEYS = { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T" }   -- fixed order, used for largest-remainder splits
+C.STATE_KEYS   = { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "x", "f", "u" }
+C.TRACKED_KEYS = { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "x", "f" }   -- fixed order, used for largest-remainder splits
+C.DEAD_KEYS    = { "x" }
+C.PROF_KEYS    = { "f" }
+C.IS_ACTIVITY  = { x = true, f = true }   -- no share of a time rebuilt after a crash (EstimateGap)
 C.AFK_KEYS     = { "W", "D", "R", "P", "I", "C", "T" }
 C.INN_KEYS     = { "i", "I" }
 C.CITY_KEYS    = { "c", "C" }
@@ -228,6 +235,15 @@ C.CAPITALS = { [1453] = true, [1454] = true, [1455] = true, [1456] = true, [1457
 C.MAPTYPE_ZONE, C.MAPTYPE_DUNGEON = 3, 4    -- used when Enum.UIMapType is missing
 C.MAPTYPE_COSMIC, C.MAPTYPE_WORLD, C.MAPTYPE_CONTINENT = 0, 1, 2   -- idem; never zone keys
 C.TAU_CHOICES = { 5400, 3600, 1200 }        -- slow, normal, fast
+C.CONT_MIN_SECS = 60                        -- continents with less total time are not listed (data kept)
+
+-- activity (Activity.lua): a gathering, fishing, disenchanting or lockpicking cast that
+-- ends keeps the professions state PROF_GRACE seconds more (looting); a cast or channel
+-- whose end event never came is dropped after PROF_CAST_MAX seconds
+C.PROF_GRACE          = 5
+C.PROF_CAST_MAX       = 60
+-- level-start estimate (levels[L].eta): taken while the level is at most this much done
+C.ETA_START_FRAC      = 0.05
 
 -- media (built-in files only)
 C.TEX_WHITE       = "Interface\\Buttons\\WHITE8X8"
@@ -761,15 +777,16 @@ local LIFE_FIELDS    = { "xp", "xa", "xr", "xq", "d", "est" }
 local LEVEL_FIELDS   = { "xp", "xa", "xr", "xq", "d" }
 local ZONE_FIELDS    = { "xp" }
 local SESSION_FIELDS = { "xp", "d" }
-local LEVEL_OPTIONAL = { "est", "max", "t0", "t1", "srvStart", "srvEnd" }
+local LEVEL_OPTIONAL = { "est", "max", "t0", "t1", "srvStart", "srvEnd", "eta", "etaP" }
 local EMA_FIELDS     = { "a", "r", "q", "d" }
 local CHAR_TABLES    = { "base", "srv", "xpSnap", "cur", "last" }
 
--- Seconds maps: drop every value that is not a number (NaN included). Inline
+-- Seconds maps: drop every value that is not a number (NaN included), and a negative
+-- dead or professions time (x, f: optional keys, absent from older records). Inline
 -- test: this loop visits every stored second counter of every character.
 local function RepairS(s)
   for k, v in pairs(s) do
-    if type(v) ~= "number" or v ~= v then s[k] = nil end
+    if type(v) ~= "number" or v ~= v or (v < 0 and (k == "x" or k == "f")) then s[k] = nil end
   end
 end
 
@@ -936,6 +953,10 @@ function Core.RepairChar(char)
           local f = LEVEL_OPTIONAL[i]
           if lb[f] ~= nil and not IsNum(lb[f]) then lb[f] = nil end
         end
+        -- eta: estimated time to the next level when the level began (s, > 0); etaP: the
+        -- XP fraction at that moment (0..1). Both optional (Tracker.CaptureLevelEta).
+        if lb.eta ~= nil and lb.eta <= 0 then lb.eta = nil end
+        if lb.etaP ~= nil and (lb.etaP < 0 or lb.etaP > 1) then lb.etaP = nil end
       end
     end
   end

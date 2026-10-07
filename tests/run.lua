@@ -41,7 +41,7 @@ local function exists(path)
   return false
 end
 
-for _, name in ipairs({ "stub_engine", "stub_stats", "stub_ui" }) do
+for _, name in ipairs({ "stub_engine", "stub_stats", "stub_ui", "stub_activity" }) do
   local path = ROOT .. "tests/" .. name .. ".lua"
   if exists(path) then
     local installer = dofile(path)
@@ -202,6 +202,8 @@ local FILES = {
   "test_locales",
   -- minimap button and mini display (design/NEXT-LOT.md, backlog 3 and 4)
   "test_minimap", "test_mini",
+  -- lot 8 part A: time dead, professions, per-level additions, short continents
+  "test_dead", "test_prof", "test_levels_extra",
 }
 
 local passed, failed, skipped = 0, 0, 0

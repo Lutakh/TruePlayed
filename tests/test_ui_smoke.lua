@@ -1529,7 +1529,7 @@ T.test("window: continents for the character and the account, instances and othe
   local rec = RecordWithCity()
   rec.zones[1453] = { s = { c = 500, C = 50 }, xp = 0, name = "Stormwind City" }
   rec.zones.i389 = { s = { w = 700, W = 30 }, xp = 900, name = "Ragefire Chasm" }
-  rec.zones.o = { s = { w = 40 }, xp = 0 }
+  rec.zones.o = { s = { w = 90 }, xp = 0 }   -- listed: at least C.CONT_MIN_SECS (lot 8)
   local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = rec } } })
   local L, Fmt = ns.L, ns.Fmt
   Stub.Advance(15)

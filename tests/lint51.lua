@@ -188,6 +188,11 @@ for _, name in ipairs({
   -- at combat start / end and on target changes only)
   "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitIsPlayer", "UnitPlayerControlled",
   "UnitIsTapDenied", "UnitClassification", "UnitCreatureType",
+  -- activity states (Activity.lua, lot 8): dead (a hunter's Feign Death is not), the
+  -- profession spells by name (C_Spell.GetSpellName or GetSpellInfo, events only), a
+  -- window open while standing still, the craft window's name (Beast Training is not a
+  -- profession). Guarded: any of them may be nil.
+  "UnitIsFeignDeath", "GetSpellInfo", "C_Spell", "GetUnitSpeed", "GetCraftName",
 }) do
   ALLOWED_READ[name] = true
 end

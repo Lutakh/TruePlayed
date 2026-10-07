@@ -45,11 +45,11 @@ end
 
 local Stub = dofile(ROOT .. "tests/wowstub.lua")
 Stub.ROOT = ROOT
-do
-  local f = io.open(ROOT .. "tests/stub_ui.lua", "r")
+for _, name in ipairs({ "stub_ui", "stub_activity" }) do
+  local f = io.open(ROOT .. "tests/" .. name .. ".lua", "r")
   if f then
     f:close()
-    Stub.AddInstaller(dofile(ROOT .. "tests/stub_ui.lua"))
+    Stub.AddInstaller(dofile(ROOT .. "tests/" .. name .. ".lua"))
   end
 end
 
@@ -100,6 +100,11 @@ local READ_OK = Set({
   -- at combat start / end and on target changes only)
   "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitIsPlayer", "UnitPlayerControlled",
   "UnitIsTapDenied", "UnitClassification", "UnitCreatureType",
+  -- activity states (Activity.lua, lot 8): dead (a hunter's Feign Death is not), the
+  -- profession spells by name (C_Spell.GetSpellName or GetSpellInfo, events only), a
+  -- window open while standing still, the craft window's name (Beast Training is not a
+  -- profession). Guarded: any of them may be nil.
+  "UnitIsFeignDeath", "GetSpellInfo", "C_Spell", "GetUnitSpeed", "GetCraftName",
   -- Lua standard library
   "assert", "error", "getmetatable", "ipairs", "next", "pairs", "pcall", "rawequal",
   "rawget", "rawset", "select", "setmetatable", "tonumber", "tostring", "type", "unpack",
@@ -820,6 +825,32 @@ Scenario("every theme (setting values, tooltip, graph, window, options, /tpl the
   ns = Stub.Restart({ reload = true, settle = 3 })
   Stub.Advance(3)
   ShowEverything(ns)
+  Stub.Logout()
+end)
+
+-- Activity states (lot 8): a death and a ghost run, a craft in the trade skill window,
+-- the craft window (Beast Training, then Enchanting), gathering with its grace, a fishing
+-- and a bandage channel, a non-profession cast, the Shift tooltip, the Levels tab with
+-- its dead and estimate columns, a level-up (level-start estimate) and a logout.
+Scenario("dead and ghost run, professions, Shift tooltip, Levels tab, level-up", function()
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  for _ = 1, 4 do Stub.Advance(30); Stub.Kill(150) end
+  Stub.Die(); Stub.Advance(20); Stub.ReleaseSpirit(); Stub.Advance(40); Stub.Resurrect(true); Stub.Advance(5)
+  Stub.OpenTradeSkill(); Stub.Advance(3); Stub.Cast(2657, 2); Stub.CloseTradeSkill(); Stub.Advance(2)
+  Stub.OpenCraft("Beast Training"); Stub.Advance(2); Stub.CloseCraft()
+  Stub.OpenCraft("Enchanting"); Stub.Advance(2); Stub.CloseCraft()
+  Stub.Cast(2366, 3); Stub.Advance(6)
+  Stub.Spell("CHANNEL_START", 7620); Stub.Advance(10); Stub.Spell("CHANNEL_STOP", 7620); Stub.Advance(6)
+  Stub.Spell("CHANNEL_START", 746); Stub.Advance(8); Stub.Spell("CHANNEL_STOP", 746)
+  Stub.Spell("START", 133); Stub.Spell("INTERRUPTED", 133); Stub.Advance(2)
+  local w = rawget(_G, "TruePlayedWidget")
+  Stub.RunScript(w, "OnEnter"); Stub.SetShift(true); Stub.Advance(2); Stub.SetShift(false)
+  Stub.RunScript(w, "OnLeave")
+  ns.Window.Show("levels"); Stub.Advance(6)
+  ns.Window.Toggle("zones"); ns.Window.Toggle("sessions"); ns.Window.Hide()
+  Stub.GrantXP(Stub.player.max); Stub.Advance(3)
+  ns.Window.Show("levels"); Stub.Advance(2); ns.Window.Hide()
   Stub.Logout()
 end)
 

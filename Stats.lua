@@ -131,13 +131,15 @@ end
 
 -- Fills `out` with the state partition of a bucket (see 4.1 "Derived quantities").
 -- Percentages must be computed over out.tracked (critique #10a): active + afk + inn +
--- city == tracked. Active time splits into world (open world) + dungeon + raid + pvp
--- + taxi; the *All fields add the AFK time of the same place.
+-- city + dead + prof == tracked. Active time splits into world (open world) + dungeon +
+-- raid + pvp + taxi; the *All fields add the AFK time of the same place. dead (x) and
+-- prof (f) are the activity states (Activity.lua): one key each, never AFK.
 function Stats.Breakdown(bucket, out)
   out = out or {}
   local s = bucket and bucket.s
   local w, W, d, D, r, R, p, P = 0, 0, 0, 0, 0, 0, 0, 0
   local i, I, c, Cc, t, T, u = 0, 0, 0, 0, 0, 0, 0
+  local x, f = 0, 0
   if s then
     w, W = s.w or 0, s.W or 0
     d, D = s.d or 0, s.D or 0
@@ -146,10 +148,13 @@ function Stats.Breakdown(bucket, out)
     i, I = s.i or 0, s.I or 0
     c, Cc = s.c or 0, s.C or 0
     t, T = s.t or 0, s.T or 0
+    x, f = s.x or 0, s.f or 0
     u = s.u or 0
   end
   local inst = d + D + r + R + p + P
-  local total = w + W + inst + i + I + c + Cc + t + T + u
+  local total = w + W + inst + i + I + c + Cc + t + T + x + f + u
+  out.dead = x
+  out.prof = f
   out.active = w + d + r + p + t
   out.afk = W + D + R + P + I + Cc + T
   out.inn = i
@@ -922,13 +927,17 @@ local function FillLevelRow(row, char, l, mask, sync, now, isCurrent)
   row.partial = lb.partial == true
   row.rec = lb.rec == true
   row.deaths = lb.d or 0
+  row.dead = s and s.x or 0              -- seconds dead or a ghost (never excluded)
+  row.prof = s and s.f or 0              -- seconds of professions (never excluded)
+  row.eta, row.etaP = lb.eta, lb.etaP    -- estimate when the level began (nil: none)
   row.current = isCurrent
 end
 
 -- (alloc) One row per level record, current level first then descending.
 -- Rows: { level, filtered, raw, server, gap, est, xp, xph, afk, inn, city, mainZone,
--- reachedAt, partial, rec, deaths, current } (+ serverEst, mainZoneKey, inst).
--- `server` is nil when unknown; `gap` is nil unless server - raw > C.DRIFT_TOL.
+-- reachedAt, partial, rec, deaths, current } (+ serverEst, mainZoneKey, inst, dead, prof,
+-- eta, etaP, cum). `server` is nil when unknown; `gap` is nil unless server - raw >
+-- C.DRIFT_TOL. `cum`: see Stats.CumulativeTime (nil above the character's level).
 function Stats.LevelHistory(char, mask, sync, now, out)
   out = out or {}
   now = now or GetTime()
@@ -941,11 +950,15 @@ function Stats.LevelHistory(char, mask, sync, now, out)
     end
     table_sort(levelList, Descending)
     local cur = char.level
+    -- cumulative time, walked down from the played total (Stats.CumulativeTime)
+    local cum, prev = nil, nil
     if cur and type(levels[cur]) == "table" then
       count = count + 1
       local row = out[count] or {}
       out[count] = row
       FillLevelRow(row, char, cur, mask, sync, now, true)
+      cum = Stats.Played(char, mask, sync, now)
+      row.cum, prev = cum, row.filtered
     end
     for i = 1, #levelList do
       local l = levelList[i]
@@ -954,6 +967,13 @@ function Stats.LevelHistory(char, mask, sync, now, out)
         local row = out[count] or {}
         out[count] = row
         FillLevelRow(row, char, l, mask, sync, now, false)
+        if cum ~= nil and type(cur) == "number" and l < cur then
+          cum = cum - prev
+          if cum < 0 then cum = 0 end
+          row.cum, prev = cum, row.filtered
+        else
+          row.cum = nil
+        end
       end
     end
     wipe(levelList)
@@ -975,12 +995,15 @@ local function FillSessionRow(row, s, mask, isCurrent, level)
   row.afk = SumKeys(s, AFK_KEYS)
   row.inst = InstanceTime(s, mask)
   row.deaths = s.d or 0
+  local ss = s.s
+  row.dead = type(ss) == "table" and ss.x or 0
+  row.prof = type(ss) == "table" and ss.f or 0
   row.current = isCurrent
 end
 
 -- (alloc) Sessions of one character: the in-progress one (char.cur) first, then the
 -- ring newest first. Rows: { t0, dur, l0, p0, l1, p1, xp, xph, afk, current } (+ t1,
--- deaths, inst). For the in-progress row l1 = char.level and p1 is left to the caller.
+-- deaths, inst, dead, prof). For the in-progress row l1 = char.level and p1 is left to the caller.
 function Stats.SessionHistory(char, mask, out)
   out = out or {}
   local count = 0
@@ -1115,6 +1138,74 @@ function Stats.AccountAvgPerLevel(db, mask)
   end
   if nLevels == 0 then return nil, nChars end
   return total / nLevels, nChars
+end
+
+---------------------------------------------------------------------------
+-- Activity per level (lot 8: dead, professions, level-start estimate, cumulative time)
+---------------------------------------------------------------------------
+
+-- Activity of one level of char: deaths (count), dead (seconds dead or a ghost), prof
+-- (seconds of professions), eta (estimated time to the next level when the level began,
+-- seconds, or nil), etaP (the XP fraction at that moment, or nil). All 0 / nil for a
+-- level without a record. Neither dead nor prof is ever excluded by a mask.
+function Stats.LevelActivity(char, level)
+  local levels = char and char.levels
+  local lb = type(levels) == "table" and level and levels[level]
+  if type(lb) ~= "table" then return 0, 0, 0, nil, nil end
+  local s = lb.s
+  local dead = type(s) == "table" and s.x or 0
+  local prof = type(s) == "table" and s.f or 0
+  return lb.d or 0, dead, prof, lb.eta, lb.etaP
+end
+
+-- Seconds from the creation of the character (level 1) to the END of `level` (for the
+-- current level: to now), counted under the mask like the level times. It is the played
+-- total (Stats.Played: the server /played when synced, so the time before the install
+-- is included, unfiltered as a server /played has no split) minus the filtered time of
+-- every recorded level above `level` up to the current one. A level skipped without a
+-- record counts 0 (its time stays in the level below it). nil when the record has no
+-- current level or `level` is above it; never below 0.
+function Stats.CumulativeTime(char, level, mask, sync, now)
+  local levels = char and char.levels
+  local cur = char and char.level
+  if type(levels) ~= "table" or type(cur) ~= "number" or type(level) ~= "number" or level > cur then
+    return nil
+  end
+  now = now or GetTime()
+  local cum = Stats.Played(char, mask, sync, now)
+  for l = cur, level + 1, -1 do
+    local lb = levels[l]
+    if type(lb) == "table" then
+      if l == cur then
+        cum = cum - Stats.LevelTime(char, l, mask, sync, now)
+      else
+        cum = cum - Sum(lb, mask)
+      end
+    end
+  end
+  if cum < 0 then cum = 0 end
+  return cum
+end
+
+-- Dead seconds, professions seconds and deaths summed over every record's life (the
+-- account figures; never excluded by a mask).
+function Stats.AccountActivity(db)
+  local dead, prof, deaths = 0, 0, 0
+  local chars = db and db.chars
+  if type(chars) == "table" then
+    for _, ch in pairs(chars) do
+      local life = type(ch) == "table" and ch.life
+      if type(life) == "table" then
+        local s = life.s
+        if type(s) == "table" then
+          dead = dead + (s.x or 0)
+          prof = prof + (s.f or 0)
+        end
+        deaths = deaths + (life.d or 0)
+      end
+    end
+  end
+  return dead, prof, deaths
 end
 
 ---------------------------------------------------------------------------

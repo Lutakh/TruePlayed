@@ -217,8 +217,12 @@ local function Set(ns, path, value)
   Stub.Advance(1)
 end
 
+-- A minute passes first: the detailed tooltip leaves out a continent with less than
+-- C.CONT_MIN_SECS of time (lot 8), which the pre-theme copy lists; after a minute both
+-- trees list the continent of the scenario (identical inputs on both sides).
 local function Tooltips(ns, out, label)
   local w = rawget(_G, "TruePlayedWidget")
+  Stub.Advance(60)
   Stub.shift = false
   ns.Tooltip.ShowFor(w)
   out[#out + 1] = { label = label .. " tooltip short", lines = TooltipSnapshot() }

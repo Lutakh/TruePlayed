@@ -703,6 +703,11 @@ local function Compute(now)
   else
     place = "w"
   end
+  -- activity (Activity.lua): dead wins over everything, professions over every place
+  -- but not over AFK (dead > AFK > professions > flight > instance > city > inn > world)
+  local Activity = ns.Activity
+  local over = Activity and Activity.Override(lastAfk, now)
+  if over then return over, zoneKey, mapID, isCity end
   return KEY[place][lastAfk], zoneKey, mapID, isCity
 end
 
@@ -1042,6 +1047,33 @@ function Tracker.Reevaluate(_reason)
   Reeval(GetTime())
 end
 
+-- Level-start estimate (lot 8, A3): levels[L].eta = the time to the next level shown
+-- when the level began (seconds: the rest-aware Stats.ETA under the exclusions of that
+-- moment, status "ok" or "estimate"), levels[L].etaP = the XP fraction at that moment.
+-- Taken once, at the first tick with a rate while the level is at most
+-- C.ETA_START_FRAC done (right after a level-up; a level whose rate came later); the
+-- install level (partial) takes its first measured estimate (status "ok", not the
+-- pre-install one) wherever it is. A level that began without any estimate, and every
+-- level of older versions, has none. Allocation free.
+function Tracker.CaptureLevelEta()
+  local char = ns.char
+  if ns.readOnly or not char or not b.valid or realMax or capped or b.level ~= seg.level then return end
+  local lb = seg.lb
+  if seg.cchar ~= char or lb == nil then
+    local levels = char.levels
+    lb = type(levels) == "table" and levels[seg.level] or nil
+  end
+  if type(lb) ~= "table" or lb.eta ~= nil then return end
+  local frac = b.xp / b.max
+  local late = frac > C.ETA_START_FRAC
+  if late and not lb.partial then return end
+  local eta, status = ns.Stats.ETA(char, ns.GetMask(), b.xp, b.max, b.rest, false)
+  if type(eta) ~= "number" or not (eta > 0) then return end   -- luacheck: ignore 581 (NaN fails too)
+  if status ~= "ok" and (status ~= "estimate" or lb.partial) then return end
+  lb.eta = math_floor(eta + 0.5)
+  lb.etaP = Round3(frac)
+end
+
 function Tracker.Tick(now)
   if type(now) ~= "number" then now = GetTime() end
   Reeval(now)
@@ -1049,6 +1081,7 @@ function Tracker.Tick(now)
   if pendXP > 0 and now - pendG > C.DISCOVERY_WINDOW then
     if SettlePending() then Send("XP_CHANGED") end
   end
+  Tracker.CaptureLevelEta()
 end
 
 ---------------------------------------------------------------------------
@@ -1200,10 +1233,13 @@ function Tracker.EstimateGap(char, G, P1)
   local b0 = Tracker.b0
 
   -- 2. state proportions (read BEFORE crediting anything; never "u") ----
+  -- Dead and professions time get no share (C.IS_ACTIVITY): a rebuilt gap is time
+  -- the addon did not see, split over the places only.
   local hist, histTotal = {}, 0
   for i = 1, N_TRACKED do
-    local v = char.life.s[TRACKED_KEYS[i]] or 0
-    if v < 0 then v = 0 end
+    local k = TRACKED_KEYS[i]
+    local v = char.life.s[k] or 0
+    if v < 0 or C.IS_ACTIVITY[k] then v = 0 end
     hist[i] = math_floor(v)
     histTotal = histTotal + hist[i]
   end
@@ -2454,6 +2490,9 @@ function Tracker.Start()
   ns.RegisterEvent("PLAYER_TARGET_CHANGED", cap.OWNER, cap.OnTargetChanged)
   ns.RegisterMessage("SETTINGS_CHANGED", Tracker, OnSettingsChanged)
   ns.RegisterMessage("DB_SWAPPED", Tracker, OnDBSwapped)
+  -- dead and professions states (Activity.lua): its events, after the Tracker's own
+  local Activity = ns.Activity
+  if Activity then Activity.Start() end
 end
 
 -- Core.ResetChar has rebuilt the current record in place (5.20).
@@ -2519,6 +2558,7 @@ function Tracker.ReplayDelta(newChar)
       if ml.max ~= nil then nl.max = ml.max end
       if nl.t0 == nil then nl.t0 = ml.t0 end
       if nl.srvStart == nil then nl.srvStart, nl.srvStartEst = ml.srvStart, ml.srvStartEst end
+      if nl.eta == nil and ml.eta ~= nil then nl.eta, nl.etaP = ml.eta, ml.etaP end
     end
   end
   for k, dz in pairs(delta.zones) do

@@ -14,7 +14,9 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- capitals, then every zone; the same blocks for the account view (merged zones).
 -- Levels and Sessions tabs: the Inst. column is the time spent in instances (dungeons,
 -- raids, PvP) counted under the exclusions, like the time column; the footer adds the
--- instance total when there is one.
+-- instance total when there is one. Levels tab: Dead = time dead or a ghost with the
+-- deaths of the level ("5m (2)"), Est. = the time to level estimated when it began.
+-- Continents with less than C.CONT_MIN_SECS of total time are not listed.
 -- Requirement B: the view is the current character unless the user picks another
 -- character or the account view; every Show resets it to the current character.
 -- Themes (SPEC-themes 4.6): Window.ApplyTheme sets the backdrop colours and the title
@@ -39,6 +41,9 @@ ns.Window = Window
 local WIN_W, WIN_H = 700, 440
 local ROW_H = 16
 local CONTENT_W = 650
+-- Levels tab of a character with deaths, dead time or level-start estimates: two more
+-- columns, the window and its rows widened by WIDE_EXTRA (lot 8, minimum display).
+local WIDE_EXTRA = 130
 local DASH = "-"
 local APPROX = "~"
 local VIEW_CURRENT, VIEW_ACCOUNT = "current", "account"
@@ -78,7 +83,17 @@ local LAYOUTS = {
   },
   section = { Col(nil, 0, CONTENT_W) },
 }
-local MAX_COLS = 10
+-- lot 8 (minimum display, the UI rework comes later): the Levels columns, then the time
+-- dead with the deaths of the level and the time to level estimated when it began. Used
+-- only when a level has any of them (Window.Refresh: HasLevelExtras).
+do
+  local wide = {}
+  for i, col in ipairs(LAYOUTS.levels) do wide[i] = col end
+  wide[#wide + 1] = Col("COL_DEAD", 650, 74)
+  wide[#wide + 1] = Col("COL_ETA", 726, 54)
+  LAYOUTS.levelsWide = wide
+end
+local MAX_COLS = 12               -- header FontStrings beyond the 10th are created on first use
 
 local WIN_BACKDROP = {
   bgFile = C.TEX_TT_BG, edgeFile = C.TEX_TT_BORDER,
@@ -109,6 +124,8 @@ local rowTip = {}                  -- [row] = reused tooltip data
 local nUsed = 0
 
 local curTab = "levels"
+local levelsLayout = LAYOUTS.levels  -- LAYOUTS.levelsWide when the viewed levels have extras
+local frameW = WIN_W               -- applied frame width (set on change only)
 local view = VIEW_CURRENT
 local listening = false
 local tickCount = 0
@@ -189,6 +206,14 @@ local function TimeText(sec, approx)
   local s = Fmt.Duration(sec or 0)
   if approx then return APPROX .. s end
   return s
+end
+
+-- "5m (2)": time dead and the number of deaths; the count alone without dead time
+-- (deaths recorded before this version); a dash for neither.
+local function DeadText(sec, deaths)
+  sec, deaths = tonumber(sec) or 0, math_floor(tonumber(deaths) or 0)
+  if sec <= 0 then return deaths > 0 and format("(%d)", deaths) or DASH end
+  return format("%s (%d)", Fmt.Duration(sec), deaths)
 end
 
 -- Instance seconds (dungeons, raids, PvP) of a bucket under `mask`.
@@ -325,7 +350,10 @@ end
 
 local function ApplyRowLayout(row, layout)
   if rowLayout[row] == layout then return end
+  local wasWide = rowLayout[row] == LAYOUTS.levelsWide
   rowLayout[row] = layout
+  local wide = layout == LAYOUTS.levelsWide
+  if wide ~= wasWide then row:SetWidth(CONTENT_W + (wide and WIDE_EXTRA or 0)) end
   local cells = rowCells[row]
   for c = 1, #layout do
     local col = layout[c]
@@ -411,7 +439,7 @@ local function BuildLevels(char, mask, now)
     local est = tonumber(r.est) or 0
     local gap = tonumber(r.gap) or 0
     local approx = (r.partial or r.rec or est > 0 or gap > 0) and true or false
-    local row = NextRow(LAYOUTS.levels)
+    local row = NextRow(levelsLayout)
     SetCell(row, 1, IntText(r.level), r.current and COLORS.accent or nil)
     SetCell(row, 2, TimeText(r.filtered, approx))
     SetCell(row, 3, r.server and Fmt.Duration(r.server) or DASH, COLORS.label)
@@ -427,6 +455,11 @@ local function BuildLevels(char, mask, now)
       SetCell(row, 10, L.ROW_IN_PROGRESS, COLORS.accent)
     else
       SetCell(row, 10, r.reachedAt and Fmt.Date(r.reachedAt) or DASH, COLORS.label)
+    end
+    if levelsLayout == LAYOUTS.levelsWide then
+      SetCell(row, 11, DeadText(r.dead, r.deaths), COLORS.label)
+      local eta = tonumber(r.eta)
+      SetCell(row, 12, (eta and eta > 0) and Fmt.Duration(eta) or DASH, COLORS.label)
     end
     local tip = rowTip[row]
     tip.level = math_floor(tonumber(r.level) or 0)
@@ -472,16 +505,23 @@ local function BuildContinents(zoneMap, mask)
     local r = contNoAfkRows[i]
     contNoAfk[r.key] = r.secs
   end
+  -- continents with less than C.CONT_MIN_SECS of total time are left out (the data stays)
+  local MIN = C.CONT_MIN_SECS
+  local listed = 0
+  for i = 1, nr do
+    if contRawRows[i].secs >= MIN then listed = listed + 1 end
+  end
+  if listed == 0 then return 0 end
   Section(L.SECTION_CONTINENTS)
   for i = 1, nf do
     local r = contRows[i]
-    AddContinentRow(r, r.secs)
+    if (contRaw[r.key] or 0) >= MIN then AddContinentRow(r, r.secs) end
   end
   for i = 1, nr do
     local r = contRawRows[i]
-    if not contListed[r.key] then AddContinentRow(r, 0) end
+    if not contListed[r.key] and r.secs >= MIN then AddContinentRow(r, 0) end
   end
-  return nr
+  return listed
 end
 
 -- Most played instances (same columns as the zones list): time counted under the
@@ -655,6 +695,42 @@ local function ViewLabel(char)
   return format(L.CHAR_FMT, Util.CharName(char), math_floor(tonumber(char.level) or 0))
 end
 
+-- Column header FontString (created at Create for the 10 base columns, later on demand).
+local function NewHeader()
+  local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  fs:SetWordWrap(false)
+  local lc = UI.label
+  fs:SetTextColor(lc[1], lc[2], lc[3])
+  return fs
+end
+
+-- A level of the viewed character holds deaths, dead time or a level-start estimate.
+local function HasLevelExtras(char)
+  local levels = char and char.levels
+  if type(levels) ~= "table" then return false end
+  for _, lb in pairs(levels) do
+    if type(lb) == "table" then
+      local s = lb.s
+      if (tonumber(lb.d) or 0) > 0 or lb.eta ~= nil or (type(s) == "table" and (tonumber(s.x) or 0) > 0) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+-- The Levels layout of this view and the frame width it needs (set on change only).
+local function ApplyWidth(char)
+  local wide = curTab == "levels" and char ~= nil and HasLevelExtras(char)
+  levelsLayout = wide and LAYOUTS.levelsWide or LAYOUTS.levels
+  local w = wide and WIN_W + WIDE_EXTRA or WIN_W
+  if w ~= frameW then
+    frameW = w
+    frame:SetWidth(w)
+    content:SetWidth(wide and CONTENT_W + WIDE_EXTRA or CONTENT_W)
+  end
+end
+
 local function UpdateHeader(char, mask)
   BuildViewList()
   viewFS:SetText(ViewLabel(char))
@@ -674,7 +750,7 @@ local function UpdateHeader(char, mask)
   end
   local layout
   if curTab == "levels" then
-    layout = char and LAYOUTS.levels or LAYOUTS.account
+    layout = char and levelsLayout or LAYOUTS.account
   elseif curTab == "zones" then
     layout = LAYOUTS.zones
   else
@@ -684,6 +760,10 @@ local function UpdateHeader(char, mask)
   for c = 1, MAX_COLS do
     local fs = headerFS[c]
     local col = layout[c]
+    if fs == nil and col and col.key then
+      fs = NewHeader()
+      headerFS[c] = fs
+    end
     if col and col.key then
       fs:ClearAllPoints()
       fs:SetPoint("BOTTOMLEFT", scroll, "TOPLEFT", col.x, 4)
@@ -691,7 +771,7 @@ local function UpdateHeader(char, mask)
       fs:SetJustifyH(col.j)
       fs:SetText(L[col.key])
       fs:Show()
-    else
+    elseif fs ~= nil then   -- (a header not created yet has nothing to hide)
       fs:SetText("")
       fs:Hide()
     end
@@ -949,11 +1029,7 @@ local function Create()
   content:SetSize(CONTENT_W, 1)
   scroll:SetScrollChild(content)
 
-  for c = 1, MAX_COLS do
-    local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    fs:SetWordWrap(false)
-    headerFS[c] = fs
-  end
+  for c = 1, #LAYOUTS.levels do headerFS[c] = NewHeader() end
 
   emptyFS = frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
   emptyFS:SetPoint("CENTER", scroll, "CENTER", 0, 0)
@@ -998,7 +1074,7 @@ function Window.ApplyTheme()
   filterFS:SetTextColor(lc[1], lc[2], lc[3])
   hintFS:SetTextColor(lc[1], lc[2], lc[3])
   footer2:SetTextColor(lc[1], lc[2], lc[3])
-  for c = 1, MAX_COLS do headerFS[c]:SetTextColor(lc[1], lc[2], lc[3]) end
+  for c = 1, #headerFS do headerFS[c]:SetTextColor(lc[1], lc[2], lc[3]) end
   if frame:IsShown() then Window.Refresh() end
 end
 
@@ -1011,6 +1087,7 @@ function Window.Refresh()
   local char = ViewChar()
   local mask = ns.GetMask()
   local now = GetTime()
+  ApplyWidth(char)
   UpdateHeader(char, mask)
   BeginRows()
   if curTab == "levels" then
