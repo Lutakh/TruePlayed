@@ -12,7 +12,8 @@
 --   tip       the bar + its short tooltip (shift: the detailed one)
 --   tooltip   the tooltip alone (the private frame of the themed tooltips)
 --   hero      like tip, the bar 600 wide at the bottom of the screen
---   levels / zones / sessions   the statistics window on that tab
+--   levels / zones / sessions   the statistics window on that tab, AFK excluded (levels:
+--             the Server header hovered, its tooltip lines in info.tip)
 -- theme: futuriste | actuel | heroic | pixel | warrior | paladin | hunter | rogue |
 --        priest | shaman | mage | warlock | druid
 --
@@ -36,6 +37,7 @@ end
 local Stub = dofile(ROOT .. "tests/wowstub.lua")
 Stub.ROOT = ROOT
 Stub.AddInstaller(dofile(ROOT .. "tests/stub_ui.lua"))
+Stub.AddInstaller(dofile(ROOT .. "tests/stub_activity.lua"))   -- deaths, professions
 local FM = dofile(ROOT .. "tests/fontmetrics.lua")
 local Width = FM.New(ROOT)
 
@@ -91,6 +93,8 @@ local MAPS = {
 local ZONE = { elwynn = 1429, westfall = 1436, loch = 1432, redridge = 1433, duskwood = 1431,
                stormwind = 1453, ironforge = 1455 }
 local INST = { deadmines = { 36, 291 }, sfk = { 33, 310 } }
+local WSG = 489                  -- Warsong Gulch: an instance without a map of its own
+local FISHING = 7620             -- Fishing (a channel)
 
 ---------------------------------------------------------------------------
 -- Simulation helpers
@@ -211,6 +215,45 @@ local function Dungeon(key, minutes, kills, back)
   Stub.Advance(1)
 end
 
+-- Dies, releases, runs back for `runBack` seconds as a ghost and resurrects.
+local function Die(runBack)
+  Stub.Die()
+  Stub.Advance(8, 2)
+  Stub.ReleaseSpirit()
+  Stub.Advance(runBack, 5)
+  Stub.Resurrect(true)
+  Stub.Advance(1)
+end
+
+-- Fishes for `minutes`: 18 s channels, 3 s between casts.
+local function Fish(minutes)
+  local t = 0
+  while t < minutes * 60 do
+    Stub.Spell("CHANNEL_START", FISHING)
+    Stub.Advance(18, 2)
+    Stub.Spell("CHANNEL_STOP", FISHING)
+    Stub.Advance(3)
+    t = t + 21
+  end
+  Stub.Advance(6)                -- the looting grace
+end
+
+-- Crafts in the profession window (Tailoring) for `minutes`, standing still.
+local function Craft(minutes)
+  Stub.OpenTradeSkill()
+  Stub.Advance(minutes * 60, 5)
+  Stub.CloseTradeSkill()
+  Stub.Advance(1)
+end
+
+-- A Warsong Gulch match of `minutes`, a kill every few minutes (honor kills give no XP).
+local function Battleground(minutes, back)
+  Stub.SetInstance(true, "pvp", WSG, nil)
+  Stub.Advance(minutes * 60, 5)
+  Stub.SetInstance(false, "none", 0, ZONE[back])
+  Stub.Advance(1)
+end
+
 -- Logs out and back in `offline` seconds later; the rest pool grows as in the game
 -- (5 % of the level per 8 h in an inn, 1/4 of it outside, capped at 1.5 levels).
 local TRACE = os.getenv("SCENE_TRACE")
@@ -243,6 +286,7 @@ local function Simulate(theme)
   for id, m in pairs(MAPS) do Stub.maps[id] = m end
   Stub.theme = theme
   local p = Stub.player
+  p.instanceNames[WSG] = "Warsong Gulch"
   p.faction, p.class, p.classLocalized = "Alliance", "MAGE", "Mage"
   p.level, p.xp, p.max, p.rest = 1, 0, Stub.xpTable[1], 0
   p.mapID, p.zoneText = ZONE.elwynn, "Elwynn Forest"
@@ -268,19 +312,19 @@ local function Simulate(theme)
   Inn(4 * 60, 40 * 60)
   Relog(22 * 3600, true)
 
-  -- Day 3: Elwynn then Westfall, levels 8-10
+  -- Day 3: Elwynn then Westfall, levels 8-10 (a death at the Molsen farm)
   Go("elwynn"); Lv(52); Afk(25 * 60)
-  Go("westfall"); Lv(58, { diffHi = 1 })
+  Go("westfall"); Lv(58, { diffHi = 1 }); Die(150)
   Inn(6 * 60, 30 * 60)
   Relog(26 * 3600, true)
 
-  -- Day 4: Westfall, levels 10-12
-  Go("westfall"); Lv(64, { diffHi = 1 }); Afk(20 * 60); Lv(70)
+  -- Day 4: Westfall, levels 10-12 (some fishing on the coast)
+  Go("westfall"); Lv(64, { diffHi = 1 }); Fish(14); Afk(20 * 60); Lv(70)
   Taxi(4 * 60); City("stormwind", 15 * 60, 20 * 60)
   Relog(30 * 3600, true)
 
-  -- Day 5: Loch Modan and Ironforge, levels 12-13
-  Taxi(6 * 60); City("ironforge", 12 * 60)
+  -- Day 5: Loch Modan and Ironforge (tailoring), levels 12-13
+  Taxi(6 * 60); City("ironforge", 12 * 60); Craft(16)
   Go("loch"); Lv(76); Afk(30 * 60)
   Inn(5 * 60, 35 * 60)
   Relog(20 * 3600, true)
@@ -291,14 +335,15 @@ local function Simulate(theme)
   Taxi(3 * 60); City("stormwind", 35 * 60, 45 * 60)
   Relog(40 * 3600, true)
 
-  -- Day 7: Redridge, levels 14-16
-  Go("redridge"); Lv(90); Afk(40 * 60); Lv(100)
+  -- Day 7: Redridge, levels 14-16 (a death to the gnolls)
+  Go("redridge"); Lv(90); Die(210); Afk(40 * 60); Lv(100)
   Inn(8 * 60, 50 * 60)
   Relog(20 * 3600, true)
 
-  -- Day 8: Shadowfang Keep at 16, Redridge, level 17
+  -- Day 8: Shadowfang Keep and a Warsong Gulch match at 16, Redridge, level 17
   Taxi(9 * 60)
   Dungeon("sfk", 64, 34, "duskwood")
+  Battleground(26, "redridge")
   Go("redridge"); Lv(110); Afk(35 * 60)
   Taxi(3 * 60); City("stormwind", 28 * 60, 25 * 60)
   Relog(18 * 3600, true)
@@ -307,6 +352,7 @@ local function Simulate(theme)
   -- (the rest pool fills)
   Go("duskwood")
   while p.xp < 7950 do Play(300, { every = 120, qEvery = 700, qXP = 500, diffLo = 2, diffHi = 4 }) end
+  Die(180)                         -- Stitches
   -- idle in the inn so that the account reaches the target /played after the last session
   local idle = TARGET_PLAYED - Stub.server.total - LAST_SESSION - 120
   if TRACE then io.stderr:write(format("idle in the inn: %.0f s\n", idle)) end
@@ -744,6 +790,8 @@ end
 ---------------------------------------------------------------------------
 -- Views
 ---------------------------------------------------------------------------
+local hoverCell                  -- a hovered column header of the statistics window (levels)
+
 local function Main()
   -- real text widths for the addon's layout (the hook patches the stub's shared method
   -- table, which Stub.Reset keeps)
@@ -773,9 +821,20 @@ local function Main()
     if tf and tf:IsShown() then roots[#roots + 1] = tf end
     if SCENARIO:find("^tooltip") then roots = { tf } end
   elseif SCENARIO == "levels" or SCENARIO == "zones" or SCENARIO == "sessions" then
+    -- AFK left out (the window header names it): Time and Server differ
+    Core.SetSetting("exclude.afk", true)
     nsx.Window.Show(SCENARIO)
     Stub.Advance(1)
-    roots = { rawget(_G, "TruePlayedStatsFrame") }
+    local sf = rawget(_G, "TruePlayedStatsFrame")
+    roots = { sf }
+    -- Levels: the Server header hovered (its help icon lit); the GameTooltip it opens is
+    -- game art, exported as its lines and the header's rectangle (info.tip)
+    local tp = sf.tp
+    local c = SCENARIO == "levels" and tp.layout and tp.layout.pos.server
+    if c then
+      hoverCell = tp.headerCells[c]
+      Stub.RunScript(hoverCell, "OnEnter")
+    end
   elseif SCENARIO:find("^mini") then
     -- the mini display alone (the XP bar hidden): minih = one line, miniv = stacked with
     -- three infos, minitip = one line with its tooltip (hovered)
@@ -804,6 +863,17 @@ local function Main()
   local info = { level = p.level, xp = p.xp, max = p.max, rest = p.rest,
                  played = Stub.server.total, zone = p.zoneText }
   local scene = Export(roots, info)
+  if hoverCell then
+    local l, b, w, h = TrueRect(hoverCell)
+    local tt = rawget(_G, "GameTooltip")
+    local lines = {}
+    for i = 1, #tt._lines do
+      local col = tt._colors[i]
+      lines[i] = { text = PlainText(tt._lines[i][1]), color = { col[1] or 1, col[2] or 1, col[3] or 1 } }
+    end
+    info.tip = { rect = { l, rawget(UIParentObj, "_height") - b - h, w, h }, anchor = tt._anchor,
+                 lines = lines }
+  end
   local f = assert(io.open(OUT, "w"))
   f:write(J(scene), "\n")
   f:close()

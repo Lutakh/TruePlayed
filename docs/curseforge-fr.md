@@ -25,7 +25,8 @@ inclus dans le zip de l'addon. Le guide `docs/PUBLISHING-fr.md` indique où va c
   montre du jeu), avec un petit badge « FOREVER ».
 - **Mots-clés** : WoW Forever, Forever, played, /played, XP par heure, temps avant le
   niveau, montée en niveau, AFK, auberge, repos, temps par zone, temps en instance,
-  donjons, raids, monstres à tuer, graphique FPS, thèmes, thèmes de classe.
+  donjons, raids, temps mort, temps de métiers, monstres à tuer, graphique FPS, thèmes,
+  thèmes de classe.
 - **Signalements / code source** : https://github.com/Lutakh/TruePlayed
 
 Tout ce qui suit le trait est la **description** (Markdown), traduction de la description
@@ -36,7 +37,8 @@ anglaise : mêmes images (`media-src/curseforge/page/`, visibles une fois sur `m
 ![TruePlayed : votre vrai /played](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/hero.png)
 
 Chaque seconde de jeu, comptée et triée : monde ouvert, donjons, raids, JcJ, AFK,
-auberges, villes, vols. Retirez l'AFK d'un clic. Ou pas.
+auberges, villes, vols, métiers, et même le temps passé mort. Retirez l'AFK d'un clic. Ou
+pas.
 
 ### Sachez quand vous monterez.
 
@@ -53,11 +55,14 @@ fenêtre de statistiques changent ensemble.
 
 ![Maintenez Maj. Voyez tout.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/detail.png)
 
-Votre rythme, vos derniers niveaux, vos zones, vos morts, le total du compte.
+Votre rythme, vos zones, votre temps par continent, en donjon et en JcJ, vos morts et vos
+métiers.
 
 ![Chaque niveau. Chaque zone.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/stats.png)
 
-Tout l'historique dans une fenêtre : `/tpl stats`.
+Tout l'historique dans une fenêtre, `/tpl stats` : le temps de chaque niveau à côté de
+l'estimation faite à son début, le temps mis pour y arriver, les morts, les métiers. Une
+colonne vous intrigue ? Survolez son en-tête.
 
 ![Votre barre, ou aucune.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/compact.png)
 

@@ -99,6 +99,10 @@ h1 .acc{background:linear-gradient(90deg,#ff3cc7,#38bdf8);-webkit-background-cli
 .label{position:absolute;font-family:Barlow;font-size:17px;letter-spacing:2.5px;text-transform:uppercase;color:#7f96a9;}
 .brand{position:absolute;display:flex;align-items:center;gap:14px;font-family:Orbitron;font-size:22px;color:#e6f7ff;}
 .brand svg{filter:drop-shadow(0 0 6px rgba(34,211,238,.35));}
+@font-face{font-family:Signika;src:url(${FONT('Signika-Medium.ttf')});}
+.gtip{position:absolute;transform:translate(-50%,-100%);font-family:Signika;line-height:1.25;
+  background:rgba(4,6,18,.94);border:2px solid #8f96a3;box-shadow:0 0 0 1px #2a2f3a,0 14px 30px rgba(0,0,0,.55);
+  text-shadow:1px 1px 0 #000;}
 </style></head><body>
 <div class="grid"></div>
 <div class="blob" style="width:620px;height:420px;left:-180px;top:${height - 380}px;background:rgba(255,43,214,.16);"></div>
@@ -179,24 +183,39 @@ async function detail(browser) {
   await capture(browser, page(H, ['Hold Shift.', 'See everything.'], body), H, 'detail');
 }
 
-// stats.png: the statistics window, the Levels tab (top left) and the Zones tab (bottom right,
-// in front: an opaque plate of the window colour under it, as over a dark game scene).
+// The GameTooltip of a hovered column header (scene info.tip: its lines and the header's
+// rectangle), drawn in the game's tooltip style: game art, not exported by scene.lua.
+// ANCHOR_TOP: centred above the header. `s` is the shot of the window, (ox, oy) its place.
+function headerTip(s, tip, zoom, ox, oy) {
+  if (!tip) return '';
+  const [cx, cy] = s.map(tip.rect[0] + tip.rect[2] / 2, tip.rect[1]);
+  const rgb = (c) => `rgb(${c.slice(0, 3).map((v) => Math.round(v * 255)).join(',')})`;
+  const lines = tip.lines.map((l, i) => `<div style="color:${rgb(l.color)};font-size:${(i === 0 ? 14 : 12) * zoom}px;` +
+    `margin-top:${i === 0 ? 0 : 3 * zoom}px;">${l.text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join('');
+  return `<div class="gtip" style="left:${ox + cx}px;top:${oy + cy - 2 * zoom}px;max-width:${250 * zoom}px;` +
+    `padding:${8 * zoom}px ${10 * zoom}px;border-radius:${4 * zoom}px;">${lines}</div>`;
+}
+
+// stats.png: the statistics window, the Levels tab (top, its Server header hovered with the
+// help tooltip) and the Zones tab (bottom right, in front: an opaque plate of the window
+// colour under it, as over a dark game scene). The Levels window is as wide as its columns:
+// zoomed to fit the page.
 async function stats(browser) {
-  const zoom = 1.4;
   const [lv, zn] = await Promise.all([scene('levels', 'futuriste'), scene('zones', 'futuriste')]);
-  const sl = await shot(browser, lv, zoom, 'stats-levels'), sz = await shot(browser, zn, zoom, 'stats-zones');
-  const top = 240, dx = 470, dy = 330;
-  const x0 = Math.round((WIDTH - sl.w - dx) / 2);
-  const H = Math.round(top + dy + sz.h + 60);
+  const zoom = Math.min(1.4, (WIDTH - 90) / (lv.bounds[2] + 8)), zoomZ = 1.25;
+  const sl = await shot(browser, lv, zoom, 'stats-levels'), sz = await shot(browser, zn, zoomZ, 'stats-zones');
+  const top = 240, x0 = Math.round((WIDTH - sl.w) / 2);
+  const fx = WIDTH - 40 - sz.w, fy = top + Math.round(sl.h * 0.55);
+  const H = Math.round(fy + sz.h + 60);
   // the window's own backdrop (largest backdrop item) -> plate under the front window
   const bd = zn.items.filter((i) => i.kind === 'backdrop').sort((a, b) => b.rect[2] * b.rect[3] - a.rect[2] * a.rect[3])[0];
   const [px, py] = sz.map(bd.rect[0] + bd.insets[0], bd.rect[1] + bd.insets[2]);
-  const pw = (bd.rect[2] - bd.insets[0] - bd.insets[1]) * zoom, ph = (bd.rect[3] - bd.insets[2] - bd.insets[3]) * zoom;
+  const pw = (bd.rect[2] - bd.insets[0] - bd.insets[1]) * zoomZ, ph = (bd.rect[3] - bd.insets[2] - bd.insets[3]) * zoomZ;
   const c = bd.bg.slice(0, 3).map((v) => Math.round(v * 255)).join(',');
-  const fx = x0 + dx, fy = top + dy;
   const body = `<div style="opacity:.92">${img(sl, x0, top, 'float')}</div>` +
     `<div style="position:absolute;left:${fx + px}px;top:${fy + py}px;width:${pw}px;height:${ph}px;` +
-    `background:rgb(${c});box-shadow:0 28px 60px rgba(0,0,0,.6);"></div>` + img(sz, fx, fy);
+    `background:rgb(${c});box-shadow:0 28px 60px rgba(0,0,0,.6);"></div>` + img(sz, fx, fy) +
+    headerTip(sl, lv.info.tip, zoom, x0, top);
   await capture(browser, page(H, ['Every level.', 'Every zone.'], body), H, 'stats');
 }
 

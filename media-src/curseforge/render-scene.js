@@ -405,9 +405,12 @@ async function renderScene(browser, scene, outPng, opts = {}) {
 
 // Chromium with font hinting off: subpixel glyph positioning, so text widths match the
 // font metrics the addon was laid out with (tests/fontmetrics.lua) within 1 px.
+// PW_CHANNEL=chrome uses the installed Google Chrome instead of Playwright's Chromium.
 function launch() {
   const { chromium } = require('playwright');
-  return chromium.launch({ args: ['--font-render-hinting=none'] });
+  const opts = { args: ['--font-render-hinting=none'] };
+  if (process.env.PW_CHANNEL) opts.channel = process.env.PW_CHANNEL;
+  return chromium.launch(opts);
 }
 
 module.exports = { decodeTGA, encodePNG, buildPage, renderScene, launch };

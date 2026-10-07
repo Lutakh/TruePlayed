@@ -23,8 +23,8 @@ the addon zip. See `docs/PUBLISHING-fr.md` for where each text goes.
   pocket-watch icon), with a small "FOREVER" badge.
 - **Keywords** (put them naturally in the summary and description): WoW Forever, Forever,
   played, /played, XP per hour, time to level, leveling, AFK, inn, rested, zone time,
-  time per zone, instance time, dungeon time, raid time, mobs to kill, FPS graph, themes,
-  class themes.
+  time per zone, instance time, dungeon time, raid time, death time, professions time,
+  mobs to kill, FPS graph, themes, class themes.
 - **Issues / source**: https://github.com/Lutakh/TruePlayed
 
 Everything below the line is the **Description** (Markdown editor). The images are the
@@ -44,7 +44,8 @@ into the editor's source-code view (the `<>` button), replacing everything there
 ![TruePlayed: your real /played](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/hero.png)
 
 Every second you play, counted and sorted: open world, dungeons, raids, PvP, AFK, inns,
-cities, flights. Leave the AFK out with one click. Or don't.
+cities, flights, professions, even the time spent dead. Leave the AFK out with one click.
+Or don't.
 
 ### Know when you'll level.
 
@@ -61,11 +62,14 @@ statistics window change together.
 
 ![Hold Shift. See everything.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/detail.png)
 
-Your pace, your last levels, your top zones, your deaths, your account total.
+Your pace, your top zones, your time per continent, in dungeons and in PvP, your deaths
+and your professions.
 
 ![Every level. Every zone.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/stats.png)
 
-A full history in one window: `/tpl stats`.
+A full history in one window, `/tpl stats`: the time of each level next to the estimate
+made when it began, the time it took to get there, deaths, professions. Wondering what a
+column means? Hover its header.
 
 ![Your bar, or no bar.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/compact.png)
 
