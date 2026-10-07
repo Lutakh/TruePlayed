@@ -3,9 +3,9 @@
 Ce fichier contient les textes de la page du projet CurseForge (et Wago). Il n'est pas
 inclus dans le zip de l'addon. Le guide `docs/PUBLISHING-fr.md` indique où va chaque texte.
 
-CurseForge demande des noms et catégories en anglais : le nom et le résumé du projet
-restent donc en anglais (voir `docs/curseforge-en.md`). La description ci-dessous peut
-être ajoutée sous la description anglaise, ou servir pour une présentation en français.
+**À ne pas coller sur CurseForge** : la page CurseForge est entièrement en anglais
+(`docs/curseforge-en.md`). Ce fichier n'est que sa traduction, pour la relire en français
+(ou pour une présentation en français ailleurs, par exemple sur Wago).
 
 ## Réglages du projet (à ne pas coller dans la description)
 
