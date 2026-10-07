@@ -1,6 +1,6 @@
 // media-src/curseforge/build-page.js - the CurseForge page images (page/*.png): real renders
 // of the addon (scene.lua -> render-scene.js) composed on the brand background.
-//   NODE_PATH=$(npm root -g) node media-src/curseforge/build-page.js [hero|themes|detail|stats ...]
+//   NODE_PATH=$(npm root -g) node media-src/curseforge/build-page.js [hero|themes|detail|stats|compact ...]
 // Needs lua (5.1+) on the PATH, Node.js and Playwright's Chromium. Intermediate files go to a
 // temporary directory (removed at the end; --keep keeps it and prints its path).
 const fs = require('fs');
@@ -200,6 +200,30 @@ async function stats(browser) {
   await capture(browser, page(H, ['Every level.', 'Every zone.'], body), H, 'stats');
 }
 
+// compact.png: the mini display (the XP bar hidden): one line in three themes on the left,
+// stacked in Heroic fantasy, and one line hovered with its tooltip on the right.
+async function compact(browser) {
+  const zoom = 2.1;
+  const [h1, h2, h3, v, tip] = await Promise.all([scene('minih', 'futuriste'), scene('minih', 'mage'),
+    scene('minih', 'warlock'), scene('miniv', 'heroic'), scene('minitip', 'futuriste')]);
+  const s1 = await shot(browser, h1, zoom, 'mini-fut'), s2 = await shot(browser, h2, zoom, 'mini-mag');
+  const s3 = await shot(browser, h3, zoom, 'mini-wlk'), sv = await shot(browser, v, zoom, 'mini-her');
+  const st = await shot(browser, tip, 1.08, 'mini-tip');
+  const top = 270, left = 120, gap = 40;
+  let body = '', y = top;
+  for (const [s, name] of [[s1, 'Futuristic'], [s2, 'Mage'], [s3, 'Warlock']]) {
+    body += `<div class="label" style="left:${left}px;top:${y}px;">${name}</div>` + img(s, left, y + 30, 'float');
+    y += 30 + s.h + gap;
+  }
+  body += `<div class="label" style="left:${left}px;top:${y}px;">Heroic fantasy, stacked</div>` + img(sv, left, y + 30, 'float');
+  y += 30 + sv.h;
+  const tx = WIDTH - 90 - st.w;
+  body += img(st, tx, top, 'float');
+  const H = Math.round(Math.max(y, top + st.h) + 70);
+  await capture(browser, page(H, ['Your bar.', 'Or no bar.'], body, {
+    sub: 'A tiny display in any corner. Hover it for everything.' }), H, 'compact');
+}
+
 (async () => {
   const browser = await R.launch();
   try {
@@ -207,6 +231,7 @@ async function stats(browser) {
     if (want('themes')) await themes(browser);
     if (want('detail')) await detail(browser);
     if (want('stats')) await stats(browser);
+    if (want('compact')) await compact(browser);
   } finally {
     await browser.close();
     if (keep) console.log('intermediate files: ' + TMP);

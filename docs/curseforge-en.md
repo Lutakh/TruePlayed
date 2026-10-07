@@ -37,8 +37,6 @@ next line is read as one broken link by CurseForge.
 
 ![TruePlayed: your real /played](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/hero.png)
 
-## Your real /played.
-
 Every second you play, counted and sorted: open world, dungeons, raids, PvP, AFK, inns,
 cities, flights. Leave the AFK out with one click. Or don't.
 
@@ -52,26 +50,18 @@ Per level. Per zone. Per instance. Per character, or your whole account.
 
 ![13 themes. One click.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/themes.png)
 
-### 13 themes. One click.
-
 Futuristic, Heroic, Pixel, Classic, and one for every class. The bar, the tooltip and the
 statistics window change together.
 
 ![Hold Shift. See everything.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/detail.png)
 
-### Hold Shift. See everything.
-
 Your pace, your last levels, your top zones, your deaths, your account total.
 
 ![Every level. Every zone.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/stats.png)
 
-### Every level. Every zone.
-
 A full history in one window: `/tpl stats`.
 
 ![Your bar, or no bar.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/compact.png)
-
-### Your bar. Or no bar.
 
 Keep your own XP bar: use the minimap button, or a tiny display in a corner of the screen
 that shows only what you pick.

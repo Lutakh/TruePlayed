@@ -35,8 +35,6 @@ anglaise : mêmes images (`media-src/curseforge/page/`, visibles une fois sur `m
 
 ![TruePlayed : votre vrai /played](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/hero.png)
 
-## Votre vrai /played.
-
 Chaque seconde de jeu, comptée et triée : monde ouvert, donjons, raids, JcJ, AFK,
 auberges, villes, vols. Retirez l'AFK d'un clic. Ou pas.
 
@@ -50,26 +48,18 @@ Par niveau. Par zone. Par instance. Par personnage, ou pour tout le compte.
 
 ![13 thèmes. Un clic.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/themes.png)
 
-### 13 thèmes. Un clic.
-
 Futuriste, Héroïque, Pixel, Classique, et un par classe. La barre, l'infobulle et la
 fenêtre de statistiques changent ensemble.
 
 ![Maintenez Maj. Voyez tout.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/detail.png)
 
-### Maintenez Maj. Voyez tout.
-
 Votre rythme, vos derniers niveaux, vos zones, vos morts, le total du compte.
 
 ![Chaque niveau. Chaque zone.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/stats.png)
 
-### Chaque niveau. Chaque zone.
-
 Tout l'historique dans une fenêtre : `/tpl stats`.
 
 ![Votre barre, ou aucune.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/compact.png)
-
-### Votre barre. Ou aucune.
 
 Gardez votre barre d'XP : utilisez le bouton de la minicarte, ou un mini affichage dans un
 coin de l'écran, avec seulement ce que vous choisissez.

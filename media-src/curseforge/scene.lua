@@ -776,6 +776,27 @@ local function Main()
     nsx.Window.Show(SCENARIO)
     Stub.Advance(1)
     roots = { rawget(_G, "TruePlayedStatsFrame") }
+  elseif SCENARIO:find("^mini") then
+    -- the mini display alone (the XP bar hidden): minih = one line, miniv = stacked with
+    -- three infos, minitip = one line with its tooltip (hovered)
+    Core.SetSetting("widget.shown", false)
+    Core.SetSetting("mini.shown", true)
+    Core.SetSetting("mini.point", { "CENTER", "CENTER", 0, 0 })
+    if SCENARIO == "miniv" then
+      Core.SetSetting("mini.layout", "vertical")
+      Core.SetSetting("mini.infos.3", "session")
+      Core.SetSetting("mini.xp", "both")
+    end
+    Stub.Advance(2)
+    local md = rawget(_G, "TruePlayedMiniDisplay")
+    roots = { md }
+    if SCENARIO == "minitip" then
+      Stub.SetShift(false)
+      Stub.RunScript(md, "OnEnter")
+      Stub.Advance(1)
+      local tf = nsx.TooltipFrame and nsx.TooltipFrame.frame
+      if tf and tf:IsShown() then roots[#roots + 1] = tf end
+    end
   elseif SCENARIO ~= "bar" then
     error("unknown scenario " .. SCENARIO)
   end

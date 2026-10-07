@@ -22,7 +22,8 @@ One scene by hand:
     NODE_PATH=$(npm root -g) node media-src/curseforge/render-scene.js /tmp/tip.json /tmp/tip.png --scale 3
 
 Scenarios: `bar`, `tip`, `tipshift`, `tooltip`, `tooltipshift`, `hero`, `levels`,
-`zones`, `sessions`. Themes: the theme ids of `Themes/*.lua`.
+`zones`, `sessions`, `minih` (mini display, one line), `miniv` (stacked, three infos and
+the level %), `minitip` (one line, hovered). Themes: the theme ids of `Themes/*.lua`.
 
 ## Images
 
@@ -32,6 +33,7 @@ Scenarios: `bar`, `tip`, `tipshift`, `tooltip`, `tooltipshift`, `hero`, `levels`
 | `themes.png` | 1600 x 1330 | "13 themes. One click." The bar in each theme. |
 | `detail.png` | 1600 x 1349 | "Hold Shift. See everything." The detailed tooltip, Futuristic and Heroic fantasy. |
 | `stats.png` | 1600 x 1257 | "Every level. Every zone." The statistics window, Levels and Zones tabs (Futuristic). |
+| `compact.png` | 1600 x 1021 | "Your bar. Or no bar." The mini display (Futuristic, Mage, Warlock; Heroic fantasy stacked) and its tooltip. The minimap button is not drawn: its icon and border are game art. |
 
 ## Approximations
 
