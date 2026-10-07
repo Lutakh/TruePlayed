@@ -845,9 +845,29 @@ local function RowWith(tp, text)
   return nil
 end
 
+-- Cell of column `id` (lot 8: the visible columns depend on the view, tp.layout.pos).
+local function CellOf(tp, row, id)
+  local c = tp.layout.pos[id]
+  return c and tp.cells[row][c] or nil
+end
+
+-- Header of column `id`.
+local function HeaderOf(tp, id)
+  local c = tp.layout.pos[id]
+  return c and tp.header[c] or nil
+end
+
+-- "29 » 30": the label of the row of level record 29.
+local function Span(l) return l .. " \194\187 " .. (l + 1) end
+
+-- Zones tab cells: zone, time, raw, AFK, XP ("" for a column not shown).
 local function Cells(tp, row)
-  local c = tp.cells[row]
-  return { c[1]:GetText(), c[2]:GetText(), c[3]:GetText(), c[4]:GetText(), c[5]:GetText() }
+  local out = {}
+  for i, id in ipairs({ "zone", "time", "raw", "afk", "xp" }) do
+    local fs = CellOf(tp, row, id)
+    out[i] = fs and fs:GetText() or ""
+  end
+  return out
 end
 
 -- OtherRecord plus Orgrimmar (1454): 600 s in the city, 100 s of it AFK, at level 29.
@@ -906,12 +926,12 @@ T.test("window: hovering a level row lists that level's zones, exclusions applie
   T.match(tp.viewText:GetText(), "Tamar")
   T.ok(tp.hint:IsShown(), "the Levels tab says that rows can be hovered")
   T.eq(tp.hint:GetText(), L.LEVELS_HOVER_HINT)
-  local row = RowWith(tp, "29")
+  local row = RowWith(tp, Span(29))
   T.ok(row ~= nil, "level 29 row")
   row:GetScript("OnEnter")(row)
   T.ok(GameTooltip:GetOwner() == row, "a normal (not approximate) level has a tooltip")
   local lines = TipLines()
-  T.eq(lines[1][1], format(L.TT_LEVEL_ROW_FMT, 29))
+  T.eq(lines[1][1], format(L.LEVEL_SPAN_FMT, 29, 30), "the title names the step, as the row")
   T.ok(FindLine(lines, format(L.ROW_ZONES_FMT, 29)) ~= nil, "zones header")
   local tanaris = FindLine(lines, "Tanaris")
   T.ok(tanaris ~= nil, "Tanaris listed")
@@ -923,7 +943,7 @@ T.test("window: hovering a level row lists that level's zones, exclusions applie
   T.no(GameTooltip:IsShown())
 
   ns.Core.SetSetting("exclude.city", true)
-  row = RowWith(tp, "29")
+  row = RowWith(tp, Span(29))
   row:GetScript("OnEnter")(row)
   lines = TipLines()
   local _, iT = FindLine(lines, "Tanaris")
@@ -966,14 +986,14 @@ T.test("window: zones tab shows filtered, raw and AFK times and the capitals blo
   T.eq(Cells(tp, tp.rows[2]), { "Kalimdor", Fmt.Duration(9000700), Fmt.Duration(9000700), Fmt.Duration(100), "" })
   T.eq(tp.cells[tp.rows[3]][1]:GetText(), L.CITIES_HEADER, "then the capitals block")
   local cap = RowWith(tp, "Orgrimmar")
-  T.eq(Cells(tp, cap), { "Orgrimmar", Fmt.Duration(700), Fmt.Duration(700), Fmt.Duration(100), "" })
+  T.eq(Cells(tp, cap), { "Orgrimmar", Fmt.Duration(700), Fmt.Duration(700), Fmt.Duration(100), "-" })
   local tan = RowWith(tp, "Tanaris")
   T.eq(Cells(tp, tan), { "Tanaris", Fmt.Duration(9000000), Fmt.Duration(9000000), "-", Fmt.Number(500000) })
   T.ok(RowWith(tp, "Orgrimmar " .. L.CITY_MARK) ~= nil, "the capital is also in the list, marked")
 
   ns.Core.SetSetting("exclude.city", true)
   cap = RowWith(tp, "Orgrimmar")
-  T.eq(Cells(tp, cap), { "Orgrimmar", "-", Fmt.Duration(700), Fmt.Duration(100), "" },
+  T.eq(Cells(tp, cap), { "Orgrimmar", "-", Fmt.Duration(700), Fmt.Duration(100), "-" },
     "capitals block: counted time under the exclusions, then raw")
   T.eq(Cells(tp, RowWith(tp, "Kalimdor")), { "Kalimdor", Fmt.Duration(9000000), Fmt.Duration(9000700),
     Fmt.Duration(100), "" }, "continents: city time left out, raw kept")
@@ -1029,7 +1049,7 @@ for _, locale in ipairs({ "enUS", "frFR" }) do
     GameTooltip:ClearLines()
     ns.Tooltip.Fill(GameTooltip, true)
     local lines = TipLines()
-    T.ok(FindLine(lines, format(L.TT_ACCOUNT_ONE_FMT, 1)) ~= nil, "singular account line")
+    T.no(FindLine(lines, format(L.TT_ACCOUNT_ONE_FMT, 1)), "no account line in the tooltip (lot 8: the window)")
     for i = 1, #lines do
       T.no(BadPlural(lines[i][1]), "tooltip: " .. tostring(lines[i][1]))
       T.no(BadPlural(lines[i][2]), "tooltip: " .. tostring(lines[i][2]))
@@ -1604,7 +1624,7 @@ local function RecordWithInstances()
 end
 
 for _, locale in ipairs({ "enUS", "frFR" }) do
-  T.test("tooltip breakdown: fixed order, parts at 0 % left out, five parts per line (" .. locale .. ")", function()
+  T.test("tooltip breakdown: largest first, parts at 0 % left out, five parts per line (" .. locale .. ")", function()
     local ns = Start({ ui = { ldb = false }, locale = locale })
     local L, Fmt = ns.L, ns.Fmt
     Stub.Advance(3)
@@ -1614,10 +1634,10 @@ for _, locale in ipairs({ "enUS", "frFR" }) do
     life.s = { w = 5000, W = 100, d = 2000, D = 500, r = 1000, p = 500, t = 200, i = 400, c = 300, u = 7000 }
     local lines = FillTip(ns, false)
     local line, idx = FindLine(lines, L.TT_BREAKDOWN)
-    T.eq(line[2], table.concat({ P("BD_WORLD", 50), P("BD_DUNGEON", 20), P("BD_RAID", 10), P("BD_PVP", 5),
-      P("BD_TAXI", 2) }, L.SEP), "first line: world, dungeons, raids, PvP, flight")
-    T.eq(lines[idx + 1], { " ", table.concat({ P("BD_AFK", 6), P("BD_INN", 4), P("BD_CITY", 3) }, L.SEP) },
-      "second line without a label: AFK (all kinds), inn, city")
+    T.eq(line[2], table.concat({ P("BD_WORLD", 50), P("BD_DUNGEON", 20), P("BD_RAID", 10), P("BD_AFK", 6),
+      P("BD_PVP", 5) }, L.SEP), "first line: world, dungeons, raids, AFK (all kinds), PvP")
+    T.eq(lines[idx + 1], { " ", table.concat({ P("BD_INN", 4), P("BD_CITY", 3), P("BD_TAXI", 2) }, L.SEP) },
+      "second line without a label: inn, city, flight")
     -- no raid, no PvP, 0.2 % of flight: those parts are left out, one line
     life.s = { w = 6480, W = 100, d = 2000, D = 500, t = 20, i = 600, c = 300 }
     lines = FillTip(ns, false)
@@ -1638,7 +1658,7 @@ for _, locale in ipairs({ "enUS", "frFR" }) do
   end)
 end
 
-T.test("tooltip: instance time in the short view, each kind with its AFK part and the account total in the details", function()
+T.test("tooltip: instance time in the short view, each kind with its AFK part in the details; account in the window", function()
   local ns = Start({ ui = { ldb = false }, db = { schema = 1, chars = { [OTHER_GUID] = RecordWithInstances() } } })
   local L, Fmt = ns.L, ns.Fmt
   Stub.Advance(3)
@@ -1654,8 +1674,13 @@ T.test("tooltip: instance time in the short view, each kind with its AFK part an
   T.eq(FindLine(det, L.BD_DUNGEON)[2], format(L.TT_OF_WHICH_AFK_FMT, Fmt.Duration(3600), Fmt.Duration(600)))
   T.eq(FindLine(det, L.BD_RAID)[2], format(L.TT_OF_WHICH_AFK_FMT, Fmt.Duration(7200), Fmt.Duration(0)))
   T.eq(FindLine(det, L.BD_PVP)[2], format(L.TT_OF_WHICH_AFK_FMT, Fmt.Duration(1000), Fmt.Duration(100)))
-  -- account: this character plus the other one (9 600 s of instances)
-  T.eq(FindLine(det, L.TT_ACCOUNT_INST)[2], Fmt.Duration(11800 + 9600))
+  -- account: this character plus the other one (9 600 s of instances), in the window only
+  for i = 1, #det do T.no(det[i][2] == Fmt.Duration(11800 + 9600), "no account line: " .. tostring(det[i][1])) end
+  ns.Window.Show("levels", "account")
+  local foot = StatsTP().footer1:GetText()
+  T.ok(find(foot, format(L.FOOTER_INST_FMT, Fmt.Duration(11800 + 9600)), 1, true) ~= nil, "account footer: " .. foot)
+  T.ok(find(foot, format(L.TT_ACCOUNT_FMT, 2), 1, true) == 1, "account footer: the characters")
+  ns.Window.Hide()
   -- only the kinds played get a line
   s.r, s.p, s.P = nil, nil, nil
   det = FillTip(ns, true)
@@ -1777,25 +1802,26 @@ T.test("window: Levels and Sessions tabs have an instance column, under the excl
   Stub.Advance(15)
   ns.Window.Show("levels", OTHER_GUID)
   local tp = StatsTP()
-  T.eq(tp.header[7]:GetText(), L.COL_CITY)
-  T.eq(tp.header[8]:GetText(), L.COL_INST)
-  T.eq(tp.header[9]:GetText(), L.COL_MAIN_ZONE)
-  T.eq(tp.header[10]:GetText(), L.COL_REACHED)
-  local c = tp.cells[RowWith(tp, "29")]
-  T.eq(c[8]:GetText(), Fmt.Duration(3300), "instance time of the level")
-  T.eq(c[9]:GetText(), "Tanaris", "main zone")
-  T.eq(tp.cells[RowWith(tp, "30")][8]:GetText(), "-", "no instance at level 30")
+  T.eq(HeaderOf(tp, "inst"):GetText(), L.COL_INST)
+  T.eq(HeaderOf(tp, "zone"):GetText(), L.COL_MAIN_ZONE)
+  T.eq(HeaderOf(tp, "reached"):GetText(), L.COL_REACHED)
+  T.eq(tp.header[tp.layout.n]:GetText(), L.COL_REACHED, "Reached last")
+  local row29 = RowWith(tp, Span(29))
+  T.eq(CellOf(tp, row29, "inst"):GetText(), Fmt.Duration(3300), "instance time of the level")
+  T.eq(CellOf(tp, row29, "zone"):GetText(), "Tanaris", "main zone")
+  T.eq(CellOf(tp, RowWith(tp, Span(30)), "inst"):GetText(), "-", "no instance at level 30")
   ns.Core.SetSetting("exclude.afk", true)
-  T.eq(tp.cells[RowWith(tp, "29")][8]:GetText(), Fmt.Duration(3000), "AFK part left out, like the time column")
+  T.eq(CellOf(tp, RowWith(tp, Span(29)), "inst"):GetText(), Fmt.Duration(3000), "AFK part left out, like the time column")
   ns.Core.SetSetting("exclude.afk", false)
   -- sessions
   ns.Window.Toggle("sessions")
-  T.eq(tp.header[7]:GetText(), L.COL_INST)
-  T.eq(tp.cells[tp.rows[1]][7]:GetText(), Fmt.Duration(2000), "raid time of the session")
+  T.eq(HeaderOf(tp, "inst"):GetText(), L.COL_INST)
+  T.eq(CellOf(tp, tp.rows[1], "inst"):GetText(), Fmt.Duration(2000), "raid time of the session")
   -- account view of the Levels tab: its own columns, no instance column
   ns.Window.Toggle("levels")
   ns.Window.SetView("account")
-  T.eq(tp.header[8]:GetText(), "")
+  T.eq(tp.layout.pos.inst, nil)
+  T.eq(tp.header[tp.layout.n + 1] and tp.header[tp.layout.n + 1]:GetText() or "", "")
 end)
 
 T.test("options: text colour through the game's colour picker (10.2.5 API), cancel and reset", function()
@@ -2001,7 +2027,7 @@ T.test("locales: frFR translates every enUS key with the same format arguments",
   end
   local en = LoadLocale("Locales/enUS.lua", "enUS")
   local fr = LoadLocale("Locales/frFR.lua", "frFR")
-  local DATE_PATTERNS = { DATE_FMT = true, DATETIME_FMT = true }
+  local DATE_PATTERNS = { DATE_FMT = true, TIME_FMT = true }
   local function Specs(s)
     s = s:gsub("%%%%", "")
     local list = {}

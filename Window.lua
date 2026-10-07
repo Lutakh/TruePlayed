@@ -12,10 +12,19 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- Zones tab: continents block (Stats.Continents, exclusions applied), then the most
 -- played instances (Stats.TopInstances, kind shown after the name), then the top
 -- capitals, then every zone; the same blocks for the account view (merged zones).
--- Levels and Sessions tabs: the Inst. column is the time spent in instances (dungeons,
--- raids, PvP) counted under the exclusions, like the time column; the footer adds the
--- instance total when there is one. Levels tab: Dead = time dead or a ghost with the
--- deaths of the level ("5m (2)"), Est. = the time to level estimated when it began.
+-- Columns (lot 8): each tab lists its columns; an optional column is shown only when a
+-- row of the current view has a value in it (Inst., Inn, City, AFK, Dead, Est., Prof.,
+-- ...), and the visible ones are laid out again (EndRows) from their fixed widths, the
+-- flexible column (main zone, zone) taking the room left. The window is as wide as its
+-- columns need, at least the size saved in the settings (window.width / height); the
+-- grip in the bottom-right corner resizes it and saves the size.
+-- Levels tab: a row is the time spent AT a level, labelled "19 » 20" (from 19 to 20);
+-- Reached = when the next level was reached, Total = the time from level 1 to that
+-- moment (Stats.CumulativeTime), Est. = the time to level estimated when the level
+-- began, Dead = time dead or a ghost with the deaths of the level ("5m (2)"). Inst. is
+-- the time spent in instances (dungeons, raids, PvP) counted under the exclusions, like
+-- the time column; the footer adds the instance total when there is one. Dates follow
+-- the settings window.dateFmt and window.clock (Fmt.DateTime).
 -- Continents with less than C.CONT_MIN_SECS of total time are not listed.
 -- Requirement B: the view is the current character unless the user picks another
 -- character or the account view; every Show resets it to the current character.
@@ -26,7 +35,7 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- they are filled.
 
 local math_floor, math_max = math.floor, math.max
-local type, pairs, tonumber = type, pairs, tonumber
+local type, pairs, tonumber, setmetatable = type, pairs, tonumber, setmetatable
 local table_sort = table.sort
 local format, wipe, tinsert = format, wipe, tinsert
 local CreateFrame, UIParent, GetTime = CreateFrame, UIParent, GetTime
@@ -38,12 +47,10 @@ ns.Window = Window
 -- Constants
 ---------------------------------------------------------------------------
 
-local WIN_W, WIN_H = 700, 440
+local WIN_W, WIN_H = C.WINDOW_MIN_W, 440   -- minimum width, default height (settings window.*)
+local MARGIN_W = 50                -- frame width - content width (insets, scroll bar)
 local ROW_H = 16
-local CONTENT_W = 650
--- Levels tab of a character with deaths, dead time or level-start estimates: two more
--- columns, the window and its rows widened by WIDE_EXTRA (lot 8, minimum display).
-local WIDE_EXTRA = 130
+local GAP = 4                      -- between two columns
 local DASH = "-"
 local APPROX = "~"
 local VIEW_CURRENT, VIEW_ACCOUNT = "current", "account"
@@ -55,45 +62,45 @@ local INST_ROWS = 8                -- most played instances listed in the Zones 
 local ZONE_ROWS = 1000
 local TIP_ZONES = 5                -- zones listed in a level row tooltip
 local DIRTY_REBUILD_TICKS = 30     -- min ticks between two rebuilds caused by XP gains
+local GRIP_TEX = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 
 local TAB_ORDER = { "levels", "zones", "sessions" }
 local TAB_KEY = { levels = "TAB_LEVELS", zones = "TAB_ZONES", sessions = "TAB_SESSIONS" }
 local KIND_KEY = { d = "KIND_DUNGEON", r = "KIND_RAID", p = "KIND_PVP" }   -- Stats.TopInstances kinds
 
--- Column layouts: locale key of the header, x offset, width, justification.
-local function Col(key, x, w, j) return { key = key, x = x, w = w, j = j or "LEFT" } end
-local LAYOUTS = {
-  levels = {   -- the main zone gets the room long French zone names need
-    Col("COL_LEVEL", 0, 30), Col("COL_TIME", 32, 62), Col("COL_SERVER", 96, 58),
-    Col("COL_XPH", 156, 52), Col("COL_AFK", 210, 52), Col("COL_INN", 264, 52),
-    Col("COL_CITY", 318, 52), Col("COL_INST", 372, 52), Col("COL_MAIN_ZONE", 426, 156),
-    Col("COL_REACHED", 586, 60),
-  },
-  account = {
-    Col("COL_LEVEL", 0, 40), Col("COL_CHARS", 44, 60), Col("COL_AVG", 110, 100), Col("COL_XPH", 214, 80),
-  },
-  zones = {    -- instance rows carry their kind after the name: a wide first column
-    Col("COL_ZONE", 0, 290), Col("COL_TIME", 294, 80), Col("COL_RAW", 378, 80),
-    Col("COL_AFK", 462, 80), Col("COL_XP", 546, 100),
-  },
-  sessions = {
-    Col("COL_DATE", 0, 90), Col("COL_DURATION", 94, 72), Col("COL_LEVELS", 170, 120),
-    Col("COL_XP", 294, 84), Col("COL_XPH", 382, 72), Col("COL_AFK", 458, 72),
-    Col("COL_INST", 534, 72),
-  },
-  section = { Col(nil, 0, CONTENT_W) },
-}
--- lot 8 (minimum display, the UI rework comes later): the Levels columns, then the time
--- dead with the deaths of the level and the time to level estimated when it began. Used
--- only when a level has any of them (Window.Refresh: HasLevelExtras).
-do
-  local wide = {}
-  for i, col in ipairs(LAYOUTS.levels) do wide[i] = col end
-  wide[#wide + 1] = Col("COL_DEAD", 650, 74)
-  wide[#wide + 1] = Col("COL_ETA", 726, 54)
-  LAYOUTS.levelsWide = wide
+-- Columns: id (what the builders fill), locale key of the header, width (the minimum of
+-- the flexible column), optional (shown only when a row has a value), flexible. The widths
+-- fit the widest header and value of every language (tests/test_locales.lua).
+local function Col(id, key, w, opt, flex)
+  return { id = id, key = key, w = w, opt = opt or false, flex = flex or false, j = "LEFT", x = 0, cw = w }
 end
-local MAX_COLS = 12               -- header FontStrings beyond the 10th are created on first use
+-- A layout: every column of a tab, the visible ones (cols, set by EndRows), the cell index
+-- of each visible id (pos), and a version bumped whenever the placement changes.
+local function Layout(all) return { all = all, cols = {}, pos = {}, n = 0, ver = 0, need = 0 } end
+local LAYOUTS = {
+  levels = Layout({
+    Col("level", "COL_LEVEL", 46), Col("time", "COL_TIME", 64), Col("eta", "COL_ETA", 62, true),
+    Col("cum", "COL_CUM", 68, true), Col("server", "COL_SERVER", 62, true), Col("xph", "COL_XPH", 52, true),
+    Col("afk", "COL_AFK", 58, true), Col("inn", "COL_INN", 58, true), Col("city", "COL_CITY", 58, true),
+    Col("inst", "COL_INST", 58, true), Col("dead", "COL_DEAD", 82, true), Col("prof", "COL_PROF", 58, true),
+    Col("zone", "COL_MAIN_ZONE", 130, false, true), Col("reached", "COL_REACHED", 100),
+  }),
+  account = Layout({
+    Col("level", "COL_LEVEL", 46), Col("chars", "COL_CHARS", 60), Col("avg", "COL_AVG", 100),
+    Col("xph", "COL_XPH", 80, true),
+  }),
+  zones = Layout({   -- instance rows carry their kind after the name: a wide first column
+    Col("zone", "COL_ZONE", 240, false, true), Col("time", "COL_TIME", 64), Col("raw", "COL_RAW", 64),
+    Col("afk", "COL_AFK", 64, true), Col("xp", "COL_XP", 76, true),
+  }),
+  sessions = Layout({
+    Col("date", "COL_DATE", 100), Col("dur", "COL_DURATION", 64), Col("levels", "COL_LEVELS", 72),
+    Col("xp", "COL_XP", 70, true), Col("xph", "COL_XPH", 52, true), Col("afk", "COL_AFK", 58, true),
+    Col("inst", "COL_INST", 58, true), Col("dead", "COL_DEAD", 82, true), Col("prof", "COL_PROF", 58, true),
+  }),
+  none = Layout({}),               -- the account view of the Sessions tab (a message only)
+}
+local SECTION = {}                 -- marker layout of the section rows (one cell, full width)
 
 local WIN_BACKDROP = {
   bgFile = C.TEX_TT_BG, edgeFile = C.TEX_TT_BORDER,
@@ -103,13 +110,15 @@ local WIN_BACKDROP = {
 local BTN_BACKDROP = { bgFile = C.TEX_WHITE, edgeFile = C.TEX_WHITE, edgeSize = 1 }
 
 local EXCLUDE_PATHS = { ["exclude.afk"] = true, ["exclude.inn"] = true, ["exclude.city"] = true }
+local WINDOW_PATHS = { ["window.width"] = true, ["window.height"] = true, ["window.dateFmt"] = true,
+                       ["window.clock"] = true }
 local BORDER_ALPHA = C.COLORS.border[4]
 
 ---------------------------------------------------------------------------
 -- State
 ---------------------------------------------------------------------------
 
-local frame, scroll, content
+local frame, scroll, content, grip
 local viewFS, prevBtn, nextBtn, eraseBtn, emptyFS, footer1, footer2
 local filterFS, hintFS             -- active exclusions (header), Levels tab hint
 local titleFS, titleSize = nil, 12 -- window title (display font of the theme, GameFontNormal size)
@@ -119,13 +128,24 @@ local headerFS = {}
 local btnText = {}                 -- [button] = FontString
 local rows = {}                    -- pooled row frames
 local rowCells = {}                -- [row] = { FontString... }
-local rowLayout = {}               -- [row] = applied layout
+local rowLayout = {}               -- [row] = applied layout (LAYOUTS.x or SECTION)
+local rowVer = {}                  -- [row] = version of that layout when applied
+local rowW = {}                    -- [row] = applied width
+local rowText = {}                 -- [row] = { [column id] = text } of the build in progress
+local rowColor = {}                -- [row] = { [column id] = colour or false (value) }
+local rowSection = {}              -- [row] = section title, or false for a data row
 local rowTip = {}                  -- [row] = reused tooltip data
+local cellText = setmetatable({}, { __mode = "k" })   -- [FontString] = text set (SetText on change)
+local cellColor = setmetatable({}, { __mode = "k" })  -- [FontString] = colour set
+local used = {}                    -- [column id] = true: a row of this build has a value there
 local nUsed = 0
 
 local curTab = "levels"
-local levelsLayout = LAYOUTS.levels  -- LAYOUTS.levelsWide when the viewed levels have extras
-local frameW = WIN_W               -- applied frame width (set on change only)
+local curLayout = LAYOUTS.levels   -- layout of the build in progress / shown
+local headerLayout, headerVer = nil, -1
+local frameW, frameH = WIN_W, WIN_H  -- applied frame size (set on change only)
+local contentW = WIN_W - MARGIN_W
+local minW = -1                    -- applied resize bound
 local view = VIEW_CURRENT
 local listening = false
 local tickCount = 0
@@ -134,6 +154,7 @@ local dirty = false                -- XP changed since the last rebuild
 
 -- live cells (current character only)
 local liveLevelRow, liveLevel, liveApprox, liveLevelKey = nil, 0, false, -1
+local liveCumKey = -1
 local liveSessionRow, liveSessionKey = nil, -1
 local liveTotalKey = -1
 
@@ -194,6 +215,12 @@ end
 
 local function IntText(n)
   return format("%d", math_floor(tonumber(n) or 0))
+end
+
+-- "19 » 20": the row of a level record L holds the time spent at L, until L + 1.
+local function LevelSpan(l)
+  l = math_floor(tonumber(l) or 0)
+  return format(L.RANGE_FMT, IntText(l), IntText(l + 1))
 end
 
 local function DurText(sec)
@@ -291,7 +318,7 @@ local function OnRowEnter(self)
   local acc, lab, val = COLORS.accent, COLORS.label, COLORS.value
   local tt = GameTooltip
   tt:SetOwner(self, "ANCHOR_RIGHT")
-  tt:SetText(format(L.TT_LEVEL_ROW_FMT, tip.level))
+  tt:SetText(format(L.LEVEL_SPAN_FMT, tip.level, tip.level + 1))
   local levels = char.levels
   local lb = type(levels) == "table" and levels[tip.level] or nil
   local zones = type(char.zones) == "table" and char.zones or nil
@@ -320,7 +347,8 @@ end
 
 local function NewRow(i)
   local row = CreateFrame("Frame", nil, content)
-  row:SetSize(CONTENT_W, ROW_H)
+  row:SetSize(contentW, ROW_H)
+  rowW[row] = contentW
   row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -(i - 1) * ROW_H)
   row:EnableMouse(true)
   row:SetScript("OnEnter", OnRowEnter)
@@ -333,6 +361,7 @@ local function NewRow(i)
   end
   rows[i] = row
   rowCells[row] = {}
+  rowText[row], rowColor[row], rowSection[row] = {}, {}, false
   rowTip[row] = { active = false, level = 0, partial = false, rec = false, est = 0, gap = 0 }
   return row
 end
@@ -348,58 +377,174 @@ local function GetCell(row, c)
   return fs
 end
 
-local function ApplyRowLayout(row, layout)
-  if rowLayout[row] == layout then return end
-  local wasWide = rowLayout[row] == LAYOUTS.levelsWide
-  rowLayout[row] = layout
-  local wide = layout == LAYOUTS.levelsWide
-  if wide ~= wasWide then row:SetWidth(CONTENT_W + (wide and WIDE_EXTRA or 0)) end
+-- Text and colour of a cell, each set only when it changed.
+local function SetFS(fs, text, color)
+  if cellText[fs] ~= text then
+    cellText[fs] = text
+    fs:SetText(text)
+  end
+  if cellColor[fs] ~= color then
+    cellColor[fs] = color
+    fs:SetTextColor(color[1], color[2], color[3])
+  end
+end
+
+-- Places the cells of a row for `layout` (the visible columns, or one full-width cell for
+-- a section row); nothing is done when that placement is already applied.
+local function PlaceCells(row, layout)
+  if rowW[row] ~= contentW then
+    rowW[row] = contentW
+    row:SetWidth(contentW)
+  end
+  local ver = layout == SECTION and contentW or layout.ver
+  if rowLayout[row] == layout and rowVer[row] == ver then return end
+  rowLayout[row], rowVer[row] = layout, ver
   local cells = rowCells[row]
-  for c = 1, #layout do
-    local col = layout[c]
-    local fs = GetCell(row, c)
+  local n = 1
+  if layout == SECTION then
+    local fs = GetCell(row, 1)
     fs:ClearAllPoints()
-    fs:SetPoint("LEFT", row, "LEFT", col.x, 0)
-    fs:SetWidth(col.w)
-    fs:SetJustifyH(col.j)
+    fs:SetPoint("LEFT", row, "LEFT", 0, 0)
+    fs:SetWidth(contentW)
+    fs:SetJustifyH("LEFT")
     fs:Show()
+  else
+    n = layout.n
+    for c = 1, n do
+      local col = layout.cols[c]
+      local fs = GetCell(row, c)
+      fs:ClearAllPoints()
+      fs:SetPoint("LEFT", row, "LEFT", col.x, 0)
+      fs:SetWidth(col.cw)
+      fs:SetJustifyH(col.j)
+      fs:Show()
+    end
   end
-  for c = #layout + 1, #cells do
-    cells[c]:SetText("")
-    cells[c]:Hide()
+  for c = n + 1, #cells do
+    local fs = cells[c]
+    cellText[fs] = ""
+    fs:SetText("")
+    fs:Hide()
   end
 end
 
-local function SetCell(row, c, text, color)
-  local fs = rowCells[row][c]
-  fs:SetText(text or "")
-  color = color or UI.value
-  fs:SetTextColor(color[1], color[2], color[3])
+-- The texts of a row go to its id-keyed table during a build (Put); EndRows writes them
+-- into the cells of the visible columns.
+local function Put(row, id, text, color)
+  rowText[row][id] = text
+  rowColor[row][id] = color or false
+  if text ~= nil and text ~= "" and text ~= DASH then used[id] = true end
 end
 
-local function BeginRows()
+-- A live cell (a row already shown): its text, written at once when its column shows.
+local function PutLive(row, id, text)
+  rowText[row][id] = text
+  local c = curLayout.pos[id]
+  if c and rowLayout[row] == curLayout then SetFS(rowCells[row][c], text, rowColor[row][id] or UI.value) end
+end
+
+local function BeginRows(layout)
   nUsed = 0
+  curLayout = layout
+  for id in pairs(used) do used[id] = nil end
   emptyFS:Hide()
   liveLevelRow, liveSessionRow = nil, nil
 end
 
-local function NextRow(layout)
+local function NextRow()
   nUsed = nUsed + 1
   local row = rows[nUsed] or NewRow(nUsed)
-  ApplyRowLayout(row, layout)
+  local texts = rowText[row]
+  for id in pairs(texts) do texts[id] = nil end
+  rowSection[row] = false
   rowTip[row].active = false
   row:Show()
   return row
 end
 
-local function EndRows()
-  for i = nUsed + 1, #rows do rows[i]:Hide() end
-  content:SetHeight(math_max(1, nUsed * ROW_H))
+local function Section(text)
+  local row = NextRow()
+  rowSection[row] = text
 end
 
-local function Section(text)
-  local row = NextRow(LAYOUTS.section)
-  SetCell(row, 1, text, UI.accent)
+-- Visible columns of the build (optional ones with a value), their places and widths, and
+-- the frame size: as wide as the columns need, at least the saved size. The version of the
+-- layout is bumped when a placement changed (the rows are placed again).
+local function LayOut(layout)
+  local all, cols, pos = layout.all, layout.cols, layout.pos
+  local n, need, changed = 0, 0, false
+  for i = 1, #all do
+    local col = all[i]
+    if not col.opt or used[col.id] then
+      n = n + 1
+      if cols[n] ~= col then cols[n], changed = col, true end
+      need = need + col.w + (n > 1 and GAP or 0)
+    end
+  end
+  for i = #cols, n + 1, -1 do cols[i], changed = nil, true end
+  if n ~= layout.n then changed = true end
+  layout.n, layout.need = n, need
+  for id in pairs(pos) do pos[id] = nil end
+  -- frame size: settings, never narrower than the columns
+  local ws = ns.settings and ns.settings.window
+  local w = math_max(WIN_W, need + MARGIN_W, math_floor(tonumber(ws and ws.width) or WIN_W))
+  local h = math_floor(tonumber(ws and ws.height) or WIN_H)
+  if w ~= frameW then
+    frameW = w
+    frame:SetWidth(w)
+  end
+  if h ~= frameH then
+    frameH = h
+    frame:SetHeight(h)
+  end
+  if w - MARGIN_W ~= contentW then
+    contentW = w - MARGIN_W
+    content:SetWidth(contentW)
+  end
+  local lo = math_max(WIN_W, need + MARGIN_W)
+  if lo ~= minW then
+    minW = lo
+    if frame.SetResizeBounds then
+      frame:SetResizeBounds(lo, C.WINDOW_MIN_H, C.WINDOW_MAX_W, C.WINDOW_MAX_H)
+    elseif frame.SetMinResize then
+      frame:SetMinResize(lo, C.WINDOW_MIN_H)
+      if frame.SetMaxResize then frame:SetMaxResize(C.WINDOW_MAX_W, C.WINDOW_MAX_H) end
+    end
+  end
+  local x = 0
+  for c = 1, n do
+    local col = cols[c]
+    local cw = col.w
+    if col.flex then cw = cw + contentW - need end
+    if col.x ~= x or col.cw ~= cw then col.x, col.cw, changed = x, cw, true end
+    pos[col.id] = c
+    x = x + cw + GAP
+  end
+  if changed then layout.ver = layout.ver + 1 end
+end
+
+local function EndRows()
+  local layout = curLayout
+  LayOut(layout)
+  local cols, n = layout.cols, layout.n
+  for i = 1, nUsed do
+    local row = rows[i]
+    local sec = rowSection[row]
+    if sec then
+      PlaceCells(row, SECTION)
+      SetFS(rowCells[row][1], sec, UI.accent)
+    else
+      PlaceCells(row, layout)
+      local texts, colors, cells = rowText[row], rowColor[row], rowCells[row]
+      for c = 1, n do
+        local id = cols[c].id
+        SetFS(cells[c], texts[id] or "", colors[id] or UI.value)
+      end
+    end
+  end
+  for i = nUsed + 1, #rows do rows[i]:Hide() end
+  content:SetHeight(math_max(1, nUsed * ROW_H))
+  frame.tp.layout = layout
 end
 
 local function ShowEmpty(text)
@@ -417,11 +562,11 @@ local function BuildAccountLevels(mask)
   n = n or #out
   for i = 1, n do
     local r = out[i]
-    local row = NextRow(LAYOUTS.account)
-    SetCell(row, 1, IntText(r.level))
-    SetCell(row, 2, IntText(r.n))
-    SetCell(row, 3, r.avg and Fmt.Duration(r.avg) or DASH)
-    SetCell(row, 4, r.xph and Fmt.Rate(r.xph) or DASH)
+    local row = NextRow()
+    Put(row, "level", LevelSpan(r.level))
+    Put(row, "chars", IntText(r.n))
+    Put(row, "avg", r.avg and Fmt.Duration(r.avg) or DASH)
+    Put(row, "xph", r.xph and Fmt.Rate(r.xph) or DASH)
   end
   if n == 0 then ShowEmpty(L.NO_DATA) end
 end
@@ -434,32 +579,34 @@ local function BuildLevels(char, mask, now)
   out = out or levelRows
   n = tonumber(n) or #out
   local COLORS = UI
+  local label = COLORS.label
   for i = 1, n do
     local r = out[i]
     local est = tonumber(r.est) or 0
     local gap = tonumber(r.gap) or 0
     local approx = (r.partial or r.rec or est > 0 or gap > 0) and true or false
-    local row = NextRow(levelsLayout)
-    SetCell(row, 1, IntText(r.level), r.current and COLORS.accent or nil)
-    SetCell(row, 2, TimeText(r.filtered, approx))
-    SetCell(row, 3, r.server and Fmt.Duration(r.server) or DASH, COLORS.label)
-    SetCell(row, 4, r.xph and Fmt.Rate(r.xph) or DASH)
-    SetCell(row, 5, DurText(r.afk), COLORS.label)
-    SetCell(row, 6, DurText(r.inn), COLORS.label)
-    SetCell(row, 7, DurText(r.city), COLORS.label)
-    SetCell(row, 8, DurText(r.inst), COLORS.label)
+    local row = NextRow()
+    Put(row, "level", LevelSpan(r.level), r.current and COLORS.accent or nil)
+    Put(row, "time", TimeText(r.filtered, approx))
+    local eta = tonumber(r.eta)
+    Put(row, "eta", (eta and eta > 0) and Fmt.Duration(eta) or DASH, label)
+    local cum = tonumber(r.cum)
+    Put(row, "cum", cum and Fmt.Duration(cum) or DASH, label)
+    Put(row, "server", r.server and Fmt.Duration(r.server) or DASH, label)
+    Put(row, "xph", r.xph and Fmt.Rate(r.xph) or DASH)
+    Put(row, "afk", DurText(r.afk), label)
+    Put(row, "inn", DurText(r.inn), label)
+    Put(row, "city", DurText(r.city), label)
+    Put(row, "inst", DurText(r.inst), label)
+    Put(row, "dead", DeadText(r.dead, r.deaths), label)
+    Put(row, "prof", DurText(r.prof), label)
     local mz = r.mainZone
     if not (r.mainZoneKey ~= nil and type(mz) == "string") then mz = ZoneNameOf(char, mz) end
-    SetCell(row, 9, mz, COLORS.label)
+    Put(row, "zone", mz, label)
     if r.current then
-      SetCell(row, 10, L.ROW_IN_PROGRESS, COLORS.accent)
+      Put(row, "reached", L.ROW_IN_PROGRESS, COLORS.accent)
     else
-      SetCell(row, 10, r.reachedAt and Fmt.Date(r.reachedAt) or DASH, COLORS.label)
-    end
-    if levelsLayout == LAYOUTS.levelsWide then
-      SetCell(row, 11, DeadText(r.dead, r.deaths), COLORS.label)
-      local eta = tonumber(r.eta)
-      SetCell(row, 12, (eta and eta > 0) and Fmt.Duration(eta) or DASH, COLORS.label)
+      Put(row, "reached", r.endAt and Fmt.DateTime(r.endAt) or DASH, label)
     end
     local tip = rowTip[row]
     tip.level = math_floor(tonumber(r.level) or 0)
@@ -470,6 +617,7 @@ local function BuildLevels(char, mask, now)
     if r.current and isCur then
       liveLevelRow, liveLevel, liveApprox = row, tip.level, approx
       liveLevelKey = Fmt.DurationKey(r.filtered or 0)
+      liveCumKey = Fmt.DurationKey(cum or 0)
     end
   end
   if n == 0 then ShowEmpty(L.NO_DATA) end
@@ -479,14 +627,14 @@ end
 -- exclusions, raw time, AFK part (raw minus the time counted without AFK). Continents
 -- whose time is all excluded come last with a dash, like the zones below.
 local function AddContinentRow(r, filtered)
-  local COLORS = UI
+  local label = UI.label
   local raw = contRaw[r.key] or 0
-  local row = NextRow(LAYOUTS.zones)
-  SetCell(row, 1, r.name)
-  SetCell(row, 2, DurText(filtered))
-  SetCell(row, 3, DurText(raw), COLORS.label)
-  SetCell(row, 4, DurText(raw - (contNoAfk[r.key] or 0)), COLORS.label)
-  SetCell(row, 5, "", COLORS.label)
+  local row = NextRow()
+  Put(row, "zone", r.name)
+  Put(row, "time", DurText(filtered))
+  Put(row, "raw", DurText(raw), label)
+  Put(row, "afk", DurText(raw - (contNoAfk[r.key] or 0)), label)
+  Put(row, "xp", "", label)
   contListed[r.key] = true
 end
 
@@ -530,7 +678,7 @@ end
 local function BuildInstances(char, zoneMap, mask)
   local n = ns.Stats.TopInstances(zoneMap, mask, INST_ROWS, instRows)
   if n <= 0 then return 0 end
-  local COLORS = UI
+  local label = UI.label
   Section(L.INSTANCES_HEADER)
   for i = 1, n do
     local r = instRows[i]
@@ -540,12 +688,12 @@ local function BuildInstances(char, zoneMap, mask)
     local name = r.name or ZoneNameOf(char, r.key)
     if kindKey then name = format(L.INST_ROW_FMT, name, L[kindKey]) end
     local xp = type(bucket) == "table" and tonumber(bucket.xp) or 0
-    local row = NextRow(LAYOUTS.zones)
-    SetCell(row, 1, name)
-    SetCell(row, 2, DurText(r.secs))
-    SetCell(row, 3, DurText(raw), COLORS.label)
-    SetCell(row, 4, DurText(raw - InstSecs(bucket, C.MASK_AFK)), COLORS.label)
-    SetCell(row, 5, xp > 0 and Fmt.Number(xp) or DASH, COLORS.label)
+    local row = NextRow()
+    Put(row, "zone", name)
+    Put(row, "time", DurText(r.secs))
+    Put(row, "raw", DurText(raw), label)
+    Put(row, "afk", DurText(raw - InstSecs(bucket, C.MASK_AFK)), label)
+    Put(row, "xp", xp > 0 and Fmt.Number(xp) or DASH, label)
   end
   return n
 end
@@ -558,32 +706,32 @@ local function BuildZones(char, mask)
   else
     zoneMap = Stats.AccountZones(ns.db, accountZones) or accountZones
   end
-  local COLORS = UI
+  local label = UI.label
 
   -- continents block first (Kalimdor, Eastern Kingdoms, instances, other), then the
   -- most played instances
   local ncont = BuildContinents(zoneMap, mask)
   local ninst = BuildInstances(char, zoneMap, mask)
 
-  -- capitals block: same columns as the list below (time still counted under the
-  -- exclusions | raw city time | AFK part)
+  -- capitals block (the most city time first): the same values as their rows in the zone
+  -- list below, i.e. the time of the capital counted under the exclusions (raw minus the
+  -- excluded parts: with the city excluded, what is left is its flight, professions and
+  -- dead time), the raw time and its AFK part
   local cities, nc = Stats.TopCities(zoneMap, CITY_ROWS, cityRows)
   cities = cities or cityRows
   nc = tonumber(nc) or #cities
   if nc > 0 then
-    local inc = C.INCLUDED[mask] or C.INCLUDED[0]
     Section(L.CITIES_HEADER)
     for i = 1, nc do
       local r = cities[i]
       local bucket = zoneMap[r.key]
-      local s = type(bucket) == "table" and bucket.s or nil
-      local counted = s and (((inc.c and s.c) or 0) + ((inc.C and s.C) or 0)) or 0
-      local row = NextRow(LAYOUTS.zones)
-      SetCell(row, 1, r.name or ZoneNameOf(char, r.key))
-      SetCell(row, 2, DurText(counted))
-      SetCell(row, 3, DurText(r.total), COLORS.label)
-      SetCell(row, 4, DurText(r.afk), COLORS.label)
-      SetCell(row, 5, "", COLORS.label)
+      local row = NextRow()
+      Put(row, "zone", r.name or ZoneNameOf(char, r.key))
+      Put(row, "time", DurText(Stats.Sum(bucket, mask)))
+      Put(row, "raw", DurText(Stats.SumAll(bucket)), label)
+      Put(row, "afk", DurText(Stats.SumKeys(bucket, C.AFK_KEYS)), label)
+      local xp = type(bucket) == "table" and tonumber(bucket.xp) or 0
+      Put(row, "xp", xp > 0 and Fmt.Number(xp) or DASH, label)
     end
   end
 
@@ -601,12 +749,12 @@ local function BuildZones(char, mask)
         local bucket = zoneMap[r.key]
         xp = bucket and tonumber(bucket.xp) or 0
       end
-      local row = NextRow(LAYOUTS.zones)
-      SetCell(row, 1, name)
-      SetCell(row, 2, DurText(r.filtered))
-      SetCell(row, 3, DurText(r.raw), COLORS.label)
-      SetCell(row, 4, DurText(r.afk), COLORS.label)
-      SetCell(row, 5, xp > 0 and Fmt.Number(xp) or DASH, COLORS.label)
+      local row = NextRow()
+      Put(row, "zone", name)
+      Put(row, "time", DurText(r.filtered))
+      Put(row, "raw", DurText(r.raw), label)
+      Put(row, "afk", DurText(r.afk), label)
+      Put(row, "xp", xp > 0 and Fmt.Number(xp) or DASH, label)
     end
   end
   if ncont + ninst + nc + nz == 0 then ShowEmpty(L.NO_DATA) end
@@ -631,11 +779,12 @@ local function BuildSessions(char, mask)
   out = out or sessionRows
   n = tonumber(n) or #out
   local COLORS = UI
+  local label = COLORS.label
   for i = 1, n do
     local r = out[i]
-    local row = NextRow(LAYOUTS.sessions)
-    SetCell(row, 1, r.t0 and Fmt.DateTime(r.t0) or DASH, r.current and COLORS.accent or COLORS.label)
-    SetCell(row, 2, Fmt.Duration(r.dur or 0))
+    local row = NextRow()
+    Put(row, "date", r.t0 and Fmt.DateTime(r.t0) or DASH, r.current and COLORS.accent or label)
+    Put(row, "dur", Fmt.Duration(r.dur or 0))
     local l1, p1 = r.l1, r.p1
     if r.current and isCur then
       -- the in-progress session ends "now": current level and XP fraction
@@ -645,11 +794,13 @@ local function BuildSessions(char, mask)
       end
     end
     if l1 == nil then l1, p1 = r.l0, r.p0 end
-    SetCell(row, 3, format(L.RANGE_FMT, LevelText(r.l0, r.p0), LevelText(l1, p1)), COLORS.label)
-    SetCell(row, 4, (r.xp and r.xp > 0) and Fmt.Number(r.xp) or DASH)
-    SetCell(row, 5, r.xph and Fmt.Rate(r.xph) or DASH)
-    SetCell(row, 6, DurText(r.afk), COLORS.label)
-    SetCell(row, 7, DurText(r.inst), COLORS.label)
+    Put(row, "levels", format(L.RANGE_FMT, LevelText(r.l0, r.p0), LevelText(l1, p1)), label)
+    Put(row, "xp", (r.xp and r.xp > 0) and Fmt.Number(r.xp) or DASH)
+    Put(row, "xph", r.xph and Fmt.Rate(r.xph) or DASH)
+    Put(row, "afk", DurText(r.afk), label)
+    Put(row, "inst", DurText(r.inst), label)
+    Put(row, "dead", DeadText(r.dead, r.deaths), label)
+    Put(row, "prof", DurText(r.prof), label)
     if r.current and isCur and not liveSessionRow then
       liveSessionRow = row
       liveSessionKey = Fmt.DurationKey(r.dur or 0)
@@ -695,40 +846,13 @@ local function ViewLabel(char)
   return format(L.CHAR_FMT, Util.CharName(char), math_floor(tonumber(char.level) or 0))
 end
 
--- Column header FontString (created at Create for the 10 base columns, later on demand).
+-- Column header FontString (created at Create for the first columns, later on demand).
 local function NewHeader()
   local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   fs:SetWordWrap(false)
   local lc = UI.label
   fs:SetTextColor(lc[1], lc[2], lc[3])
   return fs
-end
-
--- A level of the viewed character holds deaths, dead time or a level-start estimate.
-local function HasLevelExtras(char)
-  local levels = char and char.levels
-  if type(levels) ~= "table" then return false end
-  for _, lb in pairs(levels) do
-    if type(lb) == "table" then
-      local s = lb.s
-      if (tonumber(lb.d) or 0) > 0 or lb.eta ~= nil or (type(s) == "table" and (tonumber(s.x) or 0) > 0) then
-        return true
-      end
-    end
-  end
-  return false
-end
-
--- The Levels layout of this view and the frame width it needs (set on change only).
-local function ApplyWidth(char)
-  local wide = curTab == "levels" and char ~= nil and HasLevelExtras(char)
-  levelsLayout = wide and LAYOUTS.levelsWide or LAYOUTS.levels
-  local w = wide and WIN_W + WIDE_EXTRA or WIN_W
-  if w ~= frameW then
-    frameW = w
-    frame:SetWidth(w)
-    content:SetWidth(wide and CONTENT_W + WIDE_EXTRA or CONTENT_W)
-  end
 end
 
 local function UpdateHeader(char, mask)
@@ -748,30 +872,28 @@ local function UpdateHeader(char, mask)
     local c = (id == curTab) and COLORS.accent or COLORS.label
     fs:SetTextColor(c[1], c[2], c[3])
   end
-  local layout
-  if curTab == "levels" then
-    layout = char and levelsLayout or LAYOUTS.account
-  elseif curTab == "zones" then
-    layout = LAYOUTS.zones
-  else
-    layout = LAYOUTS.sessions
-  end
-  if curTab == "sessions" and not char then layout = LAYOUTS.section end
-  for c = 1, MAX_COLS do
+end
+
+-- Column headers of the visible columns (placed again only when the layout changed).
+local function ApplyHeaders(layout)
+  if headerLayout == layout and headerVer == layout.ver then return end
+  headerLayout, headerVer = layout, layout.ver
+  local n = layout.n
+  for c = 1, math_max(n, #headerFS) do
     local fs = headerFS[c]
-    local col = layout[c]
-    if fs == nil and col and col.key then
-      fs = NewHeader()
-      headerFS[c] = fs
-    end
-    if col and col.key then
+    local col = c <= n and layout.cols[c] or nil
+    if col then
+      if fs == nil then
+        fs = NewHeader()
+        headerFS[c] = fs
+      end
       fs:ClearAllPoints()
       fs:SetPoint("BOTTOMLEFT", scroll, "TOPLEFT", col.x, 4)
-      fs:SetWidth(col.w)
+      fs:SetWidth(col.cw)
       fs:SetJustifyH(col.j)
       fs:SetText(L[col.key])
       fs:Show()
-    elseif fs ~= nil then   -- (a header not created yet has nothing to hide)
+    elseif fs ~= nil then
       fs:SetText("")
       fs:Hide()
     end
@@ -838,7 +960,7 @@ local function UpdateLiveCells()
     local key = Fmt.DurationKey(filtered)
     if key ~= liveLevelKey then
       liveLevelKey = key
-      SetCell(liveLevelRow, 2, TimeText(filtered, liveApprox))
+      PutLive(liveLevelRow, "time", TimeText(filtered, liveApprox))
     end
   end
   if liveSessionRow then
@@ -848,12 +970,18 @@ local function UpdateLiveCells()
       local key = Fmt.DurationKey(d)
       if key ~= liveSessionKey then
         liveSessionKey = key
-        SetCell(liveSessionRow, 2, Fmt.Duration(d))
+        PutLive(liveSessionRow, "dur", Fmt.Duration(d))
       end
     end
   end
   local total = Stats.Played(char, mask, sync, now) or 0
-  if Fmt.DurationKey(total) ~= liveTotalKey then
+  local totalKey = Fmt.DurationKey(total)
+  -- the Total column of the in-progress level: the played total up to now
+  if liveLevelRow and totalKey ~= liveCumKey then
+    liveCumKey = totalKey
+    PutLive(liveLevelRow, "cum", Fmt.Duration(total))
+  end
+  if totalKey ~= liveTotalKey then
     UpdateFooter(char, mask, now)
   end
 end
@@ -886,7 +1014,7 @@ local function OnXPChanged()
 end
 
 local function OnSettingsChanged(_, path)
-  if EXCLUDE_PATHS[path] then Window.Refresh() end
+  if EXCLUDE_PATHS[path] or WINDOW_PATHS[path] then Window.Refresh() end
 end
 
 local function Activate()
@@ -964,11 +1092,32 @@ end
 local function OnDragStart(self) self:StartMoving() end
 local function OnDragStop(self) self:StopMovingOrSizing() end
 
+-- Resize grip (bottom-right corner): the frame is sized by the client while the button is
+-- held (no script runs meanwhile); on release the size is saved (window.width / height,
+-- clamped by the settings) and the columns are laid out again for it.
+local function OnGripDown(_, button)
+  if button == "LeftButton" and frame.StartSizing then frame:StartSizing("BOTTOMRIGHT") end
+end
+
+local function OnGripUp()
+  frame:StopMovingOrSizing()
+  local w, h = frame:GetWidth(), frame:GetHeight()
+  frameW, frameH = -1, -1             -- the client changed the size: set it again
+  local Core = ns.Core
+  local changed = false               -- a changed setting refreshes the window (OnSettingsChanged)
+  if Core and Core.SetSetting then
+    if type(w) == "number" and Core.SetSetting("window.width", math_floor(w + 0.5)) then changed = true end
+    if type(h) == "number" and Core.SetSetting("window.height", math_floor(h + 0.5)) then changed = true end
+  end
+  if not changed then Window.Refresh() end
+end
+
 local function Create()
   frame = CreateFrame("Frame", "TruePlayedStatsFrame", UIParent, "BackdropTemplate")
   frame:Hide()
   frame:SetSize(WIN_W, WIN_H)
   frame:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
+  if frame.SetResizable then frame:SetResizable(true) end
   frame:SetFrameStrata("DIALOG")
   frame:SetClampedToScreen(true)
   frame:SetMovable(true)
@@ -1026,10 +1175,19 @@ local function Create()
   scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -106)
   scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -32, 50)
   content = CreateFrame("Frame", nil, scroll)
-  content:SetSize(CONTENT_W, 1)
+  content:SetSize(contentW, 1)
   scroll:SetScrollChild(content)
 
-  for c = 1, #LAYOUTS.levels do headerFS[c] = NewHeader() end
+  for c = 1, 10 do headerFS[c] = NewHeader() end
+
+  grip = CreateFrame("Button", nil, frame)
+  grip:SetSize(16, 16)
+  grip:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)
+  grip:SetNormalTexture(GRIP_TEX .. "Up")
+  grip:SetPushedTexture(GRIP_TEX .. "Down")
+  grip:SetHighlightTexture(GRIP_TEX .. "Highlight")
+  grip:SetScript("OnMouseDown", OnGripDown)
+  grip:SetScript("OnMouseUp", OnGripUp)
 
   emptyFS = frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
   emptyFS:SetPoint("CENTER", scroll, "CENTER", 0, 0)
@@ -1045,7 +1203,8 @@ local function Create()
   -- Read-only handles for the offline tests (our own frame).
   frame.tp = { viewText = viewFS, prev = prevBtn, next = nextBtn, erase = eraseBtn, tabs = tabBtns,
                footer1 = footer1, footer2 = footer2, empty = emptyFS, rows = rows, cells = rowCells,
-               header = headerFS, filter = filterFS, hint = hintFS, title = titleFS }
+               header = headerFS, filter = filterFS, hint = hintFS, title = titleFS, grip = grip,
+               layout = curLayout }
 
   Window.ApplyTheme()
 end
@@ -1070,6 +1229,13 @@ function Window.ApplyTheme()
     frame:SetBackdropBorderColor(bd[1], bd[2], bd[3], BORDER_ALPHA)
   end
   ApplyTitleFont()
+  -- the colours kept for the cells are tables of the previous theme: dropped (P5), the
+  -- next fill sets every colour again
+  for fs in pairs(cellColor) do cellColor[fs] = nil end
+  for i = 1, #rows do
+    local colors = rowColor[rows[i]]
+    for id in pairs(colors) do colors[id] = nil end
+  end
   local lc = ui.label
   filterFS:SetTextColor(lc[1], lc[2], lc[3])
   hintFS:SetTextColor(lc[1], lc[2], lc[3])
@@ -1087,9 +1253,16 @@ function Window.Refresh()
   local char = ViewChar()
   local mask = ns.GetMask()
   local now = GetTime()
-  ApplyWidth(char)
   UpdateHeader(char, mask)
-  BeginRows()
+  local layout
+  if curTab == "levels" then
+    layout = char and LAYOUTS.levels or LAYOUTS.account
+  elseif curTab == "zones" then
+    layout = LAYOUTS.zones
+  else
+    layout = char and LAYOUTS.sessions or LAYOUTS.none
+  end
+  BeginRows(layout)
   if curTab == "levels" then
     BuildLevels(char, mask, now)
   elseif curTab == "zones" then
@@ -1098,6 +1271,7 @@ function Window.Refresh()
     BuildSessions(char, mask)
   end
   EndRows()
+  ApplyHeaders(layout)
   UpdateFooter(char, mask, now)
 end
 

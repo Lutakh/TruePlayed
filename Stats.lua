@@ -924,6 +924,10 @@ local function FillLevelRow(row, char, l, mask, sync, now, isCurrent)
   row.inst = InstanceTime(lb, mask)       -- dungeons + raids + PvP under the mask
   row.mainZone, row.mainZoneKey = MainZone(char, lb, mask)
   row.reachedAt = lb.t0
+  -- the level was left (the next one reached): its own end mark, else the start of the
+  -- next record (nil for the current level, or when neither is known)
+  local nb = not isCurrent and char.levels[l + 1] or nil
+  row.endAt = lb.t1 or (type(nb) == "table" and nb.t0) or nil
   row.partial = lb.partial == true
   row.rec = lb.rec == true
   row.deaths = lb.d or 0
@@ -936,8 +940,8 @@ end
 -- (alloc) One row per level record, current level first then descending.
 -- Rows: { level, filtered, raw, server, gap, est, xp, xph, afk, inn, city, mainZone,
 -- reachedAt, partial, rec, deaths, current } (+ serverEst, mainZoneKey, inst, dead, prof,
--- eta, etaP, cum). `server` is nil when unknown; `gap` is nil unless server - raw >
--- C.DRIFT_TOL. `cum`: see Stats.CumulativeTime (nil above the character's level).
+-- eta, etaP, cum, endAt = epoch the next level was reached). `server` is nil when
+-- unknown; `gap` is nil unless server - raw > C.DRIFT_TOL. `cum`: see Stats.CumulativeTime (nil above the character's level).
 function Stats.LevelHistory(char, mask, sync, now, out)
   out = out or {}
   now = now or GetTime()

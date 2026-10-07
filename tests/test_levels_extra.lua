@@ -172,7 +172,15 @@ end)
 -- A3. Levels tab: Dead and Est. columns
 ---------------------------------------------------------------------------
 
-T.test("window: Dead (time and deaths) and Est. columns, widened without overlap", function()
+-- Lot 8 part B: the columns are laid out from the visible ones (tests/test_window_cols.lua
+-- has the general checks); here the Dead and Est. columns of part A.
+local function Cell(tp, row, id)
+  local c = tp.layout.pos[id]
+  return c and tp.cells[row][c]:GetText() or nil
+end
+local function Span(l) return l .. " \194\187 " .. (l + 1) end
+
+T.test("window: Dead (time and deaths) and Est. columns, shown when used, without overlap", function()
   local ns = Login()
   local L, Fmt = ns.L, ns.Fmt
   Grind(12, 200)
@@ -183,31 +191,31 @@ T.test("window: Dead (time and deaths) and Est. columns, widened without overlap
   ns.Window.Show("levels")
   local tp = StatsTP()
   local f = rawget(_G, "TruePlayedStatsFrame")
-  T.eq(f:GetWidth(), 830, "widened for the two columns")
-  T.eq(tp.header[11]:GetText(), L.COL_DEAD)
-  T.eq(tp.header[12]:GetText(), L.COL_ETA)
-  T.eq(tp.header[9]:GetText(), L.COL_MAIN_ZONE, "the other columns keep their place")
+  local pos = tp.layout.pos
+  T.eq(tp.header[pos.dead]:GetText(), L.COL_DEAD)
+  T.eq(tp.header[pos.eta]:GetText(), L.COL_ETA)
+  T.eq(pos.eta, pos.time + 1, "the estimate next to the time it took")
   local prevEnd = -1
-  for c = 1, 12 do
+  for c = 1, tp.layout.n do
     local fs = tp.header[c]
     local p = rawget(fs, "_points")[1]
     T.ok(p.x >= prevEnd, "column " .. c .. " starts after the previous one")
     prevEnd = p.x + fs:GetWidth()
   end
-  T.ok(prevEnd <= 830 - 14 - 32, "the last column ends inside the scroll area: " .. prevEnd)
-  local r10 = tp.cells[RowWith(tp, "10")]
-  T.eq(r10[11]:GetText(), format("%s (%d)", Fmt.Duration(310), 2), "5m (2)")
-  T.eq(r10[12]:GetText(), Fmt.Duration(ns.char.levels[10].eta), "install level: its first estimate")
-  local r11 = tp.cells[RowWith(tp, "11")]
-  T.eq(r11[11]:GetText(), "-", "no death at level 11")
-  T.eq(r11[12]:GetText(), Fmt.Duration(ns.char.levels[11].eta))
-  -- a character without any: the base layout and width
+  T.ok(prevEnd <= f:GetWidth() - 14 - 32, "the last column ends inside the scroll area: " .. prevEnd)
+  local r10 = RowWith(tp, Span(10))
+  T.eq(Cell(tp, r10, "dead"), format("%s (%d)", Fmt.Duration(310), 2), "5m (2)")
+  T.eq(Cell(tp, r10, "eta"), Fmt.Duration(ns.char.levels[10].eta), "install level: its first estimate")
+  local r11 = RowWith(tp, Span(11))
+  T.eq(Cell(tp, r11, "dead"), "-", "no death at level 11")
+  T.eq(Cell(tp, r11, "eta"), Fmt.Duration(ns.char.levels[11].eta))
+  -- a character without any: no Dead or Est. column, the base width
   ns.db.chars[OTHER_GUID] = { guid = OTHER_GUID, name = "Tamar", level = 5, life = { s = { w = 50 } },
     levels = { [5] = { s = { w = 50 }, z = {}, xp = 0, d = 0 } }, zones = {}, sessions = {} }
   ns.Core.RepairChar(ns.db.chars[OTHER_GUID])
   ns.Window.SetView(OTHER_GUID)
   T.eq(f:GetWidth(), 700)
-  T.no(tp.header[11]:IsShown()); T.no(tp.header[12]:IsShown())
+  T.eq(tp.layout.pos.dead, nil); T.eq(tp.layout.pos.eta, nil)
   ns.Window.Toggle("zones")
   T.eq(f:GetWidth(), 700, "other tabs: the base width")
   ns.Window.Hide()
@@ -219,8 +227,8 @@ T.test("window: deaths recorded before this version (no dead time) show the coun
   ns.char.levels[10].d = 3
   ns.Window.Show("levels")
   local tp = StatsTP()
-  T.eq(tp.cells[RowWith(tp, "10")][11]:GetText(), "(3)")
-  T.eq(tp.cells[RowWith(tp, "10")][12]:GetText(), "-")
+  T.eq(Cell(tp, RowWith(tp, Span(10)), "dead"), "(3)")
+  T.eq(tp.layout.pos.eta, nil, "no estimate anywhere: no Est. column")
 end)
 
 ---------------------------------------------------------------------------

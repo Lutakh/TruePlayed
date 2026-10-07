@@ -23,7 +23,8 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 
 local math_floor, math_abs = math.floor, math.abs
 local type, pairs, ipairs, tonumber, pcall = type, pairs, ipairs, tonumber, pcall
-local string_gsub = string.gsub
+local string_gsub, string_find = string.gsub, string.find
+local date = date
 local table_concat = table.concat
 local format, strtrim = format, strtrim
 local CreateFrame, UIParent, GetTime = CreateFrame, UIParent, GetTime
@@ -916,6 +917,43 @@ local function BuildMiniSection()
   AddButtonRow({ { L.OPT_RESET_POS, OnMiniResetPos } })
 end
 
+-- 2e. Statistics window: the format of its dates (examples written in each format, the
+-- language's one first) and the clock. The clock setting is "auto" | "24" | "12": the
+-- checkbox shows the clock in use (auto = the language's) and a click writes the other one.
+local DATE_EXAMPLE = 1798718400           -- 31 Dec 2026 at noon UTC (that day in every time zone)
+
+local function ClockIs24()
+  local v = GetSetting("window.clock")
+  if v == "24" then return true end
+  if v == "12" then return false end
+  return not string_find(L.TIME_FMT, "%I", 1, true)
+end
+
+local function OnClockClick(self)
+  local rec = recOf[self]
+  if not rec then return end
+  SetSetting("window.clock", ClockIs24() and "12" or "24")
+  rec.Sync(rec)
+end
+
+local function SyncClock(rec)
+  rec.widget:SetChecked(ClockIs24())
+end
+
+local function BuildWindowSection()
+  AddHeader(L.OPT_WINDOW)
+  AddDropdown(L.OPT_DATE_FMT, "window.dateFmt", {
+    { value = "auto", label = format(L.DATE_AUTO_FMT, date(L.DATE_FMT, DATE_EXAMPLE)) },
+    { value = "dmy", label = date("%d/%m/%Y", DATE_EXAMPLE) },
+    { value = "mdy", label = date("%m/%d/%Y", DATE_EXAMPLE) },
+    { value = "ymd", label = date("%Y-%m-%d", DATE_EXAMPLE) },
+  })
+  local rec = AddCheckbox(L.OPT_CLOCK24, "window.clock")
+  rec.Sync = SyncClock
+  rec.widget:SetScript("OnClick", OnClockClick)
+  AddNote(L.OPT_WINDOW_NOTE)
+end
+
 local function Build()
   built = true
   local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
@@ -1001,6 +1039,9 @@ local function Build()
 
   -- 2d. Minimap button and mini display (both work with the bar hidden)
   BuildMiniSection()
+
+  -- 2e. Statistics window (date format, clock)
+  BuildWindowSection()
 
   -- 3. Calculation
   AddHeader(L.OPT_CALC)

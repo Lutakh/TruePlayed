@@ -250,15 +250,61 @@ end)
 ---------------------------------------------------------------------------
 -- Dates
 ---------------------------------------------------------------------------
+-- Lot 8: DateTime always has the year, the hours and the minutes; by default (settings
+-- window.dateFmt = window.clock = "auto") the date and clock of the language: English
+-- month / day / year on a 12-hour clock, French day / month / year at "14h05".
 T.test("Date, DateTime and Ago patterns", function()
   local Fmt = Load("enUS").Fmt
   T.match(Fmt.Date(1790000000), "^%d%d/%d%d/%d%d%d%d$")
-  T.match(Fmt.DateTime(1790000000), "^%d%d/%d%d %d%d:%d%d$")
+  T.match(Fmt.DateTime(1790000000), "^%d%d/%d%d/%d%d%d%d %d?%d:%d%d [AP]M$")
   T.eq(Fmt.Ago(11100), "3h 05m ago")
   T.eq(Fmt.Date(nil), "...")
+  T.eq(Fmt.DateTime(nil), "...")
   Fmt = Load("frFR").Fmt
-  T.match(Fmt.DateTime(1790000000), "^%d%d/%d%d %d%dh%d%d$")
+  T.match(Fmt.DateTime(1790000000), "^%d%d/%d%d/%d%d%d%d %d%dh%d%d$")
   T.eq(Fmt.Ago(11100), "il y a 3 h 05")
+end)
+
+-- Local times (any time zone of the machine running the tests).
+local function At(hour, min) return os.time({ year = 2026, month = 10, day = 7, hour = hour, min = min, sec = 30 }) end
+
+T.test("DateTime: every date format and clock of the settings window.dateFmt / window.clock", function()
+  local ns = Load("enUS")
+  local Fmt = ns.Fmt
+  ns.settings = ns.settings or {}
+  local function Set(dateFmt, clock)
+    ns.settings.window = { width = 700, height = 440, dateFmt = dateFmt, clock = clock }
+  end
+  Set("auto", "auto")
+  T.eq(Fmt.DateTime(At(14, 5)), "10/07/2026 2:05 PM", "English: the language's date, 12-hour clock")
+  T.eq(Fmt.DateTime(At(0, 7)), "10/07/2026 12:07 AM", "midnight hour")
+  T.eq(Fmt.DateTime(At(12, 0)), "10/07/2026 12:00 PM", "noon")
+  T.eq(Fmt.DateTime(At(9, 59)), "10/07/2026 9:59 AM")
+  Set("auto", "24")
+  T.eq(Fmt.DateTime(At(14, 5)), "10/07/2026 14:05")
+  T.eq(Fmt.DateTime(At(9, 5)), "10/07/2026 09:05")
+  Set("dmy", "24")
+  T.eq(Fmt.DateTime(At(14, 5)), "07/10/2026 14:05")
+  Set("mdy", "12")
+  T.eq(Fmt.DateTime(At(14, 5)), "10/07/2026 2:05 PM")
+  Set("ymd", "24")
+  T.eq(Fmt.DateTime(At(14, 5)), "2026-10-07 14:05")
+  Set("ymd", "12")
+  T.eq(Fmt.DateTime(At(23, 59)), "2026-10-07 11:59 PM")
+  Set("dmy", "auto")
+  T.eq(Fmt.DateTime(At(14, 5)), "07/10/2026 2:05 PM", "auto clock with a chosen date")
+  ns.settings.window = nil
+  T.eq(Fmt.DateTime(At(14, 5)), "10/07/2026 2:05 PM", "no settings: the language's")
+  -- French: day / month / year, "14h05"; an explicit clock overrides it
+  ns = Load("frFR")
+  Fmt = ns.Fmt
+  ns.settings = ns.settings or {}
+  Set("auto", "auto")
+  T.eq(Fmt.DateTime(At(14, 5)), "07/10/2026 14h05")
+  Set("auto", "12")
+  T.eq(Fmt.DateTime(At(14, 5)), "07/10/2026 2:05 PM", "every player may choose the 12-hour clock")
+  Set("mdy", "24")
+  T.eq(Fmt.DateTime(At(14, 5)), "10/07/2026 14:05")
 end)
 
 ---------------------------------------------------------------------------

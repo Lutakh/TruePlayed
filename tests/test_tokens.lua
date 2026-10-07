@@ -508,11 +508,11 @@ T.test("tokens and tooltip read only the current character (5.19)", function()
   T.ok(played, "played line")
   T.eq(played[2], Fmt.Duration(Stats.SumAll(char.life)))
   T.no(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(9000000))), "no estimate from the other record")
-  -- the only cross-character figure is the labelled account line
-  local accFiltered = Stats.Account(ns.db, 0)
-  local account = Find(lines, format(L.TT_ACCOUNT_FMT, 2))
-  T.ok(account, "account line")
-  T.eq(account[2], Fmt.Duration(accFiltered))
+  -- no cross-character figure at all (lot 8: the account lines moved to the window)
+  T.no(Find(lines, format(L.TT_ACCOUNT_FMT, 2)), "no account line")
+  for i = 1, #lines do
+    T.no(lines[i][2] == Fmt.Duration(Stats.Account(ns.db, 0)), "no account total: " .. tostring(lines[i][1]))
+  end
 end)
 
 ---------------------------------------------------------------------------
@@ -525,17 +525,21 @@ T.test("tooltip shows the rebuilt-after-crash lines when est > 0", function()
   local lines = Fill(ns, false)
   T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(2100))), "played sub-line")
   T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(600))), "this level sub-line")
+  -- lot 8: the detailed view repeats nothing at the bottom (the sub-lines say it)
   local detailed = Fill(ns, true)
-  local line = Find(detailed, L.TT_EST_TOTAL)
-  T.ok(line, "detailed estimate line")
-  T.eq(line[2], format("%s (%s)", Fmt.Duration(2100), L.TT_EST_NOTE))
+  local n = 0
+  for i = 1, #detailed do
+    if HasText({ detailed[i] }, format(L.TT_EST_FMT, Fmt.Duration(2100))) then n = n + 1 end
+    T.no(detailed[i][1] == "Rebuilt after crashes", "no bottom estimate line")
+    T.no(detailed[i][2] and string.find(detailed[i][2], "(estimated split)", 1, true), "no estimated split")
+  end
+  T.eq(n, 1, "the played sub-line only, once")
 end)
 
 T.test("tooltip has no rebuilt-after-crash line without an estimate", function()
   local ns = Start()
   local L = ns.L
   local lines = Fill(ns, true)
-  T.no(Find(lines, L.TT_EST_TOTAL))
   for i = 1, #lines do
     T.no(MatchesFormat(lines[i][1], L.TT_EST_FMT), "no est sub-line")
   end
@@ -575,7 +579,7 @@ T.test("tooltip server line: saved snapshot with its age, then live", function()
   T.no(select(2, Tokens.Render("played_server")), "live")
 end)
 
-T.test("tooltip prefers the last-levels average, detailed shows both", function()
+T.test("tooltip: the last-levels average; the overall one and the level history are in the window", function()
   local ns = Start()
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
   local lines = Fill(ns, false)
@@ -584,25 +588,38 @@ T.test("tooltip prefers the last-levels average, detailed shows both", function(
   local line = Find(lines, format(L.TT_AVG_RECENT_FMT, 5))
   T.ok(line, "Last 5 levels line")
   T.eq(line[2], Fmt.Duration(recent))
-  T.no(Find(lines, L.TT_AVG_LEVEL), "overall average not in the short tooltip")
+  local overall = Fmt.Duration(Stats.AvgPerLevel(ns.char, 0, ns.Tracker.GetSync(), Stub.Now()))
   local detailed = Fill(ns, true)
-  T.ok(Find(detailed, L.TT_AVG_LEVEL), "overall average in the detailed tooltip")
+  T.ok(Find(detailed, format(L.TT_AVG_RECENT_FMT, 5)), "the last-levels average stays in the detailed view")
+  for i = 1, #detailed do
+    T.no(detailed[i][2] == overall and detailed[i][1] ~= format(L.TT_AVG_RECENT_FMT, 5),
+      "no overall average line: " .. tostring(detailed[i][1]))
+    T.no(string.find(tostring(detailed[i][1]), "^Level %d+$"), "no last levels row")
+  end
   T.ok(HasText(detailed, L.TT_TOP_ZONES))
   T.ok(HasText(detailed, L.TT_TOP_CITIES))
-  T.ok(HasText(detailed, L.TT_LAST_LEVELS))
-  local city = Find(detailed, "Orgrimmar")
+  local city
+  for i = 1, #detailed do
+    if detailed[i][1] == L.TT_TOP_CITIES then city = detailed[i + 1] end
+  end
+  T.eq(city[1], "Orgrimmar")
   T.eq(city[2], format(L.TT_OF_WHICH_AFK_FMT, Fmt.Duration(2100), Fmt.Duration(600)))
   T.ok(Find(detailed, L.TT_NET), "network line")
 end)
 
-T.test("tooltip falls back to the overall average without level history", function()
+T.test("tooltip: no average line without level history (the window footer has the overall one)", function()
   local ns = Start({ noHistory = true })
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
-  local lines = Fill(ns, false)
-  T.no(Find(lines, format(L.TT_AVG_RECENT_FMT, 5)))
-  local line = Find(lines, L.TT_AVG_LEVEL)
-  T.ok(line, "overall average line")
-  T.eq(line[2], Fmt.Duration(Stats.AvgPerLevel(ns.char, 0, ns.Tracker.GetSync(), Stub.Now())))
+  local overall = Stats.AvgPerLevel(ns.char, 0, ns.Tracker.GetSync(), Stub.Now())
+  T.ok(overall, "an overall average exists")
+  for _, detailed in ipairs({ false, true }) do
+    local lines = Fill(ns, detailed)
+    T.no(Find(lines, format(L.TT_AVG_RECENT_FMT, 5)))
+    for i = 1, #lines do T.no(lines[i][2] == Fmt.Duration(overall), "no overall average: " .. tostring(lines[i][1])) end
+  end
+  ns.Window.Show("levels")
+  local footer = rawget(_G, "TruePlayedStatsFrame").tp.footer1:GetText()
+  T.ok(string.find(footer, Fmt.Duration(overall), 1, true), "the window footer has it: " .. footer)
 end)
 
 T.test("tooltip XP block and breakdown over tracked time", function()
@@ -619,9 +636,9 @@ T.test("tooltip XP block and breakdown over tracked time", function()
   local tr = bd.tracked
   local function Part(key, secs) return format(L.BD_PART_FMT, L[key], Fmt.Percent(secs / tr, 0)) end
   local flight = bd.active - bd.world - bd.dungeon - bd.raid - bd.pvp
-  T.eq(Find(lines, L.TT_BREAKDOWN)[2], table.concat({ Part("BD_WORLD", bd.world), Part("BD_TAXI", flight),
-    Part("BD_AFK", bd.afk), Part("BD_INN", bd.inn), Part("BD_CITY", bd.city) }, L.SEP),
-    "world, flight, AFK, inn, city (no instance time: those parts are left out)")
+  T.eq(Find(lines, L.TT_BREAKDOWN)[2], table.concat({ Part("BD_WORLD", bd.world), Part("BD_AFK", bd.afk),
+    Part("BD_CITY", bd.city), Part("BD_INN", bd.inn), Part("BD_TAXI", flight) }, L.SEP),
+    "largest first: world, AFK, city, inn, flight (no instance time: those parts are left out)")
   T.ok(HasText(lines, L.TT_HINT), "hint")
   T.eq(lines[#lines][1], L.TT_HINT, "hint last")
 end)

@@ -356,6 +356,31 @@ local function Play(sc, root)
   return out, errors
 end
 
+-- Intended tooltip changes since the pre-theme copy (lot 8 part B), applied to the
+-- baseline's tooltip stages only (the inputs of both runs stay identical): the averages
+-- per level, the last levels, the account lines and the "rebuilt after crashes" total left
+-- the tooltip for the statistics window, and "Top zones this level" became the
+-- character's "Top zones". Every other line must still be identical.
+local DROPPED = { ["Average per level"] = true, ["Last levels"] = true, ["Account, in instances"] = true,
+                  ["Rebuilt after crashes"] = true }
+local function Intended(stages)
+  for _, st in ipairs(stages) do
+    if st.label:find("tooltip", 1, true) then
+      local out = {}
+      for _, line in ipairs(st.lines) do
+        local left = line:match('^"(.-)" | ')
+        if left == "Top zones this level" then
+          out[#out + 1] = '"Top zones"' .. line:sub(#'"Top zones this level"' + 1)
+        elseif not (left and (DROPPED[left] or left:find("^Level %d+$") or left:find("^Account %(%d+ character"))) then
+          out[#out + 1] = line
+        end
+      end
+      st.lines = out
+    end
+  end
+  return stages
+end
+
 -- Readable difference of two stage lists (first differing stage).
 local function Diff(a, b)
   for i = 1, math.max(#a, #b) do
@@ -389,6 +414,7 @@ for _, sc in ipairs(SCENARIOS) do
     if not HasBaseline() then T.skip("no Phase 0 baseline") end
     local root = Stub.ROOT
     local snapA, errA = Play(sc, root .. BASELINE)
+    snapA = Intended(snapA)
     local snapB, errB = Play(sc, root)
     T.eq(errA, {}, "baseline run errors")
     T.eq(errB, {}, "current run errors")

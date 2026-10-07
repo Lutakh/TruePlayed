@@ -44,7 +44,7 @@ local LANG_KEY = { enUS = "LANG_ENUS", frFR = "LANG_FRFR", deDE = "LANG_DEDE", e
 local SAME_OK = {
   ADDON_TITLE = true, CHAT_PREFIX = true, EXCL_STATE_FMT = true, ETA_FMT = true, NUM_K = true, NUM_M = true,
   PERCENT_FMT = true, PER_HOUR = true, FPS_FMT = true, MS_FMT = true, DOTS = true, SEP = true, RANGE_FMT = true,
-  DECIMAL_SEP = true, THOUSANDS_SEP = true, DATE_FMT = true, DATETIME_FMT = true, DUR_LT_1M = true, ETA_LT_1M = true,
+  DECIMAL_SEP = true, THOUSANDS_SEP = true, DATE_FMT = true, TIME_FMT = true, DUR_LT_1M = true, ETA_LT_1M = true,
   DUR_H = true, DUR_M = true, DUR_LONG_M = true, DUR_LONG_HM = true,
   TOKEN_FPS = true, PFX_SERVER_FMT = true, PFX_AFK_FMT = true, PFX_ZONE_FMT = true, PFX_INST_SESSION_FMT = true,
   PFX_PLAYED_FMT = true, PFX_INST_TOTAL_FMT = true, PFX_SESSION_FMT = true, XP_BARE_FMT = true, STALL_MARK = true,
@@ -55,7 +55,7 @@ local SAME_OK = {
   GRAPH_AGE_MS_FMT = true, SLIDER_PX_FMT = true, SLIDER_PCT_FMT = true, OPT_SLOT2 = true, OPT_SLOT3 = true,
   OPT_VERSION_FMT = true, TT_SESSION = true, TAB_ZONES = true, TAB_SESSIONS = true, TT_ZONE_FMT = true,
   THEME_PALADIN = true, THEME_MAGE = true, LANG_AUTO = true, MENU_OPTIONS = true, REACT_NORMAL = true,
-  ERASE_NO = true, OPT_EXCLUSIONS = true, PCTH_FMT = true, COL_DATE = true,
+  ERASE_NO = true, OPT_EXCLUSIONS = true, PCTH_FMT = true, COL_DATE = true, DATE_AUTO_FMT = true,
   -- cognates (frFR since 1.0)
   BD_RAID = true, CONT_INSTANCES = true, HELP_OPTIONS = true, KIND_RAID = true, SECTION_CONTINENTS = true,
   THEME_HEROIC = true, BD_DUNGEON = true, TT_OF_WHICH_AFK_FMT = true, XP_FMT = true, XP_LABEL = true,
@@ -180,7 +180,7 @@ T.test("locales: every file has the keys of enUS with the same format arguments,
         local t = L[k]
         if type(t) ~= "string" then
           T.ok(false, code .. " misses " .. k)
-        elseif k ~= "DATE_FMT" and k ~= "DATETIME_FMT" then
+        elseif k ~= "DATE_FMT" and k ~= "TIME_FMT" then
           T.eq(Specs(t), Specs(v), code .. " " .. k .. ": format arguments")
           local isFormat = #Specs(v) > 0 or find(v, "%%", 1, true) ~= nil
           if isFormat then
@@ -199,7 +199,7 @@ end)
 T.test("locales: dates, numbers and short duration units of each language", function()
   for _, code in ipairs(ALL) do
     local L = LocaleTable(code)
-    for _, k in ipairs({ "DATE_FMT", "DATETIME_FMT" }) do
+    for _, k in ipairs({ "DATE_FMT", "TIME_FMT" }) do
       local ok, s = pcall(os.date, L[k], 1790799275)
       T.ok(ok and type(s) == "string" and not find(s, "%", 1, true), code .. " " .. k .. ": " .. tostring(s))
     end
@@ -499,6 +499,8 @@ local function RealWidths(body)
   restore()
   if not ok then error(err, 0) end
 end
+
+local function L_TEXT(fs) return tostring(rawget(fs, "_text")) end
 
 -- Drawn width of a FontString (its font, or the size of its game font object).
 local function FSWidth(Width, fs, text)
@@ -912,6 +914,61 @@ T.test("widths: the statistics window in every language and theme", function()
       end
     end
     Report(bad, "window texts")
+  end)
+end)
+
+-- Statistics window, lot 8: with every column in use (deaths, professions, AFK, inn, city,
+-- an estimate, the 12-hour clock: the widest values) every visible header and cell text
+-- fits its column (the flexible zone column aside: a long zone name may be cut), the
+-- columns do not overlap and end inside the window, in every language.
+T.test("widths: every column of the statistics window (headers and values), no overlap, every language", function()
+  RealWidths(function(Width)
+    local bad = {}
+    for _, code in ipairs(ALL) do
+      Stub.Reset()
+      local ns = StartPlay("actuel", code, "activity")
+      Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)
+      Stub.Advance(2)
+      for _, fmt in ipairs({ { "mdy", "12" }, { "auto", "auto" } }) do
+        ns.Core.SetSetting("window.dateFmt", fmt[1])
+        ns.Core.SetSetting("window.clock", fmt[2])
+        for _, view in ipairs({ "current", "account" }) do
+          for _, tab in ipairs({ "levels", "zones", "sessions" }) do
+            ns.Window.Show(tab, view)
+            Stub.Advance(1)
+            local f = rawget(_G, "TruePlayedStatsFrame")
+            local tp = f.tp
+            local lay = tp.layout
+            local where = format("%s %s %s %s", code, fmt[2], view, tab)
+            local prevEnd = -1
+            for c = 1, lay.n do
+              local col = lay.cols[c]
+              if col.x < prevEnd then bad[#bad + 1] = where .. ": column " .. col.id .. " overlaps" end
+              prevEnd = col.x + col.cw
+              local hw = FSWidth(Width, tp.header[c])
+              if hw > col.cw - 1 then
+                bad[#bad + 1] = format("%s header %s: %q %.0f > %d", where, col.id, L_TEXT(tp.header[c]), hw, col.cw - 1)
+              end
+              if not col.flex then
+                for _, row in ipairs(tp.rows) do
+                  local fs = row:IsShown() and tp.cells[row][c]
+                  if fs and fs:IsShown() and rawget(tp.rows[1], "_parent") then
+                    local w = FSWidth(Width, fs)
+                    if w > col.cw - 1 then
+                      bad[#bad + 1] = format("%s cell %s: %q %.0f > %d", where, col.id, L_TEXT(fs), w, col.cw - 1)
+                    end
+                  end
+                end
+              end
+            end
+            if prevEnd > f:GetWidth() - 50 then bad[#bad + 1] = where .. ": columns end outside the window" end
+          end
+        end
+      end
+      ns.Window.Hide()
+      if #Stub.errors > 0 then bad[#bad + 1] = code .. ": " .. tostring(Stub.errors[1]) end
+    end
+    Report(bad, "window columns")
   end)
 end)
 

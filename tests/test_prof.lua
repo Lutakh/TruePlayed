@@ -233,10 +233,10 @@ T.test("prof: breakdown part and the Shift tooltip line (only when there is any)
   T.eq(bd.prof, 180)
   local parts = {}
   T.eq(ns.Tooltip.BreakdownParts(bd, parts), 2)
-  T.eq(parts[2], format(L.BD_PART_FMT, L.BD_PROF, Fmt.Percent(180 / bd.tracked, 0)))
+  T.eq(parts[1], format(L.BD_PART_FMT, L.BD_PROF, Fmt.Percent(180 / bd.tracked, 0)), "largest first")
   local fracs, keys = {}, {}
   ns.Tooltip.BreakdownFracs(bd, fracs, keys)
-  T.eq(keys, { "world", "prof" })
+  T.eq(keys, { "prof", "world" })
   T.eq(Find(Fill(ns, true), L.TT_PROF)[2], Fmt.Duration(180))
   T.no(Find(Fill(ns, false), L.TT_PROF), "Shift only")
   local _, _, prof = Stats.LevelActivity(ns.char, 10)

@@ -204,6 +204,8 @@ local FILES = {
   "test_minimap", "test_mini",
   -- lot 8 part A: time dead, professions, per-level additions, short continents
   "test_dead", "test_prof", "test_levels_extra",
+  -- lot 8 part B: tooltip and statistics window rework
+  "test_window_cols",
 }
 
 local passed, failed, skipped = 0, 0, 0

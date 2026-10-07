@@ -3,18 +3,19 @@
 -- Content is built only while a tooltip is shown. While our tooltip is shown the
 -- module listens to TICK and MODIFIER_STATE_CHANGED (Shift switches to the detailed
 -- view); both are unregistered as soon as it is hidden or taken by another owner.
--- Fill() reads only the current character (ns.char + the Tracker sync), except the
--- explicitly labelled account line (5.19). Refreshes allocate strings only: row tables
+-- Fill() reads only the current character (ns.char + the Tracker sync). Refreshes allocate strings only: row tables
 -- are reused. The short view keeps the essentials; the rate details (source of the
 -- estimate, session / level rates) belong to the detailed view.
 -- A rate estimated from the pre-install /played (status "estimate") is shown as
 -- "~value" followed by the dimmed L.RATE_ESTIMATE; without any data the XP per hour
 -- line says how much counted play is still needed, never a bare "...".
--- The breakdown line lists the parts of the tracked time in a fixed order (world,
--- dungeons, raids, PvP, flight, professions, dead, AFK, inn, city), leaving out the parts
--- that round to 0 %, BD_PER_LINE parts per line. Instance time (dungeons, raids, PvP) also has its
--- own lines: the filtered total in the short view, each kind with its AFK part and
--- the account total in the detailed view.
+-- The breakdown line lists the parts of the tracked time (world, dungeons, raids, PvP,
+-- flight, professions, dead, AFK, inn, city) largest first, gauge segments and legend
+-- alike, leaving out the parts that round to 0 %, BD_PER_LINE parts per line. Instance time (dungeons, raids, PvP) also has its
+-- own lines: the filtered total in the short view, each kind with its AFK part in the
+-- detailed view. The detailed view keeps the character's figures (top zones, continents,
+-- capitals, state totals, deaths); the averages per level, the level history and the
+-- account figures are in the statistics window.
 -- A frozen rate (status "stalled": no XP gained for a while) is shown dimmed with
 -- L.STALL_MARK, and a note says for how much counted play no XP came. A detected server
 -- level cap replaces the XP block with the cap line and says tracking resumes by itself.
@@ -53,8 +54,8 @@ local breakdown = {}            -- reused Stats.Breakdown output
 local bdParts = {}              -- reused breakdown part texts (tooltip build only)
 local bdFracs, bdKeys = {}, {}  -- reused breakdown fractions and gauge keys
 
--- Breakdown parts, fixed order: locale key of the label, Stats.Breakdown field, gauge
--- colour key. The flight part (active flight, "t") has no field of its own: active
+-- Breakdown parts (shown largest first, ties in this order): locale key of the label,
+-- Stats.Breakdown field, gauge colour key. The flight part (active flight, "t") has no field of its own: active
 -- minus the rest. Professions and dead (Activity.lua) are not part of active.
 local BD_ORDER = {
   { "BD_WORLD", "world", "world" }, { "BD_DUNGEON", "dungeon", "dungeon" }, { "BD_RAID", "raid", "raid" },
@@ -200,47 +201,56 @@ local function InstSecs(bucket, mask)
   return ns.Stats.InstanceTime(bucket, mask)
 end
 
--- Texts of the visible breakdown parts ("World 62%", ...) in the fixed order, over
--- the tracked time; parts that round to 0 % are left out. Fills `out` (reused, the
--- surplus is cleared) and returns the count, and true when a professions or dead part
--- is among them. Tooltip builds and /tpl played only.
-function Tooltip.BreakdownParts(bd, out)
-  out = out or {}
-  local n, act = 0, false
+-- Visible breakdown parts, largest first (ties: the BD_ORDER order): fills the reused
+-- bdIdx (BD_ORDER indices) and bdSecs (their seconds) and returns their count. A part that
+-- rounds to 0 % of the tracked time is left out. Allocation free (insertion sort).
+local bdIdx, bdSecs = {}, {}
+local function SortedParts(bd)
+  local n = 0
   local tracked = bd and bd.tracked or 0
   if tracked > 0 then
     for i = 1, #BD_ORDER do
-      local part = BD_ORDER[i]
-      local secs = PartSecs(bd, part[2])
+      local secs = PartSecs(bd, BD_ORDER[i][2])
       if floor(secs / tracked * 100 + 0.5) >= 1 then
+        local p = n + 1
+        while p > 1 and bdSecs[p - 1] < secs do
+          bdIdx[p], bdSecs[p] = bdIdx[p - 1], bdSecs[p - 1]
+          p = p - 1
+        end
+        bdIdx[p], bdSecs[p] = i, secs
         n = n + 1
-        out[n] = format(L.BD_PART_FMT, L[part[1]], Fmt.Percent(secs / tracked, 0))
-        if part[2] == "prof" or part[2] == "dead" then act = true end
       end
     end
+  end
+  return n, tracked
+end
+
+-- Texts of the visible breakdown parts ("World 62%", ...), largest first, over the
+-- tracked time; parts that round to 0 % are left out. Fills `out` (reused, the surplus is
+-- cleared) and returns the count, and true when a professions or dead part is among
+-- them. Tooltip builds and /tpl played only.
+function Tooltip.BreakdownParts(bd, out)
+  out = out or {}
+  local n, tracked = SortedParts(bd)
+  local act = false
+  for k = 1, n do
+    local part = BD_ORDER[bdIdx[k]]
+    out[k] = format(L.BD_PART_FMT, L[part[1]], Fmt.Percent(bdSecs[k] / tracked, 0))
+    if part[2] == "prof" or part[2] == "dead" then act = true end
   end
   for i = #out, n + 1, -1 do out[i] = nil end
   return n, act
 end
 
--- Fractions of the same visible parts (same order, same 0 % filter as BreakdownParts)
--- and their gauge colour keys (world, dungeon, raid, pvp, taxi, prof, dead, afk, inn,
--- city). Fills
--- the reused `fracs` and `keys` (the surplus is cleared) and returns the count.
--- Allocation free.
+-- Fractions of the same visible parts (same order, largest first, same 0 % filter as
+-- BreakdownParts) and their gauge colour keys (world, dungeon, raid, pvp, taxi, prof, dead,
+-- afk, inn, city). Fills the reused `fracs` and `keys` (the surplus is cleared) and
+-- returns the count. Allocation free.
 function Tooltip.BreakdownFracs(bd, fracs, keys)
-  local n = 0
-  local tracked = bd and bd.tracked or 0
-  if tracked > 0 then
-    for i = 1, #BD_ORDER do
-      local part = BD_ORDER[i]
-      local secs = PartSecs(bd, part[2])
-      if floor(secs / tracked * 100 + 0.5) >= 1 then
-        n = n + 1
-        fracs[n] = secs / tracked
-        keys[n] = part[3]
-      end
-    end
+  local n, tracked = SortedParts(bd)
+  for k = 1, n do
+    fracs[k] = bdSecs[k] / tracked
+    keys[k] = BD_ORDER[bdIdx[k]][3]
   end
   for i = #fracs, n + 1, -1 do fracs[i] = nil end
   for i = #keys, n + 1, -1 do keys[i] = nil end
@@ -364,25 +374,22 @@ local function ContRawSecs(key, nraw)
 end
 
 -- Detailed part (Shift), inserted before the hint. One blank line opens it; the
--- blocks below are separated by their accent headers only.
-local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
+-- blocks below are separated by their accent headers only. The averages per level, the
+-- level history and the account figures belong to the statistics window (lot 8).
+local function FillDetails(tt, char, mask, bd)
   local Stats = ns.Stats
   Sep(tt, "block")
-  -- both averages: the short part shows the recent one when it exists, else the
-  -- overall one; add the overall one here when it is not visible yet
-  if recent then
-    if overall then Pair(tt, L.TT_AVG_LEVEL, Dur(overall)) else PairDim(tt, L.TT_AVG_LEVEL, L.DOTS) end
-  end
 
-  -- top zones of the current level (names from the character's zone records)
-  local levels = char.levels
-  local lb = type(levels) == "table" and levels[ctx.level] or nil
+  -- top zones of the character under the exclusions (names from its zone records); a
+  -- zone whose time is all excluded is not listed
   local zones = type(char.zones) == "table" and char.zones or nil
-  local _, nz = Stats.TopZones(lb and lb.z, TOP_ROWS, mask, rowsZones)
-  if nz > 0 then
-    Header(tt, L.TT_TOP_ZONES)
-    for i = 1, nz do
-      local row = rowsZones[i]
+  local _, nz = Stats.TopZones(zones, TOP_ROWS, mask, rowsZones)
+  local shown = 0
+  for i = 1, nz do
+    local row = rowsZones[i]
+    if (row.filtered or 0) > 0 then
+      if shown == 0 then Header(tt, L.TT_TOP_ZONES) end
+      shown = shown + 1
       Pair(tt, Stats.ZoneName(row.key, zones and zones[row.key]), Dur(row.filtered))
     end
   end
@@ -442,25 +449,8 @@ local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
     end
   end
 
-  -- last completed levels ("~" = partial, reconstructed or partly estimated)
-  local shown = 0
-  if type(levels) == "table" then
-    local l = floor(ctx.level) - 1
-    while l >= 1 and shown < TOP_ROWS do
-      local b = levels[l]
-      if type(b) == "table" and Stats.SumAll(b) > 0 then
-        if shown == 0 then Header(tt, L.TT_LAST_LEVELS) end
-        shown = shown + 1
-        local text = Dur(Stats.Sum(b, mask))
-        if b.partial or b.rec or (b.est or 0) > 0 then text = "~" .. text end
-        Pair(tt, format(L.TT_LEVEL_ROW_FMT, l), text)
-      end
-      l = l - 1
-    end
-  end
-
   -- state totals of the character (raw seconds), set apart from the lists above
-  if recent or nz > 0 or ncont > 0 or nc > 0 or shown > 0 then Sep(tt, "block") end
+  if shown > 0 or ncont > 0 or nc > 0 then Sep(tt, "block") end
   Pair(tt, L.TT_INN, format(L.TT_OF_WHICH_AFK_FMT, Dur(bd.innAll), Dur(bd.innAfk)))
   Pair(tt, L.TT_CITY, format(L.TT_OF_WHICH_AFK_FMT, Dur(bd.cityAll), Dur(bd.cityAfk)))
   -- instance time by kind, with its AFK part (only the kinds played)
@@ -484,16 +474,6 @@ local function FillDetails(tt, ctx, char, mask, recent, overall, bd)
   if bd.untracked > 0 then
     Pair(tt, L.TT_UNTRACKED, format("%s (%s)", Dur(bd.untracked), L.TT_UNTRACKED_NOTE))
   end
-  if bd.est > 0 then
-    Pair(tt, L.TT_EST_TOTAL, format("%s (%s)", Dur(bd.est), L.TT_EST_NOTE))
-  end
-
-  -- explicit account line (5.19 step 4); singular for one character
-  local accFiltered, _, nChars = Stats.Account(ns.db, mask)
-  Pair(tt, format(nChars == 1 and L.TT_ACCOUNT_ONE_FMT or L.TT_ACCOUNT_FMT, nChars), Dur(accFiltered))
-  -- instance time of every character (same exclusions), when there is any
-  local accInst = Stats.AccountInstanceTime(ns.db, mask)
-  if accInst > 0 then Pair(tt, L.TT_ACCOUNT_INST, Dur(accInst)) end
 
   -- network (read only while the detailed tooltip is shown)
   local fps = GetFramerate and GetFramerate() or 0
@@ -536,7 +516,6 @@ local function FillBody(tt, detailed, hint)
 
   local Tracker = ns.Tracker
   local session = Tracker and Tracker.GetSession() or nil
-  local sync = Tracker and Tracker.GetSync() or nil
   local life = type(char.life) == "table" and char.life or nil
   local u = life and life.s and life.s.u or 0
   local lifeEst = life and life.est or 0
@@ -579,17 +558,12 @@ local function FillBody(tt, detailed, hint)
   -- 8. server /played
   FillServer(tt, ctx, char)
 
-  -- 9. average per level: the recent one is preferred (critique #10c)
+  -- 9. average of the last levels, once there are enough of them (the overall average
+  -- per level is in the statistics window, lot 8)
   local recent, recentN = Stats.RecentAvg(char, mask, RECENT_LEVELS)
-  local overall = Stats.AvgPerLevel(char, mask, sync, now)
-  if recent then
-    Pair(tt, format(L.TT_AVG_RECENT_FMT, recentN), Dur(recent))
-  elseif overall then
-    Pair(tt, L.TT_AVG_LEVEL, Dur(overall))
-    if excl and u > 0 then Note(tt, format(L.TT_PREINSTALL_FMT, Dur(u))) end
-  end
+  if recent then Pair(tt, format(L.TT_AVG_RECENT_FMT, recentN), Dur(recent)) end
 
-  -- 10-11. breakdown over tracked time: the parts that are not 0 %, fixed order,
+  -- 10-11. breakdown over tracked time: the parts that are not 0 %, largest first,
   -- BD_PER_LINE parts per line (continuation lines have no label)
   Sep(tt, "block")
   local bd = Stats.Breakdown(life, breakdown)
@@ -621,7 +595,7 @@ local function FillBody(tt, detailed, hint)
     end
   end
 
-  if detailed then FillDetails(tt, ctx, char, mask, recent, overall, bd) end
+  if detailed then FillDetails(tt, char, mask, bd) end
 
   -- 12. hint
   Sep(tt, "footer")

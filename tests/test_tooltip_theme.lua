@@ -562,7 +562,7 @@ T.test("Broker: Fill on a mock tooltip keeps the classic colours while futuriste
   T.eq(ns.TooltipFrame.frame, nil, "Broker never uses the private frame")
 end)
 
-T.test("BreakdownFracs: same order and 0 % filter as BreakdownParts, reused tables", function()
+T.test("BreakdownFracs: same order (largest first) and 0 % filter as BreakdownParts, reused tables", function()
   local ns = Start("actuel")
   local Tooltip = ns.Tooltip
   local bd = { tracked = 1000, active = 900, world = 600, dungeon = 100, raid = 0, pvp = 4,
@@ -571,13 +571,19 @@ T.test("BreakdownFracs: same order and 0 % filter as BreakdownParts, reused tabl
   local n = Tooltip.BreakdownFracs(bd, fracs, keys)
   T.eq(n, Tooltip.BreakdownParts(bd, {}))
   T.eq(n, 5)
-  T.eq(keys, { "world", "dungeon", "taxi", "afk", "city" })
+  T.eq(keys, { "world", "taxi", "dungeon", "afk", "city" }, "largest first, ties in the fixed order")
   T.eq(#fracs, 5)
   T.near(fracs[1], 0.6)
-  T.near(fracs[2], 0.1)
-  T.near(fracs[3], 0.196, 1e-9)
+  T.near(fracs[2], 0.196, 1e-9)
+  T.near(fracs[3], 0.1)
   T.near(fracs[4], 0.05)
   T.near(fracs[5], 0.05)
+  -- the legend lists the same parts in the same order
+  local parts = {}
+  Tooltip.BreakdownParts(bd, parts)
+  local L = ns.L
+  T.eq(parts[2], format(L.BD_PART_FMT, L.BD_TAXI, ns.Fmt.Percent(0.196, 0)), "legend: flight second")
+  T.eq(parts[3], format(L.BD_PART_FMT, L.BD_DUNGEON, ns.Fmt.Percent(0.1, 0)), "legend: dungeons third")
   T.eq(Tooltip.BreakdownFracs({ tracked = 0 }, fracs, keys), 0)
   T.eq(#fracs + #keys, 0)
   local kb = T.alloc(function() Tooltip.BreakdownFracs(bd, fracs, keys) end, 1000)
@@ -593,19 +599,36 @@ local function V(x)
   return tostring(x)
 end
 
+local function IsUnder(o, root)
+  for _ = 1, 50 do
+    o = rawget(o, "_parent")
+    if o == nil then return false end
+    if o == root then return true end
+  end
+  return false
+end
+
 -- Every region of the window as a string, plus its backdrop (see test_graph.lua).
-local function Snapshot(root)
+-- chrome = true: the parts lot 8 did not redesign only (no row, cell, column header or
+-- resize grip, no frame width: the columns and the size of the window changed then).
+local function Snapshot(root, chrome)
   local out = {}
-  local function Under(o)
-    for _ = 1, 50 do
-      o = rawget(o, "_parent")
-      if o == nil then return false end
-      if o == root then return true end
-    end
+  local tp = rawget(root, "tp")
+  local content = tp and tp.rows[1] and rawget(tp.rows[1], "_parent")
+  local skip = {}
+  if chrome and tp then
+    for _, fs in pairs(tp.header) do skip[fs] = true end
+    if tp.grip then skip[tp.grip] = true end
+  end
+  local function Skipped(o)
+    if not chrome then return false end
+    if skip[o] or o == content then return true end
+    if content and IsUnder(o, content) then return true end
+    if tp.grip and IsUnder(o, tp.grip) then return true end
     return false
   end
   for _, o in ipairs(Stub.regions) do
-    if Under(o) then
+    if IsUnder(o, root) and not Skipped(o) then
       local pts = {}
       for i, p in ipairs(o._points) do pts[i] = p.point .. ":" .. tostring(p.relPoint) .. ":" .. V(p.x) .. ":" .. V(p.y) end
       local fo = rawget(o, "_fontObject")
@@ -618,7 +641,7 @@ local function Snapshot(root)
     end
   end
   out[#out + 1] = table.concat({ V(root._bgR), V(root._bgG), V(root._bgB), V(root._bgA), V(root._bdR),
-    V(root._bdG), V(root._bdB), V(root._bdA), V(root._width), V(root._height) }, "|")
+    V(root._bdG), V(root._bdB), V(root._bdA), chrome and "" or V(root._width), V(root._height) }, "|")
   return out
 end
 
@@ -638,28 +661,33 @@ T.test("Window: futuriste backdrop, title font and cell colours; a switch while 
   T.eq(Rgb(tp.footer2), C3(ui.label), "label texts")
   T.eq(Rgb(tp.header[1]), C3(ui.label), "column headers")
   -- the in-progress level row: accent level cell and tag, label and value cells
+  local pos = tp.layout.pos
   local cur
   for _, row in ipairs(tp.rows) do
-    if row:IsShown() and tp.cells[row][10]:GetText() == L.ROW_IN_PROGRESS then cur = row end
+    if row:IsShown() and tp.cells[row][pos.reached]:GetText() == L.ROW_IN_PROGRESS then cur = row end
   end
   T.ok(cur, "in-progress level row")
   local cells = tp.cells[cur]
   T.eq(Rgb(cells[1]), C3(ui.accent), "current level: accent")
-  T.eq(Rgb(cells[10]), C3(ui.accent))
-  T.eq(Rgb(cells[3]), C3(ui.label), "server time: label")
+  T.eq(Rgb(cells[pos.reached]), C3(ui.accent))
+  T.eq(Rgb(cells[pos.cum]), C3(ui.label), "total time: label")
   T.eq(Rgb(cells[2]), C3(ui.value), "time: value")
   -- Classic while shown: classic colours, the GameFontNormal title again
   ns.Core.SetSetting("theme", "actuel")
   local K = ns.C.COLORS
   T.eq({ f._bgR, f._bgG, f._bgB, f._bgA }, { K.bg[1], K.bg[2], K.bg[3], 0.95 })
   T.eq(Rgb(cells[1]), C3(K.accent), "refilled with the classic accent")
-  T.eq(Rgb(cells[3]), C3(K.label))
+  T.eq(Rgb(cells[pos.cum]), C3(K.label))
   T.ok(tp.title:GetFontObject() == GameFontNormal, "title back on GameFontNormal")
   -- and back: the display font is set again (the Themes font cache followed the switch)
   ns.Core.SetSetting("theme", "futuriste")
   T.eq((tp.title:GetFont()), path)
 end)
 
+-- Lot 8 redesigned the columns (labels, hidden empty columns, new ones), the dates and
+-- the size of the window (resize grip): those parts are compared with the classic look
+-- (game font objects, classic colours) below, and the rest of the window must still be
+-- exactly the pre-theme one.
 T.test("Window: under Classic the window is exactly the pre-theme one (baseline copy)", function()
   local root = Stub.ROOT
   local f = io.open(root .. "tests/baseline/TruePlayed_Camelot.toc", "r")
@@ -669,7 +697,7 @@ T.test("Window: under Classic the window is exactly the pre-theme one (baseline 
     local ns = Start(Stub.ROOT == root and "actuel" or nil)
     ns.Window.Show(tab)
     Stub.Advance(10)
-    return Snapshot(rawget(_G, "TruePlayedStatsFrame"))
+    return Snapshot(rawget(_G, "TruePlayedStatsFrame"), true), ns
   end
   for _, tab in ipairs({ "levels", "zones", "sessions" }) do
     Stub.Reset()
@@ -678,8 +706,31 @@ T.test("Window: under Classic the window is exactly the pre-theme one (baseline 
     Stub.ROOT = root
     T.ok(ok, tostring(before))
     Stub.Reset()
-    local after = Play(tab)
-    T.ok(#after > 30, tab .. " regions: " .. #after)
+    local after, ns = Play(tab)
+    T.ok(#after > 20, tab .. " regions: " .. #after)
     T.eq(after, before, tab)
+    -- the redesigned parts keep the classic look: game font objects, classic colours
+    local tp = rawget(_G, "TruePlayedStatsFrame").tp
+    local K = ns.C.COLORS
+    local okColor = { [V(K.value[1]) .. V(K.value[2])] = true, [V(K.label[1]) .. V(K.label[2])] = true,
+                      [V(K.accent[1]) .. V(K.accent[2])] = true }
+    local n = 0
+    for _, row in ipairs(tp.rows) do
+      if row:IsShown() then
+        for _, fs in ipairs(tp.cells[row]) do
+          if fs:IsShown() then
+            n = n + 1
+            T.eq(rawget(fs, "_fontObject"), "GameFontHighlightSmall", tab .. " cell font object")
+            T.eq(rawget(fs, "_font"), nil, tab .. " cell: no SetFont")
+            T.ok(okColor[V(fs._tR) .. V(fs._tG)], tab .. " cell colour is a classic one")
+          end
+        end
+      end
+    end
+    T.ok(n > 0, tab .. " cells")
+    for c = 1, tp.layout.n do
+      T.eq(rawget(tp.header[c], "_fontObject"), "GameFontHighlightSmall", tab .. " header font object")
+      T.eq(Rgb(tp.header[c]), C3(K.label), tab .. " header colour")
+    end
   end
 end)

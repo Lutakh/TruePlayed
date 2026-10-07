@@ -154,6 +154,12 @@ C.OUTLINES            = { "none", "thin", "thick" } -- widget.outline choices
 C.MINIMAP_CLICKS      = { "stats", "options", "bar", "mini" }   -- minimap.click choices
 C.MINI_LAYOUTS        = { "horizontal", "vertical" }             -- mini.layout choices
 C.MINI_XP             = { "none", "pct", "line", "both" }        -- mini.xp choices
+-- statistics window (Window.lua): date format of its dates (auto = the language's), clock
+-- (auto = the language's: 12 h for English, else 24 h), size limits of window.width / height
+C.DATE_FORMATS        = { "auto", "dmy", "mdy", "ymd" }          -- window.dateFmt choices
+C.CLOCKS              = { "auto", "24", "12" }                   -- window.clock choices
+C.WINDOW_MIN_W, C.WINDOW_MAX_W = 700, 1800
+C.WINDOW_MIN_H, C.WINDOW_MAX_H = 300, 1200
 
 -- visual themes (design/SPEC-themes.md section 1): the order of every menu; "class" is a
 -- setting value (the player's class theme), not a theme key
@@ -315,6 +321,9 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
     combatHide = false, fade = false,
   },
   graph = { window = 60 },                  -- FPS / latency history shown: 30 | 60 | 300 s
+  -- statistics window: size (the width grows to what its columns need), date format
+  -- C.DATE_FORMATS and clock C.CLOCKS of its dates
+  window = { width = 700, height = 440, dateFmt = "auto", clock = "auto" },
   theme = "futuriste",                      -- a C.THEME_CHOICES value (Themes.lua resolves it)
   language = "auto",                        -- a C.LANGUAGES value, applied at the next UI load
   rateTau = 3600,                           -- 5400 | 3600 | 1200
@@ -1094,6 +1103,10 @@ DefineSetting("mini.bgAlpha", "num", { min = 0, max = 1, inv = 20 })       -- st
 DefineSetting("mini.combatHide", "bool")
 DefineSetting("mini.fade", "bool")
 DefineSetting("graph.window", "choice", { values = SetOf(C.GRAPH_WINDOWS) })
+DefineSetting("window.width", "num", { min = C.WINDOW_MIN_W, max = C.WINDOW_MAX_W, step = 1 })
+DefineSetting("window.height", "num", { min = C.WINDOW_MIN_H, max = C.WINDOW_MAX_H, step = 1 })
+DefineSetting("window.dateFmt", "enum", { values = SetOf(C.DATE_FORMATS) })
+DefineSetting("window.clock", "enum", { values = SetOf(C.CLOCKS) })
 DefineSetting("theme", "theme", { values = SetOf(C.THEME_CHOICES) })
 DefineSetting("language", "enum", { values = SetOf(C.LANGUAGES) })
 DefineSetting("rateTau", "choice", { values = { [5400] = true, [3600] = true, [1200] = true } })

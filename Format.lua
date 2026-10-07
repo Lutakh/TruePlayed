@@ -10,7 +10,7 @@ local CC = C.CC
 
 local type = type
 local math_floor, math_ceil = math.floor, math.ceil
-local string_format = string.format
+local string_format, string_find = string.format, string.find
 local table_concat = table.concat
 local date, wipe = date, wipe
 
@@ -283,9 +283,31 @@ function Fmt.Date(epoch)
   return date(L.DATE_FMT, math_floor(epoch))
 end
 
+-- Date and time of the statistics window, in the user's format (settings window.dateFmt
+-- and window.clock): the date as the language writes it (L.DATE_FMT) or day / month /
+-- year, month / day / year, ISO year-month-day; then the time, as the language writes it
+-- (L.TIME_FMT: "%I" in it = 12-hour clock) or on a 24-hour ("14:05") or 12-hour ("2:05 PM")
+-- clock. Always the year, the hours and the minutes.
+local DATE_PATTERNS = { dmy = "%d/%m/%Y", mdy = "%m/%d/%Y", ymd = "%Y-%m-%d" }
+
 function Fmt.DateTime(epoch)
   if type(epoch) ~= "number" or epoch ~= epoch then return L.DOTS end
-  return date(L.DATETIME_FMT, math_floor(epoch))
+  epoch = math_floor(epoch)
+  local s = ns.settings
+  local w = type(s) == "table" and type(s.window) == "table" and s.window or nil
+  local day = date(DATE_PATTERNS[w and w.dateFmt] or L.DATE_FMT, epoch)
+  local clock = w and w.clock
+  local twelve = clock == "12"
+  if clock ~= "12" and clock ~= "24" then          -- auto: the language's way
+    local tf = L.TIME_FMT
+    if not string_find(tf, "%I", 1, true) then return day .. " " .. date(tf, epoch) end
+    twelve = true
+  end
+  if not twelve then return day .. " " .. date("%H:%M", epoch) end
+  local t = date("*t", epoch)
+  local h = t.hour % 12
+  if h == 0 then h = 12 end
+  return string_format("%s %d:%02d %s", day, h, t.min, t.hour < 12 and "AM" or "PM")
 end
 
 -- 3h 05m ago / il y a 3 h 05.

@@ -1151,7 +1151,7 @@ T.test("locale: Latin-1 only, same format specifiers in enUS and frFR", function
     T.eq(type(v), "string", k)
     T.ok(IsLatin1(v) or NATIVE_NAMES[k], "enUS " .. k)
     T.ok(IsLatin1(fr[k]) or NATIVE_NAMES[k], "frFR " .. k)
-    if k ~= "DATE_FMT" and k ~= "DATETIME_FMT" then
+    if k ~= "DATE_FMT" and k ~= "TIME_FMT" then
       T.eq(Specs(fr[k]), Specs(v), "format specifiers of " .. k)
     end
   end
