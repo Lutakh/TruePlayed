@@ -28,6 +28,11 @@
 --                 OnColorSelect); false leaves ColorPickerFrame absent.
 --   reload      : ReloadUI, which only counts its calls (Stub.ui.reloads); false leaves
 --                 it absent.
+--   minimap     : OFF unless minimap = true (the other tests and tools/render_snapshot
+--                 rely on no minimap): Minimap (a 140 x 140 frame at the top right of
+--                 UIParent, centre 1790, 990), GetCursorPosition (Stub.ui.cursorX / cursorY,
+--                 set with Stub.ui.Cursor(x, y); screen pixels, minimap scale 1) and, with
+--                 minimapShape = "<shape>", GetMinimapShape returning it.
 --
 -- Helpers: Stub.ui.FindMenuItem(root, text), Stub.ui.ClickMenuItem(item),
 -- Stub.ui.IsChecked(item), Stub.ui.CloseSettings(), Stub.ui.categories,
@@ -36,7 +41,8 @@
 -- Stub.ui.pickerShows (times the picker was opened),
 -- Stub.ui.opened (OpenToCategory calls), Stub.ui.menus / lastMenu / lastMenuOwner,
 -- Stub.ui.ldbObjects[name], Stub.ui.ldbTextSets, Stub.ui.generateMenus (dropdown
--- GenerateMenu calls, SetupMenu included), Stub.ui.reloads (ReloadUI calls).
+-- GenerateMenu calls, SetupMenu included), Stub.ui.reloads (ReloadUI calls),
+-- Stub.ui.Cursor(x, y) and Stub.ui.minimap (the Minimap frame, when installed).
 
 local installedByUs = {}          -- global name -> value we installed (undone at Reset)
 
@@ -245,6 +251,11 @@ return function(Stub)
     p:Hide()
   end
 
+  -- The cursor moves to x, y (screen pixels, what GetCursorPosition returns).
+  function ui.Cursor(x, y)
+    ui.cursorX, ui.cursorY = x, y
+  end
+
   -- Hides every registered canvas frame (the frozen Hide() runs its OnHide script).
   function ui.CloseSettings()
     for i = 1, #ui.categories do
@@ -330,6 +341,21 @@ return function(Stub)
 
     if want("reload") then
       Install("ReloadUI", function() ui.reloads = ui.reloads + 1 end)
+    end
+
+    if opts.minimap == true then
+      local parent = rawget(_G, "UIParent")
+      local mm = CreateFrame("Frame", nil, parent)
+      mm:SetSize(140, 140)
+      mm:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -60, -20)
+      ui.minimap = mm
+      ui.cursorX, ui.cursorY = 0, 0
+      Install("Minimap", mm)
+      Install("GetCursorPosition", function() return ui.cursorX, ui.cursorY end)
+      if opts.minimapShape then
+        local shape = opts.minimapShape
+        Install("GetMinimapShape", function() return shape end)
+      end
     end
 
     Stub.templates = Stub.templates or {}

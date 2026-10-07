@@ -875,6 +875,47 @@ local function OnCityToggle()
   UpdateCityLine()
 end
 
+-- 2d. Minimap button and mini display: the info choices come from the bar's catalog
+-- (info 1 is never empty), the look from the bar's theme and text options.
+local function OnMiniResetPos()
+  ns.MiniDisplay.ResetPosition()
+  Util.Print(L.RESET_POS_DONE)
+end
+
+local function BuildMiniSection()
+  AddHeader(L.OPT_MINI_SECTION)
+  AddCheckbox(L.OPT_MM_SHOW, "minimap.shown")
+  AddCheckbox(L.OPT_MM_LOCK, "minimap.locked")
+  AddDropdown(L.OPT_MM_CLICK, "minimap.click", {
+    { value = "stats", label = L.CLICK_STATS },
+    { value = "options", label = L.CLICK_OPTIONS },
+    { value = "bar", label = L.CLICK_BAR },
+    { value = "mini", label = L.CLICK_MINI },
+  })
+  AddNote(L.OPT_MM_NOTE)
+  AddCheckbox(L.OPT_MINI_SHOW, "mini.shown")
+  AddNote(L.OPT_MINI_NOTE)
+  local first = TokenChoices(true)
+  table.remove(first, 1)                        -- "none" (Tokens.ORDER[1])
+  AddDropdown(format(L.OPT_MINI_INFO_FMT, 1), "mini.infos.1", first)
+  AddDropdown(format(L.OPT_MINI_INFO_FMT, 2), "mini.infos.2", TokenChoices(true))
+  AddDropdown(format(L.OPT_MINI_INFO_FMT, 3), "mini.infos.3", TokenChoices(true))
+  AddDropdown(L.OPT_MINI_LAYOUT, "mini.layout",
+    { { value = "horizontal", label = L.LAYOUT_H }, { value = "vertical", label = L.LAYOUT_V } })
+  AddDropdown(L.OPT_MINI_XP, "mini.xp", {
+    { value = "none", label = L.MINI_XP_NONE },
+    { value = "pct", label = L.MINI_XP_PCT },
+    { value = "line", label = L.MINI_XP_LINE },
+    { value = "both", label = L.MINI_XP_BOTH },
+  })
+  AddSlider(L.OPT_SCALE, "mini.scale", 50, 200, 5, 100, FormatPct)
+  AddSlider(L.OPT_BG_ALPHA, "mini.bgAlpha", 0, 100, 5, 100, FormatPct)
+  AddCheckbox(L.OPT_LOCK, "mini.locked")
+  AddCheckbox(L.OPT_COMBAT_HIDE, "mini.combatHide")
+  AddCheckbox(L.OPT_FADE, "mini.fade")
+  AddButtonRow({ { L.OPT_RESET_POS, OnMiniResetPos } })
+end
+
 local function Build()
   built = true
   local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
@@ -957,6 +998,9 @@ local function Build()
     { value = 300, label = L.GRAPH_WINDOW_300 },
   })
   AddNote(L.OPT_GRAPH_NOTE)
+
+  -- 2d. Minimap button and mini display (both work with the bar hidden)
+  BuildMiniSection()
 
   -- 3. Calculation
   AddHeader(L.OPT_CALC)
@@ -1142,13 +1186,24 @@ end
 
 local function MenuStats() ns.Window.Toggle() end
 local function MenuResetSession() ResetSessionAction() end
-local function MenuHide()
-  ns.Bar.SetShown(false)
-  Util.Print(L.WIDGET_HIDDEN)
+-- "Hide" hides what the menu was opened from: the minimap button, the mini display, else
+-- the bar (data = the menu's owner).
+local function MenuHide(owner)
+  local MB, Mini = ns.MinimapButton, ns.MiniDisplay
+  if owner ~= nil and MB and owner == MB.button then
+    MB.SetShown(false)
+    Util.Print(L.MINIMAP_HIDDEN)
+  elseif owner ~= nil and Mini and owner == Mini.frame then
+    Mini.SetShown(false)
+    Util.Print(L.MINI_HIDDEN)
+  else
+    ns.Bar.SetShown(false)
+    Util.Print(L.WIDGET_HIDDEN)
+  end
 end
 local function MenuOptions() Options.Open() end
 
-function Options.BuildContextMenu(_owner, root)
+function Options.BuildContextMenu(owner, root)
   if type(root) ~= "table" then return end
   if root.CreateTitle then root:CreateTitle(L.ADDON_TITLE) end
   root:CreateCheckbox(L.MENU_EXCLUDE_AFK, IsSettingOn, ToggleSettingPath, "exclude.afk")
@@ -1162,9 +1217,14 @@ function Options.BuildContextMenu(_owner, root)
     themeMenu:CreateRadio(ch.label, IsTheme, SetThemeValue, ch.value)
   end
   root:CreateCheckbox(L.MENU_LOCK, IsSettingOn, ToggleSettingPath, "widget.locked")
+  -- the three ways to see the information, each one on / off from any of them
+  local showMenu = root:CreateButton(L.MENU_SHOW)
+  showMenu:CreateCheckbox(L.MENU_SHOW_BAR, IsSettingOn, ToggleSettingPath, "widget.shown")
+  showMenu:CreateCheckbox(L.MENU_SHOW_MINI, IsSettingOn, ToggleSettingPath, "mini.shown")
+  showMenu:CreateCheckbox(L.MENU_SHOW_MINIMAP, IsSettingOn, ToggleSettingPath, "minimap.shown")
   root:CreateButton(L.MENU_STATS, MenuStats)
   root:CreateButton(L.MENU_RESET_SESSION, MenuResetSession)
-  root:CreateButton(L.MENU_HIDE, MenuHide)
+  root:CreateButton(L.MENU_HIDE, MenuHide, owner)
   root:CreateButton(L.MENU_OPTIONS, MenuOptions)
 end
 
@@ -1361,7 +1421,7 @@ local function PrintHelp()
   Util.Print(L.HELP_HEADER)
   local out = DEFAULT_CHAT_FRAME
   local keys = { "HELP_OPTIONS", "HELP_STATS", "HELP_LOCK", "HELP_SHOW", "HELP_THEME",
-                 "HELP_LANG", "HELP_EXCLUDE", "HELP_CITY", "HELP_PLAYED", "HELP_SYNC", "HELP_RESET",
+                 "HELP_LANG", "HELP_MINIMAP", "HELP_MINI", "HELP_EXCLUDE", "HELP_CITY", "HELP_PLAYED", "HELP_SYNC", "HELP_RESET",
                  "HELP_DEBUG", "HELP_PERF" }
   for i = 1, #keys do
     local line = L[keys[i]]
@@ -1396,6 +1456,10 @@ function Options.HandleSlash(msg)
     if not ThemeCommand(w2) then Unknown(msg) end
   elseif w1 == "lang" then
     if not LanguageCommand(w2) then Unknown(msg) end
+  elseif w1 == "minimap" then
+    ns.MinimapButton.Toggle()
+  elseif w1 == "mini" then
+    ns.MiniDisplay.Toggle()
   elseif EXCLUDE_LABEL[w1] then
     if w2 == nil or w2 == "" then
       SetExclusion(w1, nil)

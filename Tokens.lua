@@ -99,8 +99,10 @@ end
 ClearCtx()
 ctx.now, ctx.mask = 0, 0
 
--- Consumers ("bar" 3 slots, "broker" 2 slots) and the samplers they need.
+-- Consumers ("bar" 3 slots, "broker" 2 slots, "mini" 3 infos) and the samplers they need.
+-- A consumer with its own choice of tokens (the mini display) gives a resolver: i -> id.
 local consumers, consumerCount = {}, 0
+local resolvers = {}
 local needFps, needLat = false, false
 local lastNet = nil          -- GetTime of the last GetNetStats call
 local initialized = false
@@ -212,9 +214,11 @@ end
 -- C.NET_INTERVAL s: the game refreshes GetNetStats only about every 30 s).
 local function RefreshNeeds()
   local net = false
-  for _, nSlots in pairs(consumers) do
+  for owner, nSlots in pairs(consumers) do
+    local resolve = resolvers[owner] or Tokens.Resolve
     for i = 1, nSlots do
-      if NET_NEEDS[DEF[Tokens.Resolve(i)].need] then net = true end
+      local def = DEF[resolve(i)]
+      if def and NET_NEEDS[def.need] then net = true end
     end
   end
   needFps, needLat = net, net
@@ -655,10 +659,13 @@ function Tokens.IsActive()
   return consumerCount > 0
 end
 
-function Tokens.Acquire(owner, nSlots)
+-- `resolve` (optional): function(i) -> token id of the consumer's i-th text; the bar's
+-- slots (Tokens.Resolve) by default.
+function Tokens.Acquire(owner, nSlots, resolve)
   if owner == nil then return end
   if consumers[owner] == nil then consumerCount = consumerCount + 1 end
   consumers[owner] = nSlots or 3
+  resolvers[owner] = resolve
   RefreshNeeds()
   Tokens.UpdateContext(GetTime())
 end
@@ -666,6 +673,7 @@ end
 function Tokens.Release(owner)
   if owner == nil or consumers[owner] == nil then return end
   consumers[owner] = nil
+  resolvers[owner] = nil
   consumerCount = consumerCount - 1
   RefreshNeeds()
 end

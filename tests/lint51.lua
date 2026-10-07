@@ -179,6 +179,9 @@ for _, name in ipairs({
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
   "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
+  -- minimap button (MinimapButton.lua: its parent, the drop angle, the minimap shape of
+  -- minimap addons; read when the button is created, placed or dropped)
+  "Minimap", "GetCursorPosition", "GetMinimapShape",
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read
@@ -193,7 +196,8 @@ end
 local WRITE_OK = {}
 for _, name in ipairs({ "TruePlayedDB", "SLASH_TRUEPLAYED1", "SLASH_TRUEPLAYED2",
   "TruePlayed_OnAddonCompartmentClick", "TruePlayed_OnAddonCompartmentEnter",
-  "TruePlayed_OnAddonCompartmentLeave", "TruePlayedWidget", "TruePlayedStatsFrame" }) do
+  "TruePlayed_OnAddonCompartmentLeave", "TruePlayedWidget", "TruePlayedStatsFrame",
+  "TruePlayedMinimapButton", "TruePlayedMiniDisplay" }) do
   WRITE_OK[name] = true
 end
 

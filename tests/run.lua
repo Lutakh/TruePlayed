@@ -200,6 +200,8 @@ local FILES = {
   "test_kills",
   -- translations into every locale of the game (design/NEXT-LOT.md, backlog 1)
   "test_locales",
+  -- minimap button and mini display (design/NEXT-LOT.md, backlog 3 and 4)
+  "test_minimap", "test_mini",
 }
 
 local passed, failed, skipped = 0, 0, 0

@@ -59,6 +59,8 @@ local SAME_OK = {
   -- cognates (frFR since 1.0)
   BD_RAID = true, CONT_INSTANCES = true, HELP_OPTIONS = true, KIND_RAID = true, SECTION_CONTINENTS = true,
   THEME_HEROIC = true, BD_DUNGEON = true, TT_OF_WHICH_AFK_FMT = true, XP_FMT = true, XP_LABEL = true,
+  -- minimap button and mini display (backlog 3 and 4): "Info %d" as OPT_SLOT2, "Options" (fr)
+  OPT_MINI_INFO_FMT = true, CLICK_OPTIONS = true,
 }
 for name in pairs(NAMES) do SAME_OK[name] = true end
 
@@ -580,6 +582,30 @@ T.test("widths: no tooltip row is cut (every theme, every new locale, short / Sh
       end
     end
     Report(bad, "cut tooltip rows")
+  end)
+end)
+
+-- The minimap button's tooltip is the bar's with another hint line (its left-click
+-- action, MinimapButton.Hint): every hint fits every theme's tooltip, in every language.
+T.test("widths: the minimap button's hint lines fit every theme's tooltip (every language)", function()
+  RealWidths(function()
+    local bad = {}
+    for _, key in ipairs(KEYS) do
+      if key ~= "actuel" then
+        for _, code in ipairs(ALL) do
+          Stub.Reset()
+          local ns, frame = StartPlay(key, code, "kills")
+          for _, action in ipairs({ "stats", "options", "bar", "mini" }) do
+            ns.Tooltip.ShowFor(frame, ns.MinimapButton.Hint(action))
+            Stub.Advance(1)
+            for _, s in ipairs(CutRows(ns)) do bad[#bad + 1] = format("%s %s %s: %s", key, code, action, s) end
+            ns.Tooltip.Hide()
+          end
+          if #Stub.errors > 0 then bad[#bad + 1] = key .. " " .. code .. ": " .. tostring(Stub.errors[1]) end
+        end
+      end
+    end
+    Report(bad, "cut minimap hints")
   end)
 end)
 

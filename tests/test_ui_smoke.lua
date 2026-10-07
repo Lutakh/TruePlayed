@@ -13,6 +13,7 @@ local WHITELIST = {
   TruePlayed_OnAddonCompartmentEnter = true,
   TruePlayed_OnAddonCompartmentLeave = true,
   TruePlayedWidget = true, TruePlayedStatsFrame = true,
+  TruePlayedMinimapButton = true, TruePlayedMiniDisplay = true,   -- named frames (backlog 3, 4)
 }
 
 ---------------------------------------------------------------------------

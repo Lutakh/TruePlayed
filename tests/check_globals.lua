@@ -91,6 +91,9 @@ local READ_OK = Set({
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
   "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
+  -- minimap button (MinimapButton.lua: its parent, the drop angle, the minimap shape of
+  -- minimap addons; read when the button is created, placed or dropped)
+  "Minimap", "GetCursorPosition", "GetMinimapShape",
   -- max level, layered as EllesmereUI's XP bar (Core Util.IsMaxLevel; guarded, may be nil)
   "IsPlayerAtEffectiveMaxLevel", "IsLevelAtEffectiveMaxLevel", "GetMaxLevelForPlayerExpansion",
   -- server level cap detection: the target of a kill without XP (Tracker; guarded, read
@@ -827,6 +830,77 @@ Scenario("widget hidden from the start (no consumer, bar never created)", functi
   Stub.Advance(60)
   Stub.RunSlash("played")
   Stub.RunSlash("show")
+  Stub.Advance(3)
+  Stub.Logout()
+end)
+
+-- Minimap button and mini display (design/NEXT-LOT.md backlog 3 and 4), the bar hidden:
+-- hover, every left-click action, the menu (Hide from each), drag, every mini setting and
+-- layout, every theme, combat hide, a SavedVariables swap, the slash commands.
+Scenario("minimap button and mini display, bar hidden, every theme", function()
+  Stub.InstallUI({ minimap = true, minimapShape = "SQUARE" })
+  _G.TruePlayedDB = { schema = 1, settings = { widget = { shown = false },
+    mini = { shown = true, infos = { "eta_kills", "fps_latency", "session" }, xp = "both" } } }
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  for _ = 1, 4 do Stub.Advance(30); Stub.Kill(150) end
+  local b, f = ns.MinimapButton.button, ns.MiniDisplay.frame
+  local Core = ns.Core
+  for _, action in ipairs({ "stats", "options", "bar", "mini", "mini", "bar", "stats" }) do
+    Core.SetSetting("minimap.click", action)
+    Stub.RunScript(b, "OnEnter")
+    Stub.SetShift(true); Stub.Advance(1); Stub.SetShift(false)
+    Stub.RunScript(b, "OnMouseDown", "LeftButton")
+    Stub.RunScript(b, "OnClick", "LeftButton")
+    Stub.RunScript(b, "OnLeave")
+    Stub.Advance(1)
+  end
+  if Stub.ui.CloseSettings then Stub.ui.CloseSettings() end
+  Stub.ui.Cursor(1700, 1000)
+  Stub.RunScript(b, "OnMouseDown", "LeftButton")
+  Stub.RunScript(b, "OnDragStart", "LeftButton")
+  Stub.RunScript(b, "OnDragStop")
+  Stub.RunScript(b, "OnClick", "LeftButton")
+  Stub.RunScript(f, "OnEnter"); Stub.Advance(2); Stub.RunScript(f, "OnLeave")
+  Stub.RunScript(f, "OnMouseDown", "LeftButton")
+  Stub.RunScript(f, "OnDragStart", "LeftButton")
+  Stub.RunScript(f, "OnDragStop")
+  Stub.RunScript(f, "OnMouseUp", "LeftButton")
+  Stub.RunScript(f, "OnMouseDown", "LeftButton")
+  Stub.RunScript(f, "OnMouseUp", "LeftButton")
+  ns.Window.Hide()
+  for _, kv in ipairs({ { "mini.layout", "vertical" }, { "mini.xp", "pct" }, { "mini.xp", "none" },
+      { "mini.xp", "line" }, { "mini.scale", 1.5 }, { "mini.bgAlpha", 0 }, { "mini.bgAlpha", 0.8 },
+      { "mini.fade", true }, { "mini.locked", true }, { "mini.infos.1", "kills" }, { "mini.infos.2", "none" },
+      { "mini.infos.3", "fps" }, { "widget.textColor", { 1, 0.5, 0 } }, { "widget.outline", "thick" },
+      { "widget.shadow", false }, { "widget.qualityColors", false }, { "widget.xpColor", { 0, 1, 0 } },
+      { "minimap.angle", 10 }, { "minimap.locked", true }, { "mini.layout", "horizontal" } }) do
+    Core.SetSetting(kv[1], kv[2])
+    Stub.Advance(1)
+  end
+  for _, key in ipairs({ "futuriste", "heroic", "pixel", "warrior", "paladin", "hunter", "rogue", "priest",
+      "shaman", "mage", "warlock", "druid", "class", "actuel" }) do
+    Core.SetSetting("theme", key)
+    Stub.Advance(1)
+  end
+  Core.SetSetting("mini.combatHide", true)
+  Stub.EnterCombat(); Stub.Advance(2); Stub.LeaveCombat(); Stub.Advance(1)
+  for _, owner in ipairs({ b, f }) do
+    ns.Options.ShowContextMenu(owner)
+    if Stub.ui.lastMenu then ClickAll(Stub.ui.lastMenu) end
+    if Stub.ui.CloseSettings then Stub.ui.CloseSettings() end
+    ns.Window.Hide()
+    Stub.Advance(1)
+  end
+  for _, cmd in ipairs({ "minimap", "minimap", "mini", "mini", "help", "show", "hide" }) do
+    Stub.RunSlash(cmd)
+    Stub.Advance(1)
+  end
+  ns.Options.Open()
+  Stub.Advance(1)
+  if Stub.ui.CloseSettings then Stub.ui.CloseSettings() end
+  _G.TruePlayedDB = { schema = 1, settings = { mini = { shown = true, layout = "vertical" },
+    minimap = { angle = 90 } } }
   Stub.Advance(3)
   Stub.Logout()
 end)

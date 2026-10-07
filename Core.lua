@@ -151,6 +151,9 @@ C.PERF_SAMPLE_TICKS   = 60
 C.GRAPH_RING          = 300    -- FPS / latency history samples (Graph.lua ring buffers)
 C.GRAPH_WINDOWS       = { 30, 60, 300 }            -- graph.window choices (seconds)
 C.OUTLINES            = { "none", "thin", "thick" } -- widget.outline choices
+C.MINIMAP_CLICKS      = { "stats", "options", "bar", "mini" }   -- minimap.click choices
+C.MINI_LAYOUTS        = { "horizontal", "vertical" }             -- mini.layout choices
+C.MINI_XP             = { "none", "pct", "line", "both" }        -- mini.xp choices
 
 -- visual themes (design/SPEC-themes.md section 1): the order of every menu; "class" is a
 -- setting value (the player's class theme), not a theme key
@@ -281,6 +284,19 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
     slot3Pos = "center",                    -- "center" (mockup) | "left"
     pctPos = "follow",                      -- "follow" (mockup marker) | "level"
     combatHide = false, fade = false, hideAtMax = false,
+  },
+  -- minimap button (MinimapButton.lua): angle in degrees around the minimap (0 = right,
+  -- counter-clockwise), left-click action C.MINIMAP_CLICKS
+  minimap = { shown = true, locked = false, angle = 225, click = "stats" },
+  -- mini display (MiniDisplay.lua, opt-in): 1 to 3 infos of the bar's catalog (Tokens),
+  -- C.MINI_LAYOUTS, XP progress C.MINI_XP, own position, scale, opacity, lock, fade
+  mini = {
+    shown = false, locked = false,
+    point = { "TOP", "TOP", 0, -12 },       -- point, relativePoint (UIParent), x, y
+    infos = { "eta_kills", "xph", "none" },
+    layout = "horizontal", xp = "line",
+    scale = 1.0, bgAlpha = 0.6,
+    combatHide = false, fade = false,
   },
   graph = { window = 60 },                  -- FPS / latency history shown: 30 | 60 | 300 s
   theme = "futuriste",                      -- a C.THEME_CHOICES value (Themes.lua resolves it)
@@ -1042,6 +1058,20 @@ for i = 1, 3 do
 end
 DefineSetting("widget.slot3Pos", "enum", { values = { center = true, left = true } })
 DefineSetting("widget.pctPos", "enum", { values = { follow = true, level = true } })
+DefineSetting("minimap.shown", "bool")
+DefineSetting("minimap.locked", "bool")
+DefineSetting("minimap.angle", "num", { min = 0, max = 359, step = 1 })
+DefineSetting("minimap.click", "enum", { values = SetOf(C.MINIMAP_CLICKS) })
+DefineSetting("mini.shown", "bool")
+DefineSetting("mini.locked", "bool")
+DefineSetting("mini.point", "point")
+for i = 1, 3 do DefineSetting("mini.infos." .. i, "token") end
+DefineSetting("mini.layout", "enum", { values = SetOf(C.MINI_LAYOUTS) })
+DefineSetting("mini.xp", "enum", { values = SetOf(C.MINI_XP) })
+DefineSetting("mini.scale", "num", { min = 0.5, max = 2.0, inv = 20 })     -- step 0.05
+DefineSetting("mini.bgAlpha", "num", { min = 0, max = 1, inv = 20 })       -- step 0.05
+DefineSetting("mini.combatHide", "bool")
+DefineSetting("mini.fade", "bool")
 DefineSetting("graph.window", "choice", { values = SetOf(C.GRAPH_WINDOWS) })
 DefineSetting("theme", "theme", { values = SetOf(C.THEME_CHOICES) })
 DefineSetting("language", "enum", { values = SetOf(C.LANGUAGES) })

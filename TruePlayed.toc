@@ -63,6 +63,8 @@ TooltipFrame.lua
 Tooltip.lua
 BarSkin.lua
 Bar.lua
+MiniDisplay.lua
+MinimapButton.lua
 Window.lua
 Options.lua
 Broker.lua
