@@ -864,14 +864,14 @@ local function Main()
                  played = Stub.server.total, zone = p.zoneText }
   local scene = Export(roots, info)
   if hoverCell then
-    local l, b, w, h = TrueRect(hoverCell)
+    local l, b, tw, th = TrueRect(hoverCell)
     local tt = rawget(_G, "GameTooltip")
     local lines = {}
     for i = 1, #tt._lines do
       local col = tt._colors[i]
       lines[i] = { text = PlainText(tt._lines[i][1]), color = { col[1] or 1, col[2] or 1, col[3] or 1 } }
     end
-    info.tip = { rect = { l, rawget(UIParentObj, "_height") - b - h, w, h }, anchor = tt._anchor,
+    info.tip = { rect = { l, rawget(UIParentObj, "_height") - b - th, tw, th }, anchor = tt._anchor,
                  lines = lines }
   end
   local f = assert(io.open(OUT, "w"))

@@ -943,13 +943,13 @@ local function InstanceSecs(s)
   return n
 end
 
--- True when a stored session (or the current one) that overlaps level L holds instance
+-- True when a stored session (or the current one) that overlaps level lvl holds instance
 -- time. lmax: the level of an open session without l1.
-local function SessionInstanceAt(char, L, lmax)
+local function SessionInstanceAt(char, lvl, lmax)
   local function Holds(e)
-    if type(e) ~= "table" or not IsNum(e.l0) or e.l0 > L then return false end
+    if type(e) ~= "table" or not IsNum(e.l0) or e.l0 > lvl then return false end
     local l1 = IsNum(e.l1) and e.l1 or lmax
-    return l1 >= L and InstanceSecs(e.s) > 0
+    return l1 >= lvl and InstanceSecs(e.s) > 0
   end
   local sessions = char.sessions
   for i = 1, #sessions do
@@ -964,7 +964,7 @@ local function MainOpenZone(z)
   local best, bestSecs = nil, -1
   for k, zb in pairs(z) do
     local s = zb.s
-    if k ~= "o" and InstanceSecs(s) == 0 and not ((s.c or 0) + (s.C or 0) > 0) then
+    if k ~= "o" and InstanceSecs(s) == 0 and (s.c or 0) + (s.C or 0) <= 0 then
       local v = 0
       for _, sv in pairs(s) do if IsNum(sv) then v = v + sv end end
       local better = v > bestSecs
@@ -1008,9 +1008,9 @@ local function RepairEstimatedInstances(char)
   if minL == nil then return end
   local lmax = IsNum(char.level) and char.level or math.huge
   local life, zones = char.life, char.zones
-  for L, lb in pairs(levels) do
+  for lvl, lb in pairs(levels) do
     local inst = InstanceSecs(lb.s)
-    if L > minL and inst > 0 and IsNum(lb.est) and inst <= lb.est and not SessionInstanceAt(char, L, lmax) then
+    if lvl > minL and inst > 0 and IsNum(lb.est) and inst <= lb.est and not SessionInstanceAt(char, lvl, lmax) then
       local target = MainOpenZone(lb.z)
       local tz = lb.z[target]
       if tz == nil then tz = Core.NewZone(); lb.z[target] = tz end

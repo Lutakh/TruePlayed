@@ -188,7 +188,7 @@ T.test("zoning into a dungeon: the tick on the open-world map goes to the instan
   T.eq(zones.i2999.s.d, 11)
   -- leaving: the map comes back while the instance is still reported
   Stub.SetInstance(true, "party", 2999, 1458)
-  k, z = State(ns)
+  z = select(2, State(ns))
   T.eq(z, "i2999")
   Stub.SetInstance(true, "raid", 409, 1413)     -- a raid on an open-world map: the same
   T.eq(select(2, State(ns)), "i409")
