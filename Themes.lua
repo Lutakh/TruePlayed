@@ -960,7 +960,7 @@ local TT_ROLE_DEF = { title = "accent", mode = "label", label = "label", value =
                       header = "accent", pause = "pause", hint = "dim", levelLabel = "label",
                       levelValue = "value", levelValueRested = "value", rested = "value" }
 local TT_FONTS = { "title", "body", "value", "note", "hint" }
-local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "afk", "inn", "city" }
+local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "prof", "dead", "afk", "inn", "city" }
 
 local function CompileSep(ctx, s)
   if type(s) ~= "table" then return nil end

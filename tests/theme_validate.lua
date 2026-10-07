@@ -920,7 +920,7 @@ local TT_ROLE_DEF = { title = "accent", mode = "label", label = "label", value =
 local TT_FIELDS = Set({ "native", "width", "pad", "gap", "lineGap", "fonts", "colors", "panel", "titleIcon",
   "sep", "leader", "gauge" })
 local TT_FONTS = { "title", "body", "value", "note", "hint" }
-local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "afk", "inn", "city" }
+local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "prof", "dead", "afk", "inn", "city" }
 local SEP_FIELDS = Set({ "h", "above", "below", "file", "tile", "color", "grad", "flat", "mirror", "rect",
   "flipX", "flipY", "blend", "center" })
 

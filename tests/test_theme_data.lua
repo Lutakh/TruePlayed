@@ -22,7 +22,7 @@ local TT_ROLES = { "title", "mode", "label", "value", "dim", "header", "pause", 
 local TT_FONTS = { "title", "body", "value", "note", "hint" }
 local REQUIRED_COLORS = { "xp", "rested", "label", "value", "dim", "accent" }
 local UI_ROLES = { "bg", "border", "title", "accent", "label", "value", "dim" }
-local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "afk", "inn", "city" }
+local GAUGE_KEYS = { "world", "dungeon", "raid", "pvp", "taxi", "prof", "dead", "afk", "inn", "city" }
 
 ---------------------------------------------------------------------------
 -- Loading: the engine, then every Themes\*.lua of the TOC with Register wrapped so that
