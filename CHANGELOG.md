@@ -5,7 +5,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 version numbers follow [Semantic Versioning](https://semver.org/).
 Each version section becomes the release notes shown on CurseForge.
 
-## [Unreleased]
+## [1.1.0] - 2026-10-07
 
 **Quit the game and launch it again after updating** (a `/reload` is not enough): this
 version adds four files, and the game loads new files only at start.
