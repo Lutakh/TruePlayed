@@ -7,6 +7,28 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+**Quit the game and launch it again after updating** (a `/reload` is not enough): this
+version adds two files, and the game loads new files only at start.
+
+### Added
+
+- **Minimap button**: a round TruePlayed button on the edge of the minimap. Hover it for
+  the same tooltip as the bar (hold Shift for the details), right-click it for the bar's
+  menu, drag it around the minimap. Its left click opens the statistics by default; it
+  can open the options or show / hide the XP bar or the mini display instead. It can be
+  locked or hidden (Options, the menu, `/tpl minimap`), and it works with the XP bar
+  hidden.
+- **Mini display** (off by default): a small movable frame with 1 to 3 infos of your
+  choice from the bar's list (by default time to level + mobs to kill, and XP per hour),
+  on one line or stacked, with the level percentage and / or a thin XP bar if you like.
+  It uses the theme, text colour, outline and shadow of the XP bar, with its own
+  background opacity, scale, lock, fade and hide in combat. Hover it for the tooltip,
+  click it for the statistics, right-click it for the menu. `/tpl mini` or Options turn it
+  on, with or without the XP bar.
+- Options: a "Minimap button and mini display" section with all their settings.
+- Right-click menu: a "Show" submenu turns the XP bar, the mini display and the minimap
+  button on or off, from any of them; "Hide" hides the one you right-clicked.
+
 ## [1.0.1] - 2026-10-02
 
 **Quit the game and launch it again after updating** (a `/reload` is not enough): this

@@ -97,8 +97,32 @@ records every played second, knows what you were doing, and lets you decide what
   using your own habits, and marked as rebuilt.
 - **One record per character** (by character GUID, so two characters with the same name
   never mix). Settings are shared by the whole account.
+- **No XP bar needed**: every piece of information is also one hover away on the
+  **minimap button** and on the optional **mini display** (see
+  [Without the XP bar](#without-the-xp-bar)).
 - Addon compartment button, and an optional Data Broker feed when another addon already
   provides LibDataBroker (no library is embedded).
+
+## Without the XP bar
+
+Hide the bar (Options > Display > "Show the bar", `/tpl hide`, or the right-click menu)
+and keep everything else:
+
+- **Minimap button** (on by default): hover it for the bar's tooltip (Shift: details),
+  click it for the statistics window, right-click it for the bar's menu (exclusions,
+  theme, statistics, options...), drag it around the minimap. In Options > "Minimap
+  button and mini display": show / lock it, and choose what its left click does
+  (statistics, options, show / hide the XP bar, show / hide the mini display).
+  `/tpl minimap` shows or hides it. TruePlayed draws its own button and never registers
+  with LibDBIcon, so there is never a second TruePlayed button on the minimap.
+- **Mini display** (off by default: `/tpl mini` or Options): a small frame for a corner
+  of the screen with 1 to 3 infos from the bar's list (time to level + mobs to kill and
+  XP per hour by default), on one line or stacked, with the level percentage and / or a
+  thin XP bar. It follows the bar's theme, text colour, outline and shadow, with its own
+  background opacity, scale, lock, fade and hide in combat. Drag it to move it, hover it
+  for the tooltip, click it for the statistics, right-click it for the menu.
+- The right-click menu of the bar, the button and the mini display has a **Show**
+  submenu to turn each of the three on or off; its **Hide** hides the one you clicked.
 
 ## Themes
 
@@ -200,6 +224,8 @@ choose **Lock**.
 | `/tpl stats [levels\|zones\|sessions]` | Open or close the statistics window |
 | `/tpl lock` / `/tpl unlock` | Lock the bar, or unlock it to move it |
 | `/tpl show` / `/tpl hide` | Show or hide the bar |
+| `/tpl minimap` | Show or hide the minimap button |
+| `/tpl mini` | Show or hide the mini display |
 | `/tpl theme [name]` | Show the theme and the theme names, or change the theme (see [Themes](#themes)) |
 | `/tpl lang [value]` | Show or choose the language of TruePlayed: `auto`, `en`, `fr`, `de`, `es`, `mx`, `it`, `pt` (and `ru`, `ko`, `cn`, `tw` on a client in that language); applies after `/reload`, see [Languages](#languages) |
 | `/tpl afk [on\|off]` | Exclude AFK time (no argument: toggle) |

@@ -161,3 +161,24 @@ Goal: as much choice and customisation as possible for players who do not want t
   a stand-in, Hangul / Han at one em per character). `check_encoding` allows UTF-8 in the
   four native locale files only; `check_media` checks every Latin-1 locale against every
   theme font and ruRU against the `cyr` fonts.
+
+## Outcome of backlog 3 and 4 (round 7)
+- **3. Minimap button** (`MinimapButton.lua`, frame `TruePlayedMinimapButton`): settings
+  `minimap.shown` (true), `minimap.locked` (false), `minimap.angle` (225, degrees),
+  `minimap.click` (`"stats"` | `"options"` | `"bar"` | `"mini"`). Hover = `Tooltip.ShowFor`
+  with the hint of the left-click action, right click = `Options.ShowContextMenu`, drag =
+  the frame's own `StartMoving` (no OnUpdate), snapped back onto the edge at the cursor
+  angle on release (LibDBIcon's shape table, `GetMinimapShape`). Not registered with
+  LibDBIcon (no duplicate button). `/tpl minimap`.
+- **4. Mini display** (`MiniDisplay.lua`, frame `TruePlayedMiniDisplay`): settings under
+  `mini` (`shown` false, `locked`, `point`, `infos` = eta_kills, xph, none, `layout`
+  horizontal | vertical, `xp` none | pct | line | both (line), `scale`, `bgAlpha` 0.6,
+  `combatHide`, `fade`). Tokens consumer `"mini"` with its own resolver
+  (`Tokens.Acquire(owner, n, resolve)`), texts measured on meters on change only, the
+  frame sized to its texts; the bar's theme fonts / colours / panel parts, widget text
+  options and XP colours. `/tpl mini`.
+- Context menu: "Show" submenu (bar, mini display, minimap button); "Hide" hides the
+  menu's owner. Options: section "Minimap button and mini display".
+- Render identity: `tests/render_snapshot.lua` against the tree before this lot differs
+  only in the options views (Lua 5.5 and 5.1); the stub's Minimap is opt-in
+  (`Stub.InstallUI({ minimap = true })`).

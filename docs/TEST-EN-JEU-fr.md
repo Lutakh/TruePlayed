@@ -3,7 +3,57 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
-## Mise à jour suivante (lot 6) : toutes les langues du jeu, fin de l'encadré compact
+## Mise à jour suivante (lot 7) : bouton de la minicarte et mini-affichage
+
+Cette mise à jour **ajoute 2 fichiers** (`MinimapButton.lua`, `MiniDisplay.lua`) : recopiez
+le dossier, puis **quittez et relancez complètement le jeu** (un `/reload` ne charge pas
+les nouveaux fichiers ; sans redémarrage, `/tpl minimap` répondrait par une erreur Lua).
+
+### Le bouton de la minicarte
+
+1. Au chargement, un bouton rond avec la montre de poche de TruePlayed apparaît au bord
+   de la minicarte, en bas à gauche.
+2. Survolez-le : la même infobulle que la barre ; Maj pour les détails. La dernière ligne
+   dit « Clic : statistiques ».
+3. Clic gauche : la fenêtre des statistiques s'ouvre ; un deuxième clic la ferme.
+4. Clic droit : le menu de la barre, ouvert sur le bouton (exclusions, Thème, Verrouiller,
+   Afficher, Statistiques, Masquer, Options).
+5. Glissez-le (clic gauche maintenu) : il suit la souris ; relâchez-le, il se recolle au
+   bord de la minicarte à l'endroit visé. Faites un `/reload` : il reste à sa place. Le
+   relâchement ne doit pas ouvrir les statistiques.
+6. Options > « Bouton de la minicarte et mini-affichage » : cochez « Verrouiller le
+   bouton de la minicarte » : il ne se déplace plus. Changez « Clic gauche du bouton » :
+   Options, « Basculer la barre d'XP », « Basculer le mini-affichage » ; la dernière ligne
+   de l'infobulle suit le choix, et le clic fait ce qu'elle annonce.
+7. `/tpl minimap` le masque (le chat dit comment le retrouver), `/tpl minimap` le réaffiche.
+   Le « Masquer » de son menu masque le bouton, pas la barre.
+8. Si vous avez un addon de minicarte carrée ou un addon qui range les boutons : notez où
+   se place le bouton et s'il est rangé avec les autres.
+
+### Le mini-affichage
+
+1. `/tpl mini` (ou Options, ou clic droit > Afficher > Mini-affichage) : un petit cadre
+   apparaît en haut au centre de l'écran, avec « temps avant le niveau · monstres » et
+   l'XP par heure, et une fine barre d'XP en dessous.
+2. Glissez-le dans un coin ; `/reload` : il y reste. Cochez « Verrouiller la position » :
+   il ne bouge plus.
+3. Survol : l'infobulle de la barre ; clic : les statistiques ; clic droit : le menu, dont
+   « Masquer » masque le mini-affichage seulement.
+4. Options : Info 1 / 2 / 3 (la même liste que la barre ; « Rien » pour 2 et 3),
+   Disposition (« Sur une ligne » / « Empilée »), Progression d'XP (Aucune, Pourcentage,
+   Barre fine, Pourcentage + barre), Échelle, Opacité du fond, Masquer en combat, Estomper hors survol.
+   **Aucun texte ne doit en chevaucher un autre ni dépasser du cadre**, quelles que soient
+   les infos (essayez « FPS + latence », « Temps de jeu (filtré) », « Temps dans la zone actuelle »).
+5. Changez de thème : le cadre prend les polices, les couleurs et le fond du thème.
+   Couleur du texte, contour et ombre (section Textes) s'appliquent aussi au cadre.
+6. Masquez la barre (`/tpl hide`) : bouton et mini-affichage continuent de tout donner
+   (infobulle, statistiques, menu), et leurs chiffres avancent chaque seconde.
+7. Au niveau maximum, une seule info dit « Niveau max », les autres infos d'XP
+   disparaissent.
+8. `/tpl perf` avant / après avoir activé le mini-affichage : la mémoire ne doit pas
+   grimper au fil des minutes.
+
+## Lot 6 : toutes les langues du jeu, fin de l'encadré compact
 
 Cette mise à jour **ajoute 9 fichiers** (`Locales/deDE.lua` ... `Locales/zhTW.lua`) :
 recopiez le dossier, puis **redémarrez complètement le jeu** (un `/reload` ne charge pas
