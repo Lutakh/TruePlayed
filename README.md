@@ -40,13 +40,15 @@ records every played second, knows what you were doing, and lets you decide what
   rested XP ends, and the tooltip shows "Rested: 11,600 XP (50%)". Both bar colours can
   be changed (see below).
 - **Time per level** and a full level history (time, server time, XP per hour, AFK, inn,
-  city, instances, main zone, date reached).
+  city, instances, main zone, date reached, and once there is something to show: the time
+  dead with the deaths of the level, and the time to level estimated when the level
+  began, to compare with the time it really took).
 - **Average time per level**: overall, over your last 5 levels, and for the whole account.
 - **Time per zone** (Elwynn Forest, Stranglethorn Vale...): a Zones tab with every zone
   you played in (filtered time, raw time, AFK, XP), the **zones of each level** (hover a
   level in the Levels tab), the time in your current zone in the tooltip, your **time per
-  continent** (Kalimdor, Eastern Kingdoms, instances) and your **most visited capitals**.
-  Exclusions apply to zones too.
+  continent** (Kalimdor, Eastern Kingdoms, instances; a continent with less than a minute
+  is not listed) and your **most visited capitals**. Exclusions apply to zones too.
 - **Played and session totals**, with the live server `/played` next to them.
 - **Instance time**: dungeons, raids and PvP (battlegrounds, arenas) are recorded apart
   from the open world, AFK included. The tooltip shows your instance time (and each kind
@@ -56,6 +58,10 @@ records every played second, knows what you were doing, and lets you decide what
   in total. Useful at max level too. Instance time recorded before this version stays
   counted as open world.
 - **AFK time, inn / rest area time, city time and flight time**, always recorded separately.
+- **Time spent dead** (from your death until you are back on your feet, the ghost run
+  included) and **professions time** (gathering, fishing, first aid, crafting,
+  disenchanting, lockpicking), recorded apart from the places, per level, session, zone,
+  character and account. See [Dead and professions time](#dead-and-professions-time).
 - **Exclude AFK, inn or city time** in one click. Exclusions are only a display filter:
   nothing is deleted, every number is recalculated instantly, and switching an exclusion
   off gives you the original numbers back. While your current state is excluded, the
@@ -84,10 +90,11 @@ records every played second, knows what you were doing, and lets you decide what
   refreshes latency only about every 30 seconds, so the graph draws it as steps.
 - **Tooltip** on the bar: level progress, rested XP, time to level, mobs to kill, XP per
   hour, session, this level, current zone, played, instance time, server /played,
-  averages and a breakdown of your time (world, dungeons, raids, PvP, flight, AFK, inn,
-  city; only what you did). Hold **Shift** for the details (rate details, top zones of
-  the level, continents, top capitals, last levels, inn / city / dungeon / raid / PvP
-  times with their AFK part, deaths, account).
+  averages and a breakdown of your time (world, dungeons, raids, PvP, flight,
+  professions, dead, AFK, inn, city; only what you did). Hold **Shift** for the details
+  (rate details, top zones of the level, continents, top capitals, last levels, inn /
+  city / dungeon / raid / PvP times with their AFK part, professions, deaths with the time
+  spent dead, account).
 - **Statistics window** (`/tpl stats` or left-click on the bar) with Levels, Zones and
   Sessions tabs, for the current character, another character or the whole account. The
   window header names the exclusions in use.
@@ -202,6 +209,40 @@ copyright notice, are in `Media/Fonts/LICENSES` and ship with the addon.
 
 The fonts keep their own licence; the MIT licence of TruePlayed does not apply to them.
 
+## Dead and professions time
+
+Every second of play gets one state. Two activities win over the place you are in, in
+this order:
+
+**dead > AFK > professions > flight > dungeon / raid / PvP > city > inn > world**
+
+- **Dead**: from the moment you die until you are alive again, the ghost run included
+  (it is not world time). AFK while dead is dead; a hunter's Feign Death is not. Dead time
+  is never excluded. Each level keeps its deaths and its time dead.
+- **Professions**: TruePlayed has no way to ask the game "is the player doing a
+  profession?", so it uses a heuristic:
+  - casting or channelling a profession spell: Herb Gathering, Mining, Skinning, Fishing,
+    First Aid (bandages), Disenchant, Pick Lock. Spells are recognised by ID and by their
+    name in your game's language, so every rank and every language works;
+  - the 5 seconds after a gathering, fishing, disenchanting or lockpicking cast ends
+    (looting);
+  - a profession window open (any trade skill, and the Enchanting window; the hunter's
+    Beast Training window is not a profession) while you stand still out of combat: a
+    window left open while you run around or fight does not count;
+  - a cast started from such a window, and the next casts of the same recipe after the
+    window was closed ("Create all").
+
+  Crafting in a capital counts as professions, not city. AFK wins: crafting while flagged
+  AFK is AFK time. Professions time is never excluded.
+
+  Limits: crafting done by an addon without the game's windows, a gathering spell that
+  is not in the list above (opening a chest is not a profession), and a fishing cast that
+  ends without a catch (its 5 seconds of grace still count) are not told apart. Moving and
+  combat are read once per second, so the edges can be off by a second.
+- Time recorded before this version has no dead or professions time: it stays where it
+  was counted. After a crash, the time rebuilt from the server `/played` is split over the
+  places only (never dead or professions time: the addon did not see it).
+
 ## Installation
 
 - **CurseForge app**: search for "TruePlayed" with the WoW Forever game version.
@@ -286,6 +327,18 @@ before it cannot be told apart and stays counted as open world.
 **Why do a few minutes of AFK still count as active?**
 The game only sets the AFK flag after about 5 minutes without input. Those minutes count
 as active play.
+
+**Why does a continent with a few seconds not show?**
+A continent with less than a minute of time (often a few seconds on a loading screen or
+right after creating a character) is not listed in the tooltip and the Zones tab. Its
+time is kept and still counts in every total.
+
+**What is the "Est." column of the Levels tab?**
+The time to the next level TruePlayed showed when the level began (right after the
+level-up, or at the first XP per hour of the level while it was at most 5 % done; for
+the level you installed TruePlayed at, the first measured estimate). Compare it with the
+time the level really took. Levels reached before this version, or begun without any XP
+per hour yet, have none.
 
 **The game crashed. Did I lose my time?**
 No. The game writes addon data only at logout or `/reload`, so a crash loses the detail of
@@ -457,6 +510,13 @@ Sur la bêta de WoW Forever, bloquée au niveau 20 pour l'instant, TruePlayed re
 plafond après 3 monstres de suite sans XP : la barre affiche `NIVEAU 20 · PLAFOND` et son
 aspect du niveau maximum, l'infobulle l'explique, et tout redevient normal tout seul dès
 que le serveur redonne de l'XP.
+
+Le temps passé mort (de la mort jusqu'au retour à la vie, course du fantôme comprise)
+et le temps de métiers (cueillette, minage, dépeçage, pêche, secourisme, artisanat dans
+une fenêtre de métier, désenchantement, crochetage) sont comptés à part, par niveau,
+session, zone, personnage et compte, et ne sont jamais exclus. Ordre de priorité :
+mort > AFK > métiers > vol > instance > ville > auberge > monde. L'onglet Niveaux montre
+le temps mort et les morts de chaque niveau, et le temps estimé au début du niveau.
 
 Le temps par zone (Forêt d'Elwynn, Strangleronce...) est dans l'onglet Zones de la
 fenêtre de statistiques, avec le temps par continent (Kalimdor, Royaumes de l'Est,

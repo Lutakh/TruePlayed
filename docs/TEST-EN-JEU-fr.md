@@ -3,6 +3,81 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## Lot 8 (partie A) : temps mort, temps de métiers, estimation par niveau
+
+Cette mise à jour **ajoute 1 fichier** (`Activity.lua`) : recopiez le dossier, puis
+**quittez et relancez complètement le jeu** (un `/reload` ne charge pas les nouveaux
+fichiers ; sans redémarrage, le temps mort et les métiers ne seraient pas comptés).
+L'affichage est minimal pour l'instant (une refonte de l'infobulle et de la fenêtre
+suivra) : on vérifie surtout que les chiffres sont justes.
+
+### Le temps mort
+
+1. Notez l'heure, puis faites-vous tuer (un monstre trop fort, ou une chute).
+2. Restez mort une minute, libérez l'esprit, courez en fantôme jusqu'au corps (au moins
+   deux minutes, si possible en traversant une autre zone), puis ressuscitez. Recommencez
+   une deuxième fois, en ressuscitant cette fois auprès d'un guide spirituel ou par un
+   sort de résurrection si vous en avez l'occasion.
+3. Survolez la barre : la ligne « Répartition » contient « Mort x % » (avec sa propre
+   couleur dans la jauge des thèmes qui en ont une).
+4. Maj : la ligne « Morts » donne le nombre et le temps sur une seule ligne, par exemple
+   « Morts 2 (6 min) ». Le temps doit correspondre à ce que vous avez chronométré (de la
+   mort jusqu'au retour à la vie, course du fantôme comprise).
+5. Avec les exclusions AFK, auberge et ville activées, le temps mort reste compté
+   (jamais en pause). Mettez-vous AFK pendant que vous êtes mort : ça reste du temps mort.
+6. Fenêtre de statistiques, onglet Niveaux : la fenêtre s'élargit et une colonne
+   « Mort » montre, pour le niveau en cours, « 6 min (2) » (temps, nombre de morts).
+   Aucune colonne ne doit en chevaucher une autre. Les niveaux plus anciens montrent « - »
+   (ou seulement « (n) » s'ils avaient des morts comptées par une version précédente).
+7. Chasseurs : la Feinte de mort ne doit **pas** compter comme du temps mort.
+
+### Le temps de métiers
+
+1. **Artisanat** : ouvrez une fenêtre de métier (cuisine, forge, couture, secourisme...)
+   et restez immobile une minute, puis fabriquez quelques objets (« Tout créer ») ; fermez
+   la fenêtre pendant la file d'attente : la suite de la file compte encore.
+   Maj sur la barre : la ligne « Métiers » apparaît avec ce temps, et « Métiers x % »
+   dans la répartition.
+2. Ouvrez la fenêtre et **courez** avec elle ouverte, ou **combattez** : ce temps ne doit
+   pas compter en métiers (il revient au monde, à la ville...).
+3. **Enchantement** : la fenêtre d'enchantement compte ; chasseurs, la fenêtre de
+   dressage des familiers (« Dressage des bêtes ») ne compte **pas**.
+4. **Récolte** : cueillez une herbe, minez un filon, dépecez une bête : l'incantation puis
+   environ 5 secondes (le butin) comptent en métiers. Une récolte interrompue (vous
+   bougez) ne compte que l'incantation.
+5. **Pêche** : pêchez quelques minutes : tout le temps de pêche compte, plus 5 secondes
+   après chaque prise.
+6. **Secourisme** : appliquez un bandage : les 8 secondes comptent, sans délai après.
+7. **Désenchantement** et **crochetage** (voleurs) : comptent aussi, avec les 5 secondes.
+8. En capitale, l'artisanat compte en métiers et non en ville (« Ville » ne doit pas
+   augmenter pendant ce temps). Si vous passez AFK avec la fenêtre ouverte, c'est de
+   l'AFK.
+9. Un sort ordinaire (boule de feu, pierre de foyer) ne doit jamais compter en métiers.
+10. Tout cela fonctionne dans la langue du jeu (les sorts sont reconnus par leur nom
+    traduit) : si vous jouez en français, vérifiez la cueillette (« Cueillette ») et la
+    pêche.
+
+### Estimation au début de chaque niveau
+
+1. Passez un niveau en tuant des monstres (avec au moins une dizaine de minutes de jeu
+   avant, pour que l'XP par heure soit mesurée).
+2. Juste après le passage de niveau, notez le temps « Prochain niveau » de l'infobulle.
+3. Onglet Niveaux : la colonne « Estim. » du nouveau niveau montre ce même temps. Les
+   niveaux atteints avant cette mise à jour n'en ont pas (« - »).
+
+### Continents de moins d'une minute
+
+1. Maj sur la barre, et onglet Zones : un continent avec quelques secondes seulement
+   (« Autres < 1 min », souvent dû à un écran de chargement) n'apparaît plus. Le temps reste
+   compté dans les totaux.
+
+### À surveiller
+
+- `/tpl perf` : la mémoire ne doit pas grimper pendant que vous êtes mort, en fantôme,
+  en train de pêcher ou avec une fenêtre de métier ouverte.
+- Notez tout écart entre votre chronomètre et les temps affichés (mort, métiers), et
+  toute erreur Lua.
+
 ## Mise à jour suivante (lot 7) : bouton de la minicarte et mini-affichage
 
 Cette mise à jour **ajoute 2 fichiers** (`MinimapButton.lua`, `MiniDisplay.lua`) : recopiez

@@ -8,10 +8,24 @@ Each version section becomes the release notes shown on CurseForge.
 ## [Unreleased]
 
 **Quit the game and launch it again after updating** (a `/reload` is not enough): this
-version adds two files, and the game loads new files only at start.
+version adds three files, and the game loads new files only at start.
 
 ### Added
 
+- **Time spent dead**: from your death until you are back on your feet (the ghost run
+  included) is recorded apart, per level, session, zone, character and account. It is
+  never counted as world, dungeon or any other place, and never excluded. The breakdown
+  shows it ("Dead 2%", with its own colour in every theme), the Shift tooltip line reads
+  "Deaths 3 (12m)", and the Levels tab has a "Dead" column (once there is something to
+  show): the time dead and the deaths of each level, e.g. "5m (2)".
+- **Professions time**: gathering (herbs, mining, skinning), fishing, first aid
+  (bandages), crafting in a profession window (also Enchanting), disenchanting and
+  lockpicking are recorded apart ("Prof." in the breakdown, "Professions" in the Shift
+  tooltip). Crafting in a capital counts as professions, not city; AFK still wins. See
+  the README for how it is told apart and its limits.
+- **Estimated time at the start of each level**: when a level begins, the time to level
+  shown at that moment is kept with the level, to compare with the time it really took
+  (Levels tab, "Est." column). Levels reached before this version have none.
 - **Minimap button**: a round TruePlayed button on the edge of the minimap. Hover it for
   the same tooltip as the bar (hold Shift for the details), right-click it for the bar's
   menu, drag it around the minimap. Its left click opens the statistics by default; it
@@ -28,6 +42,13 @@ version adds two files, and the game loads new files only at start.
 - Options: a "Minimap button and mini display" section with all their settings.
 - Right-click menu: a "Show" submenu turns the XP bar, the mini display and the minimap
   button on or off, from any of them; "Hide" hides the one you right-clicked.
+
+### Changed
+
+- Continents with less than a minute of time (a few seconds on a loading screen) are no
+  longer listed in the tooltip and the Zones tab; their time is kept.
+- The breakdown in the tooltip shows at most 4 parts per line once professions or dead
+  time appear, so that the longer names fit.
 
 ## [1.0.1] - 2026-10-02
 

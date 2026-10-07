@@ -182,3 +182,31 @@ Goal: as much choice and customisation as possible for players who do not want t
 - Render identity: `tests/render_snapshot.lua` against the tree before this lot differs
   only in the options views (Lua 5.5 and 5.1); the stub's Minimap is opt-in
   (`Stub.InstallUI({ minimap = true })`).
+
+## Outcome of lot 8 part A (data: dead, professions, per-level additions)
+- **State keys** (`C.STATE_KEYS`, `C.TRACKED_KEYS`): `x` = dead or a ghost, `f` = professions,
+  one key each (no AFK variant), never excluded by a mask (`C.INCLUDED[m].x/f` always true),
+  not part of `Breakdown.active`. Precedence (Tracker `Compute` + `Activity.Override`):
+  dead > AFK > professions > flight > instance > city > inn > world. New file `Activity.lua`
+  (`ns.Activity`: `Override(afk, now)`, `IsDead()`, `IsProf(now)`, `Start()`); the heuristic
+  and its limits are in its header and in the README.
+- **Saved data** (sparse, no schema bump): `s.x` / `s.f` in every seconds map (life, levels,
+  level zones, zones, sessions); `levels[L].d` (deaths, already there); `levels[L].eta`
+  (seconds, the time to level shown when the level began) and `levels[L].etaP` (XP fraction
+  then). Repair drops non-numbers, a negative `x` / `f`, `eta <= 0` or inf, `etaP` outside
+  0..1. A crash gap rebuilt from the server /played gives no share to `x` / `f`.
+- **Stats API for the UI**: `Breakdown(...).dead / .prof`; `LevelHistory` rows `dead`, `prof`,
+  `eta`, `etaP`, `cum` (+ `deaths`); `SessionHistory` rows `dead`, `prof`;
+  `Stats.LevelActivity(char, L)` -> deaths, deadSecs, profSecs, eta, etaP;
+  `Stats.CumulativeTime(char, L, mask, sync, now)` -> seconds from level 1 to the end of L
+  (the played total, pre-install time included, minus the filtered level times above L);
+  `Stats.AccountActivity(db)` -> deadSecs, profSecs, deaths.
+- **Display (minimum)**: breakdown parts "Prof." and "Dead" (gauge colours `prof`, `dead` in
+  the 11 gauge themes; at most 4 parts a line once one of them shows), Shift lines
+  "Professions" (> 0 only) and "Deaths  n (time)"; Levels tab columns "Dead" ("5m (2)") and
+  "Est.", shown with a 830 px window only when a level has deaths, dead time or an estimate
+  (the Classic window stays identical to the baseline copy otherwise); continents under
+  `C.CONT_MIN_SECS` (60 s) hidden in the tooltip and the Zones tab.
+- `tests/test_actuel_golden.lua`: its tooltips are now taken after one more minute of play
+  (the baseline lists a 5 s continent the current tree hides); both trees still get the
+  same inputs.
