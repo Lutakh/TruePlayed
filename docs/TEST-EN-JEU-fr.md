@@ -3,6 +3,77 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## Lot 8 (partie B) : infobulle et fenêtre de statistiques revues
+
+Cette partie **n'ajoute aucun fichier** : recopiez le dossier ; un `/reload` suffit si la
+partie A est déjà installée (sinon, quittez et relancez le jeu pour `Activity.lua`).
+
+### L'infobulle
+
+1. Survolez la barre : la ligne « Répartition » liste les parts **de la plus grande à la
+   plus petite** (par exemple « Monde 62 % · AFK 20 % · Ville 10 % · ... »), et la jauge
+   des thèmes qui en ont une est dans le même ordre.
+2. L'infobulle courte ne montre plus « Moyenne par niveau » ; « Moyenne des 5 derniers
+   niveaux » reste dès qu'il y a assez de niveaux.
+3. Maj enfoncée : « Zones principales » liste vos **3 zones les plus jouées sur tout le
+   personnage** (plus seulement le niveau en cours), selon les exclusions (une capitale
+   dont tout le temps est exclu n'y figure pas).
+4. Maj : plus de bloc « Derniers niveaux », plus de lignes « Compte (...) » ni « Compte,
+   en instance », plus de ligne « Reconstitué après plantage » en bas (la sous-ligne « dont
+   reconstitué après un plantage » sous « Temps de jeu » reste).
+5. Maj : « Morts » tient sur une ligne, par exemple « Morts 3 (12 min) ».
+
+### La fenêtre de statistiques (`/tpl stats`)
+
+1. **Onglet Niveaux** : la première colonne s'appelle « Niveau » et chaque ligne se lit
+   « 19 » 20 » : c'est le temps passé au niveau 19 jusqu'au niveau 20. La ligne du niveau
+   en cours se lit « 20 » 21 » avec « en cours » dans « Atteint le ».
+2. « Atteint le » est la date du passage au niveau suivant (pour « 19 » 20 », le jour et
+   l'heure où vous avez atteint 20). Vérifiez avec un passage de niveau récent.
+3. Colonne **« Cumul »** : le temps total depuis le niveau 1 jusqu'à ce passage de niveau
+   (tout votre /played de l'époque, temps d'avant TruePlayed compris). Sur la ligne en
+   cours, il avance avec le temps de jeu. La différence entre deux lignes voisines est le
+   temps du niveau.
+4. Colonne **« Estim. »** juste à côté de « Temps » : l'estimation affichée au début du
+   niveau, à comparer au temps réel (seulement s'il y en a au moins une).
+5. **Colonnes vides masquées** : un personnage qui n'a jamais fait d'instance n'a pas de
+   colonne « Inst. » ; de même « Auberge », « Ville », « AFK », « Mort », « Métiers »,
+   « Estim. » n'apparaissent que si une ligne a une valeur. Faites un peu d'AFK ou de
+   métier puis rouvrez la fenêtre : la colonne apparaît et les autres se décalent sans se
+   chevaucher. Même chose dans les onglets Sessions et Zones.
+6. Survolez une ligne : le titre de la bulle est « Niveau 19 » 20 », puis les zones de ce
+   niveau.
+7. **Vue du compte** (flèches `<` `>` jusqu'à « Compte ») : les lignes se lisent aussi
+   « 19 » 20 », et le bas de la fenêtre donne le total du compte et le temps en instance du
+   compte. Pour un personnage, le bas donne la moyenne par niveau et celle des 5 derniers.
+8. **Taille** : la fenêtre est assez large pour toutes ses colonnes, dans chaque langue.
+   Tirez le coin en bas à droite pour l'agrandir (largeur et hauteur) ; la zone principale
+   prend la place gagnée. Fermez et rouvrez, puis `/reload` : la taille est gardée. On ne
+   peut pas la rendre plus étroite que ses colonnes.
+9. **Onglet Zones, « Capitales les plus fréquentées »** : la colonne « Temps » est remplie.
+   Avec l'exclusion de la ville, elle montre le temps passé dans la capitale hors ville
+   (vol, métiers, mort), ou « - » s'il n'y en a pas ; « Brut » garde tout le temps passé.
+
+### Format des dates
+
+1. Options > **Fenêtre des statistiques** : « Format des dates » propose « Auto
+   (31/12/2026) », « 31/12/2026 », « 12/31/2026 », « 2026-12-31 », et la case
+   « Horloge sur 24 heures » (cochée en français).
+2. Changez de format pendant que la fenêtre est ouverte : « Atteint le » (onglet Niveaux)
+   et les dates de l'onglet Sessions changent tout de suite, toujours avec l'année, les
+   heures et les minutes (« 07/10/2026 14h05 » en Auto).
+3. Décochez la case : les heures passent en « 2:05 PM ». Recochez-la : « 14:05 ».
+4. `/reload` : le choix est gardé.
+
+### Police du thème (thème Druide)
+
+1. Après la mise à jour, lancez le jeu avec le thème Druide : si une police n'est pas
+   chargée tout de suite, la barre montre la police du jeu une ou deux secondes, puis la
+   police du thème (Alegreya Sans pour les textes, Uncial Antiqua pour les titres).
+2. Le message « Police du thème non chargée (...) » ne doit plus s'afficher. S'il
+   s'affiche quand même, il nomme **toutes** les polices qui ont échoué, séparées par des
+   virgules : recopiez la ligne exacte dans votre retour.
+
 ## Lot 8 (partie A) : temps mort, temps de métiers, estimation par niveau
 
 Cette mise à jour **ajoute 1 fichier** (`Activity.lua`) : recopiez le dossier, puis

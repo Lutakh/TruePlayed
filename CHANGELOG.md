@@ -16,16 +16,27 @@ version adds three files, and the game loads new files only at start.
   included) is recorded apart, per level, session, zone, character and account. It is
   never counted as world, dungeon or any other place, and never excluded. The breakdown
   shows it ("Dead 2%", with its own colour in every theme), the Shift tooltip line reads
-  "Deaths 3 (12m)", and the Levels tab has a "Dead" column (once there is something to
-  show): the time dead and the deaths of each level, e.g. "5m (2)".
+  "Deaths 3 (12m)", and the Levels and Sessions tabs have a "Dead" column (once there is
+  something to show): the time dead and the deaths of each level or session, e.g.
+  "5m (2)".
 - **Professions time**: gathering (herbs, mining, skinning), fishing, first aid
   (bandages), crafting in a profession window (also Enchanting), disenchanting and
   lockpicking are recorded apart ("Prof." in the breakdown, "Professions" in the Shift
-  tooltip). Crafting in a capital counts as professions, not city; AFK still wins. See
+  tooltip, a "Prof." column in the Levels and Sessions tabs). Crafting in a capital counts as professions, not city; AFK still wins. See
   the README for how it is told apart and its limits.
 - **Estimated time at the start of each level**: when a level begins, the time to level
   shown at that moment is kept with the level, to compare with the time it really took
-  (Levels tab, "Est." column). Levels reached before this version have none.
+  (Levels tab, "Est." column, right next to the time it took). Levels reached before this
+  version have none.
+- **Total time to each level** (Levels tab, "Total" column): the time from level 1 to each
+  level-up, so you can see how long it took to reach level 10, 20... (your whole /played
+  up to then, the time before TruePlayed included).
+- **Date format of your choice** (Options > Statistics window): the format of your
+  language, DD/MM/YYYY, MM/DD/YYYY or YYYY-MM-DD, with a 24-hour or 12-hour ("2:05 PM")
+  clock. Every date of the statistics window ("Reached", Sessions) now has the year, the
+  hours and the minutes.
+- **Resizable statistics window**: drag its bottom-right corner; the size is kept. The
+  window is always at least as wide as its columns need, in every language.
 - **Minimap button**: a round TruePlayed button on the edge of the minimap. Hover it for
   the same tooltip as the bar (hold Shift for the details), right-click it for the bar's
   menu, drag it around the minimap. Its left click opens the statistics by default; it
@@ -45,10 +56,37 @@ version adds three files, and the game loads new files only at start.
 
 ### Changed
 
+- **Levels tab**: each row is now a level step, "19 » 20" for the time spent at level 19
+  until 20 (the level in progress reads "20 » 21"), the header says "Level", and
+  "Reached" is the date the next level was reached. The same labels in the account view
+  and in the hover tooltip of a row.
+- **Statistics window**: a column that is empty for every row of the view (instances while
+  leveling, inn, city, AFK, dead, professions, estimate...) is no longer shown, and the
+  others are laid out again; the main zone column takes the room left.
+- **Tooltip breakdown**: the parts are sorted from the largest to the smallest, in the
+  legend and in the gauge.
+- **Shift tooltip**: "Top zones" lists your top 3 zones over the whole character (it was
+  the current level only). The overall average per level, the last levels, the account
+  lines and the "rebuilt after crashes" total left the tooltip: the averages and the
+  account totals (with the account instance time) are at the bottom of the statistics
+  window, the level history in its Levels tab, and the rebuilt part stays as the note
+  under the played time. The short tooltip keeps the average of your last 5 levels.
 - Continents with less than a minute of time (a few seconds on a loading screen) are no
   longer listed in the tooltip and the Zones tab; their time is kept.
 - The breakdown in the tooltip shows at most 4 parts per line once professions or dead
   time appear, so that the longer names fit.
+
+### Fixed
+
+- Zones tab, "Top capitals": the Time column was empty with the city excluded. It now
+  shows the capital's time counted under your exclusions, like its row in the zone list
+  (with the city excluded: the time spent there in flight, crafting or dead), and Raw its
+  whole time.
+- A theme font that fails to load while the game starts (seen at the first launch after
+  an update, the file being fine) is no longer given up at once: the game font is used
+  meanwhile, the font is tried again a few seconds after entering the world, and the
+  theme fonts are applied again when it loads. Only a font that still fails is reported,
+  once, in one chat line naming every file that failed.
 
 ## [1.0.1] - 2026-10-02
 

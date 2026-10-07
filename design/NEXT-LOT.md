@@ -210,3 +210,28 @@ Goal: as much choice and customisation as possible for players who do not want t
 - `tests/test_actuel_golden.lua`: its tooltips are now taken after one more minute of play
   (the baseline lists a 5 s continent the current tree hides); both trees still get the
   same inputs.
+
+## Outcome of lot 8 part B (UI: tooltip and statistics window)
+- **Tooltip**: breakdown parts largest first (legend and gauge, `SortedParts`, allocation
+  free). Short view: the overall average per level is gone, the last-5-levels average stays.
+  Shift view: "Top zones" = top 3 of `char.zones` under the mask (zones whose time is all
+  excluded are skipped); the overall average, the last levels, the account lines and the
+  "rebuilt after crashes" total are gone (window footer / Levels tab / the sub-line under
+  /played). `tests/test_actuel_golden.lua`: the inputs are unchanged; `Intended()` drops
+  those baseline lines and renames "Top zones this level" before the comparison.
+- **Window**: per-tab column catalogs (`LAYOUTS`, `Col(id, key, w, opt, flex)`); the
+  builders `Put` texts by column id, `EndRows` shows the optional columns that have a value,
+  lays them out (the flexible column takes the room left) and fills the cells (`SetText` /
+  `SetTextColor` on change only). New columns: Levels `cum` (Total), `prof`; Sessions `dead`,
+  `prof`. Level rows "L » L+1" (`L.RANGE_FMT`), Reached = `row.endAt` (Stats: `lb.t1`, else
+  the next record's `t0`). Size: `window.width` (700..1800) / `window.height` (300..1200),
+  the frame never narrower than its columns (+50), a resize grip saves the size on release.
+  Capitals: Time = `Stats.Sum(bucket, mask)`, Raw = `SumAll`, AFK = AFK keys.
+- **Dates**: `window.dateFmt` (`auto` = `L.DATE_FMT`, `dmy`, `mdy`, `ymd`) and `window.clock`
+  (`auto` = `L.TIME_FMT`, "%I" in it = 12 h; `24`; `12`), `Fmt.DateTime` (always the year,
+  hours and minutes). `L.DATETIME_FMT` became `L.TIME_FMT`.
+- **Fonts**: a failed `SetFont` makes the entry pending (game font meanwhile, no repeated
+  failing call); retries on a private probe FontString 2 and 10 ticks after
+  PLAYER_ENTERING_WORLD (TICK listened to only while due); a retry that loads it sends
+  THEME_CHANGED "theme" (same key) so every consumer applies its fonts again; after the
+  last retry the remaining entries are missing and one chat line names every file.

@@ -39,11 +39,14 @@ records every played second, knows what you were doing, and lets you decide what
   rested (the game's blue in the Classic theme), with a lighter part up to where your
   rested XP ends, and the tooltip shows "Rested: 11,600 XP (50%)". Both bar colours can
   be changed (see below).
-- **Time per level** and a full level history (time, server time, XP per hour, AFK, inn,
-  city, instances, main zone, date reached, and once there is something to show: the time
-  dead with the deaths of the level, and the time to level estimated when the level
-  began, to compare with the time it really took).
-- **Average time per level**: overall, over your last 5 levels, and for the whole account.
+- **Time per level** and a full level history: one row per level step ("19 » 20" is the
+  time it took from 19 to 20), with the time, the time to level estimated when the level
+  began (to compare with the time it really took), the **total time from level 1** to
+  that level-up, server time, XP per hour, AFK, inn, city, instances, time dead with the
+  deaths, professions, main zone and the date the next level was reached. A column that
+  is empty for every row (no instance while leveling, no inn...) is not shown.
+- **Average time per level**: over your last 5 levels in the tooltip; overall, over your
+  last 5 levels and for the whole account at the bottom of the statistics window.
 - **Time per zone** (Elwynn Forest, Stranglethorn Vale...): a Zones tab with every zone
   you played in (filtered time, raw time, AFK, XP), the **zones of each level** (hover a
   level in the Levels tab), the time in your current zone in the tooltip, your **time per
@@ -89,15 +92,20 @@ records every played second, knows what you were doing, and lets you decide what
   with min / average / max; hover the graph to read the value at a given moment. The game
   refreshes latency only about every 30 seconds, so the graph draws it as steps.
 - **Tooltip** on the bar: level progress, rested XP, time to level, mobs to kill, XP per
-  hour, session, this level, current zone, played, instance time, server /played,
-  averages and a breakdown of your time (world, dungeons, raids, PvP, flight,
-  professions, dead, AFK, inn, city; only what you did). Hold **Shift** for the details
-  (rate details, top zones of the level, continents, top capitals, last levels, inn /
-  city / dungeon / raid / PvP times with their AFK part, professions, deaths with the time
-  spent dead, account).
+  hour, session, this level, current zone, played, instance time, server /played, the
+  average of your last 5 levels and a breakdown of your time, largest part first (world,
+  dungeons, raids, PvP, flight, professions, dead, AFK, inn, city; only what you did).
+  Hold **Shift** for the details (rate details, your top 3 zones, continents, top
+  capitals, inn / city / dungeon / raid / PvP times with their AFK part, professions,
+  deaths with the time spent dead, FPS and latency). The level history, the overall
+  averages and the account totals are in the statistics window.
 - **Statistics window** (`/tpl stats` or left-click on the bar) with Levels, Zones and
-  Sessions tabs, for the current character, another character or the whole account. The
-  window header names the exclusions in use.
+  Sessions tabs, for the current character, another character or the whole account
+  (account total and account instance time at the bottom). The window header names the
+  exclusions in use. It is as wide as its columns need; drag its bottom-right corner to
+  make it larger (the size is kept). Dates show the year, hours and minutes in the format
+  you choose (Options > Statistics window: the format of your language, DD/MM/YYYY,
+  MM/DD/YYYY or YYYY-MM-DD, and a 24-hour or 12-hour clock).
 - **Crash recovery**: SavedVariables are only written at logout. After a crash (or a
   session played without TruePlayed), the missing time is taken back from the server
   `/played`, split between levels with the exact XP you gained, split between activities
@@ -332,6 +340,12 @@ as active play.
 A continent with less than a minute of time (often a few seconds on a loading screen or
 right after creating a character) is not listed in the tooltip and the Zones tab. Its
 time is kept and still counts in every total.
+
+**How do I read the Levels tab?**
+The row "19 » 20" is the time you spent at level 19, until you reached 20. "Reached" is
+the date you reached 20, and "Total" the time from level 1 to that moment (your whole
+/played up to that level-up, the time before TruePlayed included). The row of your
+current level ("20 » 21") shows "in progress".
 
 **What is the "Est." column of the Levels tab?**
 The time to the next level TruePlayed showed when the level began (right after the
