@@ -81,28 +81,39 @@ lua tests/check_media.lua
 Chaque commande doit se terminer sans « FAIL ». La vérification automatique de GitHub
 (CI) lance en plus `luacheck`, qui refuse le moindre avertissement.
 
-### Installer l'addon dans le jeu
+### Installer l'addon dans le jeu : version de développement ou CurseForge
 
-La méthode conseillée est de **copier** le dossier dans le jeu (et de recopier après
-chaque modification). Vérifiez bien que `DEST` se termine par `/TruePlayed` : l'option
-`--delete` supprime dans ce dossier les fichiers qui n'existent plus dans le dépôt.
+Le script `tools/switch-addon.sh` bascule le jeu d'une version à l'autre (jeu fermé : il
+ne lit les fichiers des addons qu'au démarrage) :
 
 ```
 cd ~/Documents/claude/TruePlayed/TruePlayed_on_github
-DEST="/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/TruePlayed"
-mkdir -p "$DEST"
-rsync -a --delete --exclude '.*' --exclude 'tests' --exclude 'docs' --exclude 'design' \
-  --exclude 'tools' --exclude 'media-src' ./ "$DEST/"
+tools/switch-addon.sh dev          # copie le dépôt dans AddOns/TruePlayed
+tools/switch-addon.sh curseforge   # remet la version installée par CurseForge
+tools/switch-addon.sh status       # la version que le jeu charge
 ```
 
-(`_classic_beta_` est le dossier du client WoW Forever sur votre Mac ; adaptez-le si le
-vôtre est différent.)
+- `dev` met de côté le dossier installé par CurseForge (dans
+  `Interface/TruePlayed.curseforge`, hors de `AddOns` : ni le jeu ni l'application
+  CurseForge n'y regardent), puis copie les fichiers du paquet (sans `tests`, `docs`,
+  `design`, `tools`, `media-src`). Relancez `dev` après chaque modification : la copie
+  est mise à jour et les fichiers supprimés du dépôt en disparaissent. La version
+  affichée en jeu (options, `/tpl perf`) est `dev-<commit>`, suivie de `+` quand des
+  modifications ne sont pas encore commitées.
+- `curseforge` supprime la copie de développement et remet le dossier CurseForge. S'il
+  n'y en avait pas, installez TruePlayed depuis l'application CurseForge ; si une
+  version plus récente est sortie entre-temps, l'application la propose.
+- Les données (`WTF/.../SavedVariables/TruePlayed.lua`) sont communes aux deux versions.
+- C'est une **copie**, pas un lien symbolique : l'application CurseForge, le lanceur ou
+  **WTFix** (qui peut ajouter une ligne `## X-WTFix-Managed` au `.toc`) n'écrivent que
+  dans la copie, jamais dans le dépôt git. Le script remplace un ancien lien symbolique
+  par une copie. En mode `dev`, ne mettez pas TruePlayed à jour depuis l'application
+  CurseForge (sinon, relancez simplement `dev`).
+- `_classic_beta_` est le dossier du client WoW Forever sur votre Mac ; s'il est ailleurs :
+  `TP_GAME="/chemin/vers/_classic_beta_" tools/switch-addon.sh dev`.
 
-Si vous préférez un lien symbolique (`ln -s`) au lieu d'une copie : le lanceur de
-**WTFix** peut réécrire le fichier `.toc` et y ajouter une ligne `## X-WTFix-Managed`.
-Avec un lien, cette modification arriverait dans votre dépôt git. Dans ce cas, lancez
-toujours `git diff` avant un commit ; `lua tests/check_toc.lua` échoue si la ligne est
-présente, et cette commande l'annule :
+Si `lua tests/check_toc.lua` signale `X-WTFix-Managed` dans le dépôt (ancien lien
+symbolique), cette commande l'annule :
 
 ```
 git checkout -- TruePlayed_Camelot.toc
@@ -455,5 +466,5 @@ sans prouver à lui seul le fonctionnement interne de l'indexation CurseForge.
   ancien que celui du jeu. Voir l'étape 11 ; en attendant, les joueurs peuvent cocher
   « Charger les addons périmés ».
 - **`check_toc` signale `X-WTFix-Managed`** : `git checkout -- TruePlayed_Camelot.toc`,
-  puis préférez la copie au lien symbolique (étape 3).
+  puis installez la version de développement avec `tools/switch-addon.sh dev` (étape 3).
 - **`gh: command not found`** : `brew install gh`, puis `gh auth login`.
