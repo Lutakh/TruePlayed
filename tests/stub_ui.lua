@@ -9,8 +9,12 @@
 --                    modern = true, colorPicker = true, reload = true })
 --                                                           -- every field defaults to true
 --
---   settings    : Settings.RegisterCanvasLayoutCategory / RegisterAddOnCategory /
---                 OpenToCategory (shows the canvas frame and runs its OnShow script)
+--   settings    : Settings.RegisterCanvasLayoutCategory / RegisterCanvasLayoutSubcategory
+--                 (Stub.ui.categories too, with its parent; Stub.ui.subcategories) /
+--                 RegisterAddOnCategory / OpenToCategory (shows that canvas frame and runs
+--                 its OnShow script, hides the other canvas frames, as the game shows one
+--                 page at a time). subcategory = false leaves RegisterCanvasLayoutSubcategory
+--                 absent (an older Settings API)
 --   menu        : MenuUtil.CreateContextMenu with a recording root description
 --   ldb         : LibStub + a minimal LibDataBroker-1.1 (NewDataObject) whose objects
 --                 count assignments to `text` (Stub.ui.ldbTextSets)
@@ -33,6 +37,11 @@
 --                 UIParent, centre 1790, 990), GetCursorPosition (Stub.ui.cursorX / cursorY,
 --                 set with Stub.ui.Cursor(x, y); screen pixels, minimap scale 1) and, with
 --                 minimapShape = "<shape>", GetMinimapShape returning it.
+--   boundedText : OFF unless boundedText = true: FontString:GetStringWidth is bounded by an
+--                 explicit width (SetWidth / SetSize > 0), as the client does (the frozen
+--                 stub's never is; tests/fontmetrics.lua FM.Install does the same with the
+--                 real fonts); GetUnboundedStringWidth is left as it is. The frozen method is
+--                 back at the next Reset.
 --
 -- Helpers: Stub.ui.FindMenuItem(root, text), Stub.ui.ClickMenuItem(item),
 -- Stub.ui.IsChecked(item), Stub.ui.CloseSettings(), Stub.ui.categories,
@@ -45,6 +54,7 @@
 -- Stub.ui.Cursor(x, y) and Stub.ui.minimap (the Minimap frame, when installed).
 
 local installedByUs = {}          -- global name -> value we installed (undone at Reset)
+local boundedSW = nil             -- { methods, frozen GetStringWidth, ours } (boundedText)
 
 ---------------------------------------------------------------------------
 -- Menu descriptions (recording)
@@ -81,6 +91,7 @@ function Desc:CreateButton(text, callback, data)
   return Add(self, d)
 end
 function Desc:SetEnabled(v) self.enabled = v end
+function Desc:SetScrollMode(h) self.scroll = h end
 function Desc:SetTooltip(fn) self.tooltip = fn end
 
 local function FindMenuItem(root, text)
@@ -197,9 +208,14 @@ return function(Stub)
     if rawget(_G, name) == value then rawset(_G, name, nil) end
     installedByUs[name] = nil
   end
+  if boundedSW then
+    local M = boundedSW[1]
+    if rawget(M, "GetStringWidth") == boundedSW[3] then rawset(M, "GetStringWidth", boundedSW[2]) end
+    boundedSW = nil
+  end
 
   local ui = {
-    opened = 0, openedID = nil, categories = {}, addonCategories = {},
+    opened = 0, openedID = nil, categories = {}, addonCategories = {}, subcategories = {},
     menus = 0, lastMenu = nil, lastMenuOwner = nil,
     ldbObjects = {}, ldbTextSets = 0, modern = false, generateMenus = 0,
     pickerInfo = nil, pickerShows = 0, pickerLegacy = false, reloads = 0,
@@ -276,12 +292,23 @@ return function(Stub)
           ui.categories[#ui.categories + 1] = cat
           return cat
         end,
+        RegisterCanvasLayoutSubcategory = opts.subcategory ~= false and function(parent, frame, name)
+          local cat = { ID = 1000 + #ui.categories, name = name, frame = frame, parent = parent }
+          cat.GetID = function(self) return self.ID end
+          ui.categories[#ui.categories + 1] = cat
+          ui.subcategories[#ui.subcategories + 1] = cat
+          return cat
+        end or nil,
         RegisterAddOnCategory = function(cat)
           ui.addonCategories[#ui.addonCategories + 1] = cat
         end,
         OpenToCategory = function(id)
           ui.opened = ui.opened + 1
           ui.openedID = id
+          for i = 1, #ui.categories do
+            local cat = ui.categories[i]
+            if cat.ID ~= id and cat.frame:IsShown() then cat.frame:Hide() end
+          end
           for i = 1, #ui.categories do
             local cat = ui.categories[i]
             if cat.ID == id then
@@ -356,6 +383,19 @@ return function(Stub)
         local shape = opts.minimapShape
         Install("GetMinimapShape", function() return shape end)
       end
+    end
+
+    if opts.boundedText == true and not boundedSW then
+      local M = getmetatable(rawget(_G, "UIParent")).__index
+      local frozen = rawget(M, "GetStringWidth")
+      local function Bounded(self)
+        local w = frozen(self)
+        local b = rawget(self, "_width") or 0
+        if b > 0 and w > b then return b end
+        return w
+      end
+      rawset(M, "GetStringWidth", Bounded)
+      boundedSW = { M, frozen, Bounded }
     end
 
     Stub.templates = Stub.templates or {}

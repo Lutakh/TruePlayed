@@ -20,6 +20,7 @@
 --   media.tt_frame: baked 9-slice (12): outline, steel rim, inner ring, inner shadow
 --   media.tt_corner: baked bolted corner bracket, top-left 26 x 26 texels used
 --   bar.height: default user height 8 -> 13 px track
+--   bar.rep: reputation strip 6 px under the track, 2 px clear of the frame
 --   bar.layers > frameShadow: steel-plate frame: soft drop shadow, plates, brushed streaks, seams,
 --     rivets
 --   bar.layers > rivets: rivets along the top rail, over the 10 % notches (the frame art has one
@@ -67,6 +68,7 @@ return {
     pad = 10, gap = 6,
     height = { add = 5, min = 9 },
     maxAlpha = 0.35,
+    rep = { off = 6, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "frameShadow", span = "track", three = { "common/glow", 16, 8 }, pad = { 6, 6 },
         top = -7, bottom = -10, layer = "BORDER", sub = -5, color = "#000000@.5" },

@@ -97,6 +97,47 @@ local function StallOf(bucket, mask)
 end
 Stats.StallTime = StallOf
 
+-- Open-world PvP seconds of a bucket (bucket.pw: life or levels[L], committed by Pvp.lua
+-- through Tracker.AddLevelStat), a part of its active open-world seconds s.w: capped at
+-- them (the Tracker's and Pvp's carries may leave it a second above) and at 0. 0 when
+-- absent: a level without world PvP and a level never measured read alike (see
+-- Stats.WorldPvpState). Never excluded by a mask (w never is).
+local function PvpWorldOf(bucket)
+  local pw = bucket and bucket.pw
+  if type(pw) ~= "number" or not (pw > 0) then return 0 end   -- luacheck: ignore 581 (NaN fails too)
+  local s = bucket.s
+  local w = type(s) == "table" and s.w or 0
+  if type(w) ~= "number" or not (w > 0) then return 0 end   -- luacheck: ignore 581 (NaN fails too)
+  if pw > w then pw = w end
+  return pw
+end
+
+-- Seconds of a bucket rebuilt after a crash (EstimateGap), under the mask: its per-key
+-- map es exactly, plus the part saved without keys (est - sum(es): before es existed, or
+-- by an older version) valued with the bucket's own place proportions (s without u, x
+-- and f, which a rebuilt gap never gets). Never more than the bucket's tracked seconds
+-- under the mask, never negative. Returns filtered, gross (max(est, sum(es)), no mask).
+local function EstOf(bucket, mask)
+  if type(bucket) ~= "table" then return 0, 0 end
+  local est = tonumber(bucket.est) or 0
+  local es, s = bucket.es, bucket.s
+  local v, all = 0, 0
+  if type(es) == "table" then v, all = SumMap(es, mask), SumMap(es, 0) end
+  local gross = est > all and est or all
+  local masked = SumMap(s, mask)
+  local legacy = est - all
+  if legacy > 0 and s then
+    local act = (s.u or 0) + (s.x or 0) + (s.f or 0)
+    local places = SumMap(s, 0) - act
+    if places > 0 then v = v + legacy * (masked - act) / places end
+  end
+  local cap = masked - UntrackedOf(bucket)
+  if v > cap then v = cap end
+  if v < 0 then v = 0 end
+  return v, gross
+end
+Stats.EstTime = EstOf
+
 -- Tracked seconds of a level (or any bucket) that describe its XP rate: included by
 -- the mask, without the untracked "u" and without stalled time.
 local function RateTime(bucket, mask)
@@ -726,10 +767,16 @@ end
 -- "o" bucket is never listed, nor a map zone (numeric key) that is not a dungeon map
 -- and holds less instance time than other time: an open-world zone or a capital where
 -- the game reported the instance a tick before the map while zoning in (Undercity for
--- a second). Tooltip / window builds only. Returns count.
-function Stats.TopInstances(zoneMap, mask, n, out)
+-- a second). Rows also carry raw (instance seconds, no exclusion), afk (its AFK part)
+-- and xp (the bucket's XP). With `merge`, rows of the same name and kind are one row
+-- (sums of secs, raw, afk and xp; the key of the longest part): the game often gives
+-- the first seconds in a battleground or a dungeon under its instance ("i<id>") before
+-- the map is known, so the same place holds two keys. The 2n longest are merged, then
+-- the n longest kept. Tooltip / window builds only. Returns count.
+function Stats.TopInstances(zoneMap, mask, n, out, merge)
   if type(out) ~= "table" then return 0 end
   n = n or 5
+  local cap = merge and n * 2 or n
   local count = 0
   if type(zoneMap) == "table" and n > 0 then
     for k, z in pairs(zoneMap) do
@@ -742,7 +789,7 @@ function Stats.TopInstances(zoneMap, mask, n, out)
       if raw > 0 then
         local secs = InstanceTime(z, mask)
         if secs > 0 then
-          if count < n then
+          if count < cap then
             local row = out[count + 1]
             if type(row) ~= "table" then
               local nSpare = #instSpare
@@ -756,7 +803,7 @@ function Stats.TopInstances(zoneMap, mask, n, out)
             end
           end
           local row
-          count, row = TopInsert(out, count, n, secs, raw, k)
+          count, row = TopInsert(out, count, cap, secs, raw, k)
           if row then row.bucket = z end
         end
       end
@@ -767,8 +814,41 @@ function Stats.TopInstances(zoneMap, mask, n, out)
     local z = row.bucket
     row.bucket = nil
     row.secs, row.raw = row.score, row.tie
+    row.afk = row.raw - InstanceTime(z, C.MASK_AFK)
+    row.xp = tonumber(z.xp) or 0
     row.name = ZoneName(row.key, z)
     row.kind = InstanceKind(z.s)
+  end
+  if merge then
+    -- rows are sorted by secs desc: a later row of the same place joins the first one,
+    -- the merged-away tables go to the tail (spare); then sorted again (sums move up)
+    local kept = 0
+    for i = 1, count do
+      local row, into = out[i], nil
+      for j = 1, kept do
+        local o = out[j]
+        if o.name == row.name and o.kind == row.kind then
+          into = o
+          break
+        end
+      end
+      if into then
+        into.secs, into.raw = into.secs + row.secs, into.raw + row.raw
+        into.afk, into.xp = into.afk + row.afk, into.xp + row.xp
+      else
+        kept = kept + 1
+        out[kept], out[i] = row, out[kept]
+      end
+    end
+    for i = 2, kept do
+      local row, p = out[i], i
+      while p > 1 and Before(row.secs, row.raw, row.key, out[p - 1].secs, out[p - 1].raw, out[p - 1].key) do
+        out[p] = out[p - 1]
+        p = p - 1
+      end
+      out[p] = row
+    end
+    count = kept < n and kept or n
   end
   for i = #out, count + 1, -1 do
     local row = out[i]
@@ -973,7 +1053,10 @@ local function FillLevelRow(row, char, l, mask, sync, now, isCurrent)
   row.server = server
   row.serverEst = (lb.srvStartEst or lb.srvEndEst) and true or false
   row.gap = gap
-  row.est = lb.est or 0
+  row.est = lb.est or 0                   -- rebuilt seconds, gross (every key)
+  local estF = EstOf(lb, mask)            -- the rebuilt part of `filtered`
+  if estF > filtered then estF = filtered end
+  row.estF = estF
   row.xp = lb.xp or 0
   row.xph = Stats.LevelRate(char, l, mask)
   row.afk = SumKeys(lb, AFK_KEYS)
@@ -993,13 +1076,24 @@ local function FillLevelRow(row, char, l, mask, sync, now, isCurrent)
   row.dead = s and s.x or 0              -- seconds dead or a ghost (never excluded)
   row.prof = s and s.f or 0              -- seconds of professions (never excluded)
   row.eta, row.etaP = lb.eta, lb.etaP    -- estimate when the level began (nil: none)
+  row.etaM = lb.etaM                     -- its exclusion mask (nil: taken by an older version)
+  row.pw = PvpWorldOf(lb)                -- open-world PvP seconds (a part of s.w, capped)
+  row.xa, row.xq, row.xr = lb.xa or 0, lb.xq or 0, lb.xr or 0   -- XP: mobs, quests and other, rested
+  row.max = lb.max                       -- XP from this level to the next (nil: unknown)
+  row.stall = StallOf(lb, mask)          -- seconds without XP gain (stalled) under the mask
   row.current = isCurrent
 end
 
 -- (alloc) One row per level record, current level first then descending.
 -- Rows: { level, filtered, raw, server, gap, est, xp, xph, afk, inn, city, mainZone,
 -- reachedAt, partial, rec, deaths, current } (+ serverEst, mainZoneKey, inst, dead, prof,
--- eta, etaP, cum, endAt = epoch the next level was reached). `server` is nil when
+-- eta, etaP, etaM = the mask eta was taken under (nil: unknown), cum, endAt = epoch the
+-- next level was reached, estF = the rebuilt seconds
+-- under the mask, at most `filtered`; est is gross; the Levels tab's detail sheet: pw =
+-- the open-world PvP seconds capped at s.w (0: none or not measured, see
+-- Stats.WorldPvpState), xa / xq / xr = the level's XP from mobs / quests and other /
+-- the rested bonus, max = its XP size (nil: unknown), stall = its stalled seconds under
+-- the mask, part of `filtered`). `server` is nil when
 -- unknown; `gap` is nil unless server - raw > C.DRIFT_TOL. `cum`: see Stats.CumulativeTime (nil above the character's level).
 function Stats.LevelHistory(char, mask, sync, now, out)
   out = out or {}
@@ -1269,6 +1363,327 @@ function Stats.AccountActivity(db)
     end
   end
   return dead, prof, deaths
+end
+
+---------------------------------------------------------------------------
+-- The Levels tab (histogram and detail sheet): the parts of a bar, the battlegrounds,
+-- world PvP measured or not, the XP size of a level, the levels still to play
+---------------------------------------------------------------------------
+
+local EMPTY_S = {}                       -- read-only stand-in for a missing `s` or `info`
+local CLASSIC_XP = C.CLASSIC_XP
+local HUGE = math.huge
+
+-- Fills `out` with the parts of a bucket's bar under the mask (a level record or
+-- char.life): world = w less the world PvP, wpvp = the world PvP (pw capped at w, see
+-- PvpWorldOf), dungeon = d, raid = r, bg = p (battlegrounds and arenas), taxi = t plus the
+-- AFK on a taxi T when the mask includes it (a long flight often turns AFK on its own and
+-- is still a flight: the tooltip's flight line, Breakdown's t + T), prof = f, dead = x,
+-- city = c and inn = i when the mask includes them (else 0), afk = the other AFK keys (W D
+-- R P I C) the mask includes (a battleground's or a dungeon's AFK stays there), untracked
+-- = u, total. Returns total. The parts always sum to Stats.Sum(bucket, mask) (u, x and f
+-- are never excluded, w is split in two): a stacked bar drawn from them is exactly the
+-- bar's height. A nil bucket gives zeros. Nothing allocated (tick path: the current
+-- level's bar).
+function Stats.LevelSegments(bucket, mask, out)
+  local inc = INCLUDED[mask or 0] or INCLUDED[0]
+  local s = bucket and bucket.s
+  if type(s) ~= "table" then s = EMPTY_S end
+  local w = s.w or 0
+  local pw = PvpWorldOf(bucket)
+  local d, r, p, t, f, x, u = s.d or 0, s.r or 0, s.p or 0, s.t or 0, s.f or 0, s.x or 0, s.u or 0
+  if inc.T then t = t + (s.T or 0) end
+  local c = inc.c and (s.c or 0) or 0
+  local i = inc.i and (s.i or 0) or 0
+  local afk = 0
+  for j = 1, #AFK_KEYS do
+    local k = AFK_KEYS[j]
+    if inc[k] and k ~= "T" then afk = afk + (s[k] or 0) end
+  end
+  out.world, out.wpvp = w - pw, pw
+  out.dungeon, out.raid, out.bg, out.taxi = d, r, p, t
+  out.prof, out.dead, out.city, out.inn = f, x, c, i
+  out.afk, out.untracked = afk, u
+  local total = w + d + r + p + t + f + x + c + i + afk + u
+  out.total = total
+  return total
+end
+
+-- Battleground rows: the most seconds first, then the name.
+local function BgBefore(x, y)
+  if x.secs ~= y.secs then return x.secs > y.secs end
+  return x.name < y.name
+end
+
+-- (alloc) Battlegrounds and arenas of a zone map: rows { key, name, secs } in
+-- out[1..n] of the zones whose main instance kind is "p" (InstanceKind: a battleground's
+-- own map, a numeric key, or "i<instanceID>"), secs = their p, plus P when the mask
+-- includes it, > 0. A map zone must hold at least as much battleground time as other time
+-- besides its dead time x (a battleground's map holds nothing else; an open-world zone or
+-- a capital where the game reported the instance a tick before the map is left out). The
+-- merged "o" bucket is never listed. Rows of the same name (a battleground saved under its
+-- map and its instance key) are merged (key: the larger part's). Sorted by secs desc, then
+-- name. Returns n and other = the bucket's own battleground part (s.p, + s.P when
+-- included) less the rows, >= 0: time merged into "o" (a level keeps its 10 largest
+-- zones), pruned zones, left-out ticks. names: the zone records that hold the names
+-- (char.zones; the level's zone buckets have none), else the buckets themselves.
+local function Battlegrounds(zmap, names, bucket, mask, out)
+  local inc = INCLUDED[mask or 0] or INCLUDED[0]
+  local n = 0
+  if type(zmap) == "table" then
+    for k, z in pairs(zmap) do
+      local s = type(z) == "table" and z.s
+      if type(s) == "table" and k ~= "o" and InstanceKind(s) == "p" then
+        local raw = (s.p or 0) + (s.P or 0)
+        if type(k) ~= "number" or raw * 2 >= SumAll(z) - (s.x or 0) then
+          local secs = (s.p or 0) + (inc.P and (s.P or 0) or 0)
+          if secs > 0 then
+            local nb = type(names) == "table" and names[k]
+            local name = ZoneName(k, type(nb) == "table" and nb or z)
+            local row = nil
+            for j = 1, n do
+              if out[j].name == name then
+                row = out[j]
+                break
+              end
+            end
+            if row then
+              row.secs = row.secs + secs
+              if Before(secs, 0, k, row.ks, 0, row.key) then row.key, row.ks = k, secs end
+            else
+              n = n + 1
+              row = out[n]
+              if type(row) ~= "table" then
+                row = {}
+                out[n] = row
+              end
+              row.key, row.name, row.secs, row.ks = k, name, secs, secs
+            end
+          end
+        end
+      end
+    end
+  end
+  Trim(out, n)
+  local sum = 0
+  for j = 1, n do
+    local row = out[j]
+    row.ks = nil
+    sum = sum + row.secs
+  end
+  if n > 1 then table_sort(out, BgBefore) end
+  local bs = bucket and bucket.s
+  local part = 0
+  if type(bs) == "table" then part = (bs.p or 0) + (inc.P and (bs.P or 0) or 0) end
+  local other = part - sum
+  if other < 0 then other = 0 end
+  return n, other
+end
+
+-- (alloc) The battlegrounds and arenas played at level L (levels[L].z, named from
+-- char.zones): see Battlegrounds. Returns n, other (the level's p (+ P) left after the
+-- rows). A level without a record: 0, 0. Hover / rebuild only.
+function Stats.LevelBattlegrounds(char, level, mask, out)
+  local levels = char and char.levels
+  local lb = type(levels) == "table" and level and levels[level]
+  if type(lb) ~= "table" then
+    Trim(out, 0)
+    return 0, 0
+  end
+  return Battlegrounds(lb.z, char.zones, lb, mask, out)
+end
+
+-- (alloc) The same over the character's whole life (char.zones, which carry their names;
+-- other = life's p (+ P) left after the rows: the zones pruned at logout among them).
+function Stats.LifeBattlegrounds(char, mask, out)
+  return Battlegrounds(char and char.zones, nil, char and char.life, mask, out)
+end
+
+-- Whether the world PvP of level L was measured (Pvp.lua, char.pvp.w0: the time() it
+-- began for this character): "yes" when the level began at or after w0 (t0 >= w0),
+-- "partial" when it began before and ended after it (or is the current level, or its
+-- start is unknown: the install's level), "no" when w0 is unknown (a record from before
+-- it, Classic Era, read-only), the level ended at or before w0 (end = t1, else the next
+-- level's t0), it has no record or it was rebuilt whole after a crash (rec: no time was
+-- seen). The UI says "not measured on this client" itself when ns.Pvp is not available.
+-- Nothing allocated.
+function Stats.WorldPvpState(char, level)
+  local p = char and char.pvp
+  local w0 = type(p) == "table" and p.w0 or nil
+  if type(w0) ~= "number" or w0 ~= w0 then return "no" end
+  local levels = char.levels
+  local lb = type(levels) == "table" and type(level) == "number" and levels[level]
+  if type(lb) ~= "table" or lb.rec then return "no" end
+  local nb = levels[level + 1]
+  local t1 = lb.t1
+  if type(t1) ~= "number" then t1 = type(nb) == "table" and nb.t0 or nil end
+  if type(t1) == "number" and t1 <= w0 then return "no" end
+  local t0 = lb.t0
+  if type(t0) == "number" and w0 <= t0 then return "yes" end
+  return "partial"
+end
+
+-- XP from level l to l + 1 as seen in the game: the character's own (levels[l].max),
+-- else the account's (db.xpMax[l]); nil when neither is a number >= 1.
+local function KnownXP(char, db, l)
+  local levels = char and char.levels
+  local lb = type(levels) == "table" and levels[l]
+  local v = type(lb) == "table" and lb.max
+  if type(v) == "number" and v >= 1 and v < HUGE then return v end
+  local xm = type(db) == "table" and db.xpMax
+  v = type(xm) == "table" and xm[l]
+  if type(v) == "number" and v >= 1 and v < HUGE then return v end
+  return nil
+end
+
+-- The scale of C.CLASSIC_XP on this client: the mean ratio known / table of the known
+-- sizes that contradict the table (1 when none does: the table is right, or unverified).
+local function XPRatio(char, db)
+  local sum, n = 0, 0
+  for l = 1, #CLASSIC_XP do
+    local k = KnownXP(char, db, l)
+    local t = CLASSIC_XP[l]
+    if k and k ~= t then
+      sum = sum + k / t
+      n = n + 1
+    end
+  end
+  if n == 0 then return 1 end
+  return sum / n
+end
+
+-- XPOf with the table's scale given (nil: computed when needed).
+local function XPOfR(char, db, l, ratio)
+  local k = KnownXP(char, db, l)
+  if k then return k end
+  local t = CLASSIC_XP[l]
+  if not t then return nil end
+  if ratio == nil then ratio = XPRatio(char, db) end
+  return floor(t * ratio + 0.5)
+end
+
+-- XP needed from level l to l + 1: levels[l].max, else db.xpMax[l], else C.CLASSIC_XP[l]
+-- scaled by the mean ratio known / table of the known sizes (this character's and the
+-- account's) that contradict the table (a server with another curve), rounded; nil
+-- when nothing is known (l beyond the table without a known size). Nothing allocated.
+function Stats.XPOf(char, db, l)
+  if type(l) ~= "number" then return nil end
+  return XPOfR(char, db, l, nil)
+end
+
+-- XP of a Classic mob of the player's level: about 45 + 5 L (the per-level scale of the
+-- projection: the pace in kills per hour stays, the XP of a kill grows).
+local function MobXP(l)
+  return 45 + 5 * l
+end
+
+-- Estimated seconds of level l: K s per (XP / MobXP) from the recent levels, else the
+-- rate (XP/s at `level`) scaled to l by MobXP; nil without an XP size.
+local function EstLevel(char, db, l, ratio, K, rate, level)
+  local x = XPOfR(char, db, l, ratio)
+  if not x then return nil end
+  if K then return K * x / MobXP(l) end
+  return x / rate * MobXP(level) / MobXP(l)
+end
+
+-- Projection of the levels still to play (an ESTIMATE: the UI prefixes "~"). info =
+-- { level, xp, max, rest, valid, isMax, capLevel, top } prepared by the caller (the
+-- current character: Tracker.GetXPInfo, GetCapInfo, Util.MaxLevel; another character:
+-- char.level, char.xpSnap's xp / max, no rest, valid false), optional sync / now for
+-- the time already spent in the current level (Stats.LevelTime). Fills `out`:
+--   status  "ok" (from the recent levels), "estimate" (from the XP rate), "nodata",
+--           "max" (level >= top, or info.isMax), "cap" (info.capLevel reached: a server
+--           cap); no projection but "ok" and "estimate"
+--   src     "recent" | "rate" (nil without a projection)
+--   cur     seconds left in the current level (nil: unknown)
+--   [l]     estimated seconds of level l, l = level + 1 .. top - 1 (nil: no XP size,
+--           counted in `missing`); every other index nil
+--   total   cur + the sum of the [l] (nil without a projection), top, n (samples)
+-- Method: K = sum(time_l) / sum(XPOf(l) / (45 + 5 l)) over the complete levels l of the
+-- last C.RECENT_LEVELS (l < level, neither partial nor rec, time_l = Sum(lb, mask) less
+-- its stalled and untracked seconds > 0, a known XP size); est(l) = K * XPOf(l) /
+-- (45 + 5 l). Needs 2 samples, else the rate: est(l) = XPOf(l) / (A + Q) * (45 + 5 level)
+-- / (45 + 5 l) (Stats.Rate under the mask, XP per counted second). The current level:
+-- Stats.ETA from xp / max / rest (rest-aware) when info.valid, else est(level) less the
+-- time spent in it (>= 0). Nothing allocated after the first call with the same `out`
+-- for the same level (the tick path may refresh it). Returns out.
+function Stats.FutureLevels(char, db, mask, info, out)
+  mask = mask or 0
+  if type(info) ~= "table" then info = EMPTY_S end
+  local level = info.level
+  if type(level) ~= "number" then level = char and char.level end
+  local top = info.top
+  if type(top) ~= "number" then top = #CLASSIC_XP + 1 end
+  local last = out.top
+  if type(last) ~= "number" or last < top then last = top end
+  for l = 1, last do out[l] = nil end
+  out.top, out.n, out.missing = top, 0, 0
+  out.cur, out.total, out.src = nil, nil, nil
+  if type(level) ~= "number" then
+    out.status = "nodata"
+    return out
+  end
+  local cap = info.capLevel
+  if type(cap) == "number" and level >= cap then
+    out.status = "cap"
+    return out
+  end
+  if level >= top or info.isMax then
+    out.status = "max"
+    return out
+  end
+  local ratio = XPRatio(char, db)
+  local levels = char and char.levels
+  local st, sw, n = 0, 0, 0
+  if type(levels) == "table" then
+    local lo = level - RECENT_LEVELS
+    if lo < 1 then lo = 1 end
+    for l = level - 1, lo, -1 do
+      local lb = levels[l]
+      if type(lb) == "table" and not lb.partial and not lb.rec then
+        local t = Sum(lb, mask) - StallOf(lb, mask) - UntrackedOf(lb)
+        local x = t > 0 and XPOfR(char, db, l, ratio) or nil
+        if x then
+          st, sw, n = st + t, sw + x / MobXP(l), n + 1
+        end
+      end
+    end
+  end
+  out.n = n
+  local K, rate = nil, nil
+  if n >= 2 and sw > 0 then
+    K = st / sw
+    out.status, out.src = "ok", "recent"
+  else
+    local _, A, _, Q = Stats.Rate(char, mask)
+    local aq = (A or 0) + (Q or 0)
+    if not (aq > 0) then   -- luacheck: ignore 581 (NaN fails too)
+      out.status = "nodata"
+      return out
+    end
+    rate = aq
+    out.status, out.src = "estimate", "rate"
+  end
+  local cur = nil
+  local xp, max = info.xp, info.max
+  if info.valid and type(xp) == "number" and type(max) == "number" and max > 0 then
+    cur = Stats.ETA(char, mask, xp, max, info.rest, false)
+  end
+  if cur == nil then
+    local e = EstLevel(char, db, level, ratio, K, rate, level)
+    if e then
+      cur = e - Stats.LevelTime(char, level, mask, info.sync, info.now)
+      if cur < 0 then cur = 0 end
+    end
+  end
+  local total, missing = cur or 0, 0
+  for l = level + 1, top - 1 do
+    local e = EstLevel(char, db, l, ratio, K, rate, level)
+    out[l] = e
+    if e then total = total + e else missing = missing + 1 end
+  end
+  out.cur, out.total, out.missing = cur, total, missing
+  return out
 end
 
 ---------------------------------------------------------------------------

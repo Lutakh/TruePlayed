@@ -25,6 +25,8 @@
 --   media.bracket: baked "[": ink 3.4 px under cyan 1.5 px, open side right
 --   media.diamond: baked title icon: cyan diamond outline + purple core
 --   bar.height: default user height 8 -> 14 px track
+--   bar.rep: reputation strip 6 px under the track, 1 px clear of the fill-end marker's ink
+--     (5 px), its glow (6 px) reaching the strip's top edge
 --   bar.layers > glow: neon halo around the fill, outside the track (board: box-shadow 10 px and 22
 --     px); 9 px above and below: the 32-texel glow is drawn 1:1 at the default 14 px track
 --   bar.layers > track: track: dark navy body, a little lighter at the top, scan lines, 10 %
@@ -80,6 +82,7 @@ return {
     pad = 10, gap = 4,
     height = { add = 6, min = 10 },
     maxAlpha = 0.35,
+    rep = { off = 6, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "glow", span = "fill", three = { "common/glow", 16, 10 }, pad = { 10, 10 }, top = -9, bottom = -9,
         layer = "BORDER", sub = -2, blend = "ADD", color = "base@.6" },

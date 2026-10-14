@@ -36,6 +36,8 @@ local function Record(opts)
     killRing = opts.killRing,                -- round 5: base XP of the last kills
     noXP = opts.noXP,                        -- C1: counted seconds since the last XP gain
     capLevel = opts.capLevel,                -- C2: detected server level cap
+    rep = opts.rep,                          -- the followed reputation's rate (Reputation.lua)
+    pvp = opts.pvp,                          -- the PvP rates (Pvp.lua)
   }
   if not opts.noHistory then
     for lv = 5, lvl - 1 do
@@ -69,6 +71,29 @@ local function OtherRecord()
     ema = Ema(big, 0, 0, 3600),
     srv = { total = 99999999, level = 10, at = 1789500000, g = 5, ext = true },
   }
+end
+
+-- The followed reputation with a settled rate of 500 points per hour (opts.rep of Start):
+-- Darnassus, Friendly, 1,200 / 6,000.
+local function RepData()
+  Stub.rep.watched = { name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 }
+  local e = {}
+  for i = 1, 8 do e[i] = { a = 500, d = 3600 } end
+  return { f = 69, v = 4200, e = e, n = 0 }
+end
+
+-- WoW Forever's PvP (tests/stub_pvp.lua): a season running, rank 1, and both PvP rates
+-- measured (the last gain a minute before the login: not paused).
+local function PvpData()
+  Stub.SetPvpAPI("forever")
+  Stub.SetWeek(2, 5, 3, { quiet = true })
+  Stub.pvp.total = 1000
+  local he, ke = {}, {}
+  for i = 1, 8 do
+    he[i] = { a = 3000, d = 3600 }
+    ke[i] = { a = 900, d = 3600 }
+  end
+  return { he = he, ke = ke, g = time() - 60 }
 end
 
 -- Loads the addon on a prepared TruePlayedDB and logs in (XP baseline read at +2 s).
@@ -146,7 +171,7 @@ end
 ---------------------------------------------------------------------------
 
 T.test("every token renders a non-empty text with data", function()
-  local ns = Start({ lastKill = { xp = 120, level = 10, at = 1789990000 } })
+  local ns = Start({ lastKill = { xp = 120, level = 10, at = 1789990000 }, rep = RepData(), pvp = PvpData() })
   LiveSync(ns)
   local Tokens, Stats, Fmt, L = ns.Tokens, ns.Stats, ns.Fmt, ns.L
   Tokens.Acquire("test", 3)
@@ -173,6 +198,9 @@ T.test("every token renders a non-empty text with data", function()
   local played = Stats.Played(ns.char, 0, sync, now)
   T.eq((Tokens.Render("played")), format(L.PFX_PLAYED_FMT, Fmt.Duration(played)))
   T.eq((Tokens.Render("xph")), Fmt.Rate(ctx.xph))
+  -- the followed reputation: 500 points per hour, 4,800 points to Honored
+  T.eq((Tokens.Render("reph")), format(L.PFX_REPH_FMT, Fmt.Rate(500)))
+  T.eq((Tokens.Render("rep_eta")), format(L.REP_ETA_FMT, "Honored", Fmt.ETA(4800 / 500 * 3600)))
   T.eq((Tokens.Render("eta")), Fmt.ETA(ctx.eta))
   T.eq((Tokens.Render("xpleft")), format(L.XPLEFT_FMT, Fmt.Number(ctx.max - ctx.xp)))
   T.eq((Tokens.Render("zone_time")), format(L.PFX_ZONE_FMT, Fmt.Duration(Stats.Sum(ns.char.zones[1411], 0))))
@@ -437,6 +465,10 @@ T.test("French texts", function()
   T.eq((Tokens.Render("xph")), "8,2k/h")
   T.eq(Tokens.Label("eta"), "Temps avant le prochain niveau")
   local lines = Fill(ns, false)
+  T.ok(Find(lines, "Niveau en cours"), "French title of the level section")
+  T.no(Find(lines, "Temps de jeu"), "the played time is in the detailed view")
+  lines = Fill(ns, true)
+  T.ok(Find(lines, "Total du personnage"), "French title of the character section")
   T.ok(Find(lines, "Temps de jeu"), "French played label")
 end)
 
@@ -523,10 +555,11 @@ T.test("tooltip shows the rebuilt-after-crash lines when est > 0", function()
   local ns = Start({ lifeEst = 2100, levelEst = 600 })
   local L, Fmt = ns.L, ns.Fmt
   local lines = Fill(ns, false)
-  T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(2100))), "played sub-line")
+  T.no(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(2100))), "no played sub-line: the short view is the level")
   T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(600))), "this level sub-line")
   -- lot 8: the detailed view repeats nothing at the bottom (the sub-lines say it)
   local detailed = Fill(ns, true)
+  T.ok(HasText(detailed, format(L.TT_EST_FMT, Fmt.Duration(600))), "this level sub-line (Shift)")
   local n = 0
   for i = 1, #detailed do
     if HasText({ detailed[i] }, format(L.TT_EST_FMT, Fmt.Duration(2100))) then n = n + 1 end
@@ -534,6 +567,122 @@ T.test("tooltip shows the rebuilt-after-crash lines when est > 0", function()
     T.no(detailed[i][2] and string.find(detailed[i][2], "(estimated split)", 1, true), "no estimated split")
   end
   T.eq(n, 1, "the played sub-line only, once")
+end)
+
+-- Crash review A1: the rebuilt part noted under "This level" / "Played" is valued under the
+-- same exclusions as that line, and never exceeds it.
+T.test("tooltip: the rebuilt time is under the exclusions of the line above, never more than it", function()
+  local ns = Start()
+  local L, Fmt = ns.L, ns.Fmt
+  local lb = ns.char.levels[ns.char.level]
+  -- the reported case: 10 min of play and 50 min of AFK rebuilt after a crash
+  lb.s = { w = 600, W = 3000 }
+  lb.est, lb.es = 3000, { W = 3000 }
+  local lines = Fill(ns, false)
+  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.Duration(3600))
+  T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(3000))), "no exclusion: all of it")
+  ns.Core.SetSetting("exclude.afk", true)
+  lines = Fill(ns, false)
+  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.Duration(600), "This level, AFK excluded")
+  for i = 1, #lines do
+    T.no(MatchesFormat(lines[i][1], L.TT_EST_FMT), "the rebuilt part was AFK: no sub-line")
+  end
+  -- an older record (est without es): the level's own place shares, 3000 x 600 / 3600
+  lb.es = nil
+  lines = Fill(ns, false)
+  T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(500))), "older record: its share of the 10 min")
+  T.no(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(3000))), "never the gross 50 min")
+  -- the character (Shift): the same rules, at most the played time shown
+  lb.es = { W = 3000 }
+  local life = ns.char.life
+  life.s.W = life.s.W + 3000
+  life.est, life.es = 3000, { W = 3000 }
+  local detailed = Fill(ns, true)
+  for i = 1, #detailed do
+    T.no(MatchesFormat(detailed[i][1], L.TT_EST_FMT), "AFK excluded: no rebuilt sub-line, level or played")
+  end
+  ns.Core.SetSetting("exclude.afk", false)
+  detailed = Fill(ns, true)
+  local n = 0
+  for i = 1, #detailed do
+    if detailed[i][1] == format(L.TT_EST_FMT, Fmt.Duration(3000)) then n = n + 1 end
+  end
+  T.eq(n, 2, "this level and played, no exclusion")
+  -- /tpl played prints the same sub-line, under the exclusions too
+  local estPat = L.TT_EST_FMT:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):gsub("%%%%s", "(.-)") .. "$"
+  local function PrintedEst()               -- durations of the printed rebuilt sub-lines
+    local out = {}
+    for i = 1, #Stub.printed do
+      local d = Stub.printed[i]:match(estPat)
+      if d then out[#out + 1] = d end
+    end
+    Stub.printed = {}
+    return out
+  end
+  Stub.printed = {}
+  Stub.RunSlash("played")
+  T.eq(PrintedEst(), { Fmt.Duration(3000) }, "/tpl played: the rebuilt part")
+  ns.Core.SetSetting("exclude.afk", true)
+  Stub.RunSlash("played")
+  T.eq(PrintedEst(), {}, "/tpl played, AFK excluded: no rebuilt sub-line")
+end)
+
+-- Crash review A2: under a breakdown more than C.EST_MOST rebuilt (gross share of its
+-- tracked time: the breakdown has no exclusions), a note says its split is estimated.
+T.test("tooltip: a breakdown mostly rebuilt after a crash says so, right under it", function()
+  local ns = Start()
+  local L, Fmt, C = ns.L, ns.Fmt, ns.C
+  T.eq(C.EST_MOST, 0.5)
+  local lb = ns.char.levels[ns.char.level]
+  lb.s = { w = 1000, W = 60 }                 -- 1060 s tracked
+  local function Notes(lines)
+    local out = {}
+    for i = 1, #lines do
+      if MatchesFormat(lines[i][1], L.TT_EST_MOST_FMT) then out[#out + 1] = i end
+    end
+    return out
+  end
+  -- exactly half: no note
+  lb.est, lb.es = 530, { w = 530 }
+  T.eq(Notes(Fill(ns, false)), {}, "50 %: no note")
+  -- more than half: the note, after the level's breakdown rows
+  lb.est, lb.es = 600, { w = 540, W = 60 }
+  local lines = Fill(ns, false)
+  local idx = Notes(lines)
+  T.eq(#idx, 1)
+  T.eq(lines[idx[1]][1], format(L.TT_EST_MOST_FMT, Fmt.Percent(600 / 1060, 0)))
+  local bd = 0
+  for i = 1, #lines do if lines[i][1] == L.TT_BREAKDOWN_LEVEL then bd = i end end
+  T.ok(bd > 0 and idx[1] > bd, "below the breakdown")
+  for i = bd + 1, idx[1] - 1 do T.eq(lines[i][1], " ", "only its continuation rows between") end
+  -- the gross share, whatever the exclusions (the breakdown shows every key)
+  ns.Core.SetSetting("exclude.afk", true)
+  T.eq(#Notes(Fill(ns, false)), 1, "AFK excluded: still the breakdown's share")
+  ns.Core.SetSetting("exclude.afk", false)
+  -- an older record (est only) larger than the level: capped at 100 %
+  lb.es, lb.est = nil, 5000
+  lines = Fill(ns, false)
+  T.eq(lines[Notes(lines)[1]][1], format(L.TT_EST_MOST_FMT, Fmt.Percent(1, 0)), "at most 100 %")
+  -- the character (Shift): its own share, under its own breakdown
+  lb.est, lb.es = 0, nil
+  T.eq(Notes(Fill(ns, true)), {}, "neither breakdown mostly rebuilt")
+  local life = ns.char.life
+  local tracked = ns.Stats.Tracked(life)
+  life.est, life.es = 20000, { w = 18000, W = 1200, c = 800 }
+  lines = Fill(ns, true)
+  idx = Notes(lines)
+  T.eq(#idx, 1, "the character's breakdown only")
+  T.eq(lines[idx[1]][1], format(L.TT_EST_MOST_FMT, Fmt.Percent(20000 / tracked, 0)))
+  local bds = {}
+  for i = 1, #lines do
+    if lines[i][1] == L.TT_BREAKDOWN_LEVEL or lines[i][1] == L.TT_BREAKDOWN_TOTAL then bds[#bds + 1] = i end
+  end
+  T.eq(#bds, 2)
+  T.eq({ lines[bds[1]][1], lines[bds[2]][1] }, { L.TT_BREAKDOWN_LEVEL, L.TT_BREAKDOWN_TOTAL })
+  T.ok(idx[1] > bds[2], "under the character's breakdown")
+  T.eq(Notes(Fill(ns, false)), {}, "the short view has no character breakdown")
+  lb.est, lb.es = 1000, { w = 1000 }
+  T.eq(#Notes(Fill(ns, true)), 2, "both breakdowns")
 end)
 
 T.test("tooltip has no rebuilt-after-crash line without an estimate", function()
@@ -549,11 +698,14 @@ T.test("tooltip shows the pre-install line only with an exclusion", function()
   local ns = Start({ u = 300000 })
   local L, Fmt = ns.L, ns.Fmt
   local pre = format(L.TT_PREINSTALL_FMT, Fmt.Duration(300000))
-  T.no(HasText(Fill(ns, false), pre), "no exclusion")
+  T.no(HasText(Fill(ns, true), pre), "no exclusion")
   ns.Core.SetSetting("exclude.afk", true)
-  local lines = Fill(ns, false)
-  T.ok(HasText(lines, pre), "exclusion on")
   local excl = ns.Stats.MaskLabel(1)
+  local short = Fill(ns, false)
+  T.no(HasText(short, pre), "the short view is the level: no pre-install line")
+  T.ok(HasText(short, format(L.TT_EXCL_FMT, excl)), "title shows the exclusion (short view)")
+  local lines = Fill(ns, true)
+  T.ok(HasText(lines, pre), "exclusion on")
   T.ok(Find(lines, format(L.TT_PLAYED_EXCL_FMT, excl)), "played label names the exclusion")
   T.ok(HasText(lines, format(L.TT_EXCL_FMT, excl)), "title shows the exclusion")
   local untracked = Find(Fill(ns, true), L.TT_UNTRACKED)
@@ -564,7 +716,8 @@ T.test("tooltip server line: saved snapshot with its age, then live", function()
   local at = 1790000000 - 3600
   local ns = Start({ srv = { total = 400000, levelPlayed = 900, level = 10, at = at, g = 1, ext = true } })
   local L, Fmt, Tokens = ns.L, ns.Fmt, ns.Tokens
-  local lines = Fill(ns, false)
+  T.no(Find(Fill(ns, false), L.TT_SERVER), "the server /played is in the detailed view")
+  local lines = Fill(ns, true)
   local line = Find(lines, L.TT_SERVER)
   T.ok(line, "server line")
   T.eq(line[2], format(L.TT_SERVER_AGE_FMT, Fmt.Duration(400000), Fmt.Ago(time() - at)))
@@ -574,23 +727,22 @@ T.test("tooltip server line: saved snapshot with its age, then live", function()
   T.ok(dim, "snapshot is dim")
   -- live after a sync
   LiveSync(ns)
-  line = Find(Fill(ns, false), L.TT_SERVER)
+  line = Find(Fill(ns, true), L.TT_SERVER)
   T.eq(line[2], Fmt.Duration(Tokens.ctx.playedServer))
   T.no(select(2, Tokens.Render("played_server")), "live")
 end)
 
-T.test("tooltip: the last-levels average; the overall one and the level history are in the window", function()
+T.test("tooltip: the last-levels average (Shift); the overall one and the level history are in the window", function()
   local ns = Start()
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
-  local lines = Fill(ns, false)
+  T.no(Find(Fill(ns, false), format(L.TT_AVG_RECENT_FMT, 5)), "not in the short view (the level)")
   local recent, n = Stats.RecentAvg(ns.char, 0, ns.C.RECENT_LEVELS)
   T.eq(n, 5)
-  local line = Find(lines, format(L.TT_AVG_RECENT_FMT, 5))
-  T.ok(line, "Last 5 levels line")
-  T.eq(line[2], Fmt.Duration(recent))
   local overall = Fmt.Duration(Stats.AvgPerLevel(ns.char, 0, ns.Tracker.GetSync(), Stub.Now()))
   local detailed = Fill(ns, true)
-  T.ok(Find(detailed, format(L.TT_AVG_RECENT_FMT, 5)), "the last-levels average stays in the detailed view")
+  local line = Find(detailed, format(L.TT_AVG_RECENT_FMT, 5))
+  T.ok(line, "Last 5 levels line")
+  T.eq(line[2], Fmt.Duration(recent))
   for i = 1, #detailed do
     T.no(detailed[i][2] == overall and detailed[i][1] ~= format(L.TT_AVG_RECENT_FMT, 5),
       "no overall average line: " .. tostring(detailed[i][1]))
@@ -622,25 +774,97 @@ T.test("tooltip: no average line without level history (the window footer has th
   T.ok(string.find(footer, Fmt.Duration(overall), 1, true), "the window footer has it: " .. footer)
 end)
 
-T.test("tooltip XP block and breakdown over tracked time", function()
+T.test("tooltip XP block and breakdowns over tracked time: the level, then (Shift) the character", function()
   local ns = Start()
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
   local lines = Fill(ns, false)
   T.eq(lines[1][1], L.ADDON_TITLE)
+  T.eq(lines[2][1], L.TT_SECTION_LEVEL, "the level section's title")
+  T.no(Find(lines, L.TT_SECTION_CHAR), "no character section in the short view")
+  T.no(Find(lines, L.TT_PLAYED), "no played line in the short view")
+  T.no(Find(lines, L.TT_INSTANCES), "no instance line in the short view")
   local xp = Find(lines, L.TT_XP)
   T.eq(xp[2], format("%s / %s", Fmt.Number(3000), Fmt.Number(Stub.player.max)))
   T.eq(Find(lines, L.TT_REMAINING)[2], Fmt.Number(Stub.player.max - 3000))
   T.ok(Find(lines, L.TT_RESTED), "rested line")
   T.eq(Find(lines, L.TT_NEXT_LEVEL)[2], Fmt.ETA(ns.Tokens.ctx.eta))
-  local bd = Stats.Breakdown(ns.char.life, {})
-  local tr = bd.tracked
-  local function Part(key, secs) return format(L.BD_PART_FMT, L[key], Fmt.Percent(secs / tr, 0)) end
-  local flight = bd.active - bd.world - bd.dungeon - bd.raid - bd.pvp
-  T.eq(Find(lines, L.TT_BREAKDOWN)[2], table.concat({ Part("BD_WORLD", bd.world), Part("BD_AFK", bd.afk),
-    Part("BD_CITY", bd.city), Part("BD_INN", bd.inn), Part("BD_TAXI", flight) }, L.SEP),
-    "largest first: world, AFK, city, inn, flight (no instance time: those parts are left out)")
+  -- the short view: the breakdown of the level in progress only
+  local lbd = Stats.Breakdown(ns.char.levels[ns.Tokens.ctx.level], {})
+  local function Part(bd, key, secs) return format(L.BD_PART_FMT, L[key], Fmt.Percent(secs / bd.tracked, 0)) end
+  T.eq(Find(lines, L.TT_BREAKDOWN_LEVEL)[2], table.concat({ Part(lbd, "BD_WORLD", lbd.world),
+    Part(lbd, "BD_AFK", lbd.afk) }, L.SEP), "the level's breakdown: world and AFK only")
+  T.no(Find(lines, L.TT_BREAKDOWN_TOTAL), "the short view: no total breakdown")
   T.ok(HasText(lines, L.TT_HINT), "hint")
   T.eq(lines[#lines][1], L.TT_HINT, "hint last")
+  -- Shift: the level's breakdown, then the character's ("Total breakdown") under its
+  -- section title
+  local detailed = Fill(ns, true)
+  local first, second, charTitle
+  for i = 1, #detailed do
+    if detailed[i][1] == L.TT_BREAKDOWN_LEVEL then first = first or i end
+    if detailed[i][1] == L.TT_BREAKDOWN_TOTAL then second = second or i end
+    if detailed[i][1] == L.TT_SECTION_CHAR then charTitle = i end
+  end
+  T.ok(first and second and charTitle, "two breakdowns and the character section")
+  T.ok(first < charTitle and charTitle < second, "the character section between them")
+  T.eq(detailed[first][2], Find(lines, L.TT_BREAKDOWN_LEVEL)[2], "the level's breakdown, as in the short view")
+  T.ok(Find(detailed, L.TT_PLAYED), "played line (Shift)")
+  local bd = Stats.Breakdown(ns.char.life, {})
+  local flight = bd.active - bd.world - bd.dungeon - bd.raid - bd.pvp
+  T.eq(detailed[second][2], table.concat({ Part(bd, "BD_WORLD", bd.world), Part(bd, "BD_AFK", bd.afk),
+    Part(bd, "BD_CITY", bd.city), Part(bd, "BD_INN", bd.inn), Part(bd, "BD_TAXI", flight) }, L.SEP),
+    "largest first: world, AFK, city, inn, flight (no instance time: those parts are left out)")
+  T.eq(detailed[#detailed][1], L.TT_HINT, "hint last (Shift)")
+end)
+
+T.test("tooltip zone line: the time at this level on hover, the character's in its Shift section", function()
+  local ns = Start()
+  local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
+  local ctx, char = ns.Tokens.ctx, ns.char
+  local label = format(L.TT_ZONE_FMT, "Durotar")
+  local atLevel = Stats.Sum(char.levels[Stub.player.level].z[1411], 0)
+  local whole = Stats.Sum(char.zones[1411], 0)
+  T.ok(atLevel > 0 and whole > atLevel * 10, "the fixture: much more time in the zone before this level")
+  local short = Fill(ns, false)
+  T.eq(Find(short, label)[2], Fmt.Duration(atLevel), "short view: the zone's time at this level")
+  local n, values = 0, {}
+  local charTitle
+  local detailed = Fill(ns, true)
+  for i = 1, #detailed do
+    if detailed[i][1] == L.TT_SECTION_CHAR then charTitle = i end
+    if detailed[i][1] == label then
+      n = n + 1
+      values[n] = { i, detailed[i][2] }
+    end
+  end
+  T.eq(n, 2, "Shift: the level's zone line and the character's")
+  T.ok(values[1][1] < charTitle and charTitle < values[2][1], "one in each section")
+  T.eq(values[1][2], Fmt.Duration(atLevel))
+  T.eq(values[2][2], Fmt.Duration(ctx.zoneTime))
+  T.eq(ctx.zoneTime, whole, "the bar's zone_time stays the character's")
+end)
+
+-- "This level" takes the server's level time once synced; the zone's time at this level is
+-- tracked time: a server a little behind (a drift under C.DRIFT_TOL is kept) must not show
+-- more time in the zone than in the whole level.
+T.test("tooltip zone line: never above This level (a live server level time a little behind)", function()
+  local ns = Start()
+  local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
+  local char = ns.char
+  local label = format(L.TT_ZONE_FMT, "Durotar")
+  local lb = char.levels[char.level]
+  local tracked = Stats.SumAll(lb)
+  T.eq(Stats.Sum(lb.z[1411], 0), tracked, "the fixture: the whole level in this zone")
+  Stub.Fire("TIME_PLAYED_MSG", math.floor(Stats.SumAll(char.life)), math.floor(tracked) - 90)
+  Stub.Advance(0)
+  local short = Fill(ns, false)
+  local ctx = ns.Tokens.ctx
+  T.ok(ctx.levelTime < Stats.Sum(lb.z[1411], 0) - 60, "the fixture: This level well below the zone's tracked time")
+  T.eq(Find(short, L.TT_THIS_LEVEL)[2], Fmt.Duration(ctx.levelTime))
+  T.eq(Find(short, label)[2], Fmt.Duration(ctx.levelTime), "the zone line capped to This level")
+  -- Shift: the same in block 1's section; the character's zone line is not capped by it
+  local detailed = Fill(ns, true)
+  T.eq(Find(detailed, label)[2], Fmt.Duration(ctx.levelTime))
 end)
 
 T.test("ShowFor refreshes while shown and detaches on hide or owner change", function()
@@ -654,8 +878,11 @@ T.test("ShowFor refreshes while shown and detaches on hide or owner change", fun
   local short = GameTooltip:NumLines()
   T.ok(short > 5)
   Stub.SetShift(true)                                -- MODIFIER_STATE_CHANGED: detailed
-  T.ok(GameTooltip:NumLines() > short, "detailed view")
+  local tt2 = rawget(_G, "TruePlayedCharTooltip")
+  T.ok(tt2 and tt2:IsShown() and tt2:GetOwner() == owner, "detailed view: block 2 under the tooltip")
+  T.ok(tt2:NumLines() > 5, "block 2: the character")
   Stub.SetShift(false)
+  T.no(tt2:IsShown(), "block 2 hidden when Shift is released")
   Stub.Advance(1)                                    -- TICK refresh
   T.eq(GameTooltip:NumLines(), short)
   Tooltip.Hide(owner)
@@ -664,15 +891,20 @@ T.test("ShowFor refreshes while shown and detaches on hide or owner change", fun
   GameTooltip:ClearLines()
   Stub.Advance(3)
   T.eq(GameTooltip:NumLines(), 0, "no refresh after hide")
-  -- another owner takes the tooltip: we stop at the next tick and never hide it
+  -- another owner takes the tooltip: we stop at the next tick and never hide it (block 2,
+  -- ours, is hidden then)
   Tooltip.ShowFor(owner)
+  Stub.SetShift(true)
+  T.ok(tt2:IsShown())
   GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
   GameTooltip:ClearLines()
   GameTooltip:AddLine("someone else")
   GameTooltip:Show()
   Stub.Advance(2)
+  Stub.SetShift(false)
   T.eq(GameTooltip:NumLines(), 1)
   T.no(Tooltip.IsShownFor(owner))
+  T.no(tt2:IsShown(), "block 2 hidden with the detach")
   Tooltip.Hide(owner)
   T.ok(GameTooltip:IsShown(), "foreign tooltip left alone")
   T.eq(Stub.onUpdateCount, 0)
@@ -966,8 +1198,11 @@ T.test("allocation: 600 ticks with the default slots <= 1 KB", function()
   T.ok(kb <= 1, format("allocated %.3f KB", kb))
 end)
 
-T.test("allocation: 600 ticks rendering all 20 tokens <= 8 KB", function()
-  local ns = Start({ lastKill = { xp = 120, level = 10, at = 1789990000 } })
+-- 8 KB for the 20 tokens of before; the reputation's two add about 3 KB here: without a
+-- gain its rate decays, and below 1,000 per hour its whole number changes every ~15 ticks
+-- (a text formatted only when the shown value changes, as the XP per hour's).
+T.test("allocation: 600 ticks rendering all 22 tokens <= 12 KB", function()
+  local ns = Start({ lastKill = { xp = 120, level = 10, at = 1789990000 }, rep = RepData() })
   LiveSync(ns)
   ns.char.life.s.d, ns.char.life.s.r = 1800, 600   -- instance time
   local Tokens = ns.Tokens
@@ -978,8 +1213,8 @@ T.test("allocation: 600 ticks rendering all 20 tokens <= 8 KB", function()
     for i = 1, #ORDER do Tokens.Render(ORDER[i]) end
   end
   for _ = 1, 300 do Step() end
-  local kb = Alloc(Step, 600)                -- per-minute time texts only
-  T.ok(kb <= 8, format("allocated %.3f KB", kb))
+  local kb = Alloc(Step, 600)                -- per-minute time texts, the two rates
+  T.ok(kb <= 12, format("allocated %.3f KB", kb))
 end)
 
 ---------------------------------------------------------------------------

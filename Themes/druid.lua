@@ -33,6 +33,7 @@
 --   media.sep_leaf: line - leaf - line separator
 --   bar.pad, gap: texts clear the 4 px rim by 2 px
 --   bar.height: default user height 8 -> 14 px track
+--   bar.rep: reputation strip 6 px under the track, 2 px clear of the wood
 --   bar.layers > wood: carved wood rim around the track (board: 4 px padding at x1.5, radius 7)
 --   bar.layers > track: track: dark bark, lightest at 55 % (the board's 3-stop gradient as two
 --     shaded bands), with an inner shadow under its top edge
@@ -93,6 +94,7 @@ return {
     pad = 8, gap = 6,
     height = { add = 6, min = 10 },
     maxAlpha = 0.35,
+    rep = { off = 6, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "wood", span = "track", nine = { "bar_wood", 8, 8 }, pad = { 4, 4 }, top = -4, bottom = -4,
         layer = "BACKGROUND", sub = 0 },

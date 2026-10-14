@@ -17,8 +17,8 @@
 -- and again after a switch from another theme (pooled regions reused), plus one session
 -- switching through every theme with a recolour.
 -- Views of each scenario: the widget, the tooltip short and with Shift (the private
--- frame, and the GameTooltip for the native theme), the graph, the window (3 tabs) and
--- the options panel.
+-- frames, and the GameTooltips for the native theme: with Shift, block 2 under block 1),
+-- the graph, the window (3 tabs) and the options panel.
 --
 -- What is written is what the game would draw, never a raw stub field that could be
 -- stale or depend on table addresses:
@@ -311,9 +311,11 @@ local function Snap(root)
   return lines
 end
 
--- The shared GameTooltip (outside Stub.regions): owner, anchors, lines and colours.
-local function SnapGT()
-  local tt = rawget(_G, "GameTooltip")
+-- The shared GameTooltip, or the GameTooltip of that global name (outside Stub.regions):
+-- owner, anchors, lines and colours.
+local function SnapGT(name)
+  local tt = rawget(_G, name or "GameTooltip")
+  if not tt then return { "absent" } end
   local owner = rawget(tt, "_owner")
   local out = { "shown=" .. tostring(tt:IsShown()) .. " owner="
     .. tostring(type(owner) == "table" and rawget(owner, "_name") or owner) }
@@ -418,6 +420,8 @@ local function EmitBarAndTip(ns, label)
   Stub.Advance(1)
   Emit(label .. " tipShift", Snap(ns.TooltipFrame.frame))
   Emit(label .. " gtShift", SnapGT())
+  Emit(label .. " tipShift2", Snap(ns.TooltipFrame.frame2))           -- block 2
+  Emit(label .. " gtShift2", SnapGT("TruePlayedCharTooltip"))
   Stub.SetShift(false)
   Stub.RunScript(w, "OnLeave")
 end

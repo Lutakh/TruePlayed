@@ -22,6 +22,7 @@
 --   media.sunburst: 24 rays and a glow faded by an ellipse (sun centre at 43, 11)
 --   media.halo: soft radial glow (the marker's golden halo)
 --   bar.height: default user height 8 -> 13 px track
+--   bar.rep: reputation strip 7 px under the track, 2 px clear of the frame
 --   bar.layers > frameShadow: marble frame set in gold: soft drop shadow, frame, veins
 --   bar.layers > track: track: night-blue groove, darker under its top edge and along its bottom
 --   bar.layers > rested: rested part ("blessed light"): lighter rested colour fading out, top
@@ -68,6 +69,7 @@ return {
     pad = 10, gap = 6,
     height = { add = 5, min = 9 },
     maxAlpha = 0.35,
+    rep = { off = 7, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "frameShadow", span = "track", three = { "common/glow", 16, 8 }, pad = { 7, 7 },
         top = -8, bottom = -11, layer = "BORDER", sub = -5, color = "#000000@.45" },

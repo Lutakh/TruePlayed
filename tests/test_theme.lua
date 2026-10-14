@@ -940,7 +940,8 @@ T.test("Subst: Orbitron and Macondo replacements; the same string, without alloc
   T.no(Th.HasSubst("body"))
   T.no(Th.HasSubst("game"))
   T.eq(Th.Subst("display", "LEVEL 12 \194\183 45.2%"), "LEVEL 12 \226\128\162 45.2%")
-  T.eq(Th.Subst("display", "\194\171a\194\187 \194\171b\194\187"), "\"a\" \"b\"")
+  T.eq(Th.Subst("display", "Level 30 \194\187 31"), "Level 30 > 31", "the addon's arrow")
+  T.eq(Th.Subst("display", "\194\171a\194\187 \194\171b\194\187"), "<a> <b>")
   local s = "LEVEL 12"
   T.ok(rawequal(Th.Subst("display", s), s))
   T.ok(rawequal(Th.Subst("body", "a \194\183 b"), "a \194\183 b"), "Rajdhani: no replacement")
@@ -970,7 +971,7 @@ T.test("FONTS: the 23 bundled fonts with their files, Cyrillic flags and size ru
   T.eq(n, 23)
   T.eq({ F.PressStart2P.min, F.PressStart2P.snap, F.PressStart2P.max, F.PressStart2P.mono }, { 8, 8, 16, true })
   T.ok(F.EBGaramond.cyr and not F.Rajdhani.cyr and F.Spectral.cyr)
-  T.eq(#ns.Themes.DISPLAY_KEYS, 13)
+  T.eq(#ns.Themes.DISPLAY_KEYS, 22)          -- + the reputation's and PvP's tooltip titles and split labels, the Levels tab's tooltip titles
   T.eq(ns.Themes.COMMON_MEDIA.glow, { 64, 32, grey = true })
   T.eq(ns.Themes.GAME_FONT_FALLBACK, GAME)
 end)

@@ -178,13 +178,15 @@ T.test("minimap button: hover shows the bar's tooltip (Shift: detailed) with the
   T.ok(ns.Tooltip.IsShownFor(b), "the tooltip, owned by the button")
   T.eq(GameTooltip:GetOwner(), b)
   T.eq(LastLine(), L.TT_HINT, "default action: statistics")
-  local short = GameTooltip:NumLines()
   Stub.SetShift(true)
   Stub.Advance(1)
-  T.ok(GameTooltip:NumLines() > short, "Shift: the detailed view")
+  local tt2 = rawget(_G, "TruePlayedCharTooltip")
+  T.ok(tt2 and tt2:IsShown() and tt2:GetOwner() == b, "Shift: the detailed view (block 2)")
+  T.eq(tt2._lines[#tt2._lines][1], L.TT_HINT, "Shift: the hint ends block 2")
   Stub.SetShift(false)
   Stub.RunScript(b, "OnLeave")
   T.no(ns.Tooltip.IsShownFor(b), "hidden on leave")
+  T.no(tt2:IsShown(), "block 2 hidden too")
   local hints = { options = L.TT_HINT_MM_OPTIONS, bar = L.TT_HINT_MM_BAR, mini = L.TT_HINT_MM_MINI,
                   stats = L.TT_HINT }
   for action, hint in pairs(hints) do

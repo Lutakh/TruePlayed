@@ -19,6 +19,19 @@
 -- Detected server level cap (Tracker.GetCapInfo, isServerCap): the character counts as
 -- max level (Tracker.IsMax), and the XP tokens that are still rendered say
 -- L.CAP_SHORT instead of L.MAX_LEVEL.
+-- The followed reputation (Reputation.lua): reph (its points per hour, "Rep. 312/h") and
+-- rep_eta (the time to its next standing, "Honored: ~3h 10m"; the standing alone at
+-- Exalted) are not XP tokens: they stay at max level. Same statuses as the XP rate (dim
+-- while warming up, dim with L.STALL_MARK while frozen); L.DOTS without a faction or a
+-- rate yet. A slot showing one of them turns the reputation's reads on (Reputation.lua).
+-- PvP (Pvp.lua, WoW Forever; L.DOTS elsewhere): honor ("Honor 1,234 / 25,000"), honor_h
+-- (its rate), honor_eta (the time to its cap; "Honor capped" at it), rank ("Rank 7 ·
+-- 450 / 1,050"), rank_h (rank points per hour), rank_eta (the time to the next rank; the
+-- weekly cap, the max rank or no season instead, dimmed), hk_today (honorable kills
+-- today). Not XP tokens: they stay at max level. The PvP rates are dimmed while warming
+-- up, and dimmed with L.STALL_MARK while paused (no PvP gain for a while outside a
+-- battleground) or kept at a cap. DEF.pvp marks them: the options offer them only where
+-- the PvP APIs exist (Pvp.Available).
 local ADDON, ns = ...
 local L, C, Fmt = ns.L, ns.C, ns.Fmt
 
@@ -32,7 +45,8 @@ ns.Tokens = Tokens
 
 Tokens.ORDER = { "none", "eta", "eta_kills", "kills", "xph", "pcth", "xpleft", "rested",
                  "level_time", "session", "played", "played_server", "afk_session", "avg_level",
-                 "zone_time", "instance_session", "instance_total", "fps", "latency", "fps_latency" }
+                 "zone_time", "instance_session", "instance_total", "reph", "rep_eta", "honor", "honor_h",
+                 "honor_eta", "rank", "rank_h", "rank_eta", "hk_today", "fps", "latency", "fps_latency" }
 
 Tokens.DEF = {
   none          = { label = "TOKEN_NONE",          xp = false, pausable = false },
@@ -52,6 +66,15 @@ Tokens.DEF = {
   zone_time     = { label = "TOKEN_ZONE_TIME",     xp = false, pausable = true },
   instance_session = { label = "TOKEN_INSTANCE_SESSION", xp = false, pausable = true },
   instance_total   = { label = "TOKEN_INSTANCE_TOTAL",   xp = false, pausable = true },
+  reph          = { label = "TOKEN_REPH",          xp = false, pausable = true },
+  rep_eta       = { label = "TOKEN_REP_ETA",       xp = false, pausable = true },
+  honor         = { label = "TOKEN_HONOR",         xp = false, pausable = false, pvp = true },
+  honor_h       = { label = "TOKEN_HONOR_H",       xp = false, pausable = true, pvp = true },
+  honor_eta     = { label = "TOKEN_HONOR_ETA",     xp = false, pausable = true, pvp = true },
+  rank          = { label = "TOKEN_RANK",          xp = false, pausable = false, pvp = true },
+  rank_h        = { label = "TOKEN_RANK_H",        xp = false, pausable = true, pvp = true },
+  rank_eta      = { label = "TOKEN_RANK_ETA",      xp = false, pausable = true, pvp = true },
+  hk_today      = { label = "TOKEN_HK_TODAY",      xp = false, pausable = false, pvp = true },
   fps           = { label = "TOKEN_FPS",           xp = false, pausable = false, need = "fps" },
   latency       = { label = "TOKEN_LATENCY",       xp = false, pausable = false, need = "lat" },
   fps_latency   = { label = "TOKEN_FPS_LATENCY",   xp = false, pausable = false, need = "fpslat" },
@@ -73,8 +96,13 @@ local MAX_KILLS = 1000000          -- sanity bound on the mobs-to-go count
 -- kills / killXP (mobs to the next level and the average base XP of the last 10 kills,
 -- nil when unknown), instSession / instTotal (instance seconds under the mask, nil without a
 -- character), stalled / stallSecs (rate status "stalled" and the counted seconds since
--- the last XP gain) and isServerCap / capLevel / capMisses (max level because of a
--- detected server level cap, Tracker.GetCapInfo))
+-- the last XP gain), isServerCap / capLevel / capMisses (max level because of a
+-- detected server level cap, Tracker.GetCapInfo) and repOn / reph / repStatus / repEta /
+-- repNext (a faction followed, its points per hour and their status, the seconds to its
+-- next standing and that standing: Rep.Rate, Rep.Eta), and the PvP fields of
+-- Pvp.FillContext (pvpOn, honorOn / honor / honorMax / honorh / honorStatus / honorEta /
+-- honorEtaStatus, rankOn / rankLevel / rankPts / rankThr / noSeason / rankMax / rankh /
+-- rankStatus / rankEta / rankEtaStatus / rankNext, hkToday))
 ---------------------------------------------------------------------------
 
 local ctx = {}
@@ -95,6 +123,11 @@ local function ClearCtx()
   c.instSession, c.instTotal = nil, nil
   c.stalled, c.stallSecs = false, 0
   c.isServerCap, c.capLevel, c.capMisses = false, nil, nil
+  c.repOn, c.reph, c.repStatus, c.repEta, c.repNext = false, nil, "nodata", nil, nil
+  c.pvpOn, c.honorOn, c.honor, c.honorMax, c.honorh, c.honorStatus = false, false, 0, 0, nil, "nodata"
+  c.honorEta, c.honorEtaStatus = nil, "nodata"
+  c.rankOn, c.rankLevel, c.rankPts, c.rankThr, c.noSeason, c.rankMax = false, 0, 0, 0, true, false
+  c.rankh, c.rankStatus, c.rankEta, c.rankEtaStatus, c.rankNext, c.hkToday = nil, "nodata", nil, "none", nil, nil
 end
 ClearCtx()
 ctx.now, ctx.mask = 0, 0
@@ -332,6 +365,24 @@ function Tokens.UpdateContext(now)
   -- instance time (dungeons, raids, PvP) of the session and of the whole character
   c.instSession = Stats.InstanceTime(session, mask)
   c.instTotal = Stats.InstanceTime(char.life, mask)
+
+  -- the followed reputation: its rate and the time to its next standing
+  local Rep = ns.Rep
+  if Rep and Rep.Has() then
+    local reph, rstatus = Rep.Rate(mask)
+    local reta, _, rnext = Rep.Eta(mask)
+    c.repOn, c.reph, c.repStatus, c.repEta, c.repNext = true, reph, rstatus, reta, rnext
+  else
+    c.repOn, c.reph, c.repStatus, c.repEta, c.repNext = false, nil, "nodata", nil, nil
+  end
+
+  -- PvP: the honor, the rank, their rates and times, the kills of the day
+  local Pvp = ns.Pvp
+  if Pvp then
+    Pvp.FillContext(c, mask)
+  else
+    c.pvpOn, c.honorOn, c.rankOn, c.hkToday = false, false, false, nil
+  end
 
   -- mobs to the next level from the average of the last 10 kills (rest-aware; nil without
   -- a kill or at max)
@@ -599,6 +650,161 @@ R.eta_kills = function()
     lastText.eta_kills = format("%s%s%s", eta, L.SEP, part)
   end
   return lastText.eta_kills, dim, eta
+end
+
+-- The followed reputation's points per hour: "Rep. 312/h".
+R.reph = function()
+  local v = ctx.reph
+  if v == nil then return L.DOTS, true end
+  local k = Fmt.ShortKey(v)
+  local status = ctx.repStatus
+  local mode = status == "stalled" and 2 or 0
+  if k ~= lastKey.reph or mode ~= lastEst.reph then
+    lastKey.reph, lastEst.reph = k, mode
+    local text = format(L.PFX_REPH_FMT, Fmt.Rate(v))
+    if mode == 2 then text = text .. L.STALL_MARK end
+    lastText.reph = text
+  end
+  return lastText.reph, status == "warming" or status == "stalled"
+end
+
+-- Name of standing r (the game's, Tooltip.StandingName).
+local function RepStanding(r)
+  local Tt = ns.Tooltip
+  if Tt and Tt.StandingName then return Tt.StandingName(r) end
+  return L.DOTS
+end
+
+-- Time to the followed faction's next standing: "Honored: ~3h 10m"; at Exalted the
+-- standing alone (dim: nothing left to reach).
+R.rep_eta = function()
+  if not ctx.repOn then return L.DOTS, true end
+  local nxt = ctx.repNext
+  if nxt == nil then return RepStanding(8), true end
+  local sec = ctx.repEta
+  if sec == nil then return L.DOTS, true end
+  local status = ctx.repStatus
+  local k = Fmt.ETAKey(sec) * 10 + nxt
+  local mode = status == "stalled" and 2 or 0
+  if k ~= lastKey.rep_eta or mode ~= lastEst.rep_eta then
+    lastKey.rep_eta, lastEst.rep_eta = k, mode
+    local text = format(L.REP_ETA_FMT, RepStanding(nxt), Fmt.ETA(sec))
+    if mode == 2 then text = text .. L.STALL_MARK end
+    lastText.rep_eta = text
+  end
+  return lastText.rep_eta, status == "warming" or status == "stalled"
+end
+
+-- PvP (Pvp.lua). Status of a PvP rate shown with L.STALL_MARK: paused or kept at a cap.
+local function PvpMarked(status)
+  return status == "paused" or status == "capped"
+end
+
+-- The honor toward its cap: "Honor 1,234 / 25,000" (the amount alone without a cap).
+R.honor = function()
+  if not ctx.honorOn then return L.DOTS, true end
+  local q, mx = ctx.honor, ctx.honorMax
+  local k = q * 1000003 + mx
+  if k ~= lastKey.honor then
+    lastKey.honor = k
+    if mx > 0 then
+      lastText.honor = format(L.PFX_HONOR_FMT, Fmt.Number(q), Fmt.Number(mx))
+    else
+      lastText.honor = format(L.PFX_HONOR_ONLY_FMT, Fmt.Number(q))
+    end
+  end
+  return lastText.honor, false
+end
+
+-- A PvP rate: "<prefix> 1.2k/h" (pattern fmt), cached under id.
+local function PvpRate(id, fmt, v, status)
+  if v == nil then return L.DOTS, true end
+  local k = Fmt.ShortKey(v)
+  local mode = PvpMarked(status) and 2 or 0
+  if k ~= lastKey[id] or mode ~= lastEst[id] then
+    lastKey[id], lastEst[id] = k, mode
+    local text = format(fmt, Fmt.Rate(v))
+    if mode == 2 then text = text .. L.STALL_MARK end
+    lastText[id] = text
+  end
+  return lastText[id], status == "warming" or mode == 2
+end
+
+R.honor_h = function()
+  if not ctx.honorOn then return L.DOTS, true end
+  return PvpRate("honor_h", L.PFX_HONORH_FMT, ctx.honorh, ctx.honorStatus)
+end
+
+-- Time to the honor cap: "Cap: ~3h 10m"; "Honor capped" at it (not dim: act on it).
+R.honor_eta = function()
+  if not ctx.honorOn or ctx.honorMax <= 0 then return L.DOTS, true end
+  local st = ctx.honorEtaStatus
+  if st == "capped" then return L.PVP_AT_CAP, false end
+  local sec = ctx.honorEta
+  if sec == nil then return L.DOTS, true end
+  local k = Fmt.ETAKey(sec)
+  local mode = PvpMarked(st) and 2 or 0
+  if k ~= lastKey.honor_eta or mode ~= lastEst.honor_eta then
+    lastKey.honor_eta, lastEst.honor_eta = k, mode
+    local text = format(L.HONOR_ETA_FMT, Fmt.ETA(sec))
+    if mode == 2 then text = text .. L.STALL_MARK end
+    lastText.honor_eta = text
+  end
+  return lastText.honor_eta, st == "warming" or mode == 2
+end
+
+-- The PvP rank: "Rank 7 · 450 / 1,050"; "Rank 14" at the max rank; "No season" before.
+R.rank = function()
+  if not ctx.rankOn then return L.DOTS, true end
+  if ctx.noSeason then return L.PVP_NO_SEASON_SHORT, true end
+  local lv, pts, thr = ctx.rankLevel, ctx.rankPts, ctx.rankThr
+  local k = ctx.rankMax and -1 - lv or (lv * 1000003 + pts) * 1000003 + thr
+  if k ~= lastKey.rank then
+    lastKey.rank = k
+    if ctx.rankMax then
+      lastText.rank = format(L.PVP_RANK_FMT, lv)
+    else
+      lastText.rank = format(L.PFX_RANK_FMT, lv, Fmt.Number(pts), Fmt.Number(thr))
+    end
+  end
+  return lastText.rank, false
+end
+
+R.rank_h = function()
+  if not ctx.rankOn or ctx.noSeason then return L.DOTS, true end
+  return PvpRate("rank_h", L.PFX_RANKH_FMT, ctx.rankh, ctx.rankStatus)
+end
+
+-- Time to the next rank: "Rank 8: ~1h 35m"; the weekly cap, the max rank or no season
+-- instead (dimmed: nothing to wait for this week).
+R.rank_eta = function()
+  if not ctx.rankOn then return L.DOTS, true end
+  local st = ctx.rankEtaStatus
+  if st == "noseason" then return L.PVP_NO_SEASON_SHORT, true end
+  if st == "max" then return L.PVP_RANK_MAX, true end
+  if st == "capped" then return L.PVP_WEEK_CAPPED_SHORT, true end
+  local sec, nxt = ctx.rankEta, ctx.rankNext
+  if sec == nil or nxt == nil then return L.DOTS, true end
+  local k = Fmt.ETAKey(sec) * 100 + nxt
+  local mode = PvpMarked(st) and 2 or 0
+  if k ~= lastKey.rank_eta or mode ~= lastEst.rank_eta then
+    lastKey.rank_eta, lastEst.rank_eta = k, mode
+    local text = format(L.RANK_ETA_FMT, nxt, Fmt.ETA(sec))
+    if mode == 2 then text = text .. L.STALL_MARK end
+    lastText.rank_eta = text
+  end
+  return lastText.rank_eta, st == "warming" or mode == 2
+end
+
+-- Honorable kills today: "HK 12".
+R.hk_today = function()
+  local n = ctx.hkToday
+  if n == nil then return L.DOTS, true end
+  if n ~= lastKey.hk_today then
+    lastKey.hk_today = n
+    lastText.hk_today = format(L.PFX_HK_FMT, Fmt.Number(n))
+  end
+  return lastText.hk_today, false
 end
 
 -- Fmt memoizes these strings per value: no cache needed here.

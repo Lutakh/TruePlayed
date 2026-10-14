@@ -2,7 +2,7 @@
 
 **Your real /played, for WoW Forever.** XP per hour, time to next level, mobs to kill,
 time per level, per zone and in instances, with AFK, inn and city time left out if you
-want.
+want. Plus your reputation, honor and PvP rank points per hour, at max level too.
 
 The game's `/played` counts everything: the ten minutes you were away making coffee, the
 evening spent chatting at the inn, the auction house trips in Orgrimmar. TruePlayed
@@ -35,31 +35,79 @@ records every played second, knows what you were doing, and lets you decide what
   need to level up, aware of your rested XP (rested kills give double XP). In the tooltip
   under the time to next level ("~38 (average: 47 XP, last: 30 XP)"), and on the bar
   ("~5h 05m · 38 mobs", the default top right info).
+- **Followed reputation under the bar**: a thin strip under the XP bar, as wide as it:
+  your progress inside the current standing, in the standing's colour, full at Exalted.
+  By default TruePlayed follows the faction you tick "Show as Experience Bar" for in the
+  game's Reputation panel (character window, Reputation tab); Options > TruePlayed >
+  **Reputation** > "Faction to follow" picks another one for this character instead (the
+  game's factions, by header; the game's own choice is left untouched). The general
+  tooltip has one line for it after the XP block, e.g. "Stormwind   Friendly · 1,200 /
+  6,000 (20.0%)", and **hovering the strip** opens the reputation's own tooltip: the
+  faction and its points ("4,800 more to Honored"), the 8 standings (the ones reached
+  dimmed, the current one marked with its percentage, the points and the estimated time
+  to each one ahead), **reputation per hour**, the **time to the next standing** and the
+  reputation gained this session. The rate works like the XP per hour: measured from the
+  reputation you really gain (never read from chat messages), kept per character across
+  `/reload` and restarts, started over when you follow another faction, frozen (dimmed,
+  with a `*`) after 20 minutes of play without a gain, and leaving out the AFK / inn /
+  city time you exclude from the XP per hour. TruePlayed updates on reputation events
+  only. Each theme places the strip its own way (the bar grows by a few pixels, or not at
+  all where it fits under the track); with no faction followed, or with "Show the
+  followed reputation under the bar" unticked (on by default), the bar is exactly as
+  before. Renown and friendship factions show nothing; a paragon faction shows as
+  Exalted.
+- **Reputation as the main bar**: Options > TruePlayed > Reputation > "Main bar" >
+  **Reputation** swaps the two bars, at any level: the big track shows the followed
+  reputation (the faction and its standing at the left, the points at the right, the
+  percentage marker, the fill in the standing's colour, full and dimmed at Exalted) and
+  the thin strip under it shows your XP (no strip at max level). Hover the track for the
+  reputation's tooltip. While it shows a reputation the bar is never hidden by "Hide at
+  max level"; with no faction followed it shows the XP as usual.
+- **PvP: honor and rank** (WoW Forever; see [PvP](#pvp)): a second thin strip, under
+  the reputation's one, shows your **honor** toward its cap (gold, orange from 90 %, red
+  at the cap) or your progress inside your **PvP rank**; or the whole bar shows your rank
+  (Options > TruePlayed > **PvP** > "Main bar" > **PvP**), saying when the next rank is
+  the week's cap, and can switch to it by itself in battlegrounds only. Hover either for
+  the PvP tooltip: honor per hour, time to the honor cap, rank points per hour, time to
+  the next rank, the week's cap, honorable kills, battlegrounds won and lost. An alert (a
+  sound and a small window, after the fight) tells you when your honor reaches its cap.
 - **Rested XP like the game's XP bar**: the bar takes the rested colour while you are
   rested (the game's blue in the Classic theme), with a lighter part up to where your
   rested XP ends, and the tooltip shows "Rested: 11,600 XP (50%)". Both bar colours can
   be changed (see below).
-- **Time per level** and a full level history: one row per level step ("19 » 20" is the
-  time it took from 19 to 20), with the time, the time to level estimated when the level
-  began (to compare with the time it really took), the **total time from level 1** to
-  that level-up, server time, XP per hour, AFK, inn, city, instances, time dead with the
-  deaths, professions, main zone and the date the next level was reached. A column that
-  is empty for every row (no instance while leveling, no inn...) is not shown.
+- **Time per level**, as a histogram of your journey (the Levels tab of the statistics
+  window): one bar per level ("Level 19 » 20" is the time it took from 19 to 20),
+  stacked by activity (world, world PvP, dungeons, raids, battlegrounds, flight,
+  professions, dead, city, inn, AFK), with filters that keep one activity (All, World,
+  Instances, PvP, Flight, Professions, Dead), faint bars for the levels still to play
+  (their estimated time at your pace), a line at your average and your **progress
+  toward the max level**. Seven figures above it: time played, server /played, average
+  per level, **PvP** (battlegrounds and world PvP: hover it for each battleground),
+  **flight** (the AFK during a flight included, unless you exclude AFK), deaths, and
+  the time left to the max level at your current pace. **Click
+  a bar** for the level's detail sheet: the time it took, the server time, the time to
+  level estimated when it began (and how much more or less it really took), the **total
+  time from level 1**, XP per hour, deaths and time dead, its time breakdown (hover its
+  PvP line for each battleground and the world PvP), its XP from monsters, quests and
+  the rested bonus, and its zones and instances. See
+  [How do I read the Levels tab?](#faq).
 - **Average time per level**: over your last 5 levels in the tooltip; overall, over your
   last 5 levels and for the whole account at the bottom of the statistics window.
 - **Time per zone** (Elwynn Forest, Stranglethorn Vale...): a Zones tab with every zone
-  you played in (filtered time, raw time, AFK, XP), the **zones of each level** (hover a
+  you played in (filtered time, raw time, AFK, XP), the **zones of each level** (click a
   level in the Levels tab), the time in your current zone in the tooltip, your **time per
   continent** (Kalimdor, Eastern Kingdoms, then dungeons, raids and PvP apart; a continent
   with less than a minute is not listed) and your **most visited capitals**. Exclusions apply to zones too.
 - **Played and session totals**, with the live server `/played` next to them.
 - **Instance time**: dungeons, raids and PvP (battlegrounds, arenas) are recorded apart
-  from the open world, AFK included. The tooltip shows your instance time (and each kind
-  with its AFK part when you hold Shift), the Zones tab lists your **most played
-  instances** (per character or for the whole account), the Levels and Sessions tabs
-  have an instance column, and two bar infos show the instance time of the session and
-  in total. Useful at max level too. Instance time recorded before this version stays
-  counted as open world.
+  from the open world, AFK included. Hold Shift and the second tooltip (Character total)
+  shows your instance time and each kind with its AFK part (on hover, the current level's
+  breakdown names dungeons, raids and PvP), the Zones tab lists your **most played
+  instances** (per character or for the whole account), the Levels tab has an Instances
+  filter and lists each level's instances in its detail sheet, the Sessions tab has an
+  instance column, and two bar infos show the instance time of the session and in total.
+  Useful at max level too. Instance time recorded before this version stays counted as
+  open world.
 - **AFK time, inn / rest area time, city time and flight time**, always recorded separately.
 - **Time spent dead** (from your death until you are back on your feet, the ghost run
   included) and **professions time** (gathering, fishing, first aid, crafting,
@@ -69,10 +117,13 @@ records every played second, knows what you were doing, and lets you decide what
   nothing is deleted, every number is recalculated instantly, and switching an exclusion
   off gives you the original numbers back. While your current state is excluded, the
   timers show pause marks and the tooltip says so.
-- **Customisable XP bar**: pick three infos among 19 (time to level, time to level + mobs
+- **Customisable XP bar**: pick three infos among 28 (time to level, time to level + mobs
   to kill, mobs to kill, XP per hour, % of level per hour, XP to go, rested XP, time this
   level, session, total, server /played, AFK this session, average per level, time in
-  zone, instance time this session, total instance time, FPS, latency, FPS + latency).
+  zone, instance time this session, total instance time, reputation per hour, time to
+  the next standing, honor, honor per hour, time to the honor cap, PvP rank, rank points
+  per hour, time to the next rank, honorable kills today, FPS, latency, FPS + latency;
+  the seven PvP infos are not offered on Classic Era).
   Width, height, scale, text size, background opacity (0 % by default: the bar alone),
   hide in combat, fade when the mouse is away, hide at max level (not at a temporary
   server level cap).
@@ -91,40 +142,72 @@ records every played second, knows what you were doing, and lets you decide what
   (or in your text colour). **Hover them for a graph** of the last 30 s, 1 min or 5 min
   with min / average / max; hover the graph to read the value at a given moment. The game
   refreshes latency only about every 30 seconds, so the graph draws it as steps.
-- **Tooltip** on the bar: level progress, rested XP, time to level, mobs to kill, XP per
-  hour, session, this level, current zone, played, instance time, server /played, the
-  average of your last 5 levels and a breakdown of your time, largest part first (world,
-  dungeons, raids, PvP, flight, professions, dead, AFK, inn, city; only what you did).
-  Hold **Shift** for the details (rate details, your top 3 zones, continents, top
-  capitals, inn / city / dungeon / raid / PvP times with their AFK part, professions,
-  deaths with the time spent dead, FPS and latency). The level history, the overall
-  averages and the account totals are in the statistics window.
+- **Tooltip** on the bar, in two tooltips with their own titles. On hover, **Current
+  level** alone: level progress, rested XP, time to level, mobs to kill, XP per hour,
+  the followed reputation (when a faction is followed), session, time at this level, time
+  in the current zone at this level and the breakdown of this level's time ("Level
+  breakdown"), largest part first (world, dungeons, raids, PvP, flight, professions,
+  dead, AFK, inn, city; only what you did). Hold **Shift** for
+  the rate details and a **second tooltip, Character total**, **beside the first, on its
+  right**: played, instance time, your whole time in the current zone, server /played,
+  the average of your last 5 levels, the character's breakdown ("Total breakdown"), then
+  your top 3 zones, continents, top capitals, inn / city / dungeon / raid / PvP times
+  with their AFK part, professions, deaths with the time spent dead, FPS and latency.
+  Each breakdown has its label with a coloured bar of its parts beside it, and the parts
+  written out under it, right-aligned (in every theme but Heroic fantasy, which has no
+  bar). The two breakdowns face each other at the same height, so you can compare the
+  level with the whole character at a glance; each tooltip keeps its own width, and the
+  hint line is at the bottom of Character total. Current level stays centred on the bar
+  (under it, or above it for a bar at the bottom of the screen); the two move together
+  to stay on the screen, never one over the other. On a screen too narrow for the two
+  side by side (a small window or a large interface scale), Character total goes under
+  Current level instead, both as wide as the wider one, Current level on top. In the
+  Classic theme both are game tooltips (a tooltip addon that restyles only the game's own
+  tooltip may leave the second one in the default look); each breakdown bar goes from its
+  label to the tooltip's right edge, and a tooltip too narrow for an 80 px bar is widened
+  a little (the game's tooltip gets its own width back for whatever you hover next). The
+  level history, the overall averages and the account totals are in the statistics
+  window.
 - **Statistics window** (`/tpl stats` or left-click on the bar) with Levels, Zones and
   Sessions tabs, for the current character, another character or the whole account
-  (account total and account instance time at the bottom). The window header names the
-  exclusions in use. It is as wide as its columns need; drag its bottom-right corner to
-  make it larger (the size is kept). Dates show the year, hours and minutes in the format
-  you choose (Options > Statistics window: the format of your language, DD/MM/YYYY,
-  MM/DD/YYYY or YYYY-MM-DD, and a 24-hour or 12-hour clock). Hover a column header (the
-  small "?" next to it) to read what the column shows.
+  (account total and account instance time at the bottom). The Levels tab of a
+  character is the histogram and detail sheet above; for the whole account it is a
+  table of each level's average over your characters. The window header names the
+  exclusions in use. It is as wide as its columns need (at least 1040 x 640 while the
+  histogram shows, or just inside a smaller screen); drag its bottom-right corner to
+  make it larger (the size is kept; on the histogram, only the width or the height you
+  changed).
+  Dates show the year, hours and minutes in the format you choose (Options > Statistics
+  window: the format of your language, DD/MM/YYYY, MM/DD/YYYY or YYYY-MM-DD, and a
+  24-hour or 12-hour clock). Hover a column header of a table (the small "?" next to it)
+  to read what the column shows.
 - **Crash recovery**: SavedVariables are only written at logout. After a crash (or a
   session played without TruePlayed), the missing time is taken back from the server
   `/played`, split between levels with the exact XP you gained, split between activities
-  using your own habits, and marked as rebuilt.
+  using your recent habits (your last levels), and marked as rebuilt.
+- **Automatic reload (optional, off by default)**: to lose less in a crash, TruePlayed
+  can reload the interface (which saves its data) when you come back to a capital or an
+  inn after an hour of unsaved play, and / or at regular intervals (a window asks first
+  outside town; with both on, the interval leaves capitals and inns to the first option).
+  See [the FAQ](#faq). On WoW Forever it always asks with a button.
 - **One record per character** (by character GUID, so two characters with the same name
   never mix). Settings are shared by the whole account.
 - **No XP bar needed**: every piece of information is also one hover away on the
   **minimap button** and on the optional **mini display** (see
   [Without the XP bar](#without-the-xp-bar)).
 - Addon compartment button, and an optional Data Broker feed when another addon already
-  provides LibDataBroker (no library is embedded).
+  provides LibDataBroker (no library is embedded). The tooltip of a Data Broker display
+  stays one tooltip, Character total under Current level when you hold Shift (with the
+  same "Level breakdown" and "Total breakdown" labels, as text: each label and its first
+  parts on one line, no bar).
 
 ## Without the XP bar
 
 Hide the bar (Options > Display > "Show the bar", `/tpl hide`, or the right-click menu)
 and keep everything else:
 
-- **Minimap button** (on by default): hover it for the bar's tooltip (Shift: details),
+- **Minimap button** (on by default): hover it for the bar's tooltip (Shift: the second
+  tooltip, Character total),
   click it for the statistics window, right-click it for the bar's menu (exclusions,
   theme, statistics, options...), drag it around the minimap. In Options > "Minimap
   button and mini display": show / lock it, and choose what its left click does
@@ -142,14 +225,15 @@ and keep everything else:
 
 ## Themes
 
-Each theme changes the bar (track, fill, rested part, ornaments, background panel,
-fonts and text colours), its tooltip (panel, separators, palette), and the colours and
-titles of the FPS graph and of the statistics window. The 13 themes:
+Each theme changes the bar (track, fill, rested part, ornaments, background panel, the
+place of the reputation strip, fonts and text colours), its tooltip (panel, separators,
+palette), and the colours and titles of the FPS graph and of the statistics window. The
+13 themes:
 
 | Theme | `/tpl theme` name | Look | Fonts |
 |---|---|---|---|
 | **Futuristic** (default) | `futuriste` | Neon HUD: magenta XP, cyan rested, bevelled navy panels, scan lines, HUD brackets | Orbitron, Rajdhani |
-| **Classic** | `actuel` | TruePlayed's original look, pixel for pixel: purple bar, the game's rested blue, the game's tooltip | the game font |
+| **Classic** | `actuel` | TruePlayed's original look: purple bar (pixel for pixel), the game's rested blue, the game's tooltip with a breakdown bar | the game font |
 | **Heroic fantasy** | `heroic` | Forged gold frame, jewel-red XP, sapphire rested | Cinzel, EB Garamond |
 | **Pixel (old school)** | `pixel` | Chunky pixel art, green XP, a JRPG-style tooltip window | Press Start 2P, Pixelify Sans |
 | **Warrior** | `warrior` | Riveted steel plates, blood-red XP | Grenze Gotisch, Barlow Condensed |
@@ -167,8 +251,9 @@ gets Warrior, your mage gets Mage. The setting is shared by the whole account, s
 the way to give each character its own look.
 
 **Futuristic is the default theme for everyone**, existing installations included. To
-get the previous look back, choose **Classic** (`/tpl theme actuel`): it is identical to
-TruePlayed before themes.
+get the previous look back, choose **Classic** (`/tpl theme actuel`): the bar and the
+statistics window look exactly as in TruePlayed before themes, and the tooltip keeps the
+game's own look, with a bar beside each breakdown as in the other themes.
 
 **Switching**: Options > Display > **Theme** (the first setting), right-click the bar >
 **Theme**, or `/tpl theme <name>` with a name from the table (`/tpl theme` alone shows
@@ -225,6 +310,11 @@ this order:
 
 **dead > AFK > professions > flight > dungeon / raid / PvP > city > inn > world**
 
+AFK during a flight is recorded as AFK, yet a long flight often turns AFK on its own and
+is still a flight: the tooltip's Flight line includes it, and so does the Levels tab's
+flight (its figure, filter and sheet line) unless you exclude AFK. The AFK of a
+battleground or a dungeon stays AFK.
+
 - **Dead**: from the moment you die until you are alive again, the ghost run included
   (it is not world time). AFK while dead is dead; a hunter's Feign Death is not. Dead time
   is never excluded. Each level keeps its deaths and its time dead.
@@ -251,6 +341,100 @@ this order:
 - Time recorded before this version has no dead or professions time: it stays where it
   was counted. After a crash, the time rebuilt from the server `/played` is split over the
   places only (never dead or professions time: the addon did not see it).
+
+## PvP
+
+WoW Forever has two PvP measures: the **honor** (a currency you spend, held up to a cap:
+25,000 in the beta) and the **PvP rank** (rank points earned in battlegrounds, summed over
+a season; each week of the season caps the rank you can reach). TruePlayed reads both
+from the game (never from the chat, never from the battleground's scoreboard), in
+Options > TruePlayed > **PvP** (each option has its "?" help):
+
+- **Strip under the bar**: None (the default), **Honor** (your honor toward its cap:
+  gold, orange from 90 %, red at the cap) or **PvP rank** (your points inside the current
+  rank, full at the max rank). It sits 1 pixel under the reputation's strip when both
+  show, as wide and as high, else in its place; hover it for the PvP tooltip (with PvP
+  as the main bar too). A strip that would show what the PvP main bar already shows
+  (the rank under the rank, or the honor under the honor before a season) is not shown.
+- **Main bar** > **PvP** (the same setting as on the Reputation page): the big track shows
+  your progress inside your rank, in the rank's colour; at the left the rank and its
+  title in your game's language ("Rank 7 · Knight-Lieutenant", or the number alone when
+  the game has no title), at the right the rank points per hour and the time to the
+  next rank, saying when that rank is the week's cap ("rank 4 (week's cap) in 1h 35m":
+  the highest you can reach until the weekly reset), "Weekly cap reached" when the
+  week's cap stops you, "Max rank" at the top. Before the season starts (the beta right
+  now) it shows your honor toward its cap and "PvP season not started". Your XP goes to
+  the strip under it (none at max level): below the max level your reputation's strip
+  is then not shown (the same with Reputation as the main bar). "Hide at max level"
+  never hides a bar that shows PvP.
+- **PvP on the bar in battlegrounds** (off by default): in a battleground (not an arena)
+  the main bar shows PvP, and goes back to your choice when you leave. Your "Main bar"
+  setting itself never changes. Below the max level the XP then takes the strip, so
+  your reputation's strip is not shown in battlegrounds.
+- **Alert when the honor is capped** (on by default): when your honor reaches its cap, a
+  sound and a small window (OK button) tell you that new honor is lost until you spend
+  some. It waits for the end of the fight, comes once per reaching (not again after a
+  `/reload`; in read-only mode, once per load: again after a `/reload`), and again only
+  after the honor was read below the cap and went back to it.
+- **Honor and rank per hour**: the **Reset** button starts both over (`/tpl reset rate`
+  resets every rate: XP, reputation and PvP).
+
+**Honor per hour and rank points per hour** work like the XP per hour (the same warm-up,
+dimmed at first, the same exclusions of AFK, inn and city time, kept per character
+across `/reload` and restarts), over your **PvP time** only: all your time in a
+battleground or an arena, and outside them the 15 minutes after each honor or rank gain.
+Past those 15 minutes outside a battleground or an arena the two rates **pause**: they
+keep their value, shown with a `*`, and resume with your next gain (an evening of
+questing after a battleground does not drag them down). Spending honor never lowers
+them; at the honor cap the honor rate stays as it was (the gains are lost), and so does
+the rank rate at the week's cap or the max rank. Each login and `/reload` takes your
+honor and rank as a new starting point (a read before the game has loaded them counts
+nothing), and a lower rank total read in passing (around a new rank, in the same week
+and season) counts nothing.
+
+**World PvP per level** (the Levels tab of the statistics window): the open-world time
+between two PvP signals less than 15 minutes apart. A signal is an honor gain or an
+honorable kill (still counted at the honor cap), outside battlegrounds and arenas.
+The time is counted when the second signal comes: a lone kill counts nothing, and
+neither do the 15 minutes after your last fight. Today's kills count from the first
+count above 0 read after a login or a `/reload` (the game can give 0 before it has
+loaded them): that read is a starting point, never a kill. Only open-world time counts (not AFK,
+a flight, a capital, an inn or time dead), at the level you were then (a level-up
+between two signals splits it); it is a part of your world time. TruePlayed records it
+from this version on: a level played before shows it as not measured (or measured for
+part of the level), never as 0, and Classic Era has no such honor. Hover the PvP figure
+of the Levels tab, or the PvP line of a level's detail sheet, for each battleground and
+the world PvP.
+
+**What is read, and when.** TruePlayed reads your rank and follows the battlegrounds only
+while something shows PvP: the PvP strip, the PvP main bar or its battleground option, or
+a PvP bar info. Your honor and today's honorable kills are always read when they change,
+as they measure your world PvP (above). The rank points per hour and the session's
+battlegrounds count only while something shows PvP (in between, the rank points per hour
+keep their value: they neither count nor fade).
+The weekly reset (a new cap) and the daily reset (today's honorable
+kills) are noticed even when the game sends no event, and the PvP tooltip reads the rank
+and the kills again when it opens. A battleground ends when you leave it, or when the
+next one starts (a queue that pops inside one); its result compares the winner with your
+side in the match. Arenas count as PvP time for the rates, not as battlegrounds.
+
+**The PvP tooltip** (hover the PvP strip, or the main track in the PvP mode): your honor
+and its cap with the percentage, the honor gained this session, per hour, the time to the
+cap or, in red, how long you have been at the cap; your rank and its title, the points in
+the rank, the season's total, the week's cap (rank and points) and what is left of it
+this week (and, when the next rank is that cap, that it is the highest you can reach
+until the weekly reset), the rank points gained this session and per hour, the time to
+the next rank
+(or "blocked by the cap" with the time to the weekly reset), the end of the season when
+the game knows it; your **honorable kills** today, yesterday, this session, lifetime and
+your highest rank ever; the **battlegrounds of the session**: played, won - lost (from the
+game's result at the end of the match), average honor and average length, and the one in
+progress. Seven bar infos (honor, honor per hour, time to the honor cap, PvP rank, rank
+points per hour, time to the next rank, honorable kills today) go in any slot of the
+bar (at max level too) and of the mini display.
+
+On Classic Era (no honor currency or PvP rank of this kind) the PvP page only says that
+PvP tracking is not available on this client, and nothing else changes.
 
 ## Installation
 
@@ -284,7 +468,7 @@ choose **Lock**.
 | `/tpl citytoggle` | Count the current zone as a city, or stop counting it |
 | `/tpl played` | Summary in the chat (no server request) |
 | `/tpl sync` | Ask the server for a fresh /played |
-| `/tpl reset pos\|session\|rate\|char` | Reset the bar position, the session, XP per hour, or erase this character's data (with confirmation) |
+| `/tpl reset pos\|session\|rate\|char` | Reset the bar position, the session, the rates per hour (XP, reputation, honor and rank points), or erase this character's data (with confirmation) |
 | `/tpl debug` | Debug messages on or off |
 | `/tpl perf` | Memory and CPU used by TruePlayed |
 
@@ -344,27 +528,85 @@ time is kept and still counts in every total. The same goes for the time the gam
 not place on any continent (mostly flights where it only gives the continent).
 
 **How do I read the Levels tab?**
-The row "19 » 20" is the time you spent at level 19, until you reached 20. "Reached" is
-the date you reached 20, and "Total" the time from level 1 to that moment (your whole
-/played up to that level-up, the time before TruePlayed included). The row of your
-current level ("20 » 21") shows "in progress".
+For a character it is a histogram: the bar above level 19 is the time you spent at level
+19, until you reached 20 ("Level 19 » 20"), with your exclusions left out. Its colours
+are the activities, in the colours of the tooltip's breakdown; a filter (World,
+Instances, PvP, Flight, Professions, Dead) keeps one of them and rescales the chart (a
+bar's tooltip then starts with that activity's time and its share of the level). The
+bar of your current level grows while you play, with a faint part on top for the time
+it should still take; the faint bars after it are the levels still to play, estimated
+from your pace over your last 5 levels and the XP of each level ("Hide upcoming levels"
+removes them). A small stub marks a level reached before TruePlayed was installed, and
+the line across the chart is your average over the completed levels. Hover a bar for a
+summary; click it for the level's detail sheet on the right: "Completed on" is the date
+you reached 20, "Total since level 1" the time from level 1 to that moment (your whole
+/played up to that level-up, the time before TruePlayed included), then its time
+breakdown, its XP and its zones and instances. The strip under the chart adds up the
+levels completed, the one in progress and the estimate of what is left to the max level.
+The figures with a `~` are estimates. The account view of the tab is a table: for each
+level, the characters that completed it, their average time and XP per hour.
 
-**What is the "Est." column of the Levels tab?**
+**What is "Estimated at start" in a level's detail sheet?**
 The time to the next level TruePlayed showed when the level began (right after the
 level-up, or at the first XP per hour of the level while it was at most 5 % done; for
-the level you installed TruePlayed at, the first measured estimate). Compare it with the
-time the level really took. Levels reached before this version, or begun without any XP
-per hour yet, have none.
+the level you installed TruePlayed at, the first measured estimate). The line under it
+says how much more or less the level really took, when your exclusions (AFK, inn, city)
+are the ones the estimate was taken under (an estimate recorded by 1.1.0 is always
+compared). Levels reached before 1.1.0, or begun
+without any XP per hour yet, have none. For the level in progress, once TruePlayed can
+estimate it, the sheet shows instead the level's estimate (its time so far plus what is
+left) and about how much is left.
 
 **The game crashed. Did I lose my time?**
 No. The game writes addon data only at logout or `/reload`, so a crash loses the detail of
 the session. At the next login TruePlayed compares its data with the server `/played`,
 re-adds the missing time, splits it between levels using the server level time and your
-exact XP, splits it between activities using your own habits, attributes it to your last
-known zone, and marks it as rebuilt ("incl. 35m rebuilt after a crash"). This needs a
-server `/played` at login: TruePlayed asks for one (the usual `/played` lines appear once
-in the chat) unless another addon already did, or you can type `/tpl sync`. The same
-happens if your computer sleeps or freezes for more than 15 minutes.
+exact XP, splits it between activities using your recent habits (the level of your last
+save and the 5 before it, without any time rebuilt earlier, a level mostly rebuilt by an
+older version left out; your whole history when they hold less than 10 minutes),
+attributes it to your last known zone, and marks it as
+rebuilt ("incl. 35m rebuilt after a crash"). That line follows your exclusions like the
+line above it: with AFK excluded, the rebuilt AFK time is left out (time rebuilt by an
+older version, kept without its split, is valued with the level's own share of AFK).
+When more than half of a breakdown is rebuilt time, a grey line under it says so ("62%
+rebuilt after a crash: estimated split"): its split is then mostly an estimate. This
+needs a server `/played` at login: TruePlayed asks for one (the usual `/played` lines
+appear once in the chat) unless another addon already did, or you can type `/tpl sync`.
+The same happens if your computer sleeps or freezes for more than 15 minutes.
+To lose less in a crash, turn on the automatic reload (next question).
+
+**What does the automatic reload do?**
+Each reload of the interface saves TruePlayed's data, so a crash then loses only what
+came after it. Options > Automatic reload (both off by default; hover the "?" after each
+one):
+- **Reload in a capital or an inn**: in a capital or an inn you came back to (from the
+  world, a dungeon or a flight) since the last load, once 60 minutes of play are unsaved,
+  whether you arrive after them or are already there when they are reached: as soon as
+  you have stood still 10 seconds out of combat with no window open, a chat line warns
+  you and the interface reloads 5 seconds later; moving cancels it (asked again 10
+  minutes later). Staying in town after that, even AFK for hours, does not reload again:
+  it needs a new arrival.
+- **Also reload at regular intervals** (10 to 120 minutes, 30 by default): anywhere but a
+  capital or an inn, a small window at the top of the screen asks first: "Reload now", or
+  "Later" (asked again 10 minutes later). In a capital or an inn, it depends on the
+  option above: ticked too, the interval leaves capitals and inns to it (no double
+  reload there: a reload due in town waits until you are out of town, and the window
+  hides if you walk into one); not ticked, the interval reloads there too, once you stand
+  still, even if you never left it (so every interval while you stay in town). Never in
+  an instance, on a flight, dead, while gathering or crafting, or in combat: it waits.
+  The window hides if you enter an instance, take a flight, die or start a fight (it
+  comes back a few seconds after the fight), and its "Reload now" waits, greyed and
+  unclickable, for a second or two after an XP gain (longer after a level-up) while
+  TruePlayed reads it.
+
+It waits while you cast, type, have a game window, menu, options or popup open, or right
+after a load or a level-up, and never reloads while TruePlayed is still reading a
+`/played` answer, an XP gain or rebuilding a crash, nor when WTFix protects TruePlayed
+(it would put old data back). The loading screen of a reload counts in the state you
+were in (city or inn time, which you can exclude). **On WoW Forever an addon may reload
+the interface only after your click**: there TruePlayed never reloads by itself, it
+always asks with the window, and its "Reload now" reloads on your click (should the
+game still refuse it, the chat tells you to type `/reload`).
 
 **How is "city" decided?**
 By map: the whole capital counts as city (Stormwind, Ironforge, Darnassus, Orgrimmar,
@@ -513,7 +755,44 @@ moyennes par niveau, le temps de session et le /played du serveur.
 Vous pouvez exclure le temps AFK, en auberge ou en ville à tout moment (clic droit sur
 la barre, options, ou `/tpl afk`, `/tpl inn`, `/tpl city`) : rien n'est effacé et tout
 est recalculé immédiatement. Après un plantage, le temps manquant est repris du /played
-du serveur et réparti d'après vos habitudes.
+du serveur et réparti d'après vos habitudes récentes (vos derniers niveaux) ; la ligne
+« dont reconstitué après un plantage » suit vos exclusions, et une ligne grisée prévient
+quand plus de la moitié d'une répartition est reconstituée (« 62 % reconstitué après un
+plantage : répartition estimée »).
+
+**Rechargement automatique** (facultatif, désactivé par défaut) : le jeu n'enregistre
+les données des addons qu'à la déconnexion ou au `/reload`, donc un plantage perd tout
+depuis la dernière sauvegarde. Options > Rechargement automatique (survolez le « ? » après
+chaque option) :
+- **Recharger en capitale ou à l'auberge** : dans une capitale ou une auberge où vous êtes
+  revenu (du monde, d'un donjon ou d'un vol) depuis le dernier chargement, une fois
+  60 minutes de jeu non enregistrées, que vous y arriviez après ou que vous y soyez déjà
+  quand elles sont atteintes : dès que vous êtes resté immobile 10 secondes hors combat
+  sans fenêtre ouverte, une ligne du chat prévient et l'interface se recharge 5 secondes
+  plus tard ; bouger annule (nouvelle tentative 10 minutes après). Rester ensuite en
+  ville, même AFK pendant des heures, ne recharge pas en boucle : il faut une nouvelle
+  arrivée.
+- **Recharger aussi à intervalle régulier** (10 à 120 minutes, 30 par défaut) : hors des
+  capitales et des auberges, une petite fenêtre en haut de l'écran demande d'abord :
+  « Recharger maintenant » ou « Plus tard » (redemande 10 minutes après). En capitale ou
+  à l'auberge, cela dépend de l'option précédente : cochée aussi, l'intervalle lui laisse
+  les capitales et les auberges (pas de doublon : un rechargement dû en ville attend que
+  vous en soyez sorti, et la fenêtre se cache si vous y entrez) ; non cochée, l'intervalle
+  recharge aussi là, dès que vous y restez immobile, même sans en être sorti (donc à
+  chaque intervalle tant que vous restez en ville). Jamais en instance, en vol, mort,
+  pendant une récolte ou un artisanat, ni en combat : il attend. La fenêtre se cache si
+  vous entrez en instance, prenez un vol, mourez ou engagez un combat (elle revient
+  quelques secondes après le combat), et son bouton « Recharger maintenant » attend, grisé
+  et sans effet, une ou deux secondes après un gain d'XP (plus longtemps après une montée
+  de niveau) le temps que TruePlayed le lise.
+
+Il attend aussi pendant un sort, une saisie, une fenêtre, le menu, les options ou une
+boîte de dialogue du jeu, ou juste après un chargement ou une montée de niveau, et ne
+recharge jamais tant que TruePlayed lit encore une réponse /played, un gain d'XP ou
+reconstitue un plantage, ni quand WTFix protège TruePlayed. **Sur WoW Forever, un addon
+ne peut recharger l'interface qu'après votre clic** : TruePlayed n'y recharge jamais
+tout seul, il demande toujours avec la fenêtre, et « Recharger maintenant » recharge à
+votre clic (si le jeu le refuse quand même, le chat vous dit de taper `/reload`).
 
 Juste après l'installation, sur un personnage qui a déjà joué, l'XP par heure et le temps
 avant le niveau partent d'une estimation d'après votre /played (affichée avec un `~` :
@@ -521,6 +800,141 @@ l'XP des niveaux terminés divisée par le temps qu'ils ont pris), puis suivent 
 rythme après une dizaine de minutes de jeu prises en compte. Après 20 minutes de jeu sans
 aucune XP, ils se figent (grisés, avec un `*`) au lieu de s'effondrer, et repartent à
 votre prochain gain d'XP.
+
+**Réputation suivie** : une fine bande sous la barre d'XP, de la même largeur, montre
+votre progression dans le rang actuel, de la couleur du rang, pleine au rang Exalté. Par
+défaut, TruePlayed suit la faction cochée « Barre de réputation » dans le panneau
+Réputation du jeu (fenêtre du personnage, onglet Réputation) ; Options >
+TruePlayed > **Réputation** > « Faction à suivre » en choisit une autre pour ce
+personnage (les factions du jeu, par catégorie ; le choix fait dans le jeu n'est pas
+touché). L'infobulle générale lui consacre une ligne après le bloc XP, par exemple
+« Hurlevent   Amical · 1 200 / 6 000 (20,0 %) », et **le survol de la bande** ouvre
+l'infobulle de la réputation : la faction et ses points (« encore 4 800 avant Honoré »),
+les 8 rangs (ceux atteints grisés, l'actuel marqué avec son pourcentage, les points et
+le temps estimé avant chacun des suivants), la **réputation par heure**, le **temps avant
+le rang suivant** et le gain de la session. Ce rythme fonctionne comme l'XP par heure :
+mesuré sur la réputation réellement gagnée (jamais lu dans les messages du chat), gardé
+par personnage après un `/reload` ou un redémarrage, remis à zéro quand vous suivez une
+autre faction, figé (grisé, avec un `*`) après 20 minutes de jeu sans gain, et sans le
+temps AFK / auberge / ville que vous excluez de l'XP par heure. TruePlayed ne se met à
+jour que sur les événements de réputation. Chaque thème place la bande à sa façon (la
+barre grandit de quelques pixels, ou pas du tout quand la bande tient sous la piste).
+Sans faction suivie, ou avec « Afficher la réputation suivie sous la barre » décochée
+(cochée par défaut), la barre est exactement comme avant. Les factions à renom et les
+amitiés n'affichent rien ; une faction parangon s'affiche comme Exalté.
+
+**La réputation en barre principale** : Options > TruePlayed > Réputation > « Barre
+principale » > **Réputation** inverse les deux barres, à tout niveau : la grande barre
+montre la réputation suivie (la faction et son rang à gauche, les points à droite, le
+repère de pourcentage, le remplissage de la couleur du rang, plein et atténué au rang
+Exalté) et la fine bande dessous votre XP (pas de bande au niveau maximum). Survolez la
+barre pour l'infobulle de la réputation. Tant qu'elle montre une réputation, la barre
+n'est jamais masquée par « Masquer au niveau max » ; sans faction suivie, elle montre
+l'XP comme d'habitude. Deux infos de la barre, « Réputation par heure » et « Temps avant
+le rang de réputation », se placent dans n'importe quel emplacement (aussi au niveau
+max).
+
+**JcJ : honneur et rang** (WoW Forever) : TruePlayed suit vos **points d'honneur** (une
+monnaie que vous dépensez, plafonnée : 25 000 sur la bêta) et votre **rang JcJ** (des
+points de rang gagnés en champ de bataille, cumulés sur une saison ; chaque semaine de la
+saison plafonne le rang atteignable). Tout est lu dans le jeu, jamais dans le chat ni dans
+le tableau des scores. Options > TruePlayed > **JcJ** (chaque option a son « ? ») :
+- **Bande sous la barre** : Aucune (par défaut), **Honneur** (votre honneur par rapport
+  au plafond : doré, orange dès 90 %, rouge au plafond) ou **Rang JcJ** (vos points dans
+  le rang actuel, pleine au rang max). Elle se place 1 pixel sous celle de la réputation
+  quand les deux sont affichées, de même largeur et de même hauteur, sinon à sa place ;
+  survolez-la pour l'infobulle JcJ (aussi avec le JcJ en barre principale). Une bande qui
+  montrerait ce que la barre principale JcJ montre déjà (le rang sous le rang, ou
+  l'honneur sous l'honneur avant la saison) n'est pas affichée.
+- **Barre principale** > **JcJ** (le même réglage que sur la page Réputation) : la
+  grande barre montre votre progression dans votre rang, de la couleur du rang ; à
+  gauche le rang et son titre dans la langue du jeu (« Rang 7 · Chevalier-lieutenant »,
+  ou le numéro seul si le jeu n'a pas de titre), à droite les points de rang par heure
+  et le temps avant le rang suivant, en précisant quand ce rang est le plafond de la
+  semaine (« rang 4 (plafond hebdo) dans 1 h 35 » : le plus haut que vous pouvez
+  atteindre avant le reset hebdomadaire), « Plafond de la semaine atteint » quand le
+  plafond vous bloque, « Rang max » au sommet. Avant le début de la saison (le cas de la
+  bêta en ce moment), elle montre votre honneur par rapport au plafond et « Saison JcJ
+  non commencée ». Votre XP passe dans la bande dessous (aucune au niveau max) : sous le
+  niveau max, la bande de réputation n'est donc pas affichée (de même avec la Réputation
+  en barre principale). « Masquer au niveau max » ne masque jamais une barre qui montre
+  le JcJ.
+- **JcJ sur la barre en champ de bataille** (décochée par défaut) : en champ de bataille
+  (pas en arène), la barre principale affiche le JcJ, puis revient à votre choix à la
+  sortie. Le réglage « Barre principale » lui-même ne change jamais. Sous le niveau max,
+  l'XP prend alors la bande du dessous : la bande de réputation n'est pas affichée en
+  champ de bataille.
+- **Alerte au plafond d'honneur** (cochée par défaut) : quand votre honneur atteint le
+  plafond, un son et une petite fenêtre (bouton OK) vous préviennent que l'honneur gagné
+  est perdu tant que vous n'en dépensez pas. Elle attend la fin du combat, ne vient
+  qu'une fois par plafond atteint (pas de nouveau après un `/reload` ; en lecture seule,
+  une fois par chargement : de nouveau après un `/reload`), et revient seulement après
+  une lecture sous le plafond puis un nouveau passage au plafond.
+- **Honneur et rang par heure** : le bouton **Réinitialiser** remet les deux à zéro
+  (`/tpl reset rate` remet à zéro tous les taux : XP, réputation et JcJ).
+
+**L'honneur par heure et les points de rang par heure** fonctionnent comme l'XP par
+heure (même mise en route, grisés au début, mêmes exclusions AFK / auberge / ville,
+gardés par personnage après un `/reload` ou un redémarrage), mais sur votre **temps
+JcJ** seulement : tout votre temps en champ de bataille ou en arène, et en dehors les 15
+minutes qui suivent chaque gain d'honneur ou de points de rang. Passé ces 15 minutes
+hors champ de bataille ou d'arène, les deux taux se mettent **en pause** : ils gardent
+leur valeur, marquée d'un `*`, et reprennent au prochain gain (une soirée de quêtes
+après un champ de bataille ne les fait pas chuter). Dépenser de l'honneur ne les fait
+jamais baisser ; au plafond d'honneur, l'honneur par heure reste tel quel (les gains
+sont perdus), de même que les points de rang par heure au plafond de la semaine ou au
+rang max. Chaque connexion et chaque `/reload` reprennent votre honneur et votre rang
+comme nouveau point de départ (une lecture faite avant que le jeu les ait chargés ne
+compte rien), et un total de rang plus bas lu au passage (autour d'un nouveau rang, dans
+la même semaine et la même saison) ne compte rien.
+
+**JcJ sauvage par niveau** (onglet Niveaux de la fenêtre des statistiques) : le temps
+passé en monde ouvert entre deux signaux JcJ espacés de moins de 15 minutes. Un signal
+est un gain d'honneur ou une victoire honorable (comptée aussi au plafond d'honneur),
+hors champs de bataille et arènes. Le temps est compté à l'arrivée du second signal :
+une victoire isolée ne compte rien, ni les 15 minutes qui suivent votre dernier combat.
+Les victoires du jour comptent à partir de la première valeur au-dessus de 0 lue après
+une connexion ou un `/reload` (le jeu peut d'abord donner 0) : cette lecture est un
+point de départ, jamais une victoire.
+Seul le temps en monde ouvert compte (pas l'AFK, un vol, une capitale, une auberge ni le
+temps mort), au niveau que vous aviez alors (une montée de niveau entre deux signaux le
+partage) ; il fait partie de votre temps « Monde ». TruePlayed le mesure à partir de
+cette version : un niveau joué avant l'indique comme non mesuré (ou mesuré sur une
+partie du niveau), jamais comme 0, et Classic Era n'a pas cet honneur. Survolez le
+chiffre JcJ de l'onglet Niveaux, ou la ligne JcJ de la fiche d'un niveau, pour voir
+chaque champ de bataille et le JcJ sauvage.
+
+**Ce qui est lu, et quand.** TruePlayed ne lit votre rang et ne suit les champs de
+bataille que si quelque chose affiche le JcJ : la bande JcJ, la barre principale JcJ ou
+son option en champ de bataille, ou une info JcJ de la barre. Votre honneur et vos
+victoires honorables du jour sont toujours lus quand ils changent, puisqu'ils mesurent
+votre JcJ sauvage (ci-dessus). Sans affichage JcJ, les points de rang par heure et les
+champs de bataille de la session ne comptent pas (les points de rang par heure gardent
+leur valeur : ils ne baissent pas). Le
+reset hebdomadaire (un nouveau plafond) et le reset quotidien (les victoires honorables
+du jour) sont pris en compte même sans événement du jeu, et l'infobulle JcJ relit le
+rang et les victoires à son ouverture. Un champ de bataille se termine quand vous le
+quittez, ou quand le suivant commence (une file qui s'ouvre pendant la partie) ; son
+résultat compare le vainqueur à votre camp dans la partie. Les arènes comptent comme
+temps JcJ pour les taux, pas comme champs de bataille.
+
+**L'infobulle JcJ** (survol de la bande JcJ, ou de la grande barre en mode JcJ) : votre
+honneur et son plafond avec le pourcentage, l'honneur gagné pendant la session, par
+heure, le temps avant le plafond ou, en rouge, depuis combien de temps vous y êtes ;
+votre rang et son titre, les points dans le rang, le total de la saison, le plafond de
+la semaine (rang et points) et ce qu'il en reste cette semaine (et, quand le rang
+suivant est ce plafond, que c'est le plus haut que vous pouvez atteindre avant le reset
+hebdomadaire), les points de rang gagnés pendant la session et par heure, le temps avant le rang suivant (ou « bloqué par le
+plafond » avec le temps avant la réinitialisation hebdomadaire), la fin de la saison
+quand le jeu la connaît ; vos **victoires honorables** du jour, de la veille, de la
+session, de toute la vie du personnage et votre meilleur rang ; les **champs de bataille
+de la session** : joués, gagnés - perdus (d'après le résultat donné par le jeu en fin de
+partie), honneur moyen et durée moyenne, et celui en cours. Sept infos de la barre
+(honneur, honneur par heure, temps avant le plafond d'honneur, rang JcJ, points de rang
+par heure, temps avant le rang JcJ suivant, victoires honorables du jour) se placent dans
+n'importe quel emplacement de la barre (aussi au niveau max) et du mini-affichage. Sur
+Classic Era (pas de monnaie d'honneur ni de rang de ce type), la page JcJ indique
+seulement que le suivi JcJ n'est pas disponible sur ce client, et rien d'autre ne change.
 
 Sur la bêta de WoW Forever, bloquée au niveau 20 pour l'instant, TruePlayed repère le
 plafond après 3 monstres de suite sans XP : la barre affiche `NIVEAU 20 · PLAFOND` et son
@@ -531,18 +945,74 @@ Le temps passé mort (de la mort jusqu'au retour à la vie, course du fantôme c
 et le temps de métiers (cueillette, minage, dépeçage, pêche, secourisme, artisanat dans
 une fenêtre de métier, désenchantement, crochetage) sont comptés à part, par niveau,
 session, zone, personnage et compte, et ne sont jamais exclus. Ordre de priorité :
-mort > AFK > métiers > vol > instance > ville > auberge > monde. L'onglet Niveaux montre
-le temps mort et les morts de chaque niveau, et le temps estimé au début du niveau.
+mort > AFK > métiers > vol > instance > ville > auberge > monde. L'AFK pendant un vol
+est enregistré comme AFK, mais un long vol passe souvent AFK tout seul et reste un vol :
+la ligne « En vol » de l'infobulle le compte, et le vol de l'onglet Niveaux (chiffre,
+filtre et ligne de la fiche) aussi, sauf si vous excluez l'AFK ; l'AFK d'un champ de
+bataille ou d'un donjon reste de l'AFK. La fiche de chaque niveau (onglet Niveaux)
+montre ses morts, son temps mort et le temps estimé à son début.
+
+**Onglet Niveaux** (`/tpl stats`) : pour un personnage, un histogramme de votre
+parcours, une barre par niveau (celle du niveau 19 : le temps passé au niveau 19 jusqu'au
+20), sans ce que vous excluez, empilée par activité dans les couleurs de la répartition
+de l'infobulle : monde, JcJ sauvage, donjons, raids, champs de bataille, vol, métiers,
+mort, ville, auberge, AFK. Au-dessus, sept chiffres : temps joué, /played serveur,
+moyenne par niveau (et sur les 5 derniers), **JcJ** (champs de bataille et JcJ sauvage ;
+survolez-le pour le détail par champ de bataille), **vol** (l'AFK pendant un vol
+compris, sauf si vous excluez l'AFK), morts et le temps avant le niveau max au rythme
+actuel. Les filtres (Tout, Monde, Instances, JcJ, Vol, Métiers,
+Mort) ne gardent qu'une activité, pour voir à quels niveaux elle a compté. Les niveaux à
+venir apparaissent en barres estompées de leur durée estimée d'après votre rythme sur
+vos derniers niveaux (« Masquer les niveaux à venir » les retire), une ligne marque
+votre moyenne, et la bande « Progression vers le niveau 60 » en bas additionne les
+niveaux terminés, celui en cours et ce qu'il reste. Survolez une barre pour son résumé ;
+**cliquez dessus** pour la fiche du niveau, à droite : la date où il a été terminé, le
+temps joué, le /played serveur, le temps estimé à son début (et l'écart réel, sous les
+exclusions de l'estimation), le cumul
+depuis le niveau 1, l'XP par heure, les morts, la répartition du temps (survolez la
+ligne JcJ pour chaque champ de bataille et le JcJ sauvage ; le vol est toujours
+indiqué), l'XP gagnée sur les monstres, les quêtes et le bonus de repos, et ses zones et
+instances. La barre du niveau en cours, les chiffres et la répartition de sa fiche
+suivent votre jeu tant que la fenêtre est ouverte ; sur cet onglet, elle fait au moins
+1040 x 640 (ou un peu moins que l'écran s'il est plus petit). Pour tout le compte,
+l'onglet reste un tableau : pour chaque niveau, les personnages qui l'ont terminé, leur
+temps moyen et leur XP par heure.
+
+**Infobulle** : survolez la barre (ou le bouton de la minicarte, le mini-affichage) pour
+l'infobulle « Niveau en cours » : XP, repos, temps avant le niveau, monstres à tuer, XP
+par heure, réputation suivie (quand une faction est suivie), session, temps à ce niveau,
+temps dans la zone à ce niveau et répartition de ce niveau (« Répartition du niveau »).
+Maintenez **Maj** : le détail du rythme s'y
+ajoute, et une **deuxième infobulle, « Total du personnage »**, s'ouvre **à côté, à
+droite** : temps de jeu, temps en instance, tout votre temps dans la zone, /played du
+serveur, moyenne des 5 derniers niveaux, répartition du personnage (« Répartition
+totale »), puis zones, continents, capitales, temps et morts. Chaque répartition a son
+libellé, avec à sa droite une barre colorée de ses parts, et les parts écrites en
+dessous, alignées à droite (dans tous les thèmes sauf Heroic fantasy, qui n'a pas de
+barre). Les deux répartitions sont face à face, à la même hauteur, pour comparer d'un
+coup d'œil le niveau et tout le personnage ; chaque infobulle garde sa largeur, et la
+ligne d'aide (Maj, clics) est en bas de « Total du personnage ». « Niveau en cours » reste
+centrée sur la barre (dessous, ou dessus pour une barre en bas de l'écran) ; les deux se
+déplacent ensemble pour rester dans l'écran, sans jamais se chevaucher. Sur un écran trop
+étroit pour les mettre côte à côte (petite fenêtre ou grande échelle d'interface),
+« Total du personnage » passe sous « Niveau en cours », les deux à la largeur de la plus
+large, « Niveau en cours » en haut. Avec le thème Classique, ce sont deux infobulles du
+jeu (un addon qui ne retouche que l'infobulle du jeu peut laisser la deuxième à l'aspect
+d'origine) ; chaque barre de répartition va de son libellé jusqu'au bord droit de
+l'infobulle, et une infobulle trop étroite pour une barre de 80 pixels s'élargit un peu
+(l'infobulle du jeu reprend sa largeur pour ce que vous survolez ensuite). L'infobulle
+d'un affichage Data Broker reste une seule infobulle, avec les mêmes libellés, en texte
+seul (chaque libellé et ses premières parts sur une ligne, sans barre).
 
 Le temps par zone (Forêt d'Elwynn, Strangleronce...) est dans l'onglet Zones de la
 fenêtre de statistiques, avec le temps par continent (Kalimdor, Royaumes de l'Est,
-instances) ; survolez un niveau dans l'onglet Niveaux pour voir ses zones. La barre est
+instances) ; cliquez sur un niveau dans l'onglet Niveaux pour voir ses zones. La barre est
 affichée sans fond par défaut (option « Opacité du fond »), avec des textes contournés et
 ombrés pour rester lisibles, dans la couleur de votre choix. Comme la barre d'XP du jeu,
 elle prend la couleur du repos quand vous êtes reposé ; ces deux couleurs se changent
 aussi (Options > Couleurs de la barre, bouton « Couleurs du thème »). Survolez les FPS ou la latence pour voir leur
 graphique (30 s, 1 min ou 5 min).
-La barre affiche trois infos au choix parmi 19. Tapez `/tpl` pour les options,
+La barre affiche trois infos au choix parmi 28 (21 sur Classic Era). Tapez `/tpl` pour les options,
 `/tpl stats` pour la fenêtre de statistiques et `/tpl help` pour la liste des
 commandes. L'addon est traduit dans toutes les langues du jeu (français, anglais, allemand,
 espagnol, italien, portugais, russe, coréen, chinois) et suit la langue du jeu ; pour en
@@ -554,7 +1024,8 @@ monstres) restent dans la langue du jeu.
 
 **Thèmes** : 13 thèmes changent l'aspect de la barre, de son infobulle, du graphique et
 de la fenêtre de statistiques : Futuriste (par défaut, pour tout le monde), Classique
-(l'aspect d'origine, à l'identique : `/tpl theme actuel`), Heroic fantasy, Pixel rétro
+(l'aspect d'origine : barre et fenêtre à l'identique, infobulle du jeu avec une barre de
+répartition ; `/tpl theme actuel`), Heroic fantasy, Pixel rétro
 et un thème par classe (Guerrier, Paladin, Chasseur, Voleur, Prêtre, Chaman, Mage,
 Démoniste, Druide), plus « Classe (auto) » qui donne à chaque personnage le thème de sa
 classe. Choisissez-le dans Options > Affichage > Thème, par clic droit sur la barre >

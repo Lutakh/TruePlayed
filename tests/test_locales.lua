@@ -50,7 +50,7 @@ local SAME_OK = {
   PFX_PLAYED_FMT = true, PFX_INST_TOTAL_FMT = true, PFX_SESSION_FMT = true, XP_BARE_FMT = true, STALL_MARK = true,
   TT_XP = true, TT_RESTED_FMT = true, TT_SERVER_AGE_FMT = true, BD_PART_FMT = true, BD_PVP = true, BD_AFK = true,
   MASK_AFK = true, TT_AFK = true, TT_NET_FMT = true, INST_ROW_FMT = true, KIND_PVP = true, COL_AFK = true,
-  COL_XP = true, COL_XPH = true, COL_SERVER = true, COL_INST = true, COL_ZONE = true, COL_CHARS = true,
+  COL_XP = true, COL_XPH = true, COL_INST = true, COL_ZONE = true, COL_CHARS = true,
   GRAPH_WINDOW_30 = true, GRAPH_WINDOW_60 = true, GRAPH_WINDOW_300 = true, GRAPH_AGE_S_FMT = true,
   GRAPH_AGE_MS_FMT = true, SLIDER_PX_FMT = true, SLIDER_PCT_FMT = true, OPT_SLOT2 = true, OPT_SLOT3 = true,
   OPT_VERSION_FMT = true, TT_SESSION = true, TAB_ZONES = true, TAB_SESSIONS = true, TT_ZONE_FMT = true,
@@ -61,6 +61,28 @@ local SAME_OK = {
   THEME_HEROIC = true, BD_DUNGEON = true, TT_OF_WHICH_AFK_FMT = true, XP_FMT = true, XP_LABEL = true,
   -- minimap button and mini display (backlog 3 and 4): "Info %d" as OPT_SLOT2, "Options" (fr)
   OPT_MINI_INFO_FMT = true, CLICK_OPTIONS = true,
+  -- automatic reload: the minutes of its interval slider, as SLIDER_PX_FMT
+  SLIDER_MIN_FMT = true,
+  -- watched reputation: its tooltip row (standing, numbers, percent), the standings spelled
+  -- as in English ("Hostile" in French, "Neutral" in German and Spanish)
+  TT_REP_FMT = true, REP_STANDING_2 = true, REP_STANDING_4 = true,
+  -- the reputation's detailed tooltip, tokens and picker: a mark, a sign, punctuation and
+  -- the short "Rep." of the Romance languages
+  TT_REP_CURRENT_FMT = true, TT_REP_GAIN_FMT = true, REP_ETA_FMT = true, OPT_REP_FACTION_FMT = true,
+  PFX_REPH_FMT = true,
+  -- PvP: the international word (German, Italian, Russian, Korean, Chinese), "Honor"
+  -- (Spanish), HK (the players' abbreviation), OK, and the patterns made of numbers and
+  -- punctuation only
+  TT_SECTION_PVP = true, PVP_LABEL = true, REP_MAIN_PVP = true, OPT_PVP_PAGE = true, TT_PVP_HONOR = true,
+  TOKEN_HONOR = true, PVP_STRIP_HONOR = true, PFX_HONOR_FMT = true, PFX_HONOR_ONLY_FMT = true,
+  PFX_HONORH_FMT = true, PFX_HK_FMT = true, PVP_ALERT_OK = true, PVP_MAIN_RATE_FMT = true, TT_PVP_OF_FMT = true,
+  TT_PVP_WL_FMT = true,
+  -- the Levels tab (LevelChart): the "Instances" filter (the French word too), the
+  -- "duration · percent" pattern of a bar part and the "<1%" of a share under 1 %
+  -- (punctuation only)
+  LV_F_INST = true, LV_PART_FMT = true, LV_LT_FMT = true,
+  -- its detail sheet (LevelDetail): "<gained> / <size> XP" (numbers and the game's word)
+  LD_XP_FMT = true,
 }
 for name in pairs(NAMES) do SAME_OK[name] = true end
 
@@ -194,6 +216,51 @@ T.test("locales: every file has the keys of enUS with the same format arguments,
       for k in pairs(L) do T.ok(en[k] ~= nil, code .. " has a key enUS lacks: " .. tostring(k)) end
     end
   end
+end)
+
+-- The breakdown rows of the two tooltip blocks have their own labels (block 1: the
+-- level's, block 2 and the character section: the total), in every language; the one
+-- tooltip of Fill (Broker) shows both, the level's first. Their widths beside the gauge
+-- (or the parts) are checked with the tooltip rows below.
+T.test("locales: the two breakdown labels (the level's, the total) in every language, Broker's tooltip too", function()
+  local fr = { "R\195\169partition du niveau", "R\195\169partition totale" }
+  for _, code in ipairs(ALL) do
+    local L = LocaleTable(code)
+    local lv, tot = L.TT_BREAKDOWN_LEVEL, L.TT_BREAKDOWN_TOTAL
+    T.ok(type(lv) == "string" and lv ~= "" and type(tot) == "string" and tot ~= "", code .. ": both labels")
+    T.ok(lv ~= tot, code .. ": two different labels")
+    T.eq(L.TT_BREAKDOWN, nil, code .. ": no single label left")
+    if code == "frFR" then T.eq({ lv, tot }, fr, "frFR: the agreed texts") end
+    if code ~= "enUS" then
+      local en = LocaleTable("enUS")
+      T.ok(lv ~= en.TT_BREAKDOWN_LEVEL and tot ~= en.TT_BREAKDOWN_TOTAL, code .. ": translated")
+    end
+    -- the one tooltip of Fill (Broker, Shift): the level's label, then the total
+    Stub.Reset()
+    local ns = StartIn(code, { ui = { ldb = false } })
+    Stub.Advance(60)
+    local tt = Stub.NewTooltip()
+    ns.Tooltip.Fill(tt, true)
+    local labels = {}
+    for _, l in ipairs(tt._lines) do
+      if l[1] == ns.L.TT_BREAKDOWN_LEVEL or l[1] == ns.L.TT_BREAKDOWN_TOTAL then labels[#labels + 1] = l[1] end
+    end
+    T.eq(labels, { lv, tot }, code .. ": Fill shows the level's breakdown, then the total")
+    T.eq(#Stub.errors, 0, code .. ": no Lua error")
+  end
+end)
+
+-- The detail sheet's stall note (LevelDetail, LD_STALL_FMT): the level's seconds without an
+-- XP gain, never to be read as "the player is stuck": no aside in brackets (the old
+-- "(stalled)" and its translations, the CJK full-width ones), one duration; the agreed
+-- French text.
+T.test("locales: the detail sheet's stall note is time without an XP gain, no 'stalled' aside", function()
+  for _, code in ipairs(ALL) do
+    local s = LocaleTable(code).LD_STALL_FMT
+    T.eq(Specs(s), { "%s" }, code .. ": one duration")
+    T.no(find(s, "(", 1, true) or find(s, "\239\188\136", 1, true), code .. ": no aside in brackets: " .. s)
+  end
+  T.eq(LocaleTable("frFR").LD_STALL_FMT, "Dont %s sans gain d'XP.", "frFR: the agreed text")
 end)
 
 T.test("locales: dates, numbers and short duration units of each language", function()
@@ -509,8 +576,11 @@ local function FSWidth(Width, fs, text)
 end
 
 -- A level-20 character after some play in theme `theme`, the language of client `code`:
--- "kills" = 8 kills in 4 min (the widest values), "none" = no kill yet, "long" = an hour
--- of kills, "stall" = frozen rate, "cap" = a server level cap.
+-- "kills" = 8 kills in 4 min (the widest values; on WoW Forever's PvP API, a season
+-- running, honor and rank points gained and 12 honorable kills: the PvP tokens show
+-- values), "none" = no kill yet, "long" = an hour
+-- of kills, "stall" = frozen rate, "cap" = a server level cap, "crash" = an hour lost in
+-- a crash and rebuilt (most of the level and of the character).
 local function StartPlay(theme, code, play)
   Stub.InstallUI({ ldb = false })
   Stub.theme = theme
@@ -518,11 +588,20 @@ local function StartPlay(theme, code, play)
   local p = Stub.player
   p.level, p.xp, p.rest = 20, 10115, 0
   p.max = Stub.xpTable[20] or 23200
+  if play == "kills" then
+    Stub.SetPvpAPI("forever")
+    Stub.SetWeek(2, 5, 3, { quiet = true })
+    Stub.pvp.total = 2000
+  end
   local ns = Stub.LoadAddon()
   Stub.LoginSequence({ settle = 3 })
   ns.Core.SetSetting("widget.locked", true)
   Stub.Advance(1)
   if play == "kills" then
+    ns.Core.SetSetting("widget.pvpAuto", true)   -- PvP shown somewhere: its events registered
+    Stub.GainHonor(12250)
+    Stub.GainRankPoints(450)
+    Stub.HK(12)
     for _ = 1, 8 do Stub.Advance(30); Stub.Kill(171) end
   elseif play == "long" then
     for _ = 1, 60 do Stub.Advance(60); Stub.Kill(171) end
@@ -540,27 +619,66 @@ local function StartPlay(theme, code, play)
     Stub.SetResting(true); Stub.Advance(600); Stub.SetResting(false)
   elseif play == "cap" then
     for _ = 1, 3 do Stub.KillNoXP() end
+  elseif play == "crash" then
+    -- crash review A2: 10 min of kills saved, then an hour the save never got (a crash),
+    -- rebuilt from the login /played: the rebuilt sub-lines under "This level" and
+    -- "Played", and the "mostly rebuilt" notes under both breakdowns
+    for _ = 1, 10 do Stub.Advance(60); Stub.Kill(171) end
+    Stub.Logout()
+    Stub.Reset({ keepWorld = true })      -- drops the UI stubs: installed again below
+    Stub.Advance(3600)
+    Stub.InstallUI({ ldb = false })
+    _G.TruePlayedDB = Stub.DeepCopy(Stub.saved)
+    ns = Stub.LoadAddon()
+    Stub.LoginSequence({ settle = 15 })   -- the login /played request (+10 s)
   end
   Stub.Advance(2)
   return ns, ns.Bar.frame
 end
 
--- Rows of the shown private tooltip that do not fit (tests/test_round4_regress.lua).
+-- The shown blocks of the private tooltip: block 1, and block 2 while Shift is held.
+local function Shown(ns)
+  local TF = ns.TooltipFrame
+  local out = { TF.frame }
+  if TF.frame2 and TF.frame2:IsShown() then out[2] = TF.frame2 end
+  return out
+end
+
+-- Rows of the shown private tooltip (both blocks) that are outputs of the format `fmt`
+-- (its %s / %d matched lazily): the crash play checks that its notes are drawn, hence
+-- measured.
+local function RowsOf(ns, fmt)
+  local p = fmt:gsub("%%[sd]", "@@@"):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):gsub("@@@", ".-")
+  local n = 0
+  for _, tf in ipairs(Shown(ns)) do
+    for i = 1, tf.tp.n do
+      local row = tf.tp.rows[i]
+      if row.left:IsShown() and tostring(row.left:GetText()):find("^" .. p .. "$") then n = n + 1 end
+    end
+  end
+  return n
+end
+
+-- Rows of the shown private tooltip (both blocks) that do not fit
+-- (tests/test_round4_regress.lua).
 local function CutRows(ns)
-  local tf = ns.TooltipFrame.frame
   local tt = ns.Themes.Active().tt
-  local inner = tf:GetWidth() - tt.pad[1] - tt.pad[2]
   local out = {}
-  for i = 1, tf.tp.n do
-    local row = tf.tp.rows[i]
-    if not row.wrap and row.left:IsShown() then
-      local lw = row.left:GetUnboundedStringWidth()
-      local need = lw
-      if row.right:IsShown() and row.kind ~= "title" then
-        need = lw + tt.gap + row.right:GetUnboundedStringWidth()
-      end
-      if (rawget(row.left, "_width") or 0) > 0 or need > inner + 0.5 then
-        out[#out + 1] = format("%q %.0f > %.0f", tostring(row.left:GetText()), need, inner)
+  for b, tf in ipairs(Shown(ns)) do
+    local inner = tf:GetWidth() - tt.pad[1] - tt.pad[2]
+    for i = 1, tf.tp.n do
+      local row = tf.tp.rows[i]
+      if not row.wrap and row.left:IsShown() then
+        local lw = row.left:GetUnboundedStringWidth()
+        local need = lw
+        if row.right:IsShown() and row.kind ~= "title" then
+          need = lw + tt.gap + row.right:GetUnboundedStringWidth()
+        elseif row.kind == "gauge" then
+          need = lw + tt.gap + tt.gauge.w + 1           -- the label clear of its gauge
+        end
+        if (rawget(row.left, "_width") or 0) > 0 or need > inner + 0.5 then
+          out[#out + 1] = format("block %d: %q %.0f > %.0f", b, tostring(row.left:GetText()), need, inner)
+        end
       end
     end
   end
@@ -574,7 +692,7 @@ T.test("widths: no tooltip row is cut (every theme, every new locale, short / Sh
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
         for _, code in ipairs(NEW) do
-          for _, play in ipairs({ "kills", "none", "long", "stall", "cap", "activity" }) do
+          for _, play in ipairs({ "kills", "none", "long", "stall", "cap", "activity", "crash" }) do
             Stub.Reset()
             local ns, frame = StartPlay(key, code, play)
             for _, shift in ipairs({ false, true }) do
@@ -583,6 +701,13 @@ T.test("widths: no tooltip row is cut (every theme, every new locale, short / Sh
               Stub.Advance(1)
               for _, s in ipairs(CutRows(ns)) do
                 bad[#bad + 1] = format("%s %s %s %s: %s", key, code, play, shift and "Shift" or "short", s)
+              end
+              if play == "crash" then
+                local L, want = ns.L, shift and 2 or 1
+                if RowsOf(ns, L.TT_EST_FMT) ~= want or RowsOf(ns, L.TT_EST_MOST_FMT) ~= want then
+                  bad[#bad + 1] = format("%s %s crash %s: the rebuilt notes are missing", key, code,
+                                         shift and "Shift" or "short")
+                end
               end
               ns.Tooltip.Hide()
             end
@@ -617,6 +742,106 @@ T.test("widths: the minimap button's hint lines fit every theme's tooltip (every
       end
     end
     Report(bad, "cut minimap hints")
+  end)
+end)
+
+-- The reputation's detailed tooltip (Tooltip.FillRep, shown over the strip or the main
+-- track): no row cut in any theme or language, without a rate, with one, frozen (its
+-- notes), at Exalted and with the chosen faction unreadable (the fallback note).
+T.test("widths: no row of the reputation tooltip is cut (every theme and language, every state)", function()
+  RealWidths(function()
+    local bad = {}
+    for _, key in ipairs(KEYS) do
+      if key ~= "actuel" then
+        for _, code in ipairs(ALL) do
+          Stub.Reset()
+          local ns = StartPlay(key, code, "none")
+          Stub.SetFactions(Stub.REP_TREE())
+          Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 })
+          local hit = ns.Bar.frame.tp.repHit
+          local function Check(state)
+            Stub.RunScript(hit, "OnEnter")
+            Stub.Advance(1)
+            if not ns.Tooltip.IsShownFor(hit) then bad[#bad + 1] = format("%s %s %s: not shown", key, code, state) end
+            for _, s in ipairs(CutRows(ns)) do bad[#bad + 1] = format("%s %s %s: %s", key, code, state, s) end
+            Stub.RunScript(hit, "OnLeave")
+          end
+          Check("no rate")
+          for _ = 1, 12 do Stub.Advance(60); Stub.GainRep(50) end
+          Check("rate")
+          Stub.Advance(ns.C.XP_STALL + 60)
+          Check("frozen")
+          Stub.GainRep(40000)
+          Check("exalted")
+          ns.Rep.SetChosen(529)
+          Stub.rep.missing[529] = true
+          Stub.Fire("UPDATE_FACTION")
+          Check("fallback")
+          if #Stub.errors > 0 then bad[#bad + 1] = key .. " " .. code .. ": " .. tostring(Stub.errors[1]) end
+        end
+      end
+    end
+    Report(bad, "cut reputation tooltip rows")
+  end)
+end)
+
+-- The PvP detailed tooltip (Tooltip.FillPvp, shown over the PvP strip or the main track in
+-- the PvP mode): no row cut in any theme or language, before any rate, with rates in a
+-- battleground (one in progress), paused after it (its note, one battleground played), at
+-- the honor cap and the week's cap (blocked until the reset), at the max rank, without a
+-- season.
+T.test("widths: no row of the PvP tooltip is cut (every theme and language, every state)", function()
+  RealWidths(function()
+    local bad = {}
+    for _, key in ipairs(KEYS) do
+      if key ~= "actuel" then
+        for _, code in ipairs(ALL) do
+          Stub.Reset()
+          Stub.SetPvpAPI("forever")
+          Stub.SetWeek(2, 3, 1, { quiet = true })
+          Stub.pvp.total = 2000
+          local ns = StartPlay(key, code, "none")
+          ns.Core.SetSetting("widget.pvp", "rank")
+          ns.Core.SetSetting("pvp.capAlert", false)
+          Stub.pvp.seasonEnd = 86400 * 40
+          local hit = ns.Bar.frame.tp.pvpHit
+          local function Check(state)
+            Stub.RunScript(hit, "OnEnter")
+            Stub.Advance(1)
+            if not ns.Tooltip.IsShownFor(hit) then bad[#bad + 1] = format("%s %s %s: not shown", key, code, state) end
+            for _, s in ipairs(CutRows(ns)) do bad[#bad + 1] = format("%s %s %s: %s", key, code, state, s) end
+            Stub.RunScript(hit, "OnLeave")
+          end
+          Check("no rate")
+          Stub.EnterBG()
+          for _ = 1, 12 do
+            Stub.Advance(60)
+            Stub.GainHonor(1234)
+            Stub.GainRankPoints(20)
+            Stub.HK(3)
+          end
+          Check("battleground")
+          Stub.MatchComplete(0, 1500)
+          Stub.LeaveBG()
+          Stub.Advance(ns.C.PVP_IDLE + 60)
+          Check("paused")
+          Stub.GainHonor(30000)
+          Stub.GainRankPoints(5000)
+          Stub.pvp.hkHigh = 18
+          Check("capped")
+          Stub.SetWeek(10, 14, 13)
+          Stub.GainRankPoints(30000)
+          Check("max rank")
+          Stub.SetWeek(-1, 0, 0, { quiet = true })
+          Stub.pvp.total = 0
+          Stub.Fire("UPDATE_FACTION")
+          ns.Core.SetSetting("widget.pvp", "honor")
+          Check("no season")
+          if #Stub.errors > 0 then bad[#bad + 1] = key .. " " .. code .. ": " .. tostring(Stub.errors[1]) end
+        end
+      end
+    end
+    Report(bad, "cut PvP tooltip rows")
   end)
 end)
 
@@ -827,31 +1052,44 @@ T.test("widths: the options panel in every language (labels, dropdown entries, b
     local bad = {}
     for _, code in ipairs(ALL) do
       Stub.Reset()
+      Stub.SetPvpAPI("forever")                   -- the PvP page's controls and tokens
       local ns = StartIn(code, { ui = { modern = true } })
       ns.Options.Open()
-      local panel = Stub.ui.categories[1].frame
-      local controls = Controls()
       local GAME = nil
       local function Check(what, text, size, limit)
         local w = Width(GAME, size, text)
         if w > limit then bad[#bad + 1] = format("%s %s: %q %.0f > %d", code, what, text, w, limit) end
       end
-      for path, rec in pairs(controls) do
-        local label = rec.label and rawget(rec.label, "_text")
-        if label then
-          if rec.kind == "check" then Check(path, label, 12, 520) else Check(path, label, 12, 218) end
+      -- the main page, then the Reputation page (a subcategory; its faction picker shows
+      -- the game's names, only its "automatic" entry is ours), then the PvP page
+      local sub = Stub.ui.subcategories[1]
+      T.ok(sub ~= nil, code .. ": the Reputation page")
+      T.ok(Stub.ui.subcategories[2] ~= nil, code .. ": the PvP page")
+      Check("rep.faction entry", ns.L.OPT_REP_FACTION_AUTO, 12, 190)
+      for page = 1, 3 do
+        local cat = page == 1 and Stub.ui.categories[1] or Stub.ui.subcategories[page - 1]
+        if page >= 2 then Settings.OpenToCategory(cat.ID) end
+        local panel = cat.frame
+        local controls = rawget(panel, "controls")
+        T.ok(type(controls) == "table", code .. ": page " .. page .. " built")
+        for path, rec in pairs(controls) do
+          local label = rec.label and rawget(rec.label, "_text")
+          if label then
+            -- a checkbox followed by a help icon leaves it rec.helpRoom
+            if rec.kind == "check" then Check(path, label, 12, 520 - (rec.helpRoom or 0)) else Check(path, label, 12, 218) end
+          end
+          for _, ch in ipairs(rec.choices or {}) do Check(path .. " entry", ch.label, 12, 190) end
         end
-        for _, ch in ipairs(rec.choices or {}) do Check(path .. " entry", ch.label, 12, 190) end
-      end
-      for _, o in ipairs(Stub.regions) do
-        if Under(o, panel) then
-          local ty, text = rawget(o, "_type"), rawget(o, "_text")
-          if ty == "FontString" and type(text) == "string" and text ~= "" then
-            local parent = rawget(o, "_parent")
-            if rawget(parent, "_type") == "Button" then
-              Check("button", text, 12, (rawget(parent, "_width") or 0) - 16)
-            elseif rawget(o, "_fontObject") == "GameFontNormal" then
-              Check("header", text, 12, 560)
+        for _, o in ipairs(Stub.regions) do
+          if Under(o, panel) then
+            local ty, text = rawget(o, "_type"), rawget(o, "_text")
+            if ty == "FontString" and type(text) == "string" and text ~= "" then
+              local parent = rawget(o, "_parent")
+              if rawget(parent, "_type") == "Button" then
+                Check("button", text, 12, (rawget(parent, "_width") or 0) - 16)
+              elseif rawget(o, "_fontObject") == "GameFontNormal" then
+                Check("header", text, 12, 560)
+              end
             end
           end
         end
@@ -917,10 +1155,271 @@ T.test("widths: the statistics window in every language and theme", function()
   end)
 end)
 
--- Statistics window, lot 8: with every column in use (deaths, professions, AFK, inn, city,
--- an estimate, the 12-hour clock: the widest values) every visible header and cell text
--- fits its column (the flexible zone column aside: a long zone name may be cut), the
--- columns do not overlap and end inside the window, in every language.
+-- The Levels chart (LevelChart.lua) at its minimum size (1040 x 640; and 1004 x 640 on a
+-- 4:3 screen, the default and the pixel themes), in every language and theme, with the
+-- widest values its texts can take (formatted here: 125d 23h, 12d 23h, 9h 59m, level 59 /
+-- 60, 100 %, a 12-hour date): every chip text fits its chip (a sub line as the module shows it for the widest values of another character at level 60: in full,
+-- else with its durations by their largest unit, LevelChart SubFit, which measures the
+-- unbounded width; FM.Install bounds GetStringWidth as the client does), the filter
+-- pills take two rows at most and each fits beside the hide-upcoming toggle, every chart
+-- title fits with the summary on its row, the axis labels fit the axis room, the average
+-- label half the plot, the strip's title with its share and its legend fit the strip, the
+-- detail sheet's texts fit their places (LevelDetail.lua: title and status, the figure
+-- cards' label / value / sub within a card, each section's title with its right text, a
+-- breakdown row's label (the PvP row with its hover hint) left of its value column, the
+-- value and percent columns, the XP columns, the zone times, the upcoming level's box and
+-- lines: a level's widest durations are 2d 23h and 9h 59m, the total since level 1 and
+-- the time until a level is reached the chart's), and no row of the bar, PvP chip or
+-- detail PvP row tooltips is cut (the private tooltip; the classic GameTooltip grows;
+-- wrapped notes and the no-record line wrap). The Levels hint
+-- (332 px) is checked by "widths: the statistics window" above (the chart is the Levels
+-- tab of a character).
+T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, tooltips) in every language and theme", function()
+  RealWidths(function(Width)
+    local bad = {}
+    -- every theme on a 16:9 screen (the 1040 x 640 minimum), the default and the widest
+    -- font (pixel) on a 4:3 screen at UI scale 1 (UIParent 1024 x 768: a 1004 px window,
+    -- LevelChart.MinSize; the chart column 74 px narrower)
+    local RUNS = { { "actuel" }, { "futuriste" }, { "pixel" }, { "warlock" }, { "actuel", 1024 }, { "pixel", 1024 } }
+    for _, code in ipairs(ALL) do
+      for _, run in ipairs(RUNS) do
+        local key, screenW = run[1], run[2]
+        Stub.Reset()
+        local ns = StartPlay(key, code, "activity")
+        ns.Core.SetSetting("window.dateFmt", "mdy")
+        ns.Core.SetSetting("window.clock", "12")
+        if screenW then UIParent:SetSize(screenW, 768) end
+        ns.Window.Show("levels")
+        Stub.Advance(1)
+        local L, Fmt = ns.L, ns.Fmt
+        local tp = rawget(_G, "TruePlayedStatsFrame").tp
+        local ch = tp.chart
+        local geo = ch.geo
+        local where = key .. " " .. code .. (screenW and " 4:3" or "")
+        if screenW then T.eq(rawget(_G, "TruePlayedStatsFrame"):GetWidth(), screenW - 20, where .. ": the window") end
+        -- the widest of `texts` in the font of fs must fit `limit`
+        local function Widest(fs, texts)
+          local w, which = 0, ""
+          for _, s in ipairs(texts) do
+            local x = FSWidth(Width, fs, s)
+            if x > w then w, which = x, s end
+          end
+          return w, which
+        end
+        local function Need(what, need, limit, text)
+          if need > limit then bad[#bad + 1] = format("%s %s: %q %.0f > %d", where, what, tostring(text), need, limit) end
+        end
+        local function Fits(what, fs, limit, texts)
+          local w, which = Widest(fs, texts)
+          Need(what, w, limit, which)
+        end
+        -- formats of one wide duration (D) or a pair of them
+        local SECS = { 125 * 86400 + 23 * 3600, 12 * 86400 + 23 * 3600, 9 * 3600 + 59 * 60 }
+        local D = {}
+        for i, v in ipairs(SECS) do D[i] = Fmt.Duration(v) end
+        local function With(fmt, ...)
+          local args, out = { ... }, {}
+          for _, d in ipairs(D) do
+            local a = {}
+            for i, v in ipairs(args) do a[i] = (v == "D") and d or v end
+            out[#out + 1] = format(fmt, (unpack or table.unpack)(a))
+          end
+          return out
+        end
+        -- the chips' label, value and fixed sub lines (the duration sub lines: below)
+        local inner = geo.chipW - 16
+        local serverSub = { L.LV_SERVER_SUB, Fmt.Ago(7200), Fmt.Ago(86400 * 45) }
+        local texts = {
+          { { L.LV_PLAYED }, D, { format(L.LV_PLAYED_SUB_FMT, 59), L.LV_PLAYED_SUB_ONE } },
+          { { L.TT_SERVER }, D, serverSub },
+          { { L.LV_AVG }, D, {} },
+          { { L.BD_PVP }, D, {} },
+          { { L.LV_FLIGHT }, D, { format(L.LV_FLIGHT_SUB_FMT, Fmt.Percent(0.123)),
+            format(L.LV_FLIGHT_SUB_FMT, format(L.LV_LT_FMT, Fmt.Percent(0.01))) } },
+          { { L.TT_DEATHS }, { Fmt.Number(1234) }, {} },
+          { { format(L.LV_TOP_IN_FMT, 60), L.MAX_LEVEL, L.CAP_SHORT, L.LV_XP_OFF },
+            { Fmt.ETA(SECS[1]), Fmt.ETA(SECS[2]), Fmt.ETA(SECS[1]) .. "+", "60", format(L.LV_CAP_LEVEL_FMT, 60) },
+            { L.LV_TOP_SUB } },
+        }
+        for i = 1, 7 do
+          local c = ch.chips[i]
+          T.eq(rawget(c.label, "_width"), inner, "chip text width")
+          Fits("chip " .. i .. " label", c.label, inner, texts[i][1])
+          Fits("chip " .. i .. " value", c.value, inner, texts[i][2])
+          Fits("chip " .. i .. " sub", c.sub, inner, texts[i][3])
+        end
+        -- filter pills and the toggle
+        if geo.pillRows > 2 then bad[#bad + 1] = format("%s: %d rows of filter pills", where, geo.pillRows) end
+        local tw = rawget(ch.toggle, "_width") or 0
+        for f, p in ipairs(ch.filters) do
+          Need("pill " .. f .. " beside the toggle", (rawget(p.btn, "_width") or 0) + 10 + tw, geo.colW,
+            rawget(p.fs, "_text"))
+        end
+        -- every chart title with the summary on its row
+        local titles = { "LV_T_ALL", "LV_T_WORLD", "LV_T_INST", "LV_T_PVP", "LV_T_FLIGHT", "LV_T_PROF", "LV_T_DEAD" }
+        for f, tkey in ipairs(titles) do
+          local sums = With(f == 1 and L.LV_SUM_FMT or L.LV_SUM_FILTER_FMT, "D", 59)
+          sums[#sums + 1] = L.LV_SUM_NONE                     -- no level to count
+          for _, s in ipairs(With(L.LD_TOTAL_FMT, "D")) do sums[#sums + 1] = s end   -- seconds alone
+          local sw, stext = Widest(ch.summary, sums)
+          Need("title " .. tkey .. " + summary", FSWidth(Width, ch.title, L[tkey]) + 12 + sw, geo.colW,
+            L[tkey] .. " | " .. stext)
+        end
+        -- the axis labels (LevelChart AxisText: whole days, whole hours, else a duration; its
+        -- steps to 10 days, then 20, 50... days) left of the plot, the average label
+        local labels = {}
+        for _, step in ipairs({ 600, 1800, 3600, 7200, 14400, 28800, 86400, 172800, 432000, 864000, 1728000,
+                                4320000, 8640000, 17280000, 43200000, 86400000 }) do
+          for j = 1, 5 do
+            local v = step * j
+            if v % 86400 == 0 then
+              labels[#labels + 1] = format(L.LV_DAYS_FMT, math.floor(v / 86400))
+            elseif v % 3600 == 0 then
+              labels[#labels + 1] = format(L.DUR_H, math.floor(v / 3600))
+            else
+              labels[#labels + 1] = Fmt.Duration(v)
+            end
+          end
+        end
+        Fits("axis label", ch.grid[1].label, rawget(ch.plot, "_points")[1].x - 6, labels)
+        Fits("average label", ch.avg.label, math.floor(geo.plotW / 2), With(L.LV_AVG_FMT, "D"))
+        -- the strip: its title and share on one row, its legend on one row
+        local st = ch.strip
+        local sW = (rawget(st.frame, "_width") or 0) - 20
+        local shareW, shareT = Widest(st.share, { format(L.LV_SHARE_FMT, 100, 100), format(L.LV_XP_SHARE_FMT, 100),
+          L.TT_MAX_LEVEL, format(L.LV_CAP_FMT, 60), format(L.LV_XP_OFF_FMT, 60) })
+        local title = format(L.LV_PROGRESS_FMT, 60)
+        Need("strip title + share", FSWidth(Width, st.title, title) + 20 + shareW, sW, title .. " | " .. shareT)
+        local w1, t1 = Widest(st.fs1, With(L.LV_DONE_FMT, 59, "D"))
+        local w2, t2 = Widest(st.fs2, With(L.LV_CUR_FMT, 59, "D"))
+        local lefts = {}                                     -- the chip's ETA text, "+" when partial
+        for i, v in ipairs(SECS) do lefts[i] = format(L.LV_LEFT_FMT, Fmt.ETA(v) .. "+") end
+        local w3, t3 = Widest(st.fs3, lefts)
+        Need("strip legend", 3 * (8 + 4) + w1 + 14 + w2 + 14 + w3, sW, t1 .. " | " .. t2 .. " | " .. t3)
+        -- the detail sheet: its title and status
+        local hit = ch.cols[ch.state.level].hit
+        hit:GetScript("OnClick")(hit, "LeftButton")
+        local det = tp.detail
+        local dW = det.width - 28 - 24
+        Fits("detail title", det.title, dW, { format(L.LEVEL_SPAN_FMT, 59, 60) })
+        Fits("detail status", det.status, dW, { format(L.LD_DONE_FMT, Fmt.DateTime(1798718400 + 86340)),
+          format(L.LD_CUR_FMT, Fmt.Percent(0.999)), L.LD_UPCOMING, L.LD_NODATA })
+        -- the detail sheet's sections (inner width 348 px, cards of 170 px with 8 px each side)
+        local IW, CARD_IN = 348, 170 - 16
+        local DL = { Fmt.Duration(2 * 86400 + 23 * 3600), Fmt.Duration(9 * 3600 + 59 * 60) }
+        local function WithL(fmt)
+          local out = {}
+          for i, d in ipairs(DL) do out[i] = format(fmt, d) end
+          return out
+        end
+        local cards = det.cards
+        Fits("detail card label", cards.played.label, CARD_IN,
+          { L.LV_PLAYED, L.TT_SERVER, L.LD_ETA, L.LD_ETA_CUR, L.LD_CUM, L.TT_XPH, L.TT_DEATHS })
+        local values = { L.DOTS, Fmt.Rate(250000), Fmt.Number(1234), Fmt.ETA(SECS[1]), Fmt.ETA(SECS[2]) }
+        for _, d in ipairs(D) do values[#values + 1] = "~" .. d end
+        Fits("detail card value", cards.played.value, CARD_IN, values)
+        local subs = { format(L.TT_EXCL_FMT, ns.Stats.MaskLabel(7)), L.LV_SERVER_SUB, format(L.LV_PLAYED_SUB_FMT, 59),
+                       L.LD_NONE }
+        for _, f in ipairs({ L.LD_MORE_FMT, L.LD_LESS_FMT, L.LD_LEFT_FMT, L.LV_DEAD_SUB_FMT }) do
+          for _, t in ipairs(WithL(f)) do subs[#subs + 1] = t end
+        end
+        Fits("detail card sub", cards.played.sub, CARD_IN, subs)
+        local tm, dxp = det.time, det.xp
+        local function Head(what, sec, head, rights)
+          local rw, rt = Widest(sec.right, rights)
+          Need(what, FSWidth(Width, sec.title, head) + 12 + rw, IW, head .. " | " .. tostring(rt))
+        end
+        Head("detail time title", tm, L.LD_TIME, WithL(L.LD_TOTAL_FMT))
+        Head("detail XP title", dxp, L.LD_XP, { format(L.LD_XP_FMT, Fmt.Number(999999), Fmt.Number(999999)) })
+        Fits("detail zones title", det.zonesTitle, IW, { L.LD_ZONES })
+        Fits("detail no zone", det.zonesEmpty, IW, { L.ROW_ZONES_EMPTY })
+        local row = tm.rows[1]
+        for _, k in ipairs({ "BD_WORLD", "BD_DUNGEON", "BD_RAID", "BD_PVP", "LV_FLIGHT", "TT_PROF", "BD_DEAD", "BD_CITY",
+                             "BD_INN", "BD_AFK", "TT_UNTRACKED" }) do
+          local w = FSWidth(Width, row.label, L[k])
+          if k == "BD_PVP" then w = w + 4 + FSWidth(Width, row.hint, L.LD_HOVER) end
+          Need("detail row label", w, 244 - 28 - 4, L[k])        -- the value column starts at 244
+        end
+        Fits("detail row value", row.value, 64, DL)
+        Fits("detail row percent", row.pct, 52, { Fmt.Percent(0.999), Fmt.Percent(0.123),
+          format(L.LV_LT_FMT, Fmt.PercentInt(1)) })                -- a share that rounds to 0
+        local xcol = math.floor((IW - 16) / 3)
+        local col = dxp.cols[1]
+        Fits("detail XP label", col.label, xcol - 12, { L.LD_XP_MOBS, L.LD_XP_QUESTS, L.LD_XP_RESTED })
+        Fits("detail XP value", col.value, xcol, { Fmt.Number(999999) })
+        Fits("detail XP percent", col.pct, xcol, { Fmt.Percent(0.999) })
+        if det.zones[1] then Fits("detail zone time", det.zones[1].time, 64, DL) end
+        hit = ch.cols[ch.state.level + 1].hit
+        hit:GetScript("OnClick")(hit, "LeftButton")
+        local up = det.up
+        T.ok(up.frame ~= nil, where .. ": the upcoming level's sheet")
+        if up.frame then
+          Fits("detail estimate label", up.label, IW - 20, { L.LD_EST_DUR })
+          Fits("detail estimate value", up.value, IW - 20, { Fmt.ETA(SECS[2]), Fmt.ETA(SECS[3]), L.DOTS })
+          Fits("detail estimate sub", up.sub, IW - 20, { L.LD_EST_SUB, L.LD_EST_SUB_RATE })   -- recent / rate
+          Fits("detail XP to earn", up.xp, IW, { format(L.LV_XP_EARN_FMT, Fmt.Number(999999)) })
+          Fits("detail reached in", up.reach, IW, With(L.LD_REACH_FMT, "D"))
+        end
+        -- the tooltips of the chart (the private tooltip of the non-classic themes)
+        if key ~= "actuel" then
+          local function Hover(what, frame)
+            frame:GetScript("OnEnter")(frame)
+            for _, s in ipairs(CutRows(ns)) do bad[#bad + 1] = format("%s %s: %s", where, what, s) end
+            frame:GetScript("OnLeave")(frame)
+          end
+          for _, k in ipairs({ ch.state.level, ch.state.level + 1, 5 }) do Hover("bar " .. k, ch.cols[k].hit) end
+          ch.filters[4].btn:Click("LeftButton")
+          Hover("bar (PvP filter)", ch.cols[ch.state.level].hit)
+          Hover("PvP chip", ch.chips[4].frame)
+          -- the detail sheet's PvP row (a battleground and world PvP at the current level)
+          local lb = ns.char.levels[ch.state.level]
+          lb.s.p = (lb.s.p or 0) + 9 * 3600 + 59 * 60
+          lb.pw = 3600
+          lb.z = lb.z or {}
+          lb.z.i489 = { s = { p = 9 * 3600 + 59 * 60 } }
+          ns.char.zones.i489 = { s = { p = 9 * 3600 + 59 * 60 }, name = ns.Stats.ZoneName("i489", nil) }
+          ch.filters[1].btn:Click("LeftButton")
+          hit = ch.cols[ch.state.level].hit
+          hit:GetScript("OnClick")(hit, "LeftButton")
+          T.ok(det.pvpHit ~= nil and det.pvpHit:IsShown(), where .. ": the PvP row")
+          if det.pvpHit then Hover("detail PvP row", det.pvpHit) end
+        end
+        -- the chips' duration sub lines as LevelChart shows them (review chartrt-1: read, not
+        -- recomputed), for the widest values: another character at level 60 (its time at the
+        -- max level), its last five levels (the recent average), battlegrounds, world PvP
+        -- (measured: the PvP API on for this pass) and dead time
+        local alt = Stub.DeepCopy(ns.char)
+        alt.guid, alt.name, alt.level, alt.levels, alt.zones = "Player-4619-0A1D1DE0", "Wide", 60, {}, {}
+        alt.pvp = { w0 = 1700000000 }
+        ns.db.chars[alt.guid] = alt
+        Stub.SetPvpAPI("forever")
+        for _, a in ipairs(SECS) do
+          for _, b in ipairs(SECS) do
+            for l = 55, 60 do alt.levels[l] = { s = { w = a }, d = 0, xp = 0 } end
+            alt.life = { s = { w = 6 * a + b, p = a, x = a }, pw = b, d = 3 }
+            ns.Window.Show("levels", alt.guid)
+            T.eq(ch.state.char, alt)
+            for _, i in ipairs({ 3, 4, 6, 7 }) do
+              local sub = ch.chips[i].sub
+              Need("chip " .. i .. " sub", FSWidth(Width, sub), inner, rawget(sub, "_text"))
+            end
+          end
+        end
+        Stub.SetPvpAPI("none")
+        ns.Window.Hide()
+        if #Stub.errors > 0 then bad[#bad + 1] = where .. ": " .. tostring(Stub.errors[1]) end
+      end
+    end
+    Report(bad, "Levels chart texts")
+  end)
+end)
+
+-- Statistics window, lot 8: with every column in use (deaths, professions, AFK, the
+-- 12-hour clock: the widest values) every visible header and cell text fits its column (the
+-- flexible zone column aside: a long zone name may be cut), the columns do not overlap and
+-- end inside the window, in every language. The Levels tab of a character is the chart: no
+-- column (its layout's n is 0; its texts: "widths: the Levels chart..." above); the view is
+-- still opened in every language and clock (no Lua error).
 T.test("widths: every column of the statistics window (headers and values), no overlap, every language", function()
   RealWidths(function(Width)
     local bad = {}
@@ -940,6 +1439,9 @@ T.test("widths: every column of the statistics window (headers and values), no o
             local tp = f.tp
             local lay = tp.layout
             local where = format("%s %s %s %s", code, fmt[2], view, tab)
+            if view == "current" and tab == "levels" then
+              T.eq({ lay == tp.layouts.chart, lay.n }, { true, 0 }, where .. ": the chart, no column")
+            end
             local prevEnd = -1
             for c = 1, lay.n do
               local col = lay.cols[c]
@@ -976,8 +1478,10 @@ end)
 -- with its header and header tooltip texts in every language; a tooltip text is short (a
 -- few wrapped tooltip lines), and every column header followed by its help icon fits the
 -- column's minimum width (the widest that layout can be narrowed to), measured like the
--- headers above.
-local LAYOUT_NAMES = { "levels", "account", "zones", "sessions" }
+-- headers above. The Levels tab rework removed the Levels table of a character
+-- (LAYOUTS.levels, 14 columns and 9 tooltip keys of its own: the chart has no column; its
+-- width tests are "widths: the Levels chart..." below): 18 columns in 3 layouts, 17 keys.
+local LAYOUT_NAMES = { "account", "zones", "sessions" }
 local TIP_MAX = 150            -- characters of a header tooltip text
 
 local function WindowLayouts()
@@ -1010,11 +1514,13 @@ T.test("locales: every column of the statistics window has its header tooltip te
       end
     end
   end
-  T.eq(n, 32 * #ALL, "32 columns in 4 layouts")
+  T.eq(n, 18 * #ALL, "18 columns in 3 layouts")
   local keys = 0
   for _ in pairs(tips) do keys = keys + 1 end
-  T.eq(keys, 26, "tooltip keys (one per meaning)")
+  T.eq(keys, 17, "tooltip keys (one per meaning)")
   T.eq(#layouts.none.all, 0, "the account view of the Sessions tab has no column")
+  T.eq(#layouts.chart.all, 0, "the Levels tab of a character (the chart) has no column")
+  T.eq(layouts.levels, nil, "no Levels table of a character any more")
 end)
 
 T.test("widths: every column header and its help icon fit the column in every language", function()

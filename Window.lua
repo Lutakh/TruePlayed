@@ -3,28 +3,35 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 
 -- Window.lua - statistics window (levels / zones / sessions), built lazily on the
 -- first Show. It listens to messages only while shown: a full rebuild on data
--- events, and every C.WINDOW_ROW_REFRESH ticks only the live cells (time of the
--- in-progress level, duration of the live session, footer total) are updated.
+-- events, and every C.WINDOW_ROW_REFRESH ticks only the live parts (the Levels chart of
+-- the current character through LevelChart.Live, duration of the live session, footer
+-- total) are updated.
 -- XP gains only mark the view dirty: the rebuild they need (XP, XP/h, zone order)
 -- waits for a live-cell step at least DIRTY_REBUILD_TICKS after the last rebuild,
 -- and never happens while another character is viewed (our XP cannot change it).
--- Hovering a level row lists the zones of that level (requirement 4).
+-- Levels tab of a character (current or another one): the histogram of LevelChart.lua
+-- (chips, filters, one bar per level, progress strip) and the detail sheet of the selected
+-- level (LevelDetail.lua), in a root of their own beside the scroll frame (hidden then):
+-- Refresh calls LevelChart.Build, the live step LevelChart.Live, the theme
+-- LevelChart.ApplyTheme / LevelDetail.ApplyTheme, Show LevelChart.Reset (the selection back
+-- to the current level, filter "all"), Deactivate hides their tooltip. While the chart
+-- shows, the window is at least LevelChart.MinSize() (1040 x 640, at most the screen; the
+-- layout's minW / minH, read at every Refresh; the saved size is not changed: the grip
+-- saves a dimension only when the user changed it). Levels tab of the account view: a row
+-- per level ("19 » 20": from 19 to 20) with the characters that completed it, their
+-- average time and XP per hour (Stats.AccountLevelAverages).
 -- Zones tab: continents block (Stats.Continents, exclusions applied), then the most
 -- played instances (Stats.TopInstances, kind shown after the name), then the top
 -- capitals, then every zone; the same blocks for the account view (merged zones).
 -- Columns (lot 8): each tab lists its columns; an optional column is shown only when a
--- row of the current view has a value in it (Inst., Inn, City, AFK, Dead, Est., Prof.,
--- ...), and the visible ones are laid out again (EndRows) from their fixed widths, the
--- flexible column (main zone, zone) taking the room left. The window is as wide as its
--- columns need, at least the size saved in the settings (window.width / height); the
--- grip in the bottom-right corner resizes it and saves the size.
--- Levels tab: a row is the time spent AT a level, labelled "19 » 20" (from 19 to 20);
--- Reached = when the next level was reached, Total = the time from level 1 to that
--- moment (Stats.CumulativeTime), Est. = the time to level estimated when the level
--- began, Dead = time dead or a ghost with the deaths of the level ("5m (2)"). Inst. is
--- the time spent in instances (dungeons, raids, PvP) counted under the exclusions, like
--- the time column; the footer adds the instance total when there is one. Dates follow
--- the settings window.dateFmt and window.clock (Fmt.DateTime).
+-- row of the current view has a value in it (Inst., AFK, Dead, Prof., ...), and the
+-- visible ones are laid out again (EndRows) from their fixed widths, the flexible column
+-- (zone) taking the room left. The window is as wide as its columns need, at least the
+-- size saved in the settings (window.width / height) and the layout's minimum; the grip
+-- in the bottom-right corner resizes it and saves the size.
+-- Inst. is the time spent in instances (dungeons, raids, PvP) counted under the
+-- exclusions; the footer adds the instance total when there is one. Dates follow the
+-- settings window.dateFmt and window.clock (Fmt.DateTime).
 -- Continents with less than C.CONT_MIN_SECS of total time are not listed.
 -- Column help: every column header is followed by a small circled "?" (the addon's
 -- Media/Themes/common/help.tga, tinted ui.dim, ui.accent while hovered); hovering the
@@ -58,7 +65,6 @@ local MARGIN_W = 50                -- frame width - content width (insets, scrol
 local ROW_H = 16
 local GAP = 4                      -- between two columns
 local DASH = "-"
-local APPROX = "~"
 local VIEW_CURRENT, VIEW_ACCOUNT = "current", "account"
 local CITY_ROWS = 6
 local INST_ROWS = 8                -- most played instances listed in the Zones tab
@@ -66,13 +72,13 @@ local INST_ROWS = 8                -- most played instances listed in the Zones 
 -- largest tab shown (C.ZONES_MAX zones per character; the account view merges them).
 -- A virtual list with a fixed pool is a possible later improvement (review PERF-2).
 local ZONE_ROWS = 1000
-local TIP_ZONES = 5                -- zones listed in a level row tooltip
 local DIRTY_REBUILD_TICKS = 30     -- min ticks between two rebuilds caused by XP gains
 local GRIP_TEX = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
--- Column help icon (Themes.COMMON_MEDIA.help, 32 x 32 white art tinted at fill time),
--- drawn ICON_GAP after the header text; a header text has the column width minus
--- ICON_ROOM, so the icon always stays inside its column.
-local HELP_TEX = "Interface\\AddOns\\" .. (ns.ADDON or ADDON or "TruePlayed") .. "\\Media\\Themes\\common\\help.tga"
+-- Column help icon (C.TEX_HELP = Themes.COMMON_MEDIA.help, 32 x 32 white art tinted at
+-- fill time, shared with the options panel), drawn ICON_GAP after the header text; a
+-- header text has the column width minus ICON_ROOM, so the icon always stays inside its
+-- column.
+local HELP_TEX = C.TEX_HELP
 local ICON_SIZE, ICON_GAP = 10, 2
 local ICON_ROOM = ICON_GAP + ICON_SIZE
 local HEADER_H = 16                -- height of a header cell (the mouse area of a column header)
@@ -96,13 +102,7 @@ end
 -- of each visible id (pos), and a version bumped whenever the placement changes.
 local function Layout(all) return { all = all, cols = {}, pos = {}, n = 0, ver = 0, need = 0 } end
 local LAYOUTS = {
-  levels = Layout({
-    Col("level", "COL_LEVEL", 56), Col("time", "COL_TIME", 64), Col("eta", "COL_ETA", 62, true),
-    Col("cum", "COL_CUM", 68, true), Col("server", "COL_SERVER", 62, true), Col("xph", "COL_XPH", 52, true),
-    Col("afk", "COL_AFK", 58, true), Col("inn", "COL_INN", 58, true), Col("city", "COL_CITY", 58, true),
-    Col("inst", "COL_INST", 58, true), Col("dead", "COL_DEAD", 82, true), Col("prof", "COL_PROF", 58, true),
-    Col("zone", "COL_MAIN_ZONE", 130, false, true), Col("reached", "COL_REACHED", 100),
-  }),
+  chart = Layout({}),              -- Levels tab of a character: LevelChart (min size: LevelChart.MinSize, Refresh)
   account = Layout({
     Col("level", "COL_LEVEL", 56), Col("chars", "COL_CHARS", 60), Col("avg", "COL_AVG", 100),
     Col("xph", "COL_XPH", 80, true, false, "COL_XPH_ACCOUNT_TIP"),
@@ -156,18 +156,17 @@ local rowW = {}                    -- [row] = applied width
 local rowText = {}                 -- [row] = { [column id] = text } of the build in progress
 local rowColor = {}                -- [row] = { [column id] = colour or false (value) }
 local rowSection = {}              -- [row] = section title, or false for a data row
-local rowTip = {}                  -- [row] = reused tooltip data
 local cellText = setmetatable({}, { __mode = "k" })   -- [FontString] = text set (SetText on change)
 local cellColor = setmetatable({}, { __mode = "k" })  -- [FontString] = colour set
 local used = {}                    -- [column id] = true: a row of this build has a value there
 local nUsed = 0
 
 local curTab = "levels"
-local curLayout = LAYOUTS.levels   -- layout of the build in progress / shown
+local curLayout = LAYOUTS.chart    -- layout of the build in progress / shown
 local headerLayout, headerVer = nil, -1
 local frameW, frameH = WIN_W, WIN_H  -- applied frame size (set on change only)
 local contentW = WIN_W - MARGIN_W
-local minW = -1                    -- applied resize bound
+local minW = -1                    -- applied resize bounds (width * 100000 + height)
 local view = VIEW_CURRENT
 local listening = false
 local tickCount = 0
@@ -175,19 +174,16 @@ local sinceRebuild = 0             -- ticks since the last full rebuild
 local dirty = false                -- XP changed since the last rebuild
 
 -- live cells (current character only)
-local liveLevelRow, liveLevel, liveApprox, liveLevelKey = nil, 0, false, -1
-local liveCumKey = -1
 local liveSessionRow, liveSessionKey = nil, -1
 local liveTotalKey = -1
 
 -- reused data tables for Stats (alloc) functions: Stats recycles the row tables
 -- found in `out` and returns the row count, so they are never wiped here
-local levelRows, cityRows, zoneRows, sessionRows, accountRows = {}, {}, {}, {}, {}
+local cityRows, zoneRows, sessionRows, accountRows = {}, {}, {}, {}
 local contRows, contRawRows, contNoAfkRows = {}, {}, {}   -- Stats.Continents outputs
 local contRaw, contNoAfk, contListed = {}, {}, {}          -- key -> seconds / listed flag
 local instRows = {}                -- Stats.TopInstances output
 local accountZones = {}
-local tipZoneRows = {}             -- level row tooltip (allocation on hover only)
 local viewList, otherList = {}, {}
 local sortChars
 
@@ -249,12 +245,6 @@ local function DurText(sec)
   sec = tonumber(sec)
   if not sec or sec <= 0 then return DASH end
   return Fmt.Duration(sec)
-end
-
-local function TimeText(sec, approx)
-  local s = Fmt.Duration(sec or 0)
-  if approx then return APPROX .. s end
-  return s
 end
 
 -- "5m (2)": time dead and the number of deaths; the count alone without dead time
@@ -328,53 +318,11 @@ end
 -- Row pool
 ---------------------------------------------------------------------------
 
--- Level row tooltip: the zones of that level with the exclusions applied (the
--- viewed character only, requirement B), then the approximation notes.
-local function OnRowEnter(self)
-  local tip = rowTip[self]
-  if not tip or not tip.active then return end
-  local char = ViewChar()
-  if not char then return end
-  local Stats = ns.Stats
-  local COLORS = C.COLORS
-  local acc, lab, val = COLORS.accent, COLORS.label, COLORS.value
-  local tt = GameTooltip
-  tt:SetOwner(self, "ANCHOR_RIGHT")
-  tt:SetText(format(L.LEVEL_SPAN_FMT, tip.level, tip.level + 1))
-  local levels = char.levels
-  local lb = type(levels) == "table" and levels[tip.level] or nil
-  local zones = type(char.zones) == "table" and char.zones or nil
-  local _, n = Stats.TopZones(lb and lb.z, TIP_ZONES, ns.GetMask(), tipZoneRows)
-  n = tonumber(n) or 0
-  tt:AddLine(format(L.ROW_ZONES_FMT, tip.level), acc[1], acc[2], acc[3])
-  if n == 0 then
-    tt:AddLine(L.ROW_ZONES_EMPTY, lab[1], lab[2], lab[3])
-  end
-  for i = 1, n do
-    local r = tipZoneRows[i]
-    local name = Stats.ZoneName(r.key, zones and zones[r.key])
-    if r.isCity then name = name .. " " .. L.CITY_MARK end
-    tt:AddDoubleLine(name, DurText(r.filtered), lab[1], lab[2], lab[3], val[1], val[2], val[3])
-  end
-  if tip.partial then tt:AddLine(L.ROW_PARTIAL_TIP, 1, 1, 1, true) end
-  if tip.rec then tt:AddLine(L.ROW_REC_TIP, 1, 1, 1, true) end
-  if tip.est > 0 then tt:AddLine(format(L.ROW_EST_TIP_FMT, Fmt.Duration(tip.est)), 1, 1, 1, true) end
-  if tip.gap > 0 then tt:AddLine(format(L.ROW_GAP_TIP_FMT, Fmt.Duration(tip.gap)), 1, 1, 1, true) end
-  tt:Show()
-end
-
-local function OnRowLeave(self)
-  if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
-end
-
 local function NewRow(i)
   local row = CreateFrame("Frame", nil, content)
   row:SetSize(contentW, ROW_H)
   rowW[row] = contentW
   row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -(i - 1) * ROW_H)
-  row:EnableMouse(true)
-  row:SetScript("OnEnter", OnRowEnter)
-  row:SetScript("OnLeave", OnRowLeave)
   if i % 2 == 0 then
     local bg = row:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(row)
@@ -384,7 +332,6 @@ local function NewRow(i)
   rows[i] = row
   rowCells[row] = {}
   rowText[row], rowColor[row], rowSection[row] = {}, {}, false
-  rowTip[row] = { active = false, level = 0, partial = false, rec = false, est = 0, gap = 0 }
   return row
 end
 
@@ -470,7 +417,7 @@ local function BeginRows(layout)
   curLayout = layout
   for id in pairs(used) do used[id] = nil end
   emptyFS:Hide()
-  liveLevelRow, liveSessionRow = nil, nil
+  liveSessionRow = nil
 end
 
 local function NextRow()
@@ -479,7 +426,6 @@ local function NextRow()
   local texts = rowText[row]
   for id in pairs(texts) do texts[id] = nil end
   rowSection[row] = false
-  rowTip[row].active = false
   row:Show()
   return row
 end
@@ -507,10 +453,13 @@ local function LayOut(layout)
   if n ~= layout.n then changed = true end
   layout.n, layout.need = n, need
   for id in pairs(pos) do pos[id] = nil end
-  -- frame size: settings, never narrower than the columns
+  -- frame size: settings, never narrower than the columns nor smaller than the layout's
+  -- minimum (the Levels chart: LevelChart.MinSize)
   local ws = ns.settings and ns.settings.window
-  local w = math_max(WIN_W, need + MARGIN_W, math_floor(tonumber(ws and ws.width) or WIN_W))
-  local h = math_floor(tonumber(ws and ws.height) or WIN_H)
+  local lo = math_max(WIN_W, need + MARGIN_W, layout.minW or 0)
+  local loH = math_max(C.WINDOW_MIN_H, layout.minH or 0)
+  local w = math_max(lo, math_floor(tonumber(ws and ws.width) or WIN_W))
+  local h = math_max(loH, math_floor(tonumber(ws and ws.height) or WIN_H))
   if w ~= frameW then
     frameW = w
     frame:SetWidth(w)
@@ -523,13 +472,12 @@ local function LayOut(layout)
     contentW = w - MARGIN_W
     content:SetWidth(contentW)
   end
-  local lo = math_max(WIN_W, need + MARGIN_W)
-  if lo ~= minW then
-    minW = lo
+  if lo * 100000 + loH ~= minW then
+    minW = lo * 100000 + loH
     if frame.SetResizeBounds then
-      frame:SetResizeBounds(lo, C.WINDOW_MIN_H, C.WINDOW_MAX_W, C.WINDOW_MAX_H)
+      frame:SetResizeBounds(lo, loH, C.WINDOW_MAX_W, C.WINDOW_MAX_H)
     elseif frame.SetMinResize then
-      frame:SetMinResize(lo, C.WINDOW_MIN_H)
+      frame:SetMinResize(lo, loH)
       if frame.SetMaxResize then frame:SetMaxResize(C.WINDOW_MAX_W, C.WINDOW_MAX_H) end
     end
   end
@@ -593,58 +541,6 @@ local function BuildAccountLevels(mask)
   if n == 0 then ShowEmpty(L.NO_DATA) end
 end
 
-local function BuildLevels(char, mask, now)
-  if not char then return BuildAccountLevels(mask) end
-  local isCur = (char == ns.char)
-  local sync = isCur and ns.Tracker.GetSync() or nil
-  local out, n = ns.Stats.LevelHistory(char, mask, sync, now, levelRows)
-  out = out or levelRows
-  n = tonumber(n) or #out
-  local COLORS = UI
-  local label = COLORS.label
-  for i = 1, n do
-    local r = out[i]
-    local est = tonumber(r.est) or 0
-    local gap = tonumber(r.gap) or 0
-    local approx = (r.partial or r.rec or est > 0 or gap > 0) and true or false
-    local row = NextRow()
-    Put(row, "level", LevelSpan(r.level), r.current and COLORS.accent or nil)
-    Put(row, "time", TimeText(r.filtered, approx))
-    local eta = tonumber(r.eta)
-    Put(row, "eta", (eta and eta > 0) and Fmt.Duration(eta) or DASH, label)
-    local cum = tonumber(r.cum)
-    Put(row, "cum", cum and Fmt.Duration(cum) or DASH, label)
-    Put(row, "server", r.server and Fmt.Duration(r.server) or DASH, label)
-    Put(row, "xph", r.xph and Fmt.Rate(r.xph) or DASH)
-    Put(row, "afk", DurText(r.afk), label)
-    Put(row, "inn", DurText(r.inn), label)
-    Put(row, "city", DurText(r.city), label)
-    Put(row, "inst", DurText(r.inst), label)
-    Put(row, "dead", DeadText(r.dead, r.deaths), label)
-    Put(row, "prof", DurText(r.prof), label)
-    local mz = r.mainZone
-    if not (r.mainZoneKey ~= nil and type(mz) == "string") then mz = ZoneNameOf(char, mz) end
-    Put(row, "zone", mz, label)
-    if r.current then
-      Put(row, "reached", L.ROW_IN_PROGRESS, COLORS.accent)
-    else
-      Put(row, "reached", r.endAt and Fmt.DateTime(r.endAt) or DASH, label)
-    end
-    local tip = rowTip[row]
-    tip.level = math_floor(tonumber(r.level) or 0)
-    tip.partial = r.partial and true or false
-    tip.rec = r.rec and true or false
-    tip.est, tip.gap = est, gap
-    tip.active = true                 -- zones of the level (+ notes when approx)
-    if r.current and isCur then
-      liveLevelRow, liveLevel, liveApprox = row, tip.level, approx
-      liveLevelKey = Fmt.DurationKey(r.filtered or 0)
-      liveCumKey = Fmt.DurationKey(cum or 0)
-    end
-  end
-  if n == 0 then ShowEmpty(L.NO_DATA) end
-end
-
 -- Continents block (same columns as the zones list): time counted under the
 -- exclusions, raw time, AFK part (raw minus the time counted without AFK). Continents
 -- whose time is all excluded come last with a dash, like the zones below.
@@ -696,25 +592,24 @@ end
 
 -- Most played instances (same columns as the zones list): time counted under the
 -- exclusions, raw instance time, AFK part, XP; the kind (dungeon, raid, PvP) follows
--- the name. Nothing when no instance was played.
+-- the name; the keys of one place (instance key then map) are one row (merged by
+-- name). Nothing when no instance was played.
 local function BuildInstances(char, zoneMap, mask)
-  local n = ns.Stats.TopInstances(zoneMap, mask, INST_ROWS, instRows)
+  local n = ns.Stats.TopInstances(zoneMap, mask, INST_ROWS, instRows, true)
   if n <= 0 then return 0 end
   local label = UI.label
   Section(L.INSTANCES_HEADER)
   for i = 1, n do
     local r = instRows[i]
-    local bucket = zoneMap[r.key]
-    local raw = InstSecs(bucket, 0)
     local kindKey = KIND_KEY[r.kind]
     local name = r.name or ZoneNameOf(char, r.key)
     if kindKey then name = format(L.INST_ROW_FMT, name, L[kindKey]) end
-    local xp = type(bucket) == "table" and tonumber(bucket.xp) or 0
+    local xp = r.xp
     local row = NextRow()
     Put(row, "zone", name)
     Put(row, "time", DurText(r.secs))
-    Put(row, "raw", DurText(raw), label)
-    Put(row, "afk", DurText(raw - InstSecs(bucket, C.MASK_AFK)), label)
+    Put(row, "raw", DurText(r.raw), label)
+    Put(row, "afk", DurText(r.afk), label)
     Put(row, "xp", xp > 0 and Fmt.Number(xp) or DASH, label)
   end
   return n
@@ -1030,14 +925,7 @@ local function UpdateLiveCells()
   local mask = ns.GetMask()
   local now = GetTime()
   local sync = ns.Tracker.GetSync()
-  if liveLevelRow then
-    local filtered = Stats.LevelTime(char, liveLevel, mask, sync, now) or 0
-    local key = Fmt.DurationKey(filtered)
-    if key ~= liveLevelKey then
-      liveLevelKey = key
-      PutLive(liveLevelRow, "time", TimeText(filtered, liveApprox))
-    end
-  end
+  if curLayout == LAYOUTS.chart and ns.LevelChart then ns.LevelChart.Live(char, mask, sync, now) end
   if liveSessionRow then
     local session = ns.Tracker.GetSession()
     if session then
@@ -1051,11 +939,6 @@ local function UpdateLiveCells()
   end
   local total = Stats.Played(char, mask, sync, now) or 0
   local totalKey = Fmt.DurationKey(total)
-  -- the Total column of the in-progress level: the played total up to now
-  if liveLevelRow and totalKey ~= liveCumKey then
-    liveCumKey = totalKey
-    PutLive(liveLevelRow, "cum", Fmt.Duration(total))
-  end
   if totalKey ~= liveTotalKey then
     UpdateFooter(char, mask, now)
   end
@@ -1118,11 +1001,10 @@ local function Deactivate()
   ns.UnregisterMessage("SETTINGS_CHANGED", Window)
   ns.UnregisterMessage("XP_CHANGED", Window)
   local owner = GameTooltip:GetOwner()
-  if owner and cellIndex[owner] then
-    OnHeaderLeave(owner)
-  elseif owner and rowTip[owner] then
-    GameTooltip:Hide()
-  end
+  if owner and cellIndex[owner] then OnHeaderLeave(owner) end
+  -- the Levels chart's tooltip (a bar, the PvP chip, the detail sheet), GameTooltip or
+  -- the themed frame
+  if ns.LevelChart then ns.LevelChart.TipHide() end
 end
 
 ---------------------------------------------------------------------------
@@ -1173,20 +1055,35 @@ local function OnDragStop(self) self:StopMovingOrSizing() end
 
 -- Resize grip (bottom-right corner): the frame is sized by the client while the button is
 -- held (no script runs meanwhile); on release the size is saved (window.width / height,
--- clamped by the settings) and the columns are laid out again for it.
+-- clamped by the settings) and the columns are laid out again for it. Only a dimension the
+-- user changed is saved (the size at the press, gripAt): a layout's minimum (the Levels
+-- chart's 1040 x 640) is not the user's size, a click or a height-only drag keeps the
+-- saved width. A release without a press saves both.
+local gripAt = {}                  -- w, h: the frame size at the press
+
 local function OnGripDown(_, button)
-  if button == "LeftButton" and frame.StartSizing then frame:StartSizing("BOTTOMRIGHT") end
+  if button ~= "LeftButton" then return end
+  gripAt.w, gripAt.h = frame:GetWidth(), frame:GetHeight()
+  if frame.StartSizing then frame:StartSizing("BOTTOMRIGHT") end
+end
+
+-- v (a number) differs from the size at the press (none: changed).
+local function Moved(v, at)
+  if type(v) ~= "number" then return false end
+  return type(at) ~= "number" or v - at > 0.5 or at - v > 0.5
 end
 
 local function OnGripUp()
   frame:StopMovingOrSizing()
   local w, h = frame:GetWidth(), frame:GetHeight()
+  local w0, h0 = gripAt.w, gripAt.h
+  gripAt.w, gripAt.h = nil, nil
   frameW, frameH = -1, -1             -- the client changed the size: set it again
   local Core = ns.Core
   local changed = false               -- a changed setting refreshes the window (OnSettingsChanged)
   if Core and Core.SetSetting then
-    if type(w) == "number" and Core.SetSetting("window.width", math_floor(w + 0.5)) then changed = true end
-    if type(h) == "number" and Core.SetSetting("window.height", math_floor(h + 0.5)) then changed = true end
+    if Moved(w, w0) and Core.SetSetting("window.width", math_floor(w + 0.5)) then changed = true end
+    if Moved(h, h0) and Core.SetSetting("window.height", math_floor(h + 0.5)) then changed = true end
   end
   if not changed then Window.Refresh() end
 end
@@ -1324,6 +1221,9 @@ function Window.ApplyTheme()
   for c = 1, #headerFS do headerFS[c]:SetTextColor(lc[1], lc[2], lc[3]) end
   local owner = GameTooltip:GetOwner()
   for c = 1, #headerIcon do TintIcon(c, owner == headerCell[c] and ui.accent or ui.dim) end
+  -- the Levels chart and its detail sheet (their own copies of the colours, fonts again)
+  if ns.LevelChart then ns.LevelChart.ApplyTheme(ui) end
+  if ns.LevelDetail then ns.LevelDetail.ApplyTheme(ui) end
   if frame:IsShown() then Window.Refresh() end
 end
 
@@ -1337,9 +1237,25 @@ function Window.Refresh()
   local mask = ns.GetMask()
   local now = GetTime()
   UpdateHeader(char, mask)
+  local LC = ns.LevelChart
+  if curTab == "levels" and char and LC then
+    -- Levels tab of a character: the chart (no rows, no headers; the scroll frame hidden)
+    local lay = LAYOUTS.chart
+    lay.minW, lay.minH = LC.MinSize()   -- at most the screen: read again (the UI scale may change)
+    BeginRows(lay)
+    EndRows()
+    ApplyHeaders(lay)
+    scroll:Hide()
+    local isCur = (char == ns.char)
+    LC.Build(frame, char, isCur, mask, now, isCur and ns.Tracker.GetSync() or nil, UI)
+    UpdateFooter(char, mask, now)
+    return
+  end
+  scroll:Show()
+  if LC then LC.Hide() end
   local layout
   if curTab == "levels" then
-    layout = char and LAYOUTS.levels or LAYOUTS.account
+    layout = LAYOUTS.account
   elseif curTab == "zones" then
     layout = LAYOUTS.zones
   else
@@ -1347,7 +1263,7 @@ function Window.Refresh()
   end
   BeginRows(layout)
   if curTab == "levels" then
-    BuildLevels(char, mask, now)
+    BuildAccountLevels(mask)
   elseif curTab == "zones" then
     BuildZones(char, mask)
   else
@@ -1382,6 +1298,7 @@ function Window.Show(tab, v)
       view = v
     end
   end
+  if ns.LevelChart then ns.LevelChart.Reset() end   -- selection: the current level; filter "all"
   frame:Show()
   Activate()
   Window.Refresh()
@@ -1395,7 +1312,9 @@ end
 -- A theme switch while the window exists ("colors": the `ui` roles do not follow the user
 -- colours, Themes warns at compile time when a theme makes them).
 local function OnThemeChanged(_, _, _, kind)
-  if frame and kind ~= "colors" then Window.ApplyTheme() end
+  if not frame then return end
+  if ns.LevelChart then ns.LevelChart.TipHide() end    -- any switch hides the chart's tooltip
+  if kind ~= "colors" then Window.ApplyTheme() end
 end
 
 if ns.RegisterMessage then

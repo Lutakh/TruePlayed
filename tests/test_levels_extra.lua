@@ -1,8 +1,10 @@
 -- tests/test_levels_extra.lua - per-level additions (lot 8, A3) and short continents (A4):
--- the level-start estimate (levels[L].eta / etaP), the cumulative time to the end of each
--- level (Stats.CumulativeTime, LevelHistory rows), the Levels tab columns Dead and Est.,
--- continents with less than C.CONT_MIN_SECS hidden in the tooltip and the Zones tab (data
--- kept), saved-data repair and a late SavedVariables swap.
+-- the level-start estimate (levels[L].eta / etaP / etaM), the cumulative time to the end
+-- of each level (Stats.CumulativeTime, LevelHistory rows), the Levels tab columns Dead and Est.
+-- (the Levels tab rework: the Dead part and deaths line of the chart's bars, the Deaths
+-- and "Estimated at start" cards of the detail sheet), continents with less than
+-- C.CONT_MIN_SECS hidden in the tooltip and the Zones tab (data kept), saved-data repair
+-- and a late SavedVariables swap.
 local Stub, T = ...
 
 local OTHER_GUID = "Player-4619-0BADF00D"
@@ -74,6 +76,61 @@ T.test("eta: stored when a level begins (time to level shown then), once", funct
   T.eq({ eta, etaP }, { lb.eta, lb.etaP }, "Stats.LevelActivity")
   local rows = Stats.LevelHistory(ch, 0, ns.Tracker.GetSync(), Stub.Now(), {})
   T.eq({ rows[1].level, rows[1].eta, rows[1].etaP }, { 11, lb.eta, lb.etaP }, "LevelHistory row")
+end)
+
+-- The exclusion mask the estimate was taken under (levels[L].etaM): the sheet compares the
+-- level's time with it only under that mask (review stats-eta-verdict-mask-mismatch).
+T.test("eta: the mask it was taken under is stored (etaM), in the history row; repaired; kept by a late swap", function()
+  local ns = Login()
+  local ch, Stats = ns.char, ns.Stats
+  Grind(12, 200)
+  ns.Core.SetSetting("exclude.afk", true)
+  T.eq(ns.GetMask(), 1)
+  Stub.GrantXP(Stub.player.max - Stub.player.xp + 100)     -- level 11 under mask 1
+  Stub.Advance(1)
+  local lb = ch.levels[11]
+  T.ok(lb and lb.eta, "level 11 has its estimate")
+  T.eq(lb.etaM, 1, "taken with AFK excluded")
+  ns.Core.SetSetting("exclude.afk", false)
+  ns.Core.SetSetting("exclude.city", true)
+  Grind(3, 200)
+  T.eq(lb.etaM, 1, "a later mask change leaves it")
+  local rows = Stats.LevelHistory(ch, ns.GetMask(), ns.Tracker.GetSync(), Stub.Now(), {})
+  T.eq({ rows[1].level, rows[1].eta, rows[1].etaM }, { 11, lb.eta, 1 }, "LevelHistory row")
+  T.eq({ rows[2].level, rows[2].etaM }, { 10, 0 }, "the install level's, taken under mask 0")
+  -- repair: a whole 0..7 kept, anything else dropped (eta itself kept)
+  Stub.Reset()
+  local guid = Stub.player.guid
+  local function Lb(etaM) return { s = { w = 10 }, z = {}, xp = 0, d = 0, eta = 3600, etaP = 0, etaM = etaM } end
+  ns = Login({ schema = 1, chars = { [guid] = {
+    guid = guid, level = 12, life = { s = { w = 50 } },
+    levels = { [1] = Lb(0), [2] = Lb(7), [3] = Lb(3), [4] = Lb(-1), [5] = Lb(8), [6] = Lb(2.5), [7] = Lb("1"),
+               [8] = Lb(0 / 0), [9] = Lb(1 / 0), [10] = Lb(nil) },
+    zones = {}, sessions = {},
+  } } })
+  local lv, got = ns.char.levels, {}
+  for l = 1, 10 do got[l] = lv[l].etaM == nil and "-" or lv[l].etaM end
+  T.eq(got, { 0, 7, 3, "-", "-", "-", "-", "-", "-", "-" }, "etaM repaired")
+  T.eq(lv[5].eta, 3600, "the estimate kept without its mask")
+  -- a late SavedVariables swap: this load's estimate keeps its mask
+  Stub.Reset()
+  Login()
+  Stub.Advance(120)
+  Stub.Logout()
+  local real = Stub.DeepCopy(Stub.saved)
+  Stub.Reset({ keepWorld = true })
+  ns = Stub.LoadAddon()
+  Stub.LoginSequence()
+  Stub.Advance(30)
+  Stub.GrantXP(Stub.player.max)                       -- level 11 with the "~" estimate
+  Stub.Advance(2)
+  local blank = ns.char
+  T.eq(blank.levels[11].etaM, 0, "taken under mask 0 in the blank table")
+  _G.TruePlayedDB = real
+  Stub.Advance(2)
+  T.ok(ns.char ~= blank, "swapped")
+  T.eq(ns.char.levels[11].etaM, 0, "carried by the swap")
+  T.eq(Stub.errors, {})
 end)
 
 T.test("eta: the install level takes its first measured estimate; the pre-install one is shown at a level start", function()
@@ -174,52 +231,111 @@ end)
 
 -- Lot 8 part B: the columns are laid out from the visible ones (tests/test_window_cols.lua
 -- has the general checks); here the Dead and Est. columns of part A.
-local function Cell(tp, row, id)
-  local c = tp.layout.pos[id]
-  return c and tp.cells[row][c]:GetText() or nil
+-- Levels tab rework: the Levels table became the chart. The Dead column is the Dead part
+-- of a bar and the deaths line of its tooltip; the columns "without overlap" are the bars,
+-- side by side inside the plot; a character without deaths has no Dead part and the
+-- window keeps the chart's minimum width; the detail sheet's Deaths card has the count and
+-- the dead time. The Est. column moves to the detail sheet's "Estimated at start" card
+-- (the test below).
+-- GameTooltip lines { left, right } of the chart's bar of level k, the bar left afterwards.
+local function BarTip(tp, k)
+  local hit = tp.chart.cols[k].hit
+  hit:GetScript("OnEnter")(hit)
+  local out = {}
+  for i, l in ipairs(GameTooltip._lines or {}) do out[i] = { l[1] or l.left, l[2] or l.right } end
+  hit:GetScript("OnLeave")(hit)
+  return out
 end
-local function Span(l) return l .. " \194\187 " .. (l + 1) end
 
-T.test("window: Dead (time and deaths) and Est. columns, shown when used, without overlap", function()
-  local ns = Login()
-  local L, Fmt = ns.L, ns.Fmt
+local function Right(lines, left)
+  for i = 1, #lines do
+    if lines[i][1] == left then return lines[i][2] end
+  end
+  return nil
+end
+
+local function Dying()
   Grind(12, 200)
   Stub.Die(); Stub.Advance(30); Stub.ReleaseSpirit(); Stub.Advance(270); Stub.Resurrect(true)
   Stub.Die(); Stub.Advance(10); Stub.Resurrect(false)
   Stub.GrantXP(Stub.player.max - Stub.player.xp + 50)
   Stub.Advance(2)
+end
+
+T.test("window: Dead (time and deaths) and Est. columns, shown when used, without overlap", function()
+  local ns = Login()
+  local L, Fmt = ns.L, ns.Fmt
+  Dying()
   ns.Window.Show("levels")
   local tp = StatsTP()
   local f = rawget(_G, "TruePlayedStatsFrame")
-  local pos = tp.layout.pos
-  T.eq(tp.header[pos.dead]:GetText(), L.COL_DEAD)
-  T.eq(tp.header[pos.eta]:GetText(), L.COL_ETA)
-  T.eq(pos.eta, pos.time + 1, "the estimate next to the time it took")
+  local ch = tp.chart
+  T.ok(ch ~= nil and ch.root:IsShown(), "the chart")
+  -- the bars side by side, the last one inside the plot
   local prevEnd = -1
-  for c = 1, tp.layout.n do
-    local fs = tp.header[c]
-    local p = rawget(fs, "_points")[1]
-    T.ok(p.x >= prevEnd, "column " .. c .. " starts after the previous one")
-    prevEnd = p.x + fs:GetWidth()
+  for k = 1, ch.state.nCols do
+    local hit = ch.cols[k].hit
+    local p = rawget(hit, "_points")[1]
+    T.ok(p.x >= prevEnd, "bar " .. k .. " starts after the previous one")
+    prevEnd = p.x + hit:GetWidth()
   end
-  T.ok(prevEnd <= f:GetWidth() - 14 - 32, "the last column ends inside the scroll area: " .. prevEnd)
-  local r10 = RowWith(tp, Span(10))
-  T.eq(Cell(tp, r10, "dead"), format("%s (%d)", Fmt.Duration(310), 2), "5m (2)")
-  T.eq(Cell(tp, r10, "eta"), Fmt.Duration(ns.char.levels[10].eta), "install level: its first estimate")
-  local r11 = RowWith(tp, Span(11))
-  T.eq(Cell(tp, r11, "dead"), "-", "no death at level 11")
-  T.eq(Cell(tp, r11, "eta"), Fmt.Duration(ns.char.levels[11].eta))
-  -- a character without any: no Dead or Est. column, the base width
+  T.ok(prevEnd <= ch.geo.plotW, "the last bar ends inside the plot: " .. prevEnd)
+  T.ok(ch.root:GetWidth() <= f:GetWidth() - 28, "the chart inside the window")
+  local t10 = BarTip(tp, 10)
+  T.eq(Right(t10, L.BD_DEAD), string.format(L.LV_PART_FMT, Fmt.Duration(310), Fmt.Percent(310 / ch.cols[10].sumAll)),
+    "the dead time of level 10")
+  T.eq(Right(t10, L.TT_DEATHS), Fmt.Number(2), "two deaths")
+  local t11 = BarTip(tp, 11)
+  T.eq(Right(t11, L.BD_DEAD), nil, "no dead time at level 11")
+  T.eq(Right(t11, L.TT_DEATHS), nil, "no death at level 11")
+  -- the detail sheet's Deaths card: the count and the dead time, "none" at 11
+  local hit = ch.cols[10].hit
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  local deaths = tp.detail.cards.deaths
+  T.eq({ deaths.label:GetText(), deaths.value:GetText(), deaths.sub:GetText() },
+    { L.TT_DEATHS, Fmt.Number(2), string.format(L.LV_DEAD_SUB_FMT, Fmt.Duration(310)) }, "detail: deaths at 10")
+  hit = ch.cols[11].hit
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  T.eq({ deaths.value:GetText(), deaths.sub:GetText() }, { Fmt.Number(0), L.LD_NONE }, "detail: none at 11")
+  -- a character without any: no Dead part, the chart's minimum width
   ns.db.chars[OTHER_GUID] = { guid = OTHER_GUID, name = "Tamar", level = 5, life = { s = { w = 50 } },
     levels = { [5] = { s = { w = 50 }, z = {}, xp = 0, d = 0 } }, zones = {}, sessions = {} }
   ns.Core.RepairChar(ns.db.chars[OTHER_GUID])
   ns.Window.SetView(OTHER_GUID)
-  T.eq(f:GetWidth(), 700)
-  T.eq(tp.layout.pos.dead, nil); T.eq(tp.layout.pos.eta, nil)
+  T.eq(f:GetWidth(), 1040)
+  local t5 = BarTip(tp, 5)
+  T.eq(Right(t5, L.BD_DEAD), nil)
+  T.eq(Right(t5, L.TT_DEATHS), nil)
   ns.Window.Toggle("zones")
   T.eq(f:GetWidth(), 700, "other tabs: the base width")
   ns.Window.Hide()
   T.eq(Stub.onUpdateCount, 0)
+end)
+
+-- Levels tab rework: the estimate made when a level began (levels[L].eta) is shown by the
+-- detail sheet's "Estimated at start" card (LevelDetail, spec section 5.2): the install
+-- level's first estimate at level 10, its own at level 11, dots for a level without any.
+-- The level in progress shows its projection there instead, so 11 is completed first.
+T.test("window: the detail sheet shows the estimate made when the level began", function()
+  local ns = Login()
+  local Fmt = ns.Fmt
+  Dying()
+  Grind(3, 200)
+  Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)     -- level 12: 11 completed
+  Stub.Advance(2)
+  ns.Window.Show("levels")
+  local tp = StatsTP()
+  local function Eta(k)
+    local hit = tp.chart.cols[k].hit
+    hit:GetScript("OnClick")(hit, "LeftButton")
+    return tp.detail.eta and tp.detail.eta:GetText()
+  end
+  T.ok(ns.char.levels[10].eta ~= nil and ns.char.levels[11].eta ~= nil)
+  T.eq(Eta(10), Fmt.Duration(ns.char.levels[10].eta), "install level: its first estimate")
+  T.eq(Eta(11), Fmt.Duration(ns.char.levels[11].eta))
+  ns.char.levels[11].eta = nil
+  ns.Window.Refresh()
+  T.eq(Eta(11), ns.L.DOTS, "none: dots")
 end)
 
 T.test("window: deaths recorded before this version (no dead time) show the count alone", function()
@@ -227,8 +343,13 @@ T.test("window: deaths recorded before this version (no dead time) show the coun
   ns.char.levels[10].d = 3
   ns.Window.Show("levels")
   local tp = StatsTP()
-  T.eq(Cell(tp, RowWith(tp, Span(10)), "dead"), "(3)")
-  T.eq(tp.layout.pos.eta, nil, "no estimate anywhere: no Est. column")
+  local L = ns.L
+  local t10 = BarTip(tp, 10)
+  T.eq(Right(t10, ns.L.TT_DEATHS), ns.Fmt.Number(3), "the count alone")
+  T.eq(Right(t10, L.BD_DEAD), nil, "no dead time")
+  -- the detail sheet's Deaths card: the count, no sub (neither a dead time nor "none")
+  local deaths = tp.detail.cards.deaths
+  T.eq({ deaths.value:GetText(), deaths.sub:GetText() }, { ns.Fmt.Number(3), "" }, "detail: the count alone")
 end)
 
 ---------------------------------------------------------------------------

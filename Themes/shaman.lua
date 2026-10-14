@@ -30,6 +30,8 @@
 --   bar.pad, gap: gap clears the 4 px stone frame and the stones on it (art 9.5 px above the track;
 --     board: text 10 px above)
 --   bar.height: default user height 8 -> 13 px track (board: 20 px at 1.5x)
+--   bar.rep: reputation strip in the gap: 1 px under the rim, 2 px above the text row (no
+--     extra height)
 --   bar.layers > frame: stone frame around the track: 1 px ink outline + 3 px carved stone, incised
 --     lines
 --   bar.layers > track: track: dark slate, a little lighter below the middle (board: #0a0e14 /
@@ -93,6 +95,7 @@ return {
     pad = 12, gap = 10,
     height = { add = 5, min = 6 },
     maxAlpha = 0.35,
+    rep = { off = 5, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "frame", span = "track", nine = { "rim", 7, 7 }, pad = { 4, 4 }, top = -4, bottom = -4,
         layer = "BORDER", sub = -4 },

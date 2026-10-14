@@ -80,6 +80,49 @@ T.test("Breakdown partitions tracked time and reuses its output table", function
   T.eq(out.est, 0)
 end)
 
+-- Crash review A1: time rebuilt after a crash under the exclusions (life.es, levels[L].es
+-- per key; est alone on records saved before es).
+T.test("EstTime: rebuilt seconds per key under the mask, older records by place shares, capped", function()
+  local _, Stats = Load()
+  -- per key (es): exact under every mask; the gross part is every key
+  local b = { s = { w = 600, W = 3000, u = 100 }, est = 3000, es = { W = 3000 } }
+  local f, g = Stats.EstTime(b, 0)
+  T.eq(f, 3000); T.eq(g, 3000)
+  f, g = Stats.EstTime(b, 1)
+  T.eq(f, 0, "all rebuilt time is AFK: nothing under the AFK exclusion")
+  T.eq(g, 3000, "gross unchanged")
+  -- an older record (est only): the bucket's place shares under the mask
+  local old = { s = { w = 600, W = 3000 }, est = 3000 }
+  T.eq((Stats.EstTime(old, 0)), 3000)
+  T.eq((Stats.EstTime(old, 1)), 500, "3000 x 600 / 3600: never above 'This level' (600)")
+  T.eq(select(2, Stats.EstTime(old, 1)), 3000)
+  -- u, x and f (never in a rebuilt gap) are left out of the shares
+  local act = { s = { w = 600, W = 3000, x = 400, f = 200, u = 5000 }, est = 1800 }
+  T.eq((Stats.EstTime(act, 1)), 300, "1800 x 600 / 3600")
+  T.eq((Stats.EstTime(act, 0)), 1800)
+  -- mixed: es, then a part an older version added without keys
+  local mixed = { s = { w = 600, W = 3000 }, est = 400, es = { w = 100 } }
+  f, g = Stats.EstTime(mixed, 1)
+  T.eq(f, 100 + 300 * 600 / 3600); T.eq(g, 400)
+  -- es above est (est reset by hand): es wins, gross = sum(es)
+  f, g = Stats.EstTime({ s = { w = 600 }, est = 100, es = { w = 500 } }, 0)
+  T.eq(f, 500); T.eq(g, 500)
+  -- capped to the tracked seconds under the mask (u aside), never negative
+  T.eq((Stats.EstTime({ s = { w = 100, u = 900 }, est = 1000 }, 0)), 100)
+  T.eq((Stats.EstTime({ s = { w = 100, C = 50 }, est = 0, es = { C = 50 } }, 4)), 0)
+  -- missing parts
+  f, g = Stats.EstTime(nil, 0)
+  T.eq(f, 0); T.eq(g, 0)
+  f, g = Stats.EstTime({ est = 50 }, 0)
+  T.eq(f, 0, "no seconds map: nothing to show"); T.eq(g, 50)
+  f, g = Stats.EstTime(FixedBucket(), 7)
+  T.eq(f, 0); T.eq(g, 0)
+  -- no allocation (tooltip refresh path)
+  local m = 0
+  local kb = T.alloc(function() m = m + Stats.EstTime(mixed, 1) + Stats.EstTime(old, 3) end, 1000)
+  T.ok(kb <= 0.5, "EstTime allocated " .. kb .. " KB")
+end)
+
 ---------------------------------------------------------------------------
 -- Displayed totals
 ---------------------------------------------------------------------------
@@ -590,6 +633,7 @@ T.test("LevelHistory: order, flags, server time and gaps", function()
   T.eq(r1.raw, 500)
   T.eq(r1.gap, nil)
   T.eq(r1.mainZone, "Durotar")
+  T.eq(r1.estF, 0)
 
   T.eq(r2.level, 9)
   T.eq(r2.current, false)
@@ -598,6 +642,7 @@ T.test("LevelHistory: order, flags, server time and gaps", function()
   T.eq(r2.filtered, 1040)             -- AFK excluded
   T.eq(r2.gap, nil, "50 s is within DRIFT_TOL")
   T.eq(r2.est, 600)
+  T.eq(r2.estF, 600 * 1040 / 1110, "rebuilt part under the AFK exclusion (older record: place shares)")
   T.eq(r2.xp, 5000)
   T.eq(r2.afk, 70)
   T.eq(r2.inn, 60)
@@ -613,6 +658,7 @@ T.test("LevelHistory: order, flags, server time and gaps", function()
   T.eq(r3.server, 830)
   T.eq(r3.gap, nil)
   T.eq(r3.mainZone, nil)
+  T.eq(r3.estF, 0)
 
   T.eq(r4.level, 7)
   T.eq(r4.partial, true)
@@ -639,6 +685,27 @@ T.test("LevelHistory: order, flags, server time and gaps", function()
   n = select(2, Stats.LevelHistory(char, 0, nil, 10, out))
   T.eq(n, 2)
   T.eq(#out, 2)
+end)
+
+T.test("LevelHistory: estF is the rebuilt part of the time shown (mask, at most filtered)", function()
+  local _, Stats = Load()
+  local char = { level = 10, zones = {}, levels = {
+    [10] = { s = { w = 400, W = 600 }, xp = 0, est = 600, es = { W = 600 }, z = {} },
+    [9] = { s = { w = 900, W = 300 }, xp = 0, est = 500, es = { w = 400, W = 100 }, z = {} },
+  } }
+  local out = {}
+  Stats.LevelHistory(char, 0, nil, 10, out)
+  T.eq(out[1].estF, 600); T.eq(out[1].est, 600)
+  T.eq(out[2].estF, 500)
+  Stats.LevelHistory(char, 1, nil, 10, out)
+  T.eq(out[1].estF, 0, "rebuilt AFK only: none under the AFK exclusion")
+  T.eq(out[1].est, 600, "est stays gross")
+  T.eq(out[2].estF, 400)
+  -- the server says less than what was counted: the rebuilt part is at most the time shown
+  local sync = { valid = true, total = 99999, g = 10, level = 10, levelValid = true, levelPlayed = 300 }
+  Stats.LevelHistory(char, 0, sync, 10, out)
+  T.eq(out[1].filtered, 300)
+  T.eq(out[1].estF, 300)
 end)
 
 T.test("LevelHistory: the main zone of a level follows the exclusions", function()
@@ -1233,6 +1300,34 @@ T.test("TopInstances: repeated calls allocate nothing once warm", function()
   T.ok(kb < 0.5, format("allocated %.3f KB", kb))
   T.eq(#out, 5)
   T.eq(out[1].key, "i12")
+end)
+
+-- In-game report (13/10/2026): a battleground listed twice in a level's sheet, its first
+-- seconds under the instance key ("i<id>", map not known yet) then the rest under its map.
+T.test("TopInstances: merge: the keys of one place are one row (sums, key of the longest part)", function()
+  local _, Stats = Load()
+  local zones = {
+    [90001] = { s = { d = 3000, D = 100 }, xp = 500 },                  -- Ragefire Chasm (its map)
+    i389 = { s = { d = 600, D = 50 }, xp = 7, name = "Ragefire Chasm" }, -- its first seconds
+    i409 = { s = { r = 3650 }, xp = 0, name = "Molten Core" },
+    i30 = { s = { p = 100 }, xp = 0, name = "Ragefire Chasm" },         -- same name, other kind
+  }
+  local out = {}
+  T.eq(Stats.TopInstances(zones, 0, 10, out), 4, "not merged without the flag")
+  T.eq(out[1].key, "i409"); T.eq(out[2].key, 90001); T.eq(out[2].afk, 100); T.eq(out[2].xp, 500)
+  local n = Stats.TopInstances(zones, 0, 10, out, true)
+  T.eq(n, 3); T.eq(#out, 3)
+  T.eq(out[1].key, 90001, "the merged row moves up, key of the longest part")
+  T.eq(out[1].name, "Ragefire Chasm"); T.eq(out[1].kind, "d")
+  T.eq({ out[1].secs, out[1].raw, out[1].afk, out[1].xp }, { 3750, 3750, 150, 507 })
+  T.eq(out[2].key, "i409"); T.eq(out[2].secs, 3650)
+  T.eq(out[3].key, "i30"); T.eq(out[3].kind, "p", "another kind of the same name stays apart")
+  -- under the mask: the AFK parts leave, Molten Core is first again
+  n = Stats.TopInstances(zones, 1, 10, out, true)
+  T.eq(n, 3); T.eq(out[1].key, "i409"); T.eq(out[2].key, 90001); T.eq(out[2].secs, 3600)
+  -- n = 2: the 2n = 4 longest are merged before the 2 longest are kept
+  T.eq(Stats.TopInstances(zones, 0, 2, out, true), 2); T.eq(#out, 2)
+  T.eq(out[1].key, 90001); T.eq(out[1].secs, 3750); T.eq(out[2].key, "i409")
 end)
 
 T.test("TopInstances: an open-world zone or a capital with a tick of instance time is not an instance", function()

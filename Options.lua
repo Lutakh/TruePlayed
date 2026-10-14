@@ -16,10 +16,24 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- The language of the addon (setting "language", C.LANGUAGES) is chosen in Display
 -- (after "Hide at max level") or with /tpl lang [value]: either one only offers the
 -- languages the client's font can draw (LanguageOffered) and only changes the setting, which Core applies into L at the next UI load (the "Reload UI"
--- button under the dropdown calls ReloadUI). In read-only mode both refuse a change
+-- button under the dropdown calls ReloadUI: inside the player's click, which every client
+-- allows, WoW Forever included). In read-only mode both refuse a change
 -- (READONLY_ACTION, like the data actions): nothing would be saved for the reload. The
 -- Reload UI button stays a plain reload. Localized strings are read from L at use
 -- time, never copied at file load (the language is applied after the files load).
+-- Automatic reload (AutoReload.lua), after Calculation: two checkboxes, each followed by
+-- a circled "?" (C.TEX_HELP, the statistics window's column help icon: the theme's ui.dim,
+-- ui.accent while hovered) whose GameTooltip says why and how (record kind "help", path
+-- "help.<rest|timer>", skipped by the loops that click every control), and the interval
+-- slider, greyed out while the timer is off.
+-- Reputation (RepOptions.lua): its own page, a subcategory of TruePlayed's in the game's
+-- Settings (Display keeps a pointer note), or a section after Display when the client
+-- cannot register one (standalone panel, older Settings API). That file builds it with
+-- the controls below (Options.UI) and gives its help lines (Options.HelpLines); the
+-- listeners, Options.Refresh and Options.IsShown cover both pages.
+-- PvP (PvpOptions.lua): the same, a second subcategory (Options.RegisterPvpSub,
+-- HasPvpPage, PvpShown, PvpRefresh), else a section after the reputation's
+-- (Options.BuildPvpSection).
 
 local math_floor, math_abs = math.floor, math.abs
 local type, pairs, ipairs, tonumber, pcall = type, pairs, ipairs, tonumber, pcall
@@ -32,6 +46,9 @@ local InCombatLockdown, UnitLevel, UnitGUID = InCombatLockdown, UnitLevel, UnitG
 
 local Options = {}
 ns.Options = Options
+-- [help topic] = function(tt, AddTip): the lines of a "?" whose topic is given by another
+-- file (RepOptions.lua), added under its title.
+Options.HelpLines = {}
 
 ---------------------------------------------------------------------------
 -- Whitelisted globals, defined at file load (SPEC 2.2, 7.10, 7.12)
@@ -486,6 +503,112 @@ local function AddCheckbox(text, path)
   return Register({ kind = "check", path = path, label = fs, Sync = SyncCheck }, cb)
 end
 
+-- Help icon ------------------------------------------------------------------
+-- A circled "?" right after a checkbox label: an invisible mouse frame holding the icon
+-- (a texture does not take the mouse). Hovering shows the label as a white title and the
+-- explanation lines in the game's normal gold (wrapped), as the statistics window's column
+-- help; the icon is the theme's ui.dim, ui.accent while hovered (C.COLORS without a theme).
+-- The lines are built at hover time (current interval, client; the reputation's topics
+-- come from RepOptions.lua: Options.HelpLines). After a dropdown (or the faction picker)
+-- the icon goes right of the control. Record kind "help": the loops that click every
+-- control skip it. One block: the main chunk stays far from the Lua 5.1 limit of 200
+-- locals.
+
+local AddHelp
+do
+  local HELP_SIZE, HELP_GAP = 14, 4
+  local HELP_ROOM = HELP_GAP + HELP_SIZE   -- what the checkbox label leaves for its icon
+  local TIP_TEXT = { 1, 0.82, 0 }
+
+  local function HelpColor(role)
+    local Themes = ns.Themes
+    local th = Themes and Themes.Active and Themes.Active()
+    local ui = type(th) == "table" and th.ui
+    local c = type(ui) == "table" and ui[role]
+    if type(c) ~= "table" then c = C.COLORS[role] end
+    return c
+  end
+
+  local function TintHelp(rec, role)
+    local c = HelpColor(role)
+    rec.icon:SetVertexColor(c[1], c[2], c[3])
+  end
+
+  local function AddTip(tt, text)
+    tt:AddLine(text, TIP_TEXT[1], TIP_TEXT[2], TIP_TEXT[3], true)
+  end
+
+  local function OnHelpEnter(self)
+    local rec = recOf[self]
+    if not rec then return end
+    local tt = GameTooltip
+    tt:SetOwner(self, "ANCHOR_RIGHT")
+    tt:SetText(rec.title:GetText(), 1, 1, 1)
+    local lines = Options.HelpLines[rec.topic]
+    if lines then                                  -- another file's topic (the reputation's)
+      lines(tt, AddTip)
+      tt:Show()
+      TintHelp(rec, "accent")
+      return
+    end
+    local AR = ns.AutoReload
+    local byClick = AR and not AR.IsDirect()      -- no chat countdown there: the prompt asks
+    if rec.topic == "rest" then
+      AddTip(tt, L.OPT_AUTORELOAD_REST_WHY)
+      local restMin = math_floor(C.AUTORELOAD_REST_MIN / 60 + 0.5)
+      if byClick then
+        AddTip(tt, format(L.OPT_AUTORELOAD_REST_ASK_FMT, restMin))
+      else
+        AddTip(tt, format(L.OPT_AUTORELOAD_REST_HOW_FMT, restMin, C.AUTORELOAD_WARN))
+      end
+    else
+      -- by click, a capital or an inn asks with the prompt too
+      AddTip(tt, format(byClick and L.OPT_AUTORELOAD_TIMER_ASK_FMT or L.OPT_AUTORELOAD_TIMER_HOW_FMT,
+        math_floor(tonumber(GetSetting("autoReload.minutes")) or 30), math_floor(C.AUTORELOAD_SNOOZE / 60 + 0.5)))
+      -- with the rest option on too, the timer leaves capitals and inns to it (AutoReload.lua)
+      AddTip(tt, L.OPT_AUTORELOAD_TIMER_REST)
+    end
+    if byClick then AddTip(tt, L.OPT_AUTORELOAD_CLICK) end
+    tt:Show()
+    TintHelp(rec, "accent")
+  end
+
+  local function OnHelpLeave(self)
+    local rec = recOf[self]
+    if rec then TintHelp(rec, "dim") end
+    if GameTooltip:GetOwner() == self then GameTooltip:Hide() end
+  end
+
+  local function SyncHelp(rec)
+    TintHelp(rec, GameTooltip:GetOwner() == rec.widget and "accent" or "dim")
+  end
+
+  function AddHelp(check, topic)
+    local fs = check.label
+    local f = CreateFrame("Frame", nil, content)
+    f:SetSize(HELP_SIZE + 4, HELP_SIZE + 4)       -- a slightly larger mouse area than the icon
+    if check.kind == "check" then
+      local w = fs:GetStringWidth()
+      if type(w) ~= "number" then w = 0 end
+      f:SetPoint("LEFT", fs, "LEFT", w + HELP_GAP - 2, 0)
+      check.helpRoom = HELP_ROOM                    -- tests: the label's room shrinks by this
+    else
+      f:SetPoint("LEFT", check.widget, "RIGHT", HELP_GAP, 0)   -- right of the control
+    end
+    f:EnableMouse(true)
+    local icon = f:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(HELP_SIZE, HELP_SIZE)
+    icon:SetPoint("CENTER", f, "CENTER", 0, 0)
+    icon:SetTexture(C.TEX_HELP)
+    f:SetScript("OnEnter", OnHelpEnter)
+    f:SetScript("OnLeave", OnHelpLeave)
+    local rec = Register({ kind = "help", path = "help." .. topic, topic = topic, title = fs, icon = icon,
+                           Sync = SyncHelp }, f)
+    TintHelp(rec, "dim")
+    return rec
+  end
+end
+
 -- Dropdown ------------------------------------------------------------------
 -- choices: array of { value = v, label = text }
 
@@ -573,6 +696,10 @@ end
 
 local function FormatPct(v)
   return format(L.SLIDER_PCT_FMT, math_floor((tonumber(v) or 0) + 0.5))
+end
+
+local function FormatMin(v)
+  return format(L.SLIDER_MIN_FMT, math_floor((tonumber(v) or 0) + 0.5))
 end
 
 local function Snap(rec, v)
@@ -841,16 +968,33 @@ local function AddButtonRow(defs)
   cursorY = cursorY - 30
 end
 
+-- The controls for another file's page or section (RepOptions.lua): the builders, and the
+-- canvas they write to (Canvas(frame, y): content frame and cursor; Content(); Cursor();
+-- Move(dy)).
+-- Controls(): every record, both pages' (Options.Refresh syncs them all).
+Options.UI = {
+  AddHeader = AddHeader, AddNote = AddNote, AddLabel = AddLabel, AddCheckbox = AddCheckbox,
+  AddHelp = AddHelp, AddDropdown = AddDropdown, MakeButton = MakeButton, SetButtonText = SetButtonText,
+  Register = Register, HasTemplate = HasTemplate, ReadOnlyRefused = ReadOnlyRefused,
+  LABEL_X = LABEL_X, CONTROL_X = CONTROL_X, CONTENT_W = CONTENT_W,
+  Canvas = function(frame, y) content, cursorY = frame, y end,
+  Content = function() return content end,
+  Cursor = function() return cursorY end,
+  Move = function(dy) cursorY = cursorY + dy end,
+  Controls = function() return controls end,
+}
+
 ---------------------------------------------------------------------------
 -- Options panel content
 ---------------------------------------------------------------------------
 
 local function TokenChoices(xpAllowed)
   local list = {}
-  local Tokens = ns.Tokens
+  local Tokens, Pvp = ns.Tokens, ns.Pvp
+  local pvpOn = Pvp ~= nil and Pvp.Available()      -- the PvP tokens on WoW Forever only
   for _, id in ipairs(Tokens.ORDER) do
     local def = Tokens.DEF[id]
-    if xpAllowed or not (def and def.xp) then
+    if (xpAllowed or not (def and def.xp)) and (pvpOn or not (def and def.pvp)) then
       list[#list + 1] = { value = id, label = Tokens.Label(id) }
     end
   end
@@ -954,8 +1098,32 @@ local function BuildWindowSection()
   AddNote(L.OPT_WINDOW_NOTE)
 end
 
+-- 3b. Automatic reload (AutoReload.lua): the interval only matters with the timer on, so
+-- the slider is greyed out while it is off (the setting keeps its value).
+local BuildAutoReloadSection
+do
+  local function SyncMinutes(rec)
+    rec.SyncBase(rec)
+    local on = GetSetting("autoReload.timer") == true
+    local w = rec.widget
+    if rec.modern then w:SetEnabled(on) elseif on then w:Enable() else w:Disable() end
+    local c = on and C.COLORS.value or C.COLORS.dim
+    rec.label:SetTextColor(c[1], c[2], c[3])
+    if rec.valueText then rec.valueText:SetTextColor(c[1], c[2], c[3]) end
+  end
+
+  function BuildAutoReloadSection()
+    AddHeader(L.OPT_AUTORELOAD)
+    AddHelp(AddCheckbox(L.OPT_AUTORELOAD_REST, "autoReload.rest"), "rest")
+    AddHelp(AddCheckbox(L.OPT_AUTORELOAD_TIMER, "autoReload.timer"), "timer")
+    local rec = AddSlider(L.OPT_AUTORELOAD_MINUTES, "autoReload.minutes", 10, 120, 5, 1, FormatMin)
+    rec.SyncBase, rec.Sync = rec.Sync, SyncMinutes
+  end
+end
+
 local function Build()
   built = true
+  local first = #controls + 1                    -- the reputation page may be built before
   local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, standalone and -28 or -4)
   scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -28, 4)
@@ -986,6 +1154,8 @@ local function Build()
   AddNote(L.OPT_THEME_NOTE)
   AddNote(L.OPT_THEME_RESTART_NOTE)
   AddCheckbox(L.OPT_SHOW, "widget.shown")
+  local repPage = Options.HasSubPage ~= nil and Options.HasSubPage()
+  if repPage then AddNote(L.OPT_REP_MOVED) end    -- the reputation has its own page
   AddDropdown(L.OPT_SLOT1, "widget.slots.1", TokenChoices(true))
   AddDropdown(L.OPT_SLOT2, "widget.slots.2", TokenChoices(true))
   AddDropdown(L.OPT_SLOT3, "widget.slots.3", TokenChoices(true))
@@ -1007,6 +1177,13 @@ local function Build()
   AddCheckbox(L.OPT_FADE, "widget.fade")
   AddCheckbox(L.OPT_HIDE_MAX, "widget.hideAtMax")
   AddLanguage()
+
+  -- 2a'. Reputation, when it has no page of its own (RepOptions.lua); PvP the same
+  -- (PvpOptions.lua)
+  if not repPage and Options.BuildRepSection then Options.BuildRepSection() end
+  if Options.BuildPvpSection and not (Options.HasPvpPage and Options.HasPvpPage()) then
+    Options.BuildPvpSection()
+  end
 
   -- 2b. Texts (readability without a background: outline and shadow by default)
   AddHeader(L.OPT_TEXTS)
@@ -1063,6 +1240,9 @@ local function Build()
   end
   AddNote(L.OPT_HIDE_PLAYED_HELP)
 
+  -- 3b. Automatic reload (help icons, interval)
+  BuildAutoReloadSection()
+
   -- 4. Cities
   AddHeader(L.OPT_CITIES)
   cityLine = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
@@ -1090,7 +1270,7 @@ local function Build()
 
   -- Read-only handles for the offline tests (our own frame).
   local byPath = {}
-  for i = 1, #controls do byPath[controls[i].path] = controls[i] end
+  for i = first, #controls do byPath[controls[i].path] = controls[i] end
   panel.controls = byPath
 end
 
@@ -1121,15 +1301,29 @@ local function OnOptZoneChanged()
   if panelShown then UpdateCityLine() end
 end
 
-local function OnPanelShow()
-  if not built then Build() end
-  if not panelShown then
-    panelShown = true
+-- The listeners: on while the main panel, the reputation page or the PvP page is shown
+-- (on = false unregisters them only when all are hidden).
+function Options.Listen(on)
+  if on then
     ns.RegisterMessage("SETTINGS_CHANGED", Options, OnOptSettingChanged)
     ns.RegisterMessage("ZONE_KEY_CHANGED", Options, OnOptZoneChanged)
     ns.RegisterMessage("DB_SWAPPED", Options, OnOptSettingsChanged)
     ns.RegisterMessage("CHAR_RESET", Options, OnOptSettingsChanged)
     ns.RegisterMessage("THEME_CHANGED", Options, OnOptSettingsChanged)
+  elseif not Options.IsShown() then
+    ns.UnregisterMessage("SETTINGS_CHANGED", Options)
+    ns.UnregisterMessage("ZONE_KEY_CHANGED", Options)
+    ns.UnregisterMessage("DB_SWAPPED", Options)
+    ns.UnregisterMessage("CHAR_RESET", Options)
+    ns.UnregisterMessage("THEME_CHANGED", Options)
+  end
+end
+
+local function OnPanelShow()
+  if not built then Build() end
+  if not panelShown then
+    panelShown = true
+    Options.Listen(true)
   end
   Options.Refresh()
 end
@@ -1137,11 +1331,7 @@ end
 local function OnPanelHide()
   if not panelShown then return end
   panelShown = false
-  ns.UnregisterMessage("SETTINGS_CHANGED", Options)
-  ns.UnregisterMessage("ZONE_KEY_CHANGED", Options)
-  ns.UnregisterMessage("DB_SWAPPED", Options)
-  ns.UnregisterMessage("CHAR_RESET", Options)
-  ns.UnregisterMessage("THEME_CHANGED", Options)
+  Options.Listen(false)
 end
 
 local function OnPanelDragStart(self) self:StartMoving() end
@@ -1284,6 +1474,8 @@ function Options.Init()
     local ok, cat = pcall(Settings.RegisterCanvasLayoutCategory, panel, L.ADDON_TITLE)
     if ok and cat then
       category = cat
+      if Options.RegisterSub then Options.RegisterSub(cat) end   -- the reputation's page
+      if Options.RegisterPvpSub then Options.RegisterPvpSub(cat) end   -- the PvP page
       pcall(Settings.RegisterAddOnCategory, cat)
     end
   end
@@ -1328,16 +1520,32 @@ function Options.Toggle()
   Options.Open()
 end
 
+-- The panel, the reputation page or the PvP page is shown (AutoReload: no reload without a
+-- click while one is).
+function Options.IsShown()
+  return panelShown or (Options.SubShown ~= nil and Options.SubShown())
+    or (Options.PvpShown ~= nil and Options.PvpShown())
+end
+
+-- Every control of every page follows the settings while one of them is shown.
 function Options.Refresh()
-  if not built or not panelShown then return end
+  local main = built and panelShown
+  if not main and not (Options.SubShown ~= nil and Options.SubShown())
+      and not (Options.PvpShown ~= nil and Options.PvpShown()) then
+    return
+  end
   syncing = true
   for i = 1, #controls do
     local rec = controls[i]
     rec.Sync(rec)
   end
   syncing = false
-  UpdateCityLine()
-  if ns.readOnly then readOnlyNote:Show() else readOnlyNote:Hide() end
+  if built then
+    UpdateCityLine()
+    if ns.readOnly then readOnlyNote:Show() else readOnlyNote:Hide() end
+  end
+  if Options.SubRefresh then Options.SubRefresh() end
+  if Options.PvpRefresh then Options.PvpRefresh() end
 end
 
 function Options.ShowContextMenu(owner)
@@ -1382,7 +1590,8 @@ function Options.PrintPlayedSummary()
   Util.Print(L.SUM_PLAYED_FMT, Fmt.Duration(filtered or 0), Fmt.Duration(base or 0))
   local u = tonumber(s.u) or 0
   if mask ~= 0 and u > 0 then Util.Print(L.TT_PREINSTALL_FMT, Fmt.Duration(u)) end
-  local est = tonumber(life.est) or 0
+  local est = Stats.EstTime(life, mask)   -- rebuilt after a crash, under the exclusions
+  if est > (filtered or 0) then est = filtered or 0 end
   if est > 0 then Util.Print(L.TT_EST_FMT, Fmt.Duration(est)) end
   if mask ~= 0 then
     Util.Print(L.SUM_EXCLUDED_FMT, Fmt.Duration(excluded or 0), Stats.MaskLabel(mask) or "")

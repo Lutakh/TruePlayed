@@ -16,7 +16,8 @@
 --   * the widget: size, scale, alpha, strata, rect, backdrop and its colours, mouse.
 -- Numbers are rounded to 1e-4. Defaults are normalised (no draw layer = ARTWORK, sublevel 0,
 -- blend BLEND, full texture coordinates, CLAMP wrap modes), so only what can be seen counts.
--- The tooltip snapshot is GameTooltip's lines, colours and anchor after Tooltip.ShowFor(widget).
+-- The tooltip snapshot is GameTooltip's lines, colours and anchor after Tooltip.ShowFor(widget)
+-- (with Shift, block 2's lines after them: TooltipSnapshot).
 local Stub, T = ...
 
 local format, concat, sort = string.format, table.concat, table.sort
@@ -184,20 +185,46 @@ local function BarSnapshot()
   return lines
 end
 
+-- The pair (Shift: block 2, TruePlayedCharTooltip, beside block 1) reads as the one
+-- tooltip of before: GameTooltip's lines then block 2's, and the anchor of the pair on the
+-- widget: side by side, the box around both blocks placed as the one tooltip was (block 1
+-- centred on the widget, the box's bottom on its top or its top under its bottom, 4 px
+-- away); stacked, the anchor of the stack (block 2's when the stack grows upward: block 2
+-- sits on the widget, block 1 on block 2). test_tooltip_theme.lua checks the pair itself.
 local function TooltipSnapshot()
   local tt = GameTooltip
-  local lines = { "shown=" .. tostring(tt:IsShown()) .. " owner=" .. tostring(tt:GetOwner() == rawget(_G, "TruePlayedWidget")) }
-  local pts = rawget(tt, "_points") or {}
+  local tt2 = rawget(_G, "TruePlayedCharTooltip")
+  if tt2 and not tt2:IsShown() then tt2 = nil end
+  local widget = rawget(_G, "TruePlayedWidget")
+  local lines = { "shown=" .. tostring(tt:IsShown()) .. " owner=" .. tostring(tt:GetOwner() == widget) }
+  local onWidget = tt
+  local first = (rawget(tt, "_points") or {})[1]
+  if tt2 and first and first.rel == tt2 then onWidget = tt2 end
+  local pts = rawget(onWidget, "_points") or {}
+  if onWidget == tt2 and first.point == "TOPRIGHT" then
+    local l1, b1, w1, h1 = tt:GetRect()
+    local _, b2, _, h2 = tt2:GetRect()
+    local wl, wb, ww, wh = widget:GetRect()
+    local x = l1 + w1 / 2 - (wl + ww / 2)
+    if pts[1].point == "BOTTOMLEFT" then
+      lines[#lines + 1] = "point " .. concat({ "BOTTOM", "true", "TOP", N(x), N(math.min(b1, b2) - (wb + wh)) }, " ")
+    else
+      lines[#lines + 1] = "point " .. concat({ "TOP", "true", "BOTTOM", N(x), N(math.max(b1 + h1, b2 + h2) - wb) }, " ")
+    end
+    pts = {}
+  end
   for i = 1, #pts do
     local p = pts[i]
-    lines[#lines + 1] = "point " .. concat({ tostring(p.point), tostring(p.rel == rawget(_G, "TruePlayedWidget")),
+    lines[#lines + 1] = "point " .. concat({ tostring(p.point), tostring(p.rel == widget),
       tostring(p.relPoint), N(p.x), N(p.y) }, " ")
   end
-  local tl, tc = tt._lines, tt._colors
-  for i = 1, #tl do
-    local l, c = tl[i], tc[i] or {}
-    lines[#lines + 1] = format("%q | %q | %s", tostring(l[1]), tostring(l[2]),
-      Ns(c[1], c[2], c[3], c[4], c[5], c[6]))
+  for _, t in ipairs({ tt, tt2 }) do
+    local tl, tc = t._lines, t._colors
+    for i = 1, #tl do
+      local l, c = tl[i], tc[i] or {}
+      lines[#lines + 1] = format("%q | %q | %s", tostring(l[1]), tostring(l[2]),
+        Ns(c[1], c[2], c[3], c[4], c[5], c[6]))
+    end
   end
   return lines
 end
@@ -361,17 +388,81 @@ end
 -- per level, the last levels, the account lines and the "rebuilt after crashes" total left
 -- the tooltip for the statistics window, and "Top zones this level" became the
 -- character's "Top zones". Every other line must still be identical.
+-- Then the two-section tooltip: the short view is the level in progress alone (the played
+-- time, instances, server /played, recent average and the character's breakdown moved to
+-- the detailed view), so the baseline's short stages lose everything from "Played" to the
+-- hint.
 local DROPPED = { ["Average per level"] = true, ["Last levels"] = true, ["Account, in instances"] = true,
                   ["Rebuilt after crashes"] = true }
+local function LeftOf(line) return line:match('^"(.-)" | ') end
 local function Intended(stages)
   for _, st in ipairs(stages) do
     if st.label:find("tooltip", 1, true) then
       local out = {}
       for _, line in ipairs(st.lines) do
-        local left = line:match('^"(.-)" | ')
+        local left = LeftOf(line)
         if left == "Top zones this level" then
           out[#out + 1] = '"Top zones"' .. line:sub(#'"Top zones this level"' + 1)
         elseif not (left and (DROPPED[left] or left:find("^Level %d+$") or left:find("^Account %(%d+ character"))) then
+          out[#out + 1] = line
+        end
+      end
+      if st.label:find("tooltip short", 1, true) then
+        local kept, n, cut = {}, #out, false
+        for i = 1, n do
+          local left = LeftOf(out[i])
+          if left == "Played" or (left and left:find("^Played %(")) then cut = true end
+          if not cut or i == n then kept[#kept + 1] = out[i] end
+        end
+        out = kept
+      end
+      st.lines = out
+    end
+  end
+  return stages
+end
+
+-- The lines the two-section tooltip adds, taken out of the current stages: the titles of
+-- the sections, the level's breakdown (its label row, its continuation rows, the blank
+-- line before it and, in the detailed view, the one after it) and the character's time in
+-- the current zone (detailed view); the character's breakdown, labelled "Total breakdown"
+-- since the two blocks side by side, is the baseline's "Breakdown". Since the native
+-- blocks have a breakdown bar, a breakdown's label is alone on its line (its right text a
+-- space: the bar goes over it) and every part is on the continuation rows, as many parts
+-- a row as the baseline's: its label line and first continuation row make the baseline's
+-- first line (label, first parts, same colours). Every other line must be the
+-- baseline's: the scenarios play one level in one zone, so the level's zone time is the
+-- character's.
+local function IsBlank(line) return line ~= nil and line:find('^" " | "nil" | ') ~= nil end
+local function IsCont(line) return line ~= nil and LeftOf(line) == " " and not IsBlank(line) end
+local BAR_LABEL = '^"Total breakdown" | " " | 0%.6000,0%.6000,0%.6000,1%.0000,1%.0000,1%.0000$'
+local function TwoSections(stages)
+  for _, st in ipairs(stages) do
+    if st.label:find("tooltip", 1, true) then
+      local lines, skip, out = st.lines, {}, {}
+      local first
+      for i = 1, #lines do
+        if LeftOf(lines[i]) == "Level breakdown" then first = i break end
+      end
+      if first then
+        local last = first
+        while IsCont(lines[last + 1]) do last = last + 1 end
+        for i = first, last do skip[i] = true end
+        if IsBlank(lines[first - 1]) then skip[first - 1] = true end
+        if IsBlank(lines[last + 1]) then skip[last + 1] = true end
+      end
+      local charZone = false
+      for i, line in ipairs(lines) do
+        local left = LeftOf(line)
+        if left == "Character total" then charZone = true end
+        if charZone and left and left:find("^Zone: ") then
+          charZone = false
+        elseif left == "Total breakdown" and line:find(BAR_LABEL) and IsCont(lines[i + 1]) then
+          out[#out + 1] = '"Breakdown"' .. lines[i + 1]:sub(#'" "' + 1)
+          skip[i + 1] = true
+        elseif left == "Total breakdown" then
+          out[#out + 1] = line                  -- not the bar layout: left as it is (a difference)
+        elseif not skip[i] and left ~= "Current level" and left ~= "Character total" then
           out[#out + 1] = line
         end
       end
@@ -416,6 +507,7 @@ for _, sc in ipairs(SCENARIOS) do
     local snapA, errA = Play(sc, root .. BASELINE)
     snapA = Intended(snapA)
     local snapB, errB = Play(sc, root)
+    snapB = TwoSections(snapB)
     T.eq(errA, {}, "baseline run errors")
     T.eq(errB, {}, "current run errors")
     T.ok(#snapA > 0, "stages recorded")

@@ -607,7 +607,12 @@ T.test("options: the minimap and mini display section writes every new setting",
     return out, root
   end
   local v1 = Values("mini.infos.1")
-  T.eq(#v1, #ns.Tokens.ORDER - 1)
+  local pvpTokens = 0                              -- offered on WoW Forever only (Pvp.Available)
+  for _, def in pairs(ns.Tokens.DEF) do
+    if def.pvp then pvpTokens = pvpTokens + 1 end
+  end
+  T.eq(pvpTokens, 7)
+  T.eq(#v1, #ns.Tokens.ORDER - 1 - (ns.Pvp.Available() and 0 or pvpTokens))
   T.ok(v1[1] ~= "none")
   T.eq((Values("mini.infos.2"))[1], "none")
   T.eq(Values("minimap.click"), { "stats", "options", "bar", "mini" })

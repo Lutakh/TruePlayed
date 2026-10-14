@@ -23,6 +23,9 @@
 --   media.dot: 2 px on, 6 px off (tiled)
 --   bar.pad, gap: gap: room for the frame (3 px) and the arrow (5 px)
 --   bar.height: default user height 8 -> 12 px blocks (board 18 px / 1.5)
+--   bar.rep: reputation strip 9 px under the track, 1 px clear of the arrow's tip (8 px) at the
+--     fill end and 1 px above the text row: 5 px more height (the gap holds the frame and the
+--     arrow)
 --   bar.layers > frame: pixel frame around the track (the black inner ring is the gap colour of the
 --     blocks)
 --   bar.layers > track: empty blocks: 2 px dark top, navy body, 2 px lighter bottom
@@ -71,6 +74,7 @@ return {
     pad = 10, gap = 8,
     height = { add = 4, min = 8 },
     maxAlpha = 0.35,
+    rep = { off = 9, h = 3, clear = 1, color = "ink@.7" },
     layers = {
       { id = "frame", span = "track", nine = { "frame", 4, 4 }, pad = { 3, 3 }, top = -3, bottom = -3,
         layer = "BORDER", sub = -1 },

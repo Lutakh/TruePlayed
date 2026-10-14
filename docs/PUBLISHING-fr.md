@@ -152,17 +152,20 @@ est la vérification complète à refaire avant chaque version.
    - `/tpl stats zones` : bloc « Continents » au-dessus des capitales, aucun continent
      (Kalimdor, Royaumes de l'Est) dans la liste des zones ;
    - montée de niveau : nouvelle ligne dans l'historique (`/tpl stats`) ;
-   - sans exclusion, « Temps de jeu » dans l'infobulle = le `/played` à 1 minute près ;
+   - sans exclusion, « Temps de jeu » dans l'infobulle avec Maj = le `/played` à 1 minute
+     près ;
    - plantage simulé : quittez le jeu de force (Moniteur d'activité) après 20 minutes,
      reconnectez-vous et attendez 10 secondes : le total égale le `/played`, le chat
      annonce le temps récupéré et l'infobulle indique « dont reconstitué après un
-     plantage : X min » ;
+     plantage : X min » (jamais plus que « Ce niveau », même AFK exclu ; une ligne grisée
+     sous la répartition si plus de la moitié du niveau est reconstituée) ;
    - donjon : passez AFK à l'intérieur, aucune erreur Lua ; avec l'option expérimentale
      « Masquer les lignes du /played » cochée, recevez un chuchotement dans le donjon puis
      tapez `/played` : aucune erreur dans le chat ;
    - combat avec « Masquer en combat » : la barre disparaît puis revient ;
-   - donjon, raid ou champ de bataille : l'infobulle affiche « En instance » et la
-     répartition cite « Donjons », « Raids » ou « JcJ » ; `/tpl stats zones` montre le
+   - donjon, raid ou champ de bataille : l'infobulle avec Maj affiche « En instance », et
+     les deux répartitions (« Répartition du niveau » au survol, « Répartition totale »
+     avec Maj) citent « Donjons », « Raids » ou « JcJ » ; `/tpl stats zones` montre le
      bloc « Instances les plus jouées » avec le type après le nom ;
    - un monstre tué (aussi dans un donjon) : « Monstres à tuer : ~N (moyenne : M XP,
      dernier : X XP) » dans l'infobulle (M = moyenne des 10 derniers) et
@@ -179,7 +182,42 @@ est la vérification complète à refaire avant chaque version.
    - Options > Affichage > « Langue (Language) » : choisissez English, cliquez
      « Recharger l'interface » : tous les textes de TruePlayed (barre, infobulle, fenêtre,
      options, menu du clic droit, chat) sont en anglais, les noms de zones restent en
-     français ; `/tpl lang auto` puis `/reload` ramène le français ;
+     français ; `/tpl lang auto` puis `/reload` ramène le français (un simple clic
+     recharge, Forever compris : aucune fenêtre « bloqué ») ;
+   - Options > Rechargement automatique : « ? » et bulles des deux cases ; « Recharger en
+     capitale ou à l'auberge » cochée, après 60 minutes de jeu dans le monde depuis le
+     dernier chargement, entrez dans une capitale et restez immobile 10 s : la fenêtre en
+     haut de l'écran demande, « Recharger maintenant » recharge au clic sans erreur (grisé
+     et sans effet une ou deux secondes après un gain d'XP hors combat, une quête rendue
+     par exemple), « Plus tard » la ferme (retour 10 min après), un combat la cache (un
+     monstre tué compris : elle revient quelques secondes après, bouton actif) ; décochez
+     ensuite les deux cases (réglage par défaut) ;
+   - réputation : sans faction suivie, la barre est comme avant ; cochez « Barre de
+     réputation » pour une faction dans le panneau Réputation du jeu : la bande
+     de 3 px apparaît aussitôt sous la barre d'XP, à la couleur du rang, et avance avec
+     un gain de réputation ; l'infobulle a la ligne « <faction>   <rang> · x / y (z %) »
+     après le bloc XP ; une autre faction cochée : la bande suit aussitôt ; Options >
+     Réputation > « Afficher la réputation suivie sous la barre » décochée, ou plus aucune
+     faction suivie : la barre revient exactement à son état d'avant ; la bande dans
+     deux ou trois thèmes (Futuriste, Druide, Classique), sans chevaucher les textes ni
+     le repère du bout de la barre d'XP ;
+   - infobulle de la barre, en haut puis en bas de l'écran : sans Maj une infobulle
+     « Niveau en cours » ; avec Maj une deuxième, « Total du personnage », **à sa
+     droite**, 4 px plus loin, chacune à sa largeur, les jauges « Répartition du niveau »
+     et « Répartition totale » face à face (même hauteur), la ligne d'aide en bas de
+     « Total du personnage » ; barre au bord droit de l'écran : les deux se décalent
+     ensemble, sans jamais se chevaucher ; les deux se cachent ensemble ; même chose sur le
+     bouton de la minicarte et le mini-affichage, et en thème Classique (deux infobulles
+     du jeu côte à côte, chaque libellé de répartition seul sur sa ligne avec sa barre
+     jusqu'au bord droit et les parts dessous, les deux barres à la même hauteur et
+     visibles dès l'ouverture, aucune barre restée après un survol rapide d'autre chose,
+     puis une infobulle d'objet à sa largeur normale) ; thème Héroïque : le libellé de la
+     répartition seul sur sa ligne, rien de coupé ; avec l'échelle d'interface doublée
+     (`/run UIParent:SetScale(UIParent:GetScale() * 2)`, **sans** `/reload`, qui la
+     remet à la normale ; tapée une deuxième fois si elles restent côte à côte sur un
+     écran très large), les deux s'empilent, « Total du personnage » sous « Niveau en
+     cours », de la même largeur ; puis `/reload` : échelle normale, les deux de nouveau
+     côte à côte ;
    - `/tpl perf` : notez la ligne « Mémoire », rejouez une heure, retapez `/tpl perf` : le
      chiffre doit rester **stable** (il compte le code de l'addon, environ 0,5 Mo, plus les
      données de tous vos personnages : il grandit avec le nombre de personnages, ce n'est
@@ -244,10 +282,11 @@ l'étape 13.
 
 ### Avant : captures d'écran et logo
 
-- **Captures d'écran** (3 à 5, prises en jeu) : la barre, l'infobulle normale et avec Maj,
-  la fenêtre de statistiques (onglet Niveaux avec les zones d'un niveau au survol, onglet
-  Zones), les options. Pour capturer : la touche de capture d'écran du jeu (cherchez
-  « Capture d'écran » dans Échap > Options > Raccourcis) enregistre l'image dans
+- **Captures d'écran** (3 à 7, prises en jeu) : la barre, l'infobulle normale et les deux
+  avec Maj, la bande de réputation et son infobulle, la barre JcJ et son infobulle, la
+  fenêtre de statistiques (onglet Niveaux avec l'histogramme et la fiche d'un niveau,
+  onglet Zones), les options. Pour capturer : la touche de capture d'écran du jeu
+  (cherchez « Capture d'écran » dans Échap > Options > Raccourcis) enregistre l'image dans
   `/Applications/World of Warcraft/_classic_beta_/Screenshots/` ; ou, sur le Mac,
   `Cmd + Maj + 4` puis la barre d'espace et un clic sur la fenêtre du jeu (l'image arrive
   sur le Bureau). Pas d'image générée ou retouchée par IA sans mention visible.

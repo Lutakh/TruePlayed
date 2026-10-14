@@ -12,6 +12,8 @@
 --         languages aside: the options and the chat draw them in the game font);
 --       - display fonts: the texts of Themes.DISPLAY_KEYS in those locales (format
 --         specifiers and colour codes removed), plus "0123456789%.,:/-()~ " and U+00A0;
+--         the window's and the graph's titles (RAW_DISPLAY) are checked without `subst`:
+--         Window.lua and Graph.lua draw them as they are, without Themes.Subst;
 --       - Cyrillic: on a ruRU client a theme keeps only its fonts flagged `cyr` (the others
 --         fall back to the game font, Themes RoleEntry), so every `cyr` font of a theme
 --         covers the ruRU strings in its roles (body / num: every value; display: the
@@ -343,6 +345,10 @@ end
 ---------------------------------------------------------------------------
 local BODY_TEXTS, DISPLAY_TEXTS = {}, {}
 local CYR_BODY_TEXTS, CYR_DISPLAY_TEXTS = {}, {}
+-- Display keys drawn without Themes.Subst (Window.lua title, Graph.lua title): a { text }
+-- entry, which needed() checks without the font's replacements.
+local RAW_DISPLAY = { WIN_TITLE = true, GRAPH_TITLE_FMT = true, GRAPH_WINDOW_30 = true,
+                      GRAPH_WINDOW_60 = true, GRAPH_WINDOW_300 = true }
 do
   local function addRange(a, b)
     for cp = a, b do BODY_TEXTS[#BODY_TEXTS + 1] = utf8Char(cp) end
@@ -364,7 +370,7 @@ do
     table.sort(keys)
     for _, k in ipairs(keys) do body[#body + 1] = rendered(L[k]) end
     for _, k in ipairs(Themes.DISPLAY_KEYS) do
-      if L[k] then display[#display + 1] = rendered(L[k])
+      if L[k] then display[#display + 1] = RAW_DISPLAY[k] and { rendered(L[k]) } or rendered(L[k])
       else fail("display key %s is missing from the %s strings", k, loc) end
     end
   end
@@ -382,7 +388,9 @@ local function needed(texts, entry)
   local subst = entry and entry.subst
   for i = 1, #texts do
     local s = texts[i]
-    if subst then
+    if type(s) == "table" then
+      s = s[1]
+    elseif subst then
       for j = 1, #subst do s = s:gsub(subst[j][3], subst[j][4]) end
     end
     addCodepoints(s, set)

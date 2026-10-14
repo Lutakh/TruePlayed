@@ -113,6 +113,19 @@ C.LATENCY_MEMO_MAX    = 256
 -- crash recovery (requirement D)
 C.EST_MIN_HISTORY     = 600    -- below this much tracked history, estimated gaps go to "w"
 C.EST_NOTIFY_MIN      = 300    -- chat notice when a re-added gap is at least this long
+C.EST_MOST            = 0.5    -- tooltip note under a breakdown more than this share rebuilt
+
+-- automatic reload (AutoReload.lua, settings autoReload.*): the game writes addon data only
+-- at logout or /reload, so a crash loses everything since the last load. Unsaved = seconds
+-- since this load (Tracker.loadStartG).
+C.AUTORELOAD_REST_MIN     = 3600 -- unsaved seconds needed before a reload in a capital or an inn
+                                 -- (an hour: one may stay long in town doing nothing)
+C.AUTORELOAD_SETTLE       = 10   -- seconds in a capital or an inn, standing still, before acting
+C.AUTORELOAD_LOAD_MIN     = 60   -- never within this many seconds of a load
+C.AUTORELOAD_LEVELUP_WAIT = 40   -- nor of a level-up (its /played check, Played.lua)
+C.AUTORELOAD_SNOOZE       = 600  -- "Later", or a countdown cancelled: asked again after this
+C.AUTORELOAD_WARN         = 5    -- chat warning this many seconds before a reload without a click
+C.AUTORELOAD_RETRY        = 5    -- a safety check failed at the due moment: checked again after this
 
 -- /played policy
 C.PLAYED_LOGIN_WAIT     = 10
@@ -154,6 +167,18 @@ C.OUTLINES            = { "none", "thin", "thick" } -- widget.outline choices
 C.MINIMAP_CLICKS      = { "stats", "options", "bar", "mini" }   -- minimap.click choices
 C.MINI_LAYOUTS        = { "horizontal", "vertical" }             -- mini.layout choices
 C.MINI_XP             = { "none", "pct", "line", "both" }        -- mini.xp choices
+-- widget.main: what the bar's main track shows (the XP; the followed reputation or the PvP
+-- rank (Pvp.lua), the XP then in the thin strip under it below the max level).
+C.MAIN_MODES          = { "xp", "rep", "pvp" }
+-- PvP (Pvp.lua, WoW Forever): the honor currency and the hidden "renown" faction that carries
+-- the PvP rank (the only ids written here: the cap, the thresholds and the weekly cap are
+-- read from the game); open-world time counts as PvP time up to PVP_IDLE seconds after the
+-- last honor or rank gain (outside a battleground the rates pause past it); widget.pvp:
+-- what the thin PvP strip under the bar shows
+C.PVP_HONOR_ID        = 1792
+C.PVP_RANK_FACTION    = 2800
+C.PVP_IDLE            = 900
+C.PVP_STRIPS          = { "off", "honor", "rank" }
 -- statistics window (Window.lua): date format of its dates (auto = the language's), clock
 -- (auto = the language's: 12 h for English, else 24 h), size limits of window.width / height
 C.DATE_FORMATS        = { "auto", "dmy", "mdy", "ymd" }          -- window.dateFmt choices
@@ -257,6 +282,9 @@ C.TEX_CIRCLE_MASK = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
 C.TEX_TT_BG       = "Interface\\Tooltips\\UI-Tooltip-Background"
 C.TEX_TT_BORDER   = "Interface\\Tooltips\\UI-Tooltip-Border"
 C.ICON            = "Interface\\Icons\\INV_Misc_PocketWatch_01"
+-- circled "?" of the addon (Themes.COMMON_MEDIA.help: white art tinted by vertex colour),
+-- after the statistics window's column headers and the options' auto reload checkboxes
+C.TEX_HELP        = "Interface\\AddOns\\" .. ns.ADDON .. "\\Media\\Themes\\common\\help.tga"
 
 C.COLORS = {
   bg       = { 0.059, 0.067, 0.082, 0.85 },
@@ -306,7 +334,16 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
     slot3Pos = "center",                    -- "center" (mockup) | "left"
     pctPos = "follow",                      -- "follow" (mockup marker) | "level"
     combatHide = false, fade = false, hideAtMax = false,
+    rep = true,                             -- reputation strip under the bar + its tooltip line,
+                                            -- for the followed faction (Reputation.lua)
+    main = "xp",                            -- main track: C.MAIN_MODES ("rep": the followed
+                                            -- reputation, "pvp": the PvP rank, the XP in the strip)
+    pvp = "off",                            -- PvP strip under the bar: C.PVP_STRIPS (Pvp.lua)
+    pvpAuto = false,                        -- the main track shows PvP while in a battleground
+                                            -- (a temporary override: widget.main is not written)
   },
+  -- PvP (Pvp.lua): sound + popup when the honor reaches its cap (after combat)
+  pvp = { capAlert = true },
   -- minimap button (MinimapButton.lua): angle in degrees around the minimap (0 = right,
   -- counter-clockwise), left-click action C.MINIMAP_CLICKS
   minimap = { shown = true, locked = false, angle = 225, click = "stats" },
@@ -326,6 +363,8 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
   window = { width = 700, height = 440, dateFmt = "auto", clock = "auto" },
   theme = "futuriste",                      -- a C.THEME_CHOICES value (Themes.lua resolves it)
   language = "auto",                        -- a C.LANGUAGES value, applied at the next UI load
+  -- automatic reload (AutoReload.lua): in a capital or an inn, and / or every `minutes`
+  autoReload = { rest = false, timer = false, minutes = 30 },
   rateTau = 3600,                           -- 5400 | 3600 | 1200
   requestPlayedAtLogin = true,              -- one visible /played at login if none arrives within 10 s
   hidePlayedMsg = false,                    -- EXPERIMENTAL, default OFF (5.13)
@@ -442,6 +481,19 @@ function Util.IsMaxLevel()
   if GuardedCall(IsLevelAtEffectiveMaxLevel, level) == true then return true end
   if AtOrAbove(level, GuardedCall(GetMaxLevelForPlayerExpansion)) then return true end
   return AtOrAbove(level, GuardedCall(GetMaxPlayerLevel))
+end
+
+-- The top level of the client (the level a character levels up to): the expansion's max
+-- level, else the player max level (both guarded: missing, failing, secret or not a
+-- number >= 1 reads as unknown), else the end of the Classic XP table (#C.CLASSIC_XP + 1,
+-- 60). The one place that may give 60: the Levels tab (its last bar, "level <top> in")
+-- asks here, never a literal. A server cap the client does not know about (the Forever
+-- beta) is not applied: Tracker.GetCapInfo. A whole number; nothing allocated.
+function Util.MaxLevel()
+  local v = GuardedCall(GetMaxLevelForPlayerExpansion)
+  if not (IsNum(v) and v >= 1) then v = GuardedCall(GetMaxPlayerLevel) end
+  if not (IsNum(v) and v >= 1) then return #C.CLASSIC_XP + 1 end
+  return math_floor(v)
 end
 
 -- "Name Surname" on Forever, "Name" elsewhere. Allocates: UI only.
@@ -786,7 +838,7 @@ local LIFE_FIELDS    = { "xp", "xa", "xr", "xq", "d", "est" }
 local LEVEL_FIELDS   = { "xp", "xa", "xr", "xq", "d" }
 local ZONE_FIELDS    = { "xp" }
 local SESSION_FIELDS = { "xp", "d" }
-local LEVEL_OPTIONAL = { "est", "max", "t0", "t1", "srvStart", "srvEnd", "eta", "etaP" }
+local LEVEL_OPTIONAL = { "est", "max", "t0", "t1", "srvStart", "srvEnd", "eta", "etaP", "etaM" }
 local EMA_FIELDS     = { "a", "r", "q", "d" }
 local CHAR_TABLES    = { "base", "srv", "xpSnap", "cur", "last" }
 
@@ -807,19 +859,32 @@ local function RepairBucket(b, fields)
   end
 end
 
--- Optional stalled-time map (life.xs, levels[L].xs: seconds per state key without XP
--- for a long while, shaped like `s`): removed unless a table; bad or negative values
--- dropped. Never created here (the Tracker creates it on the first stalled second).
-local function RepairXS(b)
-  local xs = b.xs
-  if xs == nil then return end
-  if type(xs) ~= "table" then
-    b.xs = nil
+-- Optional per-key maps of a bucket (life, levels[L]), shaped like `s`: removed unless a
+-- table; bad or negative values dropped. Never created here: the Tracker creates them on
+-- their first write. xs = stalled time (seconds without XP for a long while, created on
+-- the first stalled second); es = time rebuilt after a crash (EstimateGap).
+local function RepairKeyMap(b, field)
+  local m = b[field]
+  if m == nil then return end
+  if type(m) ~= "table" then
+    b[field] = nil
     return
   end
-  for k, v in pairs(xs) do
-    if type(k) ~= "string" or not IsNum(v) or v < 0 then xs[k] = nil end
+  for k, v in pairs(m) do
+    if type(k) ~= "string" or not IsNum(v) or v < 0 then m[k] = nil end
   end
+end
+
+local function RepairXS(b) RepairKeyMap(b, "xs") end
+local function RepairES(b) RepairKeyMap(b, "es") end
+
+-- pw: open-world PvP seconds of a bucket (life, levels[L]; Pvp.lua's world PvP, written by
+-- Tracker.AddLevelStat), a part of its s.w. Optional, never defaulted (records and
+-- levels from before it have none: "not measured", not 0): kept only as a finite number
+-- >= 0, else removed.
+local function RepairPW(b)
+  local v = b.pw
+  if v ~= nil and not (IsNum(v) and v >= 0) then b.pw = nil end
 end
 
 local function RepairZoneMap(map)
@@ -909,6 +974,121 @@ local function RepairKillRing(char)
   for i = 1, n do ring[i] = math_floor(ring[i] + 0.5) end
 end
 
+-- char.rep = { id, f, v, e, n, s, t } (Reputation.lua): the faction chosen in the options,
+-- the faction measured, its last absolute standing, the rate's EMAs (8 x { a, d }), the
+-- counted seconds without a gain, the gain of the session t0 = t. Optional, small.
+local function RepairRep(char)
+  local r = char.rep
+  if r == nil then return end
+  if type(r) ~= "table" then
+    char.rep = nil
+    return
+  end
+  if r.id ~= nil and not (IsNum(r.id) and r.id >= 1 and r.id % 1 == 0) then r.id = nil end
+  if r.f ~= nil and not (IsNum(r.f) and r.f >= 1 and r.f % 1 == 0) then r.f = nil end
+  if r.v ~= nil and not IsNum(r.v) then r.v = nil end
+  if r.f == nil or r.v == nil then r.f, r.v = nil, nil end      -- a base needs both
+  local e = r.e
+  if e ~= nil then
+    local ok = type(e) == "table"
+    if ok then
+      for i = 1, 8 do
+        local x = e[i]
+        if type(x) ~= "table" or not IsNum(x.a) or x.a < 0 or not IsNum(x.d) or x.d < 0 then
+          ok = false
+          break
+        end
+      end
+    end
+    if not ok then
+      r.e = nil                                 -- recreated at the next read, rate from zero
+    else
+      for k in pairs(e) do
+        if type(k) ~= "number" or k < 1 or k > 8 or k % 1 ~= 0 then e[k] = nil end
+      end
+    end
+  end
+  if r.n ~= nil and not (IsNum(r.n) and r.n >= 0) then r.n = 0 end
+  if r.s ~= nil and not (IsNum(r.s) and r.s >= 0) then r.s = nil end
+  if r.t ~= nil and not IsNum(r.t) then r.t = nil end
+end
+
+-- char.pvp (Pvp.lua): h / k the last honor quantity and rank season total read (the bases
+-- of the gains), he / ke their EMAs (8 x { a, d }), g the time() of the last PvP gain, c
+-- the time() the honor reached its cap (a the cap alert shown for it), hk the last lifetime
+-- honorable kills read, s the session's counters (t its t0, h honor and r rank points
+-- gained, k the lifetime kills at its start, d today's kills at its start, w / l wins and
+-- losses, n battlegrounds, bh their honor, bd their seconds), b the battleground in
+-- progress (at its time() of entry, h the session's honor then, i its instance id, r its
+-- result: 1 won, 0 lost, 2 neither, d its length from the match's end). World PvP (Pvp.lua,
+-- per level): wg the time() of the last world PvP signal, w0 the time() world PvP began to
+-- be measured for this character (set once), wp the open-world seconds since wg not
+-- committed yet, per level ({ [level] = seconds }: a whole level >= 1 -> a finite number
+-- >= 0; recreated empty when missing or not a table, so the tick path never creates it).
+-- Optional, small: a bad field is dropped (an EMA from zero, a base taken again at the
+-- next read).
+local function RepairPvp(char)
+  local p = char.pvp
+  if p == nil then return end
+  if type(p) ~= "table" then
+    char.pvp = nil
+    return
+  end
+  local function Num0(v) return IsNum(v) and v >= 0 end
+  for _, f in ipairs({ "h", "k", "g", "c", "hk", "wg", "w0" }) do
+    if p[f] ~= nil and not Num0(p[f]) then p[f] = nil end
+  end
+  local wp = p.wp
+  if type(wp) ~= "table" then
+    p.wp = {}
+  else
+    for k, v in pairs(wp) do
+      if not (IsNum(k) and k >= 1 and k % 1 == 0 and Num0(v)) then wp[k] = nil end
+    end
+  end
+  if p.a ~= nil and p.a ~= true then p.a = nil end
+  for _, f in ipairs({ "he", "ke" }) do
+    local e = p[f]
+    if e ~= nil then
+      local ok = type(e) == "table"
+      if ok then
+        for i = 1, 8 do
+          local x = e[i]
+          if type(x) ~= "table" or not Num0(x.a) or not Num0(x.d) then
+            ok = false
+            break
+          end
+        end
+      end
+      if not ok then
+        p[f] = nil
+      else
+        for k in pairs(e) do
+          if type(k) ~= "number" or k < 1 or k > 8 or k % 1 ~= 0 then e[k] = nil end
+        end
+      end
+    end
+  end
+  local s = p.s
+  if s ~= nil then
+    if type(s) ~= "table" or not IsNum(s.t) then
+      p.s = nil
+    else
+      for _, f in ipairs({ "h", "r", "k", "d", "w", "l", "n", "bh", "bd" }) do
+        if s[f] ~= nil and not Num0(s[f]) then s[f] = nil end
+      end
+    end
+  end
+  local b = p.b
+  if b ~= nil and (type(b) ~= "table" or not Num0(b.at) or not Num0(b.h)
+      or (b.r ~= nil and b.r ~= 0 and b.r ~= 1 and b.r ~= 2)) then
+    p.b = nil
+  elseif b ~= nil then
+    if b.i ~= nil and not Num0(b.i) then b.i = nil end
+    if b.d ~= nil and not Num0(b.d) then b.d = nil end
+  end
+end
+
 local function RepairEma(char)
   local ema = char.ema
   if type(ema) ~= "table" then
@@ -987,6 +1167,16 @@ local function Shift(s, from, to, v)
   s[to] = (s[to] or 0) + v
 end
 
+-- The same move in the rebuilt-time map of a bucket (b.es, when there is one), for at
+-- most what it holds under `from`: the moved seconds stay rebuilt, es[k] <= s[k] holds.
+local function ShiftES(b, from, to, v)
+  local es = b.es
+  if type(es) ~= "table" then return end
+  local e = es[from]
+  if not IsNum(e) or e <= 0 then return end
+  Shift(es, from, to, e < v and e or v)
+end
+
 -- Estimated instance time of earlier versions: EstimateGap split a crash gap by the
 -- whole history of the character, instance kinds included, so a few seconds of its most
 -- played dungeon showed at levels where it never entered it ("< 1m" in Inst.). That time
@@ -994,7 +1184,8 @@ end
 -- when the stored sessions prove the level held no instance time: they cover the whole
 -- level (the oldest began at an earlier level), none that overlaps it holds instance
 -- time, and the level's instance time is at most its estimated time. Totals are kept
--- (level, character zones, life). Idempotent: nothing is left to move on the next load.
+-- (level, character zones, life; their rebuilt maps es move along). Idempotent: nothing
+-- is left to move on the next load.
 local function RepairEstimatedInstances(char)
   local sessions, levels = char.sessions, char.levels
   if type(sessions) ~= "table" or type(levels) ~= "table" then return end
@@ -1032,6 +1223,8 @@ local function RepairEstimatedInstances(char)
             cz.s[open] = (cz.s[open] or 0) + v
             Shift(lb.s, ik, open, v)
             Shift(life.s, ik, open, v)
+            ShiftES(lb, ik, open, v)
+            ShiftES(life, ik, open, v)
           end
         end
       end
@@ -1052,6 +1245,8 @@ function Core.RepairChar(char)
   else
     RepairBucket(char.life, LIFE_FIELDS)
     RepairXS(char.life)
+    RepairES(char.life)
+    RepairPW(char.life)
   end
 
   local levels = char.levels
@@ -1064,15 +1259,19 @@ function Core.RepairChar(char)
       else
         RepairBucket(lb, LEVEL_FIELDS)
         RepairXS(lb)
+        RepairES(lb)
+        RepairPW(lb)
         if type(lb.z) ~= "table" then lb.z = {} else RepairZoneMap(lb.z) end
         for i = 1, #LEVEL_OPTIONAL do
           local f = LEVEL_OPTIONAL[i]
           if lb[f] ~= nil and not IsNum(lb[f]) then lb[f] = nil end
         end
         -- eta: estimated time to the next level when the level began (s, > 0); etaP: the
-        -- XP fraction at that moment (0..1). Both optional (Tracker.CaptureLevelEta).
+        -- XP fraction at that moment (0..1); etaM: the exclusion mask it was taken under
+        -- (a whole 0..7). All optional (Tracker.CaptureLevelEta).
         if lb.eta ~= nil and lb.eta <= 0 then lb.eta = nil end
         if lb.etaP ~= nil and (lb.etaP < 0 or lb.etaP > 1) then lb.etaP = nil end
+        if lb.etaM ~= nil and (lb.etaM < 0 or lb.etaM > 7 or lb.etaM % 1 ~= 0) then lb.etaM = nil end
       end
     end
   end
@@ -1080,6 +1279,8 @@ function Core.RepairChar(char)
   if type(char.zones) ~= "table" then char.zones = {} else RepairZoneMap(char.zones) end
   RepairSessions(char)
   RepairEma(char)
+  RepairRep(char)
+  RepairPvp(char)
 
   for i = 1, #CHAR_TABLES do
     local f = CHAR_TABLES[i]
@@ -1144,6 +1345,9 @@ local TOKEN_IDS = {   -- Tokens.ORDER (SPEC 3.11), used when Tokens.lua is absen
   afk_session = true, avg_level = true, zone_time = true, fps = true,
   latency = true, fps_latency = true,
   kills = true, eta_kills = true, instance_session = true, instance_total = true,
+  reph = true, rep_eta = true,
+  honor = true, honor_h = true, honor_eta = true, rank = true, rank_h = true, rank_eta = true,
+  hk_today = true,
 }
 local VALID_POINTS = {
   TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true,
@@ -1178,6 +1382,11 @@ DefineSetting("widget.locked", "bool")
 DefineSetting("widget.combatHide", "bool")
 DefineSetting("widget.fade", "bool")
 DefineSetting("widget.hideAtMax", "bool")
+DefineSetting("widget.rep", "bool")
+DefineSetting("widget.main", "enum", { values = SetOf(C.MAIN_MODES) })
+DefineSetting("widget.pvp", "enum", { values = SetOf(C.PVP_STRIPS) })
+DefineSetting("widget.pvpAuto", "bool")
+DefineSetting("pvp.capAlert", "bool")
 DefineSetting("widget.shadow", "bool")
 DefineSetting("widget.qualityColors", "bool")
 DefineSetting("widget.outline", "enum", { values = SetOf(C.OUTLINES) })
@@ -1218,6 +1427,9 @@ DefineSetting("window.clock", "enum", { values = SetOf(C.CLOCKS) })
 DefineSetting("theme", "theme", { values = SetOf(C.THEME_CHOICES) })
 DefineSetting("language", "enum", { values = SetOf(C.LANGUAGES) })
 DefineSetting("rateTau", "choice", { values = { [5400] = true, [3600] = true, [1200] = true } })
+DefineSetting("autoReload.rest", "bool")
+DefineSetting("autoReload.timer", "bool")
+DefineSetting("autoReload.minutes", "num", { min = 10, max = 120, step = 5 })
 DefineSetting("requestPlayedAtLogin", "bool")
 DefineSetting("hidePlayedMsg", "bool")
 DefineSetting("debug", "bool")
@@ -1600,11 +1812,15 @@ function Core.ResetChar(guid)
     chars[guid] = nil
   else
     -- Rebuild the current record IN PLACE (the Tracker and the UI keep this table).
+    -- The faction chosen in the options is a setting, not a statistic: it stays (its
+    -- rate, its base and its session gain go with the rest).
     local keep = {}
     for i = 1, #IDENTITY_FIELDS do
       local f = IDENTITY_FIELDS[i]
       keep[f] = cur[f]
     end
+    local repId = type(cur.rep) == "table" and cur.rep.id or nil
+    if repId ~= nil then keep.rep = { id = repId } end
     local fresh = Core.NewCharRecord(guid)
     for k in pairs(cur) do cur[k] = nil end
     for k, v in pairs(fresh) do cur[k] = v end
@@ -1628,6 +1844,10 @@ end
 function Core.ResetRate()
   if ns.readOnly or type(ns.char) ~= "table" then return false end
   ns.char.ema = Core.NewEma()
+  local Rep = ns.Rep
+  if Rep and Rep.ResetRate then Rep.ResetRate() end   -- the reputation's rate too
+  local Pvp = ns.Pvp
+  if Pvp and Pvp.ResetRate then Pvp.ResetRate() end   -- and the PvP ones (honor, rank points)
   ns.SendMessage("XP_CHANGED")
   return true
 end
@@ -1887,15 +2107,20 @@ end
 -- WTFix (Forever launcher) protects every addon with SavedVariables by default and
 -- rewrites them at each UI load with an older copy: tracking data would roll back.
 -- Read-only detection of that setup, one chat warning per UI load.
-local wtfixWarned = false
-local function CheckWTFix()
-  if wtfixWarned then return end
+-- Core.IsWTFixProtected is also read by AutoReload: a reload would roll the data back.
+function Core.IsWTFixProtected()
   local boot = WTFIX_BOOTSTRAP
   local targets = type(boot) == "table" and boot.targets
-  if type(targets) ~= "table" or targets[ns.ADDON] == nil then return end
+  if type(targets) ~= "table" or targets[ns.ADDON] == nil then return false end
   local wdb = WTFIX_DB
   local protected = type(wdb) == "table" and wdb.protectedAddons
-  if type(protected) == "table" and protected[ns.ADDON] == false then return end
+  if type(protected) == "table" and protected[ns.ADDON] == false then return false end
+  return true
+end
+
+local wtfixWarned = false
+local function CheckWTFix()
+  if wtfixWarned or not Core.IsWTFixProtected() then return end
   wtfixWarned = true
   Util.Print(L.WTFIX_PROTECTED)
 end

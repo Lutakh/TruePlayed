@@ -39,6 +39,8 @@
 --   media.corner_br: iron bracket, roundel with a fel-eyed skull
 --   bar.pad, gap: the iron frame reaches 4 px outside the track
 --   bar.height: default user height 8 -> 14 px track
+--   bar.rep: reputation strip 11 px under the track, 1 px clear of the tab (10 px) at the fill
+--     end
 --   bar.layers > aura: BORDER, back to front: violet aura, chains, iron frame, rivets, fel flames,
 --     end caps (chains and flames tuck behind the caps), then the dark track.
 --   bar.layers > track: track: near-black violet, lighter at 55 % (board: #08060d / #130f1b /
@@ -100,6 +102,7 @@ return {
     pad = 10, gap = 6,
     height = { add = 6, min = 10 },
     maxAlpha = 0.35,
+    rep = { off = 11, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "aura", span = "track", three = { "common/glow", 16, 10 }, pad = { 10, 10 }, top = -10, bottom = -10,
         layer = "BORDER", sub = -8, color = "soul@.35" },

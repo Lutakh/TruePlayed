@@ -24,6 +24,8 @@
 --   media.shadow: 9-slice (14 = 14 px) soft drop shadow, opaque core (tooltip)
 --   bar.pad, gap: room for the clasps (16 px left / right of the track)
 --   bar.height: default user height 8 -> 12 px track (board 18 px / 1.5)
+--   bar.rep: reputation strip 8 px under the track, 2 px clear of the frame; the pointer
+--     reaches its top edge
 --   bar.layers > trackTop: track: dark bronze-black, lightest at a third of its height
 --   bar.layers > rested: rested part: lighter sapphire fading out to the right, glossy on top,
 --     shaded below
@@ -74,6 +76,7 @@ return {
     pad = 16, gap = 8,
     height = { add = 4, min = 8 },
     maxAlpha = 0.35,
+    rep = { off = 8, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "trackTop", span = "track", band = { 0, 0.35 }, layer = "BORDER", sub = 0,
         grad = { "VERTICAL", "#262017", "#0f0b07" }, flat = "#1b150e" },

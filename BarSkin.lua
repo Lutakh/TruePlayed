@@ -19,6 +19,13 @@ local C = ns.C
 --     Draw(px, rpx) when px, rpx or the state change - never on a steady tick;
 --   * Recolor() after THEME_CHANGED "colors" (compiled colours rewritten in place);
 --   * Panel(alpha, w, h) at layout: the panel parts, hidden as a whole at alpha 0;
+--   * RepLayout(on, x, y, w, h, c) at layout and RepDraw(width, r, g, b) when the drawn width
+--     or the standing changes: the reputation strip under the track (Reputation.lua's
+--     watched faction; geometry and background c from th.bar.rep): a background and a fill
+--     (plain textures, BORDER 6 and 7: over the panel and the soft halos, under the
+--     ornaments), created at its first show and kept (handles frame.tp.rep.bg / .fill);
+--   * PvpLayout / PvpDraw: the same for the PvP strip (Pvp.lua: the honor or the rank),
+--     under the reputation strip when both show (handles frame.tp.pvp.bg / .fill);
 --   * SetMeterFonts / Measure / Sub: text widths in the font of each text element.
 -- Performance: SetState, Draw, Measure and Sub create no table and no closure; a vertex
 -- colour or a gradient is set only when its values change (cached per layer), a gradient
@@ -659,6 +666,26 @@ local function BuildPanel()
 end
 
 ---------------------------------------------------------------------------
+-- Strips under the track (the reputation's, the PvP one): a background and a fill over the
+-- track's width
+---------------------------------------------------------------------------
+
+local rep = { bg = nil, fill = nil, on = false, c = nil, r = false, g = false, b = false, key = "rep" }
+local pvp = { bg = nil, fill = nil, on = false, c = nil, r = false, g = false, b = false, key = "pvp" }
+
+local function StripColor(st)
+  local c = st.c
+  if c then st.bg:SetVertexColor(c[1], c[2], c[3], c[4] or 1) end
+end
+
+local function RepTexture(sub)
+  local t = frame:CreateTexture(nil, "BORDER", nil, sub)
+  t:SetTexture(C.TEX_WHITE)
+  t:Hide()
+  return t
+end
+
+---------------------------------------------------------------------------
 -- Meters: one invisible FontString per (role, size delta) of the theme's measured texts
 ---------------------------------------------------------------------------
 
@@ -816,6 +843,74 @@ end
 function BarSkin.Recolor()
   for i = 1, nRecs do ApplyColor(recs[i]) end
   if nParts > 0 and not panelDirty then ApplyPanel(false) end
+  if rep.on then StripColor(rep) end            -- th.bar.rep.c, rewritten in place
+  if pvp.on then StripColor(pvp) end
+end
+
+-- Strip st shown over w x h at (x, y) from the frame's BOTTOMLEFT in the background colour
+-- c (the compiled th.bar.rep.c), or hidden (on = false). The fill is drawn by the next draw.
+local function StripLayout(st, on, x, y, w, h, c)
+  st.on = on
+  local bg, fill = st.bg, st.fill
+  if not on then
+    st.c = nil                                   -- nothing keeps the old theme (P5)
+    if bg then
+      bg:Hide()
+      fill:Hide()
+    end
+    return
+  end
+  if not bg then
+    bg, fill = RepTexture(6), RepTexture(7)
+    st.bg, st.fill = bg, fill
+    local tp = frame.tp
+    if type(tp) == "table" then tp[st.key] = { bg = bg, fill = fill } end
+  end
+  bg:ClearAllPoints()
+  bg:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
+  bg:SetSize(w, h)
+  fill:ClearAllPoints()
+  fill:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, y)
+  fill:SetHeight(h)
+  st.c = c
+  StripColor(st)
+  bg:Show()
+  fill:Hide()
+  st.r = false                                   -- the next draw colours the fill
+end
+
+-- Fill of strip st: `width` px wide (0: none) in r, g, b (set when it changed).
+local function StripDraw(st, width, r, g, b)
+  local fill = st.fill
+  if not st.on or not fill then return end
+  if width > 0 then
+    fill:SetWidth(width)
+    fill:Show()
+  else
+    fill:Hide()
+  end
+  if r ~= st.r or g ~= st.g or b ~= st.b then
+    st.r, st.g, st.b = r, g, b
+    fill:SetVertexColor(r, g, b, 1)
+  end
+end
+
+-- The reputation strip (its fill in the standing's colour).
+function BarSkin.RepLayout(on, x, y, w, h, c)
+  StripLayout(rep, on, x, y, w, h, c)
+end
+
+function BarSkin.RepDraw(width, r, g, b)
+  StripDraw(rep, width, r, g, b)
+end
+
+-- The PvP strip (the honor or the rank).
+function BarSkin.PvpLayout(on, x, y, w, h, c)
+  StripLayout(pvp, on, x, y, w, h, c)
+end
+
+function BarSkin.PvpDraw(width, r, g, b)
+  StripDraw(pvp, width, r, g, b)
 end
 
 -- Panel parts: hidden at alpha 0, else placed on the w x h frame and coloured (only when

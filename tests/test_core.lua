@@ -562,6 +562,37 @@ T.test("RepairChar moves the instance time an older crash estimate gave to level
   T.eq(char.levels, copy.levels); T.eq(char.zones, copy.zones); T.eq(char.life, copy.life)
 end)
 
+-- Crash review A1: the rebuilt seconds per key (es) move with the instance time they
+-- describe, at most what they hold for that key; a record without es gets none.
+T.test("RepairChar: the rebuilt maps (es) follow the moved instance time", function()
+  local ns = Load()
+  local char = {
+    level = 26,
+    life = { s = { w = 16000, d = 5, D = 6, c = 9 }, xp = 0, est = 212, es = { w = 192, d = 1, D = 6, c = 9 } },
+    zones = { [1413] = { s = { w = 7000, c = 9 }, xp = 0 }, [1442] = { s = { w = 9000 }, xp = 0 },
+              i2999 = { s = { d = 5, D = 6 }, xp = 0 } },
+    levels = {
+      [25] = { s = { w = 7000, d = 3, c = 9 }, xp = 0, d = 0, est = 82, es = { w = 70, d = 3, c = 9 },
+               z = { [1413] = { s = { w = 7000, c = 9 }, xp = 0 }, i2999 = { s = { d = 3 }, xp = 0 } } },
+      [26] = { s = { w = 9000, d = 2, D = 6 }, xp = 0, d = 0, est = 130, es = { w = 128, D = 2 },
+               z = { [1442] = { s = { w = 9000 }, xp = 0 }, i2999 = { s = { d = 2, D = 6 }, xp = 0 } } },
+    },
+    sessions = { { l0 = 20, l1 = 26, s = { w = 3000 }, xp = 0, d = 0 } },
+    cur = { l0 = 26, s = { w = 6000 }, xp = 0, d = 0 },
+  }
+  ns.Core.RepairChar(char)
+  local lv = char.levels
+  T.eq(lv[25].s, { w = 7003, c = 9 })
+  T.eq(lv[25].es, { w = 73, c = 9 }, "the moved rebuilt seconds stay rebuilt")
+  T.eq(lv[26].s, { w = 9002, W = 6 })
+  T.eq(lv[26].es, { w = 128, W = 2 }, "at most what es held for the key (D = 2 of 6)")
+  T.eq(char.life.s, { w = 16005, W = 6, c = 9 })
+  T.eq(char.life.es, { w = 193, W = 6, c = 9 }, "life: d 1 of 5, D 6 of 6")
+  local copy = ns.Util.DeepCopy(char)
+  ns.Core.RepairChar(char)
+  T.eq(char.levels, copy.levels, "idempotent"); T.eq(char.life, copy.life)
+end)
+
 ---------------------------------------------------------------------------
 -- Late swap (5.16)
 ---------------------------------------------------------------------------
@@ -2067,6 +2098,18 @@ T.test("RepairChar validates the round 3 fields (noXP, capLevel, stalled maps, p
   T.eq(c.levels[7].xs, nil, "not created")
   T.eq(R({ life = { s = {}, xs = 7 } }).life.xs, nil)
   T.eq(R({}).life.xs, nil)
+  -- rebuilt maps (crash review A1): the same rules, never created
+  c = R({ life = { s = { w = 50 }, est = 40, es = { w = 40, W = -1, c = "x", [3] = 5, i = 0 / 0, t = math.huge } },
+          levels = { [5] = { s = { w = 9 }, est = 9, es = { w = 9 } }, [6] = { s = {}, es = "junk" },
+                     [7] = { s = {}, est = 3 } } })
+  T.eq(c.life.es, { w = 40 })
+  T.eq(c.life.est, 40, "the gross total is kept")
+  T.eq(c.levels[5].es, { w = 9 })
+  T.eq(c.levels[6].es, nil)
+  T.eq(c.levels[7].es, nil, "not created (est alone: an older record)")
+  T.eq(c.levels[7].est, 3)
+  T.eq(R({ life = { s = {}, es = 7 } }).life.es, nil)
+  T.eq(R({}).life.es, nil)
   -- prior: v = 2 kept, anything else dropped (the estimate is kept and recomputed)
   T.eq(R({ prior = { xph = 5737.3, at = 5, v = 2 } }).prior, { xph = 5737.3, at = 5, v = 2 })
   T.eq(R({ prior = { xph = 5737.3, v = 1 } }).prior, { xph = 5737.3 })

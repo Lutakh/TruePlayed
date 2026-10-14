@@ -377,7 +377,8 @@ do
       end
     end
     for _, user in ipairs({ "Graph.lua", "TooltipFrame.lua", "Tooltip.lua", "BarSkin.lua", "Bar.lua",
-                            "Window.lua", "Options.lua", "Broker.lua" }) do
+                            "Window.lua", "LevelChart.lua", "LevelDetail.lua", "Options.lua",
+                            "Broker.lua" }) do
       if pos[user] and pos[user] < (last or engine) then
         fail("%s: '%s' must be loaded after Themes.lua and the theme files", MAIN_TOC, user)
       end

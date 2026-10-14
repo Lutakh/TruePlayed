@@ -42,6 +42,51 @@
 -- 13 builder functions, about 104 KB of bytecode resident); Themes.lua 119.1 / 121.3
 -- (131.3 / 134.3); after login, a script that loads only the stub: actuel 1063.9 /
 -- 1158.6 (1221.3 / 1252.7), futuriste 1191.9 / 1296.1 (1409.3 / 1453.1).
+-- The automatic reload (crash review part B: AutoReload.lua, about 30 KB of resident code
+-- on 5.5, plus its options and strings) raised both after-login budgets by 40 KB.
+-- The watched reputation (Reputation.lua, about 17 KB of resident code on 5.5, plus the
+-- strip in Bar / BarSkin, its tooltip line, its option, the themes' bar.rep and its
+-- strings) raised both after-login budgets by 25 KB.
+-- The reputation's second lot (the rate per hour and the faction list in Reputation.lua,
+-- now about 38 KB of code on 5.5; the options' Reputation page, RepOptions.lua, about
+-- 19 KB; the main bar mode and the hover region in Bar.lua, the detailed tooltip, two
+-- tokens and 42 strings) raised both after-login budgets by 85 KB: measured in the full
+-- suite (the run CI makes) 1255.0 (actuel) and 1379.7 (futuriste) on 5.5; the 5.4
+-- budgets rose by the same 85 KB (not measured: no 5.4 here). Run alone, this file
+-- measures more (the strings other test files share are counted, and the login can grow
+-- the string table) and the after-login test fails there, as it already did before.
+-- The PvP tracking (Pvp.lua, about 68 KB of compiled code on 5.5 with its debug
+-- information; the options' PvP page, PvpOptions.lua, about 14 KB; the PvP strip and the
+-- main bar mode in Bar / BarSkin, the PvP tooltip section, seven tokens and 86 strings)
+-- raised both after-login budgets by 110 KB: measured in the full suite 1360.8 (actuel)
+-- and 1485.4 (futuriste) on 5.5, i.e. 105.8 and 105.7 KB more than the figures above;
+-- the 5.4 budgets rose by the same 110 KB (not measured: no 5.4 here).
+-- The Levels tab's data (world PvP per level in Pvp.lua, Tracker.AddLevelStat, Util.MaxLevel
+-- and the repair of pw / wg / w0 / wp in Core.lua, the Levels tab's Stats functions:
+-- LevelSegments, the battlegrounds, WorldPvpState, XPOf, FutureLevels, about 11 KB of
+-- compiled code on 5.5 in Stats.lua and a few KB in the three others; the honor and kills
+-- events now registered whatever is shown) raised both after-login budgets by 30 KB:
+-- measured in the full suite 1389.7 (actuel) and 1514.6 (futuriste) on 5.5, i.e. 28.9 and
+-- 29.2 KB more than the PvP figures above; the 5.4 budgets rose by the same 30 KB (not
+-- measured: no 5.4 here).
+-- The Levels tab rework (LevelChart.lua, the histogram, and LevelDetail.lua, the detail
+-- sheet's first part, loaded at login though created only at the first show of the tab;
+-- 58 new strings in every locale, 16 removed with the Levels table code of Window.lua):
+-- measured in the full suite 1482.9 (actuel) and 1607.8 (futuriste) on 5.5, i.e. 93.2 and
+-- 93.2 KB more than the figures above.
+-- The detail sheet's sections (LevelDetail.lua: the notes, the figure cards, the time
+-- breakdown and its PvP row tooltip, the XP split, the zones and instances, the upcoming
+-- level, the live step; about 1250 lines, loaded at login though created only at the first
+-- show of the tab; 22 new strings in every locale): measured in the full suite 1539.5
+-- (actuel) and 1664.4 (futuriste) on 5.5, i.e. 56.6 and 56.6 KB more.
+-- The review fixes of the Levels tab (the chips and the sheet's breakdown live, the scale
+-- in days, the chart's minimum within the screen, the estimate's mask etaM; 6 new strings
+-- in every locale): measured in the full suite 1548.4 (actuel) and 1673.3 (futuriste) on
+-- 5.5, i.e. 8.9 and 8.9 KB more. The three raised both after-login budgets by 160 KB in
+-- all, to 1570 / 1700: the measure + 21.6 / 26.7 KB, the margin of the lots above (20.3 /
+-- 25.4 for the Levels tab's data). A first raise of 100 + 70 KB (1580 / 1710) left 40.5 /
+-- 45.6 KB over the measure, about twice that margin: a resident regression of 30 KB would
+-- have passed. The 5.4 budgets rose by the same 160 KB (not measured: no 5.4 here).
 local Stub, T = ...
 
 local KEYS = { "futuriste", "actuel", "heroic", "pixel", "warrior", "paladin", "hunter", "rogue",
@@ -55,12 +100,12 @@ local BUDGET = {
   ["Lua 5.5"] = {
     compiled = { futuriste = 38, actuel = 9, heroic = 33, pixel = 26, warrior = 30, paladin = 31, hunter = 38,
                  rogue = 34, priest = 33, shaman = 28, mage = 33, warlock = 40, druid = 32 },
-    engine = 125, loginActuel = 1120, loginFuturiste = 1250,
+    engine = 125, loginActuel = 1570, loginFuturiste = 1700,
   },
   ["Lua 5.4"] = {
     compiled = { futuriste = 43, actuel = 10, heroic = 37, pixel = 30, warrior = 34, paladin = 35, hunter = 42,
                  rogue = 38, priest = 37, shaman = 31, mage = 37, warlock = 44, druid = 36 },
-    engine = 128, loginActuel = 1220, loginFuturiste = 1360,
+    engine = 128, loginActuel = 1670, loginFuturiste = 1810,
   },
 }
 local SOURCES_KB = 80          -- NEXT-LOT M3: the resident theme sources, in total

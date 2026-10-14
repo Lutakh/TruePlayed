@@ -774,7 +774,8 @@ T.test("options: the language dropdown, its note and the reload button (modern c
   Stub.RunSlash("lang auto")
   root = rawget(rec.widget, "_root")
   T.ok(ui.IsChecked(ui.FindMenuItem(root, "Auto")))
-  -- the reload button calls ReloadUI once per click
+  -- the reload button calls ReloadUI once per click (inside the click: WoW Forever, the
+  -- stub's client, allows it there)
   Stub.RunScript(reload.widget, "OnClick", "LeftButton")
   T.eq(ui.reloads, 1, "ReloadUI called once")
   ns.Options.Refresh()

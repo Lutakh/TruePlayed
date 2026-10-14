@@ -22,7 +22,9 @@
 -- rate (round 3), the language option (French chosen on an enUS client, English on a
 -- frFR client through a late table), and every theme (design/SPEC-themes.md 8.3: the 14
 -- setting values with the tooltip, graph and window shown in each, the options, /tpl
--- theme). The other
+-- theme), the automatic reload (direct countdown, the prompt and its "Reload now"
+-- click, a blocked ReloadUI(), a busy player), and the watched reputation (the strip and
+-- its tooltip line in every theme, the Forever and Classic Era APIs). The other
 -- scenarios keep the stub's default theme (Stub.theme = "actuel"). Any error reported
 -- through geterrorhandler also fails the check.
 
@@ -45,7 +47,7 @@ end
 
 local Stub = dofile(ROOT .. "tests/wowstub.lua")
 Stub.ROOT = ROOT
-for _, name in ipairs({ "stub_ui", "stub_activity" }) do
+for _, name in ipairs({ "stub_ui", "stub_activity", "stub_reputation", "stub_pvp" }) do
   local f = io.open(ROOT .. "tests/" .. name .. ".lua", "r")
   if f then
     f:close()
@@ -90,7 +92,15 @@ local READ_OK = Set({
   "AddonCompartmentFrame",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
   "ColorPickerFrame",              -- text colour picker (Options; SetupColorPickerAndShow, as TinyTooltip)
-  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
+  "ReloadUI",                      -- "Reload UI" button (Options) and the prompt's "Reload now"
+                                   -- (AutoReload), on click; the automatic reload without a click
+                                   -- only on clients that allow it (not WoW Forever)
+  -- automatic reload (AutoReload.lua): is the player busy? Read at the due moment only,
+  -- each one type-checked (some clients lack some of them)
+  "UnitAffectingCombat", "UnitCastingInfo", "UnitChannelInfo", "GetCurrentKeyBoardFocus",
+  "StaticPopup_IsAnyDialogShown", "GetUIPanel", "InCinematic", "MovieFrame", "ReadyCheckFrame",
+  "CursorHasItem", "SpellIsTargeting", "IsPlayerMoving",
+  "SettingsPanel", "GameMenuFrame", "KeyBindingFrame", "InterfaceOptionsFrame",   -- no UI panel area
   -- minimap button (MinimapButton.lua: its parent, the drop angle, the minimap shape of
   -- minimap addons; read when the button is created, placed or dropped)
   "Minimap", "GetCursorPosition", "GetMinimapShape",
@@ -105,6 +115,27 @@ local READ_OK = Set({
   -- window open while standing still, the craft window's name (Beast Training is not a
   -- profession). Guarded: any of them may be nil.
   "UnitIsFeignDeath", "GetSpellInfo", "C_Spell", "GetUnitSpeed", "GetCraftName",
+  -- watched reputation (Reputation.lua, on events only; guarded, any may be nil): the modern
+  -- and the Classic Era reads, the retail-only kinds (renown, friendships), the standing
+  -- colours; the player's sex for the standing name (Tooltip.lua, which reads the
+  -- FACTION_STANDING_LABEL<n> strings through _G); the game's label of the watch checkbox
+  -- (Options.lua, the option's help)
+  "C_Reputation", "GetWatchedFactionInfo", "C_GossipInfo", "FACTION_BAR_COLORS", "UnitSex",
+  "SHOW_FACTION_ON_MAINSCREEN",
+  -- the faction chosen in the options and the picker's list (Reputation.lua, Classic Era's
+  -- globals; the options' menu only, guarded)
+  "GetFactionInfoByID", "GetNumFactions", "GetFactionInfo", "ExpandFactionHeader",
+  "CollapseFactionHeader",
+  -- PvP (Pvp.lua, on events only; guarded, any may be nil, absent on Classic Era): the
+  -- honor currency, the PvP rank (major faction 2800), the week and season, the weekly
+  -- and daily resets, the honorable kills, a battleground's winner (after the match); the
+  -- cap alert's sound. Tooltip.lua reads the rank titles (PVP_RANK_<n>_<faction>) through _G.
+  "C_CurrencyInfo", "C_MajorFactions", "C_SeasonInfo", "C_DateAndTime",
+  "GetPVPSessionStats", "GetPVPYesterdayStats", "GetPVPLifetimeStats", "GetBattlefieldWinner",
+  "PlaySound", "SOUNDKIT",
+  -- the player's side in a match (the winner is compared with it) and the PvP season's
+  -- number (a lower season total without a new season is a transient read)
+  "GetBattlefieldArenaFaction", "GetCurrentArenaSeason",
   -- Lua standard library
   "assert", "error", "getmetatable", "ipairs", "next", "pairs", "pcall", "rawequal",
   "rawget", "rawset", "select", "setmetatable", "tonumber", "tostring", "type", "unpack",
@@ -115,8 +146,12 @@ for k in pairs(WRITE_OK) do READ_OK[k] = true end
 -- Globals one file only may read: Themes.lua compiles the theme source texts in an empty
 -- environment (loadstring + setfenv on Lua 5.1, the game; load with an environment on
 -- 5.2+, design/NEXT-LOT.md M3). A read from any other file is reported.
+-- Tooltip.lua reads _G for the client's own line texts of its GameTooltips
+-- ("<name>TextLeft<i>", looked up once per line), to line up the two blocks' breakdown
+-- lines side by side in the native themes.
 local READ_OK_IN = {
   loadstring = "Themes.lua", setfenv = "Themes.lua", load = "Themes.lua",
+  _G = "Tooltip.lua",
 }
 
 ---------------------------------------------------------------------------
@@ -461,6 +496,46 @@ local function Exercise(ns)
     Stub.RunScript(wf.tp.erase, "OnClick", "LeftButton")
     for _, b in pairs(wf.tp.tabs) do Stub.RunScript(b, "OnClick", "LeftButton") end
   end
+  -- the Levels chart (LevelChart, LevelDetail): every bar hovered and clicked under every
+  -- filter, the hide-upcoming toggle, the PvP chip, the detail sheet's PvP row (a
+  -- battleground and world PvP added to the viewed level), the current and another
+  -- character, then the account view
+  for _, view in ipairs({ "current", OTHER_GUID }) do
+    ns.Window.Show("levels", view)
+    local ch = wf and wf.tp.chart
+    if ch then
+      for f = 1, #ch.filters do
+        Stub.RunScript(ch.filters[f].btn, "OnClick", "LeftButton")
+        for k = 1, ch.state.nCols do
+          local hit = ch.cols[k].hit
+          Stub.RunScript(hit, "OnEnter")
+          Stub.RunScript(hit, "OnClick", "LeftButton")
+          Stub.RunScript(hit, "OnLeave")
+        end
+      end
+      Stub.RunScript(ch.filters[1].btn, "OnClick", "LeftButton")
+      Stub.RunScript(ch.toggle, "OnClick", "LeftButton")
+      Stub.RunScript(ch.toggle, "OnClick", "LeftButton")
+      Stub.RunScript(ch.chips[4].frame, "OnEnter")
+      Stub.RunScript(ch.chips[4].frame, "OnLeave")
+      local k = math.min(ch.state.level, ch.state.nCols)     -- at max level: the last bar
+      local lb = ch.state.char and ch.state.char.levels[k]
+      if type(lb) == "table" then
+        lb.s = lb.s or {}
+        lb.s.p, lb.s.w, lb.pw = (lb.s.p or 0) + 600, (lb.s.w or 0) + 300, 120
+        lb.z = lb.z or {}
+        lb.z.i489 = { s = { p = 600 } }
+        ns.Window.Refresh()
+        Stub.RunScript(ch.cols[k].hit, "OnClick", "LeftButton")
+        local dt = wf.tp.detail
+        if not (dt and dt.pvpHit and dt.pvpHit:IsShown()) then error("the detail sheet has no PvP row") end
+        Stub.RunScript(dt.pvpHit, "OnEnter")
+        Stub.RunScript(dt.pvpHit, "OnLeave")
+      end
+      Stub.Advance(6)
+    end
+  end
+  ns.Window.SetView("account")
   Stub.GrantXP(100); Stub.Advance(6)
   ns.Window.Hide()
 
@@ -468,18 +543,25 @@ local function Exercise(ns)
   ns.Options.Open()
   Stub.Advance(1)
   ApplyAllSettings(ns)
-  if Stub.ui and Stub.ui.categories and Stub.ui.categories[1] then
-    local panel = Stub.ui.categories[1].frame
+  -- the main page, then the Reputation page (a subcategory, built when first shown)
+  local pages = {}
+  if Stub.ui and Stub.ui.categories and Stub.ui.categories[1] then pages[1] = Stub.ui.categories[1] end
+  if Stub.ui and Stub.ui.subcategories and Stub.ui.subcategories[1] then pages[2] = Stub.ui.subcategories[1] end
+  for pi, cat in ipairs(pages) do
+    if pi > 1 then Settings.OpenToCategory(cat.ID); Stub.Advance(1) end
+    local panel = cat.frame
     for _, rec in pairs(panel.controls or {}) do
       local w = rec.widget
       if rec.kind == "check" then
         Stub.RunScript(w, "OnClick", "LeftButton"); Stub.RunScript(w, "OnClick", "LeftButton")
-      elseif rec.kind == "dropdown" and w._root then
+      elseif (rec.kind == "dropdown" or rec.kind == "faction") and w._root then
         w:GenerateMenu(); ClickAll(w._root)
       elseif rec.kind == "slider" and w.SetValue then
         w:SetValue(rec.min); w:SetValue(rec.max)
       elseif rec.kind == "button" then
         Stub.RunScript(w, "OnClick", "LeftButton")    -- the bar colours reset, "Reload UI"
+      elseif rec.kind == "help" then
+        Stub.RunScript(w, "OnEnter"); Stub.RunScript(w, "OnLeave")   -- auto reload help icons
       elseif rec.kind == "color" then
         -- the game's colour picker: open, move, cancel, open, move, reset
         local ui = Stub.ui
@@ -492,8 +574,8 @@ local function Exercise(ns)
       end
     end
     ApplyAllSettings(ns)
-    Stub.ui.CloseSettings()
   end
+  if #pages > 0 then Stub.ui.CloseSettings() end
   ns.Options.Toggle()
   ns.Options.Toggle()
 
@@ -593,16 +675,25 @@ Scenario("fallback option controls clicked one by one", function()
   local ns = Stub.LoadAddon()
   Stub.LoginSequence({ settle = 3 })
   Stub.Advance(12)
+  Stub.SetFactions(Stub.REP_TREE())
+  Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 })
   ns.Options.Open()
-  local panel = Stub.ui.categories[1] and Stub.ui.categories[1].frame
-  for _, rec in pairs(panel and panel.controls or {}) do
-    local w = rec.widget
-    if rec.kind == "dropdown" then
-      Stub.RunScript(w, "OnClick", "LeftButton"); Stub.RunScript(w, "OnClick", "RightButton")
-    elseif rec.kind == "slider" then
-      Stub.RunScript(w, "OnValueChanged", rec.max); Stub.RunScript(w, "OnValueChanged", rec.min)
-    elseif rec.kind == "check" then
-      Stub.RunScript(w, "OnClick", "LeftButton")
+  for pi, cat in ipairs({ Stub.ui.categories[1], Stub.ui.subcategories[1] }) do
+    if pi > 1 then Settings.OpenToCategory(cat.ID) end
+    local panel = cat.frame
+    for _, rec in pairs(panel and panel.controls or {}) do
+      local w = rec.widget
+      if rec.kind == "dropdown" or rec.kind == "faction" then
+        -- the faction button cycles through the game's list (twice forwards, once back)
+        Stub.RunScript(w, "OnClick", "LeftButton"); Stub.RunScript(w, "OnClick", "RightButton")
+        if rec.kind == "faction" then Stub.RunScript(w, "OnClick", "LeftButton") end
+      elseif rec.kind == "slider" then
+        Stub.RunScript(w, "OnValueChanged", rec.max); Stub.RunScript(w, "OnValueChanged", rec.min)
+      elseif rec.kind == "check" then
+        Stub.RunScript(w, "OnClick", "LeftButton")
+      elseif rec.kind == "help" then
+        Stub.RunScript(w, "OnEnter"); Stub.RunScript(w, "OnLeave")
+      end
     end
   end
   Stub.Advance(3)
@@ -933,6 +1024,377 @@ Scenario("minimap button and mini display, bar hidden, every theme", function()
   _G.TruePlayedDB = { schema = 1, settings = { mini = { shown = true, layout = "vertical" },
     minimap = { angle = 90 } } }
   Stub.Advance(3)
+  Stub.Logout()
+end)
+
+-- Automatic reload (AutoReload.lua): on a client that allows ReloadUI() from addon code,
+-- the timer prompt outside, the capital left by the timer to the rest mode, the rest
+-- mode's countdown there, cancelled by moving, then the reload and a block; on WoW Forever (the stub's client), the prompt, combat, Later, a
+-- click on "Reload now", the shown prompt watched; a busy player (the game's
+-- menu and options too) at the due moment.
+Scenario("automatic reload: direct countdown, prompt and its click, block, busy player", function()
+  Stub.InstallUI()
+  Stub.build.interface = 11508
+  _G.TruePlayedDB = { schema = 1, settings = { autoReload = { rest = true, timer = true, minutes = 10 } } }
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.Advance(620)
+  local AR = ns.AutoReload
+  local f = AR.GetPrompt()
+  if f then
+    Stub.RunScript(f.tp.now, "OnClick", "LeftButton")
+    Stub.RunScript(f.tp.later, "OnClick", "LeftButton")
+  end
+  Stub.SetMap(1454); Stub.Advance(12)                 -- the timer leaves the capital to the rest mode
+  Stub.Advance(ns.Tracker.loadStartG + ns.C.AUTORELOAD_REST_MIN + 2 - Stub.Now())   -- its countdown
+  Stub.player.moving = true; Stub.Advance(2); Stub.player.moving = false
+  Stub.Advance(650)
+  Stub.Fire("ADDON_ACTION_BLOCKED", "TruePlayed", "UNKNOWN()")
+  Stub.Advance(10)
+  ns.Options.Open()
+  Stub.Advance(1)
+  Stub.ui.CloseSettings()
+  Stub.Logout()
+
+  Stub.Reset()
+  Stub.InstallUI()
+  _G.TruePlayedDB = { schema = 1, settings = { autoReload = { rest = true } } }
+  ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.Advance(ns.C.AUTORELOAD_REST_MIN + 20)
+  Stub.busy.casting, Stub.busy.keyFocus, Stub.busy.popup = "Hearthstone", {}, true
+  Stub.busy.panels.center = {}
+  MovieFrame:Show(); ReadyCheckFrame:Show()
+  SettingsPanel:Show(); GameMenuFrame:Show(); KeyBindingFrame:Show(); InterfaceOptionsFrame:Show()
+  Stub.SetMap(1454); Stub.Advance(30)
+  Stub.busy.casting, Stub.busy.keyFocus, Stub.busy.popup, Stub.busy.panels.center = nil, nil, nil, nil
+  MovieFrame:Hide(); ReadyCheckFrame:Hide()
+  SettingsPanel:Hide(); GameMenuFrame:Hide(); KeyBindingFrame:Hide(); InterfaceOptionsFrame:Hide()
+  Stub.Advance(10)
+  AR = ns.AutoReload
+  f = AR.GetPrompt()
+  if f then
+    Stub.EnterCombat(); Stub.Advance(3); Stub.LeaveCombat(); Stub.Advance(6)
+    Stub.RunScript(f.tp.later, "OnClick", "LeftButton")
+    Stub.Advance(601)
+    Stub.RunScript(f.tp.now, "OnClick", "LeftButton")
+    -- the shown prompt watched: an XP gain greys "Reload now", professions in a dungeon
+    -- (the place read from the game) hide it
+    Stub.GrantXP(50); Stub.Advance(1)
+    Stub.RunScript(f.tp.now, "OnClick", "LeftButton")
+    Stub.Advance(4)
+    Stub.Spell("START", 8613); Stub.SetInstance(true, "party", 389, nil); Stub.Advance(1)
+    Stub.Spell("STOP", 8613); Stub.Advance(8)
+  end
+  for _, name in ipairs({ "UnitCastingInfo", "GetUIPanel", "MovieFrame", "IsPlayerMoving" }) do rawset(_G, name, nil) end
+  AR.Blocker(true)
+  Stub.Logout()
+end)
+
+-- The controls of the options' Reputation page (a subcategory, built when first shown).
+local function RepPage()
+  local sub = Stub.ui.subcategories and Stub.ui.subcategories[1]
+  if not sub then return nil end
+  Settings.OpenToCategory(sub.ID)
+  return rawget(sub.frame, "controls")
+end
+
+-- The watched reputation: a faction watched in every theme (the strip, the tooltip line,
+-- Shift; a female character), standings gained up to Exalted, the help icon, the option off
+-- and on, a secret read and no faction.
+Scenario("watched reputation: strip and tooltip line, every theme, option, secret", function()
+  Stub.InstallUI()
+  Stub.rep.sex = 3
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 })
+  Stub.Advance(2)
+  local w = rawget(_G, "TruePlayedWidget")
+  for _, key in ipairs(ns.C.THEME_CHOICES) do
+    ns.Core.SetSetting("theme", key)
+    Stub.Advance(1)
+    Stub.RunScript(w, "OnEnter"); Stub.SetShift(true); Stub.Advance(1); Stub.SetShift(false)
+    Stub.RunScript(w, "OnLeave")
+  end
+  Stub.GainRep(6000); Stub.Advance(1)
+  Stub.GainRep(40000); Stub.Advance(1)
+  Stub.RunScript(w, "OnEnter"); Stub.Advance(1); Stub.RunScript(w, "OnLeave")
+  ns.Options.Open()
+  local controls = RepPage()
+  local help = controls and controls["help.rep"]
+  if help then
+    help.widget:GetScript("OnEnter")(help.widget)
+    help.widget:GetScript("OnLeave")(help.widget)
+  end
+  ns.Core.SetSetting("widget.rep", false); Stub.Advance(1)
+  ns.Core.SetSetting("widget.rep", true); Stub.Advance(1)
+  Stub.rep.secret = true; Stub.Fire("UPDATE_FACTION"); Stub.Advance(1)
+  Stub.rep.secret = false
+  Stub.WatchFaction(nil); Stub.Advance(1)
+  Stub.Logout()
+end)
+
+-- Classic Era's reputation API (GetWatchedFactionInfo), without the game's colours, standing
+-- names and checkbox label (the addon's own).
+Scenario("watched reputation: Classic Era API, no FACTION_BAR_COLORS nor standing names", function()
+  Stub.InstallUI()
+  Stub.SetRepAPI("era")
+  Stub.SetRepGlobals(false)
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.WatchFaction({ name = "Stormwind", factionID = 72, reaction = 4, min = 0, max = 3000, value = 1500 })
+  Stub.Advance(1)
+  local w = rawget(_G, "TruePlayedWidget")
+  Stub.RunScript(w, "OnEnter"); Stub.Advance(1); Stub.RunScript(w, "OnLeave")
+  ns.Options.Open()
+  local controls = RepPage()
+  for _, key in ipairs({ "help.rep", "help.repMain", "help.repFaction" }) do
+    local help = controls and controls[key]
+    if help then
+      help.widget:GetScript("OnEnter")(help.widget)
+      help.widget:GetScript("OnLeave")(help.widget)
+    end
+  end
+  Stub.Logout()
+end)
+
+-- The reputation's second lot: the faction picker's walk of the game's list (both APIs),
+-- a chosen faction (then unreadable: the fallback), the rate (gains, a stall, a reset), the
+-- detailed tooltip on the hover region, the main bar mode in every theme (a new standing,
+-- Exalted, max level, hideAtMax, no faction), the tokens, a reload, read-only mode.
+for _, api in ipairs({ "forever", "era" }) do
+  Scenario("reputation (" .. api .. "): picker walk, chosen faction, rate, detailed tooltip, main mode", function()
+    Stub.InstallUI()
+    Stub.SetRepAPI(api)
+    Stub.SetFactions(Stub.REP_TREE())
+    local ns = Stub.LoadAddon()
+    Stub.LoginSequence({ settle = 3 })
+    Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 4, min = 0, max = 3000, value = 2500 })
+    Stub.Advance(2)
+    local Rep, Core = ns.Rep, ns.Core
+    Rep.ListFactions()
+    Rep.SetChosen(529)
+    Stub.GainRepID(529, 40); Stub.Advance(1)
+    Stub.rep.missing[529] = true; Stub.Fire("UPDATE_FACTION"); Stub.Advance(1)
+    Stub.rep.missing[529] = nil
+    Rep.SetChosen(nil)
+    for _ = 1, 12 do Stub.Advance(60); Stub.GainRep(50) end
+    Core.SetSetting("widget.slots.1", "reph")
+    Core.SetSetting("widget.slots.3", "rep_eta")
+    local f = ns.Bar.frame
+    local hit = f.tp.repHit
+    for _, key in ipairs(ns.C.THEME_CHOICES) do
+      Core.SetSetting("theme", key)
+      for _, mode in ipairs(ns.C.MAIN_MODES) do
+        Core.SetSetting("widget.main", mode)
+        Stub.Advance(1)
+        hit = f.tp.repHit or hit
+        if hit then
+          Stub.RunScript(hit, "OnEnter"); Stub.Advance(1)
+          Stub.RunScript(hit, "OnMouseDown", "LeftButton"); Stub.RunScript(hit, "OnDragStart")
+          Stub.RunScript(hit, "OnDragStop"); Stub.RunScript(hit, "OnMouseUp", "LeftButton")
+          Stub.RunScript(hit, "OnLeave")
+        end
+      end
+    end
+    ns.Window.Hide()
+    Stub.Advance(ns.C.XP_STALL + 60)
+    if hit then Stub.RunScript(hit, "OnEnter"); Stub.Advance(1); Stub.RunScript(hit, "OnLeave") end
+    Stub.GainRep(800); Stub.Advance(1)                -- Neutral -> Friendly: a new colour
+    Stub.GainRep(45000); Stub.Advance(1)              -- Exalted
+    if hit then Stub.RunScript(hit, "OnEnter"); Stub.Advance(1); Stub.RunScript(hit, "OnLeave") end
+    Core.SetSetting("widget.hideAtMax", true)
+    Stub.GrantXP(Stub.player.max * 80); Stub.Advance(2)
+    Stub.WatchFaction(nil); Stub.Advance(1)
+    Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 })
+    Core.ResetRate()
+    Core.SetSetting("widget.main", "xp")
+    ns = Stub.Restart({ settle = 3 })
+    Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4300 })
+    Stub.Advance(2)
+    ns.Core.ResetChar()
+    Stub.Advance(2)
+    Stub.Logout()
+  end)
+end
+
+Scenario("reputation: read-only mode (a newer schema), the Reputation page refusing", function()
+  Stub.InstallUI()
+  Stub.SetFactions(Stub.REP_TREE())
+  rawset(_G, "TruePlayedDB", { schema = 99, settings = { firstRunDone = true }, chars = {} })
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 })
+  Stub.Advance(60); Stub.GainRep(100); Stub.Advance(1)
+  ns.Options.Open()
+  local controls = RepPage()
+  for _, rec in pairs(controls or {}) do
+    local w = rec.widget
+    if rec.kind == "faction" and w._root then
+      w:GenerateMenu(); ClickAll(w._root)
+    elseif rec.kind == "button" then
+      Stub.RunScript(w, "OnClick", "LeftButton")
+    end
+  end
+  Stub.Advance(1)
+  Stub.Logout()
+end)
+
+-- PvP on WoW Forever (Pvp.lua): the strip (honor, rank) under the reputation's, the main
+-- bar's PvP mode in every theme and the battleground override, gains in and out of a
+-- battleground (the pause), the honor cap and its alert after a fight, the weekly cap, the
+-- max rank, a match's result (and its fallback), the detailed tooltip (themed and
+-- native), the tokens, the options' PvP page (every control, help and the reset), a
+-- reload, ResetChar, no season, secret reads.
+local function PvpPage()
+  local sub = Stub.ui.subcategories and Stub.ui.subcategories[2]
+  if not sub then return nil end
+  Settings.OpenToCategory(sub.ID)
+  return rawget(sub.frame, "controls")
+end
+
+local function HoverPvp(ns)
+  local hit = ns.Bar.frame and ns.Bar.frame.tp.pvpHit
+  if hit and hit:IsShown() then
+    Stub.RunScript(hit, "OnEnter"); Stub.Advance(1)
+    Stub.RunScript(hit, "OnMouseDown", "LeftButton"); Stub.RunScript(hit, "OnDragStart")
+    Stub.RunScript(hit, "OnDragStop"); Stub.RunScript(hit, "OnMouseUp", "LeftButton")
+    Stub.RunScript(hit, "OnLeave")
+  end
+end
+
+Scenario("PvP (forever): strips, main mode in every theme, override, gains, pause, caps, alert, tooltip", function()
+  Stub.InstallUI()
+  Stub.SetPvpAPI("forever")
+  Stub.SetWeek(2, 3, 1, { quiet = true })
+  Stub.pvp.total = 2000
+  Stub.pvp.q = 24000
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.WatchFaction({ name = "Darnassus", factionID = 69, reaction = 5, min = 3000, max = 9000, value = 4200 })
+  local Core = ns.Core
+  Core.SetSetting("widget.pvp", "honor")
+  Core.SetSetting("widget.pvpAuto", true)
+  for i, id in ipairs({ "honor", "honor_h", "honor_eta" }) do Core.SetSetting("widget.slots." .. i, id) end
+  Stub.EnterBG({ loading = true })
+  for _ = 1, 6 do Stub.Advance(60); Stub.GainHonor(100); Stub.GainRankPoints(30); Stub.HK(1) end
+  for _, key in ipairs(ns.C.THEME_CHOICES) do
+    Core.SetSetting("theme", key)
+    for _, mode in ipairs(ns.C.MAIN_MODES) do
+      Core.SetSetting("widget.main", mode)
+      for _, strip in ipairs(ns.C.PVP_STRIPS) do
+        Core.SetSetting("widget.pvp", strip)
+        Stub.Advance(1)
+        HoverPvp(ns)
+      end
+    end
+  end
+  ns.Window.Hide()
+  for i, id in ipairs({ "rank", "rank_h", "rank_eta" }) do Core.SetSetting("widget.slots." .. i, id) end
+  Core.SetSetting("widget.maxSlots.1", "hk_today")
+  Core.SetSetting("widget.pvp", "rank")
+  Stub.MatchComplete(0, 900)
+  Stub.pvp.team = 1                                   -- the side the battleground gives
+  Stub.ChainBG()                                      -- the next battleground, the same map
+  Stub.Advance(2)
+  Stub.MatchComplete(1, 600)
+  Stub.pvp.team = nil
+  Stub.LeaveBG({ loading = true })
+  Stub.EnterBG({ arena = true, loading = true })      -- an arena: not a battleground
+  Stub.Advance(2)
+  Stub.LeaveBG({ loading = true })
+  Stub.Advance(ns.C.PVP_IDLE + 30)                    -- paused
+  HoverPvp(ns)
+  Stub.EnterBG()
+  Stub.pvp.winner = 1
+  Stub.Fire("UPDATE_BATTLEFIELD_STATUS", 1)
+  Stub.EnterCombat()
+  Stub.GainHonor(5000)                                -- the cap, in a fight: the alert waits
+  Stub.Advance(5)
+  Stub.LeaveCombat()
+  local alert = ns.Pvp.GetAlert()
+  if alert then Stub.RunScript(alert.tp.ok, "OnClick") end
+  Stub.GainRankPoints(5000)                           -- the week's cap
+  HoverPvp(ns)
+  Stub.LeaveBG()
+  Stub.WeeklyReset(); Stub.DailyReset()               -- the countdowns jump: re-read
+  Stub.Advance(35)
+  Stub.SetWeek(10, 14, 13)
+  Stub.GainRankPoints(30000)                          -- the max rank
+  Core.SetSetting("widget.main", "pvp")
+  HoverPvp(ns)
+  Core.SetSetting("theme", "actuel")
+  HoverPvp(ns)                                        -- the native tooltip
+  Stub.SpendHonor(3000)
+  Core.SetSetting("widget.hideAtMax", true)
+  Stub.GrantXP(Stub.player.max * 80); Stub.Advance(2)
+  ns.Options.Open()
+  local controls = PvpPage()
+  for _, rec in pairs(controls or {}) do
+    local w = rec.widget
+    if rec.kind == "help" then
+      w:GetScript("OnEnter")(w); w:GetScript("OnLeave")(w)
+    elseif rec.kind == "dropdown" and w._root then
+      w:GenerateMenu(); ClickAll(w._root)
+    elseif rec.kind == "check" then
+      Stub.RunScript(w, "OnClick", "LeftButton"); Stub.RunScript(w, "OnClick", "LeftButton")
+    elseif rec.kind == "button" then
+      Stub.RunScript(w, "OnClick", "LeftButton")
+    end
+  end
+  Stub.ui.CloseSettings()
+  Stub.RunSlash("reset rate")
+  ns = Stub.Restart({ reload = true, settle = 3 })
+  Stub.GainHonor(10); Stub.Advance(2)
+  ns.Core.ResetChar()
+  Stub.Advance(2)
+  Stub.SetWeek(-1, 0, 0, { quiet = true })            -- no season
+  Stub.pvp.total = 0
+  Stub.Fire("UPDATE_FACTION"); Stub.Advance(1)
+  HoverPvp(ns)
+  Stub.pvp.secret = { info = true, hk = true }
+  Stub.Fire("CURRENCY_DISPLAY_UPDATE", 1792); Stub.Fire("UPDATE_FACTION")
+  Stub.Fire("PLAYER_PVP_KILLS_CHANGED", "player"); Stub.Advance(1)
+  Stub.pvp.secret = {}
+  Stub.Logout()
+end)
+
+-- Classic Era: the PvP module dormant, its page's note, the PvP choices absent.
+Scenario("PvP (era): dormant, the page's note, a PvP main mode left from elsewhere", function()
+  Stub.InstallUI()
+  Stub.SetPvpAPI("era")
+  rawset(_G, "TruePlayedDB", { schema = 1, settings = { firstRunDone = true,
+    widget = { main = "pvp", pvp = "honor", pvpAuto = true, slots = { "honor", "rank_eta", "hk_today" } } } })
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  Stub.EnterBG(); Stub.Advance(2)
+  Stub.MatchComplete(0, 60); Stub.LeaveBG(); Stub.Advance(2)
+  Stub.Fire("CURRENCY_DISPLAY_UPDATE", 1792, 5, 5); Stub.Advance(1)
+  ns.Options.Open()
+  PvpPage()
+  Stub.ui.CloseSettings()
+  local tt = Stub.NewTooltip()
+  ns.Tooltip.FillPvp(tt)
+  Stub.Logout()
+end)
+
+Scenario("PvP: read-only mode (a newer schema), the PvP page refusing", function()
+  Stub.InstallUI()
+  Stub.SetPvpAPI("forever")
+  rawset(_G, "TruePlayedDB", { schema = 99, settings = { firstRunDone = true }, chars = {} })
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  ns.Core.SetSetting("widget.pvp", "rank")
+  Stub.EnterBG()
+  Stub.Advance(60); Stub.GainHonor(100); Stub.GainRankPoints(20); Stub.Advance(1)
+  Stub.MatchComplete(1, 60); Stub.LeaveBG()
+  HoverPvp(ns)
+  ns.Options.Open()
+  local controls = PvpPage()
+  for _, rec in pairs(controls or {}) do
+    if rec.kind == "button" then Stub.RunScript(rec.widget, "OnClick", "LeftButton") end
+  end
+  Stub.Advance(1)
   Stub.Logout()
 end)
 

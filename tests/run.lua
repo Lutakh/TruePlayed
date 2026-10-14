@@ -41,7 +41,7 @@ local function exists(path)
   return false
 end
 
-for _, name in ipairs({ "stub_engine", "stub_stats", "stub_ui", "stub_activity" }) do
+for _, name in ipairs({ "stub_engine", "stub_stats", "stub_ui", "stub_activity", "stub_reputation", "stub_pvp" }) do
   local path = ROOT .. "tests/" .. name .. ".lua"
   if exists(path) then
     local installer = dofile(path)
@@ -206,6 +206,19 @@ local FILES = {
   "test_dead", "test_prof", "test_levels_extra",
   -- lot 8 part B: tooltip and statistics window rework
   "test_window_cols",
+  -- automatic reload (crash review, part B)
+  "test_autoreload",
+  -- the watched reputation under the bar
+  "test_reputation",
+  "test_rep_detail",
+  -- PvP on WoW Forever: honor, rank, kills, battlegrounds (engine, then the bar and UI)
+  "test_pvp", "test_pvp_ui",
+  -- the PvP review's findings
+  "test_pvp_review",
+  -- the Levels tab rework: world PvP per level, the levels' data (Stats)
+  "test_world_pvp", "test_levels_data",
+  -- the Levels tab rework: the histogram and the detail sheet (LevelChart, LevelDetail)
+  "test_level_chart", "test_level_detail",
 }
 
 local passed, failed, skipped = 0, 0, 0

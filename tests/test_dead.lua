@@ -165,7 +165,7 @@ T.test("dead: breakdown part, gauge key and the Shift tooltip line 'Deaths  n (t
   T.eq(keys, { "world", "dead" })
   local short = Fill(ns, false)
   T.no(Find(short, L.TT_DEATHS), "the short view has no deaths line")
-  T.ok(Find(short, L.TT_BREAKDOWN)[2]:find(L.BD_DEAD, 1, true), "breakdown line names it")
+  T.ok(Find(short, L.TT_BREAKDOWN_LEVEL)[2]:find(L.BD_DEAD, 1, true), "breakdown line names it")
   local lines = Fill(ns, true)
   T.eq(Find(lines, L.TT_DEATHS)[2], format("%s (%s)", Fmt.Number(1), Fmt.Duration(125)), "count and time, one line")
   -- deaths recorded before this version (no dead time): the count alone

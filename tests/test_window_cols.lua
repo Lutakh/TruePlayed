@@ -3,6 +3,11 @@
 -- window: columns shown only when used and laid out again, level rows "19 » 20" with the
 -- date the next level was reached and the cumulative time, the date format and clock
 -- settings, the resizable window (size saved), the capitals Time column, the options.
+-- Levels tab rework: the Levels table of a character became the chart (LevelChart.lua);
+-- its tests here were ported to the bars (tooltip title, Reached line, parts), the strip
+-- and chips (cumulative and played time), the detail sheet's status date and the chart's
+-- minimum size; the header tests run on the Zones / Sessions / account tables; the Est.
+-- column test reads the detail sheet's "Estimated at start" card (LevelDetail.lua).
 local Stub, T = ...
 
 local format = string.format
@@ -55,11 +60,21 @@ local function Ids(tp)
   return out
 end
 
-local function Has(list, v)
-  for i = 1, #list do
-    if list[i] == v then return true end
-  end
-  return false
+-- The Levels tab of a character is the chart (LevelChart.lua): its handles, and the
+-- tooltip of the bar of level k (the classic theme: GameTooltip) as { left, right } lines,
+-- the bar left afterwards.
+local function Chart() return TP().chart end
+local function BarTip(k)
+  local hit = Chart().cols[k].hit
+  hit:GetScript("OnEnter")(hit)
+  local out = {}
+  for i, l in ipairs(GameTooltip._lines or {}) do out[i] = { l[1] or l.left, l[2] or l.right } end
+  hit:GetScript("OnLeave")(hit)
+  return out
+end
+local function Right(lines, left)
+  local l = Find(lines, left)
+  return l and l[2] or nil
 end
 
 -- Headers in order, without overlap, the last one inside the content; every shown row
@@ -91,9 +106,11 @@ T.test("tooltip breakdown: largest first in the legend and the gauge", function(
   local ns = Login()
   local L, Fmt = ns.L, ns.Fmt
   local life = ns.char.life
-  -- city 40 %, world 30 %, AFK 20 %, inn 10 %
+  -- city 40 %, world 30 %, AFK 20 %, inn 10 % (the short view shows the level's breakdown,
+  -- Shift adds the character's: both get the same seconds)
   life.s = { w = 3000, W = 2000, i = 1000, c = 4000 }
-  local line = Find(Fill(ns, false), L.TT_BREAKDOWN)
+  ns.char.levels[Stub.player.level].s = { w = 3000, W = 2000, i = 1000, c = 4000 }
+  local line = Find(Fill(ns, false), L.TT_BREAKDOWN_LEVEL)
   local function P(key, pct) return format(L.BD_PART_FMT, L[key], Fmt.Percent(pct / 100, 0)) end
   T.eq(line[2], table.concat({ P("BD_CITY", 40), P("BD_WORLD", 30), P("BD_AFK", 20), P("BD_INN", 10) }, L.SEP))
   local fracs, keys = {}, {}
@@ -149,23 +166,25 @@ end)
 -- Window: columns
 ---------------------------------------------------------------------------
 
+-- Levels tab rework: the Levels tab of a character is the chart, without any table column
+-- (its former optional columns are the parts of a bar: they are listed in the bar tooltip
+-- when used, in the chart's fixed order; tests/test_level_chart.lua checks the stacks).
+-- The Sessions and Zones parts are unchanged.
 T.test("window: a column empty for every row of the view is not shown; the others are laid out again", function()
   local ns = Login()
+  local L = ns.L
   Stub.Advance(120)
   ns.Window.Show("levels")
   local tp = TP()
-  local ids = Ids(tp)
-  for _, id in ipairs({ "afk", "inn", "city", "inst", "dead", "prof", "eta" }) do
-    T.no(Has(ids, id), "no " .. id .. " column yet")
+  T.ok(Chart() ~= nil and Chart().root:IsShown(), "levels: the chart")
+  T.eq(tp.layout.n, 0, "levels: no table column")
+  for c = 1, #tp.headerCells do T.no(tp.headerCells[c]:IsShown(), "levels: header cell " .. c .. " hidden") end
+  local lines = BarTip(10)
+  for _, key in ipairs({ "BD_AFK", "BD_INN", "BD_CITY", "BD_DUNGEON", "BD_RAID", "BD_DEAD", "TT_PROF" }) do
+    T.eq(Find(lines, L[key]), nil, "no " .. key .. " part yet")
   end
-  T.eq(ids[1], "level")
-  T.eq(ids[2], "time")
-  T.eq(ids[#ids], "reached", "Reached last")
-  T.ok(Has(ids, "cum") and Has(ids, "zone"), "Total and main zone")
-  CheckGeometry(tp, "levels, few columns")
-  local zone = tp.layout.cols[tp.layout.pos.zone]
-  T.ok(zone.cw > zone.w, "the main zone takes the room left")
-  -- AFK, inn and city time appear: their columns, in their place
+  T.ok(Find(lines, L.BD_WORLD) ~= nil, "the world part")
+  -- AFK, inn and city time appear: their parts, in their place
   Stub.SetAFK(true); Stub.Advance(120); Stub.SetAFK(false)
   Stub.SetResting(true); Stub.Advance(60); Stub.SetResting(false)
   Stub.SetMap(1454); Stub.Advance(60); Stub.SetMap(1411)
@@ -173,15 +192,17 @@ T.test("window: a column empty for every row of the view is not shown; the other
   Stub.OpenTradeSkill(); Stub.Advance(60); Stub.CloseTradeSkill()
   Stub.Advance(1)
   ns.Window.Refresh()
-  ids = Ids(tp)
-  local pos = tp.layout.pos
-  for _, id in ipairs({ "afk", "inn", "city", "dead", "prof" }) do T.ok(pos[id] ~= nil, id .. " column") end
-  T.ok(pos.afk < pos.inn and pos.inn < pos.city and pos.city < pos.dead and pos.dead < pos.prof, "catalog order")
-  T.no(Has(ids, "inst"), "still no instance")
-  CheckGeometry(tp, "levels, more columns")
+  T.eq(tp.layout.n, 0, "levels: still no table column")
+  lines = BarTip(10)
+  local at = {}
+  for i, l in ipairs(lines) do at[l[1]] = i end
+  for _, key in ipairs({ "TT_PROF", "BD_DEAD", "BD_CITY", "BD_INN", "BD_AFK" }) do T.ok(at[L[key]] ~= nil, key .. " part") end
+  T.ok(at[L.BD_WORLD] < at[L.TT_PROF] and at[L.TT_PROF] < at[L.BD_DEAD] and at[L.BD_DEAD] < at[L.BD_CITY]
+    and at[L.BD_CITY] < at[L.BD_INN] and at[L.BD_INN] < at[L.BD_AFK], "the chart's fixed order")
+  T.no(at[L.BD_DUNGEON] or at[L.BD_RAID], "still no instance")
   -- sessions and zones follow the same rule
   ns.Window.Toggle("sessions")
-  pos = tp.layout.pos
+  local pos = tp.layout.pos
   T.ok(pos.dead and pos.prof and pos.afk, "sessions: dead, professions, AFK")
   T.eq(pos.inst, nil, "sessions: no instance column")
   CheckGeometry(tp, "sessions")
@@ -190,7 +211,12 @@ T.test("window: a column empty for every row of the view is not shown; the other
   T.eq(Stub.onUpdateCount, 0)
 end)
 
-T.test("window: level rows read 'L » L+1', Reached = the next level, Total = time from level 1", function()
+-- Levels tab rework: the rows "L » L+1" became the bars of the chart. The bar tooltip title
+-- names the step (L.LEVEL_SPAN_FMT), its Reached line is the date the next level was
+-- reached (in progress for the current one); the former Total column is the strip legend
+-- "Levels 1 to N" (the time from level 1 to the end of the last complete level) and the
+-- Played chip (to now, live). The account rows keep the "L » L+1" labels.
+T.test("window: level bars read 'Level L » L+1', Reached = the next level, Total = time from level 1", function()
   local ns = Login()
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
   Stub.Advance(600)
@@ -199,66 +225,90 @@ T.test("window: level rows read 'L » L+1', Reached = the next level, Total = ti
   Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)      -- 11 -> 12
   Stub.Advance(300)
   ns.Window.Show("levels")
-  local tp = TP()
-  T.eq(tp.header[1]:GetText(), L.COL_LEVEL)
-  local cur, r11, r10 = RowWith(tp, Span(12)), RowWith(tp, Span(11)), RowWith(tp, Span(10))
-  T.ok(cur and r11 and r10, "rows 12 » 13, 11 » 12, 10 » 11")
-  T.eq(tp.rows[1], cur, "the level in progress first")
-  T.eq(Cell(tp, cur, "reached"), L.ROW_IN_PROGRESS)
+  local tp, ch = TP(), Chart()
+  T.ok(ch ~= nil and ch.root:IsShown(), "the chart")
+  T.eq(ch.state.level, 12)
+  local cur, t11, t10 = BarTip(12), BarTip(11), BarTip(10)
+  T.eq(cur[1][1], format(L.LEVEL_SPAN_FMT, 12, 13), "the level in progress")
+  T.eq(t11[1][1], format(L.LEVEL_SPAN_FMT, 11, 12))
+  T.eq(t10[1][1], format(L.LEVEL_SPAN_FMT, 10, 11))
+  T.eq(Right(cur, L.COL_REACHED), L.ROW_IN_PROGRESS)
   local levels = ns.char.levels
-  T.eq(Cell(tp, r11, "reached"), Fmt.DateTime(levels[12].t0), "11 » 12: when 12 was reached")
-  T.eq(Cell(tp, r10, "reached"), Fmt.DateTime(levels[11].t0))
+  T.eq(Right(t11, L.COL_REACHED), Fmt.DateTime(levels[12].t0), "11 » 12: when 12 was reached")
+  T.eq(Right(t10, L.COL_REACHED), Fmt.DateTime(levels[11].t0))
   T.ok(levels[11].t0 ~= levels[10].t0, "not the date level 10 began")
-  -- Total: from level 1 to the end of the row's level; the current row runs to now
+  T.eq(Right(t11, L.LV_PLAYED), Fmt.Duration(Stats.Sum(levels[11], 0)), "the bar: the level's own time")
+  -- Total: from level 1 to the end of the last complete level; the Played chip runs to now
   local sync = ns.Tracker.GetSync()
   local now = GetTime()
-  T.eq(Cell(tp, r10, "cum"), Fmt.Duration(Stats.CumulativeTime(ns.char, 10, 0, sync, now)))
-  T.eq(Cell(tp, r11, "cum"), Fmt.Duration(Stats.CumulativeTime(ns.char, 11, 0, sync, now)))
+  T.eq(ch.strip.fs1:GetText(), format(L.LV_DONE_FMT, 11, Fmt.Duration(Stats.CumulativeTime(ns.char, 11, 0, sync, now))))
   local played = Stats.Played(ns.char, 0, sync, now)
-  T.eq(Cell(tp, cur, "cum"), Fmt.Duration(played))
+  T.eq(ch.chips[1].value:GetText(), Fmt.Duration(played))
   T.eq(Stats.CumulativeTime(ns.char, 11, 0, sync, now) - Stats.CumulativeTime(ns.char, 10, 0, sync, now),
     Stats.Sum(levels[11], 0), "consecutive totals differ by the level's time")
-  -- live: the current row's total follows the played time
+  -- live: the Played chip follows the played time
   Stub.Advance(240)
-  T.eq(Cell(tp, cur, "cum"), Fmt.Duration(Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())))
-  -- the hover title names the step
-  r11:GetScript("OnEnter")(r11)
-  T.eq(GameTooltip._lines[1][1], format(L.LEVEL_SPAN_FMT, 11, 12))
-  r11:GetScript("OnLeave")(r11)
+  T.eq(ch.chips[1].value:GetText(), Fmt.Duration(Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())))
   -- the account view uses the same labels
   ns.Window.SetView("account")
   T.ok(RowWith(tp, Span(11)) ~= nil, "account rows: 11 » 12 (complete levels)")
   T.eq(Stub.onUpdateCount, 0)
 end)
 
-T.test("window: the Est. column sits next to the time it took", function()
+-- Levels tab rework: the Levels table and its Est. column are gone; the estimate made when
+-- the level began (row.eta) is the "Estimated at start" figure card of the detail sheet
+-- (LevelDetail, spec section 5.2), right below the Played card in the cards' 2 x 3 grid (the
+-- column sat right of the time). The level in progress shows its projection there ("Level
+-- estimate", the time left below), so the level is completed first (one more level-up).
+T.test("window: the Est. card sits next to the time it took", function()
   local ns = Login()
+  local L, Fmt = ns.L, ns.Fmt
   for _ = 1, 12 do Stub.Advance(60); Stub.Kill(200) end
   Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)
   Stub.Advance(2)
+  for _ = 1, 3 do Stub.Advance(60); Stub.Kill(200) end
+  Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)
+  Stub.Advance(2)
+  T.eq(Stub.player.level, 12)
   ns.Window.Show("levels")
   local tp = TP()
-  local pos = tp.layout.pos
-  T.eq(pos.eta, pos.time + 1)
-  T.eq(Cell(tp, RowWith(tp, Span(11)), "eta"), ns.Fmt.Duration(ns.char.levels[11].eta))
+  local hit = Chart().cols[11].hit
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  local cards = tp.detail.cards
+  local _, _, _, px, py = cards.played.frame:GetPoint(1)
+  local _, _, _, ex, ey = cards.eta.frame:GetPoint(1)
+  T.eq(ex, px, "the Played card's column")
+  T.eq(py - ey, cards.played.frame:GetHeight() + 8, "right below it")
+  T.eq(cards.eta.label:GetText(), L.LD_ETA)
+  T.ok(ns.char.levels[11].eta ~= nil)
+  T.eq(tp.detail.eta:GetText(), Fmt.Duration(ns.char.levels[11].eta))
+  T.eq(cards.played.value:GetText(), Fmt.Duration(ns.Stats.Sum(ns.char.levels[11], 0)), "the time it took")
 end)
 
 ---------------------------------------------------------------------------
 -- Dates
 ---------------------------------------------------------------------------
 
+-- Levels tab rework: the Reached date of a level is in its bar tooltip and in the status
+-- line of its detail sheet ("Completed on <date>"); both follow the settings, the sheet
+-- refreshed while shown. The Sessions part is unchanged.
 T.test("window: dates follow window.dateFmt and window.clock (Reached and Sessions)", function()
   local ns = Login()
+  local L = ns.L
   Stub.Advance(300)
   Stub.GrantXP(Stub.player.max - Stub.player.xp + 10)
   Stub.Advance(60)
   ns.Window.Show("levels")
   local tp = TP()
-  local row = RowWith(tp, Span(10))
-  T.match(Cell(tp, row, "reached"), "^%d%d/%d%d/%d%d%d%d %d?%d:%d%d [AP]M$", "enUS auto: 12-hour clock")
+  T.match(Right(BarTip(10), L.COL_REACHED), "^%d%d/%d%d/%d%d%d%d %d?%d:%d%d [AP]M$", "enUS auto: 12-hour clock")
+  local hit = Chart().cols[10].hit
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  T.eq(tp.detail.status:GetText(), format(L.LD_DONE_FMT, ns.Fmt.DateTime(ns.char.levels[11].t0)), "detail: completed on")
+  T.match(tp.detail.status:GetText(), "%d%d/%d%d/%d%d%d%d %d?%d:%d%d [AP]M$")
   ns.Core.SetSetting("window.dateFmt", "ymd")
   ns.Core.SetSetting("window.clock", "24")
-  T.match(Cell(tp, row, "reached"), "^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d$", "refreshed while shown")
+  T.match(Right(BarTip(10), L.COL_REACHED), "^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d$", "the next hover: the new format")
+  T.match(tp.detail.status:GetText(), "%d%d%d%d%-%d%d%-%d%d %d%d:%d%d$", "detail refreshed while shown")
   ns.Window.Toggle("sessions")
   T.match(Cell(tp, tp.rows[1], "date"), "^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d$", "sessions dates too")
   ns.Core.SetSetting("window.dateFmt", "dmy")
@@ -293,10 +343,13 @@ end)
 -- Size
 ---------------------------------------------------------------------------
 
+-- Levels tab rework: the table checks of this test run in the Zones tab (its zone column
+-- takes the extra room as the Levels main zone column did); the chart is never smaller than
+-- its minimum (LevelChart.MinSize, 1040 x 640) while the saved size stays the player's.
 T.test("window: resized with the grip, size saved, never narrower than its columns", function()
   local ns = Login()
   Stub.Advance(120)
-  ns.Window.Show("levels")
+  ns.Window.Show("zones")
   local f, tp = Frame(), TP()
   local need = tp.layout.need + 50
   T.eq(f:GetWidth(), math.max(700, need))
@@ -309,7 +362,7 @@ T.test("window: resized with the grip, size saved, never narrower than its colum
   T.eq(f:GetWidth(), 1000)
   T.eq(f:GetHeight(), 600)
   local zone = tp.layout.cols[tp.layout.pos.zone]
-  T.eq(zone.cw, zone.w + 950 - tp.layout.need, "the main zone takes the extra room")
+  T.eq(zone.cw, zone.w + 950 - tp.layout.need, "the zone column takes the extra room")
   CheckGeometry(tp, "wide")
   -- narrower than the columns: the window keeps the width they need
   f:SetSize(400, 100)
@@ -319,6 +372,22 @@ T.test("window: resized with the grip, size saved, never narrower than its colum
   T.eq(f:GetWidth(), math.max(700, need))
   T.eq(f:GetHeight(), 300)
   CheckGeometry(tp, "narrow")
+  -- the chart: its minimum size, the saved one unchanged
+  ns.Window.Toggle("levels")
+  T.eq({ ns.LevelChart.MinSize() }, { 1040, 640 })
+  T.eq({ f:GetWidth(), f:GetHeight() }, { 1040, 640 }, "the chart's minimum")
+  T.eq({ ns.settings.window.width, ns.settings.window.height }, { 700, 300 }, "the setting unchanged")
+  f:SetSize(1100, 700)
+  grip:GetScript("OnMouseUp")(grip, "LeftButton")
+  T.eq({ ns.settings.window.width, ns.settings.window.height }, { 1100, 700 }, "saved from the chart")
+  T.eq({ f:GetWidth(), f:GetHeight() }, { 1100, 700 })
+  T.eq(Chart().root:GetWidth(), 1100 - 28, "the chart follows the window")
+  f:SetSize(400, 100)
+  grip:GetScript("OnMouseUp")(grip, "LeftButton")
+  T.eq({ ns.settings.window.width, ns.settings.window.height }, { 700, 300 }, "clamped by the settings")
+  T.eq({ f:GetWidth(), f:GetHeight() }, { 1040, 640 }, "never smaller than the chart")
+  ns.Window.Toggle("zones")
+  T.eq({ f:GetWidth(), f:GetHeight() }, { math.max(700, need), 300 }, "the other tabs: the saved size")
   -- the size is kept for the next show
   ns.Core.SetSetting("window.width", 900)
   ns.Window.Hide()
@@ -422,15 +491,16 @@ T.test("window: every column header has a help icon and a tooltip saying what th
   Stub.Advance(2)
   ns.Window.Show("levels")
   local tp = TP()
-  local n = CheckHelp(ns, tp, "levels")
-  T.ok(n >= 12, "levels: most columns shown (" .. n .. ")")
+  -- Levels tab rework: the chart has no column header, so no help icon (every cell hidden)
+  T.eq(CheckHelp(ns, tp, "levels (the chart)"), 0)
+  ns.Window.Toggle("zones")
+  CheckHelp(ns, tp, "zones")
+  ns.Window.Toggle("sessions")
+  local n = CheckHelp(ns, tp, "sessions")
+  T.ok(n >= 8, "sessions: most columns shown (" .. n .. ")")
   local seen = {}
   for _, id in ipairs(Ids(tp)) do seen[id] = true end
-  for _, id in ipairs({ "eta", "afk", "inn", "city", "dead", "prof" }) do T.ok(seen[id], "levels: " .. id .. " shown") end
-  for _, tab in ipairs({ "zones", "sessions" }) do
-    ns.Window.Toggle(tab)
-    CheckHelp(ns, tp, tab)
-  end
+  for _, id in ipairs({ "xp", "xph", "afk", "dead", "prof" }) do T.ok(seen[id], "sessions: " .. id .. " shown") end
   ns.Window.SetView("account")
   CheckHelp(ns, tp, "account sessions (no column)")
   ns.Window.Toggle("levels")
@@ -441,9 +511,8 @@ T.test("window: every column header has a help icon and a tooltip saying what th
     return col.tip
   end
   T.eq(TipOf("xph"), "COL_XPH_ACCOUNT_TIP")
-  ns.Window.SetView("current")
-  T.eq(TipOf("xph"), "COL_XPH_TIP")
-  T.eq(TipOf("time"), "COL_TIME_TIP")
+  ns.Window.SetView("current")                          -- the chart: the Levels table tips went with it
+  T.eq(tp.layout.n, 0)
   ns.Window.Toggle("zones")
   T.eq(TipOf("time"), "COL_TIME_ZONES_TIP")
   ns.Window.Toggle("sessions")
@@ -452,52 +521,57 @@ T.test("window: every column header has a help icon and a tooltip saying what th
   T.eq(Stub.onUpdateCount, 0)
 end)
 
+-- Levels tab rework: the header hovered while the tab changes starts in the Sessions tab;
+-- the column that goes away is the last Sessions one when the chart (no column) is shown;
+-- the row tooltip that a header leave must not hide is the bar tooltip of the chart.
 T.test("window: a hovered header follows its column, its tooltip goes with the column or the window", function()
   local ns = Login()
   local L = ns.L
   Stub.Advance(120)
-  ns.Window.Show("levels")
+  ns.Window.Show("sessions")
   local tp = TP()
   -- the second header hovered while the tab changes: the new column's tooltip
   local cell = tp.headerCells[2]
   cell:GetScript("OnEnter")(cell)
-  T.eq(GameTooltip._lines[2][1], L.COL_TIME_TIP)
+  T.eq(GameTooltip._lines[1][1], L.COL_DURATION)
   ns.Window.Toggle("zones")
   T.ok(GameTooltip:GetOwner() == cell and GameTooltip:IsShown(), "still the owner")
   T.eq(GameTooltip._lines[1][1], L.COL_TIME)
   T.eq(GameTooltip._lines[2][1], L.COL_TIME_ZONES_TIP, "the zones tab's own explanation")
   cell:GetScript("OnLeave")(cell)
   -- the last header hovered when its column goes away: tooltip hidden, icon back to dim
-  ns.Window.Toggle("levels")
+  ns.Window.Toggle("sessions")
   local n = tp.layout.n
   cell = tp.headerCells[n]
   cell:GetScript("OnEnter")(cell)
-  T.eq(GameTooltip._lines[1][1], L.COL_REACHED)
-  ns.Window.SetView("account")
-  T.ok(tp.layout.n < n, "fewer columns")
+  T.eq(GameTooltip._lines[1][1], L[tp.layout.cols[n].key])
+  ns.Window.Toggle("levels")
+  T.ok(tp.layout.n < n, "fewer columns (the chart: none)")
   T.no(cell:IsShown(), "cell hidden")
   T.no(GameTooltip:IsShown(), "its tooltip hidden")
   T.eq(VColor(tp.headerIcons[n]), C3(ns.Themes.Active().ui.dim))
   -- hovered when the window closes
-  ns.Window.SetView("current")
+  ns.Window.Toggle("sessions")
   cell = tp.headerCells[1]
   cell:GetScript("OnEnter")(cell)
   ns.Window.Hide()
   T.no(GameTooltip:IsShown(), "hidden with the window")
-  -- a row tooltip is not taken for a header one (and the other way round)
+  -- a bar tooltip is not taken for a header one (and the other way round)
   ns.Window.Show("levels")
-  local row = tp.rows[1]
-  row:GetScript("OnEnter")(row)
+  local hit = Chart().cols[10].hit
+  hit:GetScript("OnEnter")(hit)
   T.eq(GameTooltip._lines[1][1], format(L.LEVEL_SPAN_FMT, 10, 11))
   cell:GetScript("OnLeave")(cell)
-  T.ok(GameTooltip:IsShown(), "leaving a header keeps a row's tooltip")
-  row:GetScript("OnLeave")(row)
+  T.ok(GameTooltip:IsShown() and GameTooltip:GetOwner() == hit, "leaving a header keeps a bar's tooltip")
+  hit:GetScript("OnLeave")(hit)
+  T.no(GameTooltip:IsShown(), "the bar's leave hides it")
 end)
 
+-- Levels tab rework: shown on the Zones tab (the chart has no header).
 T.test("window: the help icons follow the theme; nothing is created again", function()
   local ns = Login()
   Stub.Advance(120)
-  ns.Window.Show("levels")
+  ns.Window.Show("zones")
   local tp = TP()
   local Themes = ns.Themes
   local count = #tp.headerIcons

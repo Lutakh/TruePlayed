@@ -297,6 +297,27 @@ local function Credit(n, k, zone, lvl)
   Bump(dzb.s, k, n)
 end
 
+-- Adds n to the numeric field f of char.life and of char.levels[lvl] (lvl nil: the
+-- segment's level), in the record AND in the delta (a late SavedVariables swap replays it
+-- once through Util.AddInto, ReplayDelta), never in the session: per-level counters kept
+-- beside `s`. Today pw, the open-world PvP seconds committed by Pvp.lua (a part of s.w;
+-- Core.RepairChar keeps it optional: no default). Nothing before Start, in read-only mode,
+-- without a record or a delta, or for n not a number > 0. Only the first write of a field
+-- to a level allocates (the key). A field function: the main chunk is at 198 of the 200
+-- Lua 5.1 locals.
+function Tracker.AddLevelStat(f, n, lvl)
+  local char = ns.char
+  if not started or ns.readOnly or type(char) ~= "table" or not delta or type(char.life) ~= "table"
+      or type(n) ~= "number" or not (n > 0) or n == math.huge then   -- luacheck: ignore 581 (NaN fails too)
+    return
+  end
+  if type(lvl) ~= "number" then lvl = seg.level end
+  Add(char.life, f, n)
+  Add(GetLevel(char, lvl), f, n)
+  Add(delta.life, f, n)
+  Add(GetLevel(delta, lvl), f, n)
+end
+
 -- Decays the EMA of every mask that includes state k over dt seconds.
 local function DecayEma(dt, k)
   local char = ns.char
@@ -441,6 +462,10 @@ end
 -- dt seconds of state k: the EMA decays, except for the part withheld (stalled or
 -- capped), which is returned for the stalled maps. Counts the time without XP.
 local function AdvanceRate(dt, k)
+  local R = ns.Rep                       -- the reputation's rate keeps the same clock
+  if R then R.Advance(dt, k) end
+  local P = ns.Pvp                       -- and the PvP ones (their PvP part of it), and the
+  if P then P.Advance(dt, k, seg.level) end   -- world PvP pending at the segment's level
   local char = ns.char
   if not char or realMax then
     DecayEma(dt, k)
@@ -1059,7 +1084,9 @@ end
 
 -- Level-start estimate (lot 8, A3): levels[L].eta = the time to the next level shown
 -- when the level began (seconds: the rest-aware Stats.ETA under the exclusions of that
--- moment, status "ok" or "estimate"), levels[L].etaP = the XP fraction at that moment.
+-- moment, status "ok" or "estimate"), levels[L].etaP = the XP fraction at that moment,
+-- levels[L].etaM = the exclusion mask it was taken under (0..7: the sheet's "more / less
+-- than estimated" compares it only under that mask).
 -- Taken once, at the first tick with a rate while the level is at most
 -- C.ETA_START_FRAC done (right after a level-up; a level whose rate came later); the
 -- install level (partial) takes its first measured estimate (status "ok", not the
@@ -1082,6 +1109,7 @@ function Tracker.CaptureLevelEta()
   if status ~= "ok" and (status ~= "estimate" or lb.partial) then return end
   lb.eta = math_floor(eta + 0.5)
   lb.etaP = Round3(frac)
+  lb.etaM = ns.GetMask()
 end
 
 function Tracker.Tick(now)
@@ -1206,11 +1234,14 @@ end
 -- Re-adds G lost seconds (server total minus what we know) into real state
 -- keys. Segments dropped in this load go back where they were played; the rest
 -- is split across levels (server level time + exact XP) and by this character's
--- own historical proportions, attributed to the last known zone (city share: to
--- a capital, see CityZoneFor). An instance kind gets a share only when the last
+-- recent proportions (its last levels, step 2), attributed to the last known zone (city
+-- share: to a capital, see CityZoneFor). An instance kind gets a share only when the last
 -- known state was that kind (a crash inside the instance, credited to it): the
 -- gap of a character last seen outside never puts a few seconds in its most played
 -- dungeon (levels where it never set foot in it).
+-- Every rebuilt second is also kept per state key in life.es and levels[L].es (shaped
+-- like `s`, created on the first write, never in the delta), beside the gross est
+-- totals: Stats.EstTime values it under the exclusions.
 -- P1 = valid server levelPlayed of the current level, or nil.
 function Tracker.EstimateGap(char, G, P1)
   if ns.readOnly or type(char) ~= "table" or type(G) ~= "number" or G <= 0 then return end
@@ -1224,22 +1255,79 @@ function Tracker.EstimateGap(char, G, P1)
   local b0 = Tracker.b0
 
   -- 2. state proportions (read BEFORE crediting anything; never "u") ----
-  -- Dead and professions time get no share (C.IS_ACTIVITY): a rebuilt gap is time
-  -- the addon did not see, split over the places only. Instance kinds: only the
-  -- kind of the last known state (see above).
+  -- The character's recent habits: the levels L0 (the level of the last sync or save,
+  -- the newest one with real time) down to L0 - C.RECENT_LEVELS, rebuilt levels (rec) left
+  -- out, each without its own rebuilt seconds (s - es) so that an earlier estimate is
+  -- not split again. Under C.EST_MIN_HISTORY: the whole life (life.s - life.es), then
+  -- everything to "w". Dead and professions time get no share (C.IS_ACTIVITY): a rebuilt
+  -- gap is time the addon did not see, split over the places only. Instance kinds: only
+  -- the kind of the last known state (see above). A negative value gives no share.
+  -- Time rebuilt by an earlier version (est - sum(es): no keys) is valued like the bucket
+  -- (as Stats.EstTime does): the bucket counts for its real time only, its place seconds
+  -- scaled by 1 - legacy / places, and not at all when that part is over C.EST_MOST of
+  -- them (its split is then mostly an estimate, often the whole character's).
   local last = char.last
   local lastKind = IS_INSTANCE[(type(last) == "table" and last.key) or seg.key]
   local hist, histTotal = {}, 0
-  for i = 1, N_TRACKED do
-    local k = TRACKED_KEYS[i]
-    local v = char.life.s[k] or 0
-    if v < 0 or C.IS_ACTIVITY[k] then v = 0 end
-    local kind = IS_INSTANCE[k]
-    if kind and kind ~= lastKind then v = 0 end
-    hist[i] = math_floor(v)
-    histTotal = histTotal + hist[i]
+  local function AddHist(bucket)
+    local s, es = bucket.s, bucket.es
+    if type(s) ~= "table" then return end
+    if type(es) ~= "table" then es = nil end
+    local scale = 1
+    local legacy = bucket.est
+    if type(legacy) == "number" and legacy > 0 then
+      local places = 0
+      for i = 1, N_TRACKED do
+        local k = TRACKED_KEYS[i]
+        local e = es and es[k] or 0
+        legacy = legacy - e
+        if not C.IS_ACTIVITY[k] then places = places + (s[k] or 0) - e end
+      end
+      if legacy > 0 then
+        if places <= 0 or legacy > C.EST_MOST * places then return end
+        scale = 1 - legacy / places
+      end
+    end
+    for i = 1, N_TRACKED do
+      local k = TRACKED_KEYS[i]
+      local v = (s[k] or 0) - (es and es[k] or 0)
+      local kind = IS_INSTANCE[k]
+      if v > 0 and not C.IS_ACTIVITY[k] and (kind == nil or kind == lastKind) then
+        hist[i] = hist[i] + v * scale
+      end
+    end
+  end
+  local function Settle()   -- whole seconds, and their total
+    histTotal = 0
+    for i = 1, N_TRACKED do
+      hist[i] = math_floor(hist[i])
+      histTotal = histTotal + hist[i]
+    end
+  end
+  for i = 1, N_TRACKED do hist[i] = 0 end
+  local lo = L0 - C.RECENT_LEVELS
+  if lo < 1 then lo = 1 end
+  for l = L0, lo, -1 do
+    local lb = levels[l]
+    if type(lb) == "table" and not lb.rec then AddHist(lb) end
+  end
+  Settle()
+  if histTotal < C.EST_MIN_HISTORY then
+    for i = 1, N_TRACKED do hist[i] = 0 end
+    AddHist(char.life)
+    Settle()
   end
   local useHistory = histTotal >= C.EST_MIN_HISTORY
+
+  -- rebuilt seconds per state key of a bucket (life.es, levels[L].es), made on first use
+  local function ES(bucket)
+    local es = bucket.es
+    if type(es) ~= "table" then
+      es = {}
+      bucket.es = es
+    end
+    return es
+  end
 
   -- 0. dropped segments: key, zone and level known (still estimated time) -
   local secs = {}
@@ -1252,6 +1340,8 @@ function Tracker.EstimateGap(char, G, P1)
     Bump(GetSub(lb.z, dropZone).s, dropKey, known)
     Bump(CharZone(char, dropZone).s, dropKey, known)
     lb.est = (lb.est or 0) + known
+    Bump(ES(lb), dropKey, known)
+    Bump(ES(char.life), dropKey, known)
     secs[dropKey] = known
   end
   dropSecs = 0
@@ -1320,13 +1410,14 @@ function Tracker.EstimateGap(char, G, P1)
   local zb = CharZone(char, zone)
   local cityZone, czb   -- target of the city share, resolved on first use
 
-  -- 4. credit (not the session, not the delta) --------------------------
+  -- 4. credit (not the session, not the delta; es beside s) -------------
   for oi = 1, #order do
     local l = order[oi]
     local n = share[l] or 0
     if n > 0 then
       local lb = GetLevel(char, l)
       local lz = GetSub(lb.z, zone)
+      local les, lifeES = ES(lb), ES(char.life)
       local parts
       if useHistory then
         parts = LargestRemainder(n, hist, N_TRACKED)
@@ -1338,6 +1429,8 @@ function Tracker.EstimateGap(char, G, P1)
         if p > 0 then
           Bump(char.life.s, k, p)
           Bump(lb.s, k, p)
+          Bump(lifeES, k, p)
+          Bump(les, k, p)
           if IS_CITY[k] then
             if cityZone == nil then
               cityZone = CityZoneFor(char, zone)
@@ -2544,7 +2637,7 @@ function Tracker.ReplayDelta(newChar)
       if ml.max ~= nil then nl.max = ml.max end
       if nl.t0 == nil then nl.t0 = ml.t0 end
       if nl.srvStart == nil then nl.srvStart, nl.srvStartEst = ml.srvStart, ml.srvStartEst end
-      if nl.eta == nil and ml.eta ~= nil then nl.eta, nl.etaP = ml.eta, ml.etaP end
+      if nl.eta == nil and ml.eta ~= nil then nl.eta, nl.etaP, nl.etaM = ml.eta, ml.etaP, ml.etaM end
     end
   end
   for k, dz in pairs(delta.zones) do
@@ -2762,6 +2855,14 @@ end
 
 function Tracker.GetLevelUpG()
   return Tracker.levelUpG
+end
+
+-- True when no XP reading is in flight (AutoReload: a reload now would lose nothing): no
+-- batch or retry scheduled, no read deferred to the end of combat, no gain awaiting its
+-- kill marker, no baseline scheduled and no seconds held on an unresolved map.
+function Tracker.IsSettled()
+  return not (batchScheduled or retryArmed or xpDeferred or baselineScheduled)
+    and pendXP <= 0 and holdState ~= HOLD_ON
 end
 
 function Tracker.GetLastLevelSyncG()

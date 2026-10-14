@@ -41,6 +41,7 @@ globals = {
   "TruePlayedStatsFrame",   -- named frame (Window)
   "TruePlayedMinimapButton",  -- named frame (MinimapButton)
   "TruePlayedMiniDisplay",  -- named frame (MiniDisplay)
+  "TruePlayedCharTooltip",  -- named frame (Tooltip: block 2 of the native themes, a GameTooltip)
 }
 
 read_globals = {
@@ -102,10 +103,38 @@ read_globals = {
   -- profession). Guarded: any of them may be nil.
   "UnitIsFeignDeath", "GetSpellInfo", "C_Spell", "GetUnitSpeed", "GetCraftName",
   "WTFIX_BOOTSTRAP", "WTFIX_DB",   -- read only: WTFix protection warning (Core)
-  "ReloadUI",                      -- "Reload UI" button under the language option (Options, on click only)
+  "ReloadUI",                      -- "Reload UI" button (Options) and the prompt's "Reload now"
+                                   -- (AutoReload), on click; the automatic reload without a click
+                                   -- only on clients that allow it (not WoW Forever)
+  -- automatic reload (AutoReload.lua): is the player busy? Read at the due moment only,
+  -- each one type-checked (some clients lack some of them)
+  "UnitAffectingCombat", "UnitCastingInfo", "UnitChannelInfo", "GetCurrentKeyBoardFocus",
+  "StaticPopup_IsAnyDialogShown", "GetUIPanel", "InCinematic", "MovieFrame", "ReadyCheckFrame",
+  "CursorHasItem", "SpellIsTargeting", "IsPlayerMoving",
+  "SettingsPanel", "GameMenuFrame", "KeyBindingFrame", "InterfaceOptionsFrame",   -- no UI panel area
   -- minimap button (MinimapButton.lua: its parent, the drop angle, the minimap shape of
   -- minimap addons; read when the button is created, placed or dropped)
   "Minimap", "GetCursorPosition", "GetMinimapShape",
+  -- watched reputation (Reputation.lua, on events only; guarded, any may be nil): the modern
+  -- and the Classic Era reads, the retail-only kinds (renown, friendships), the standing
+  -- colours; the player's sex for the standing name (Tooltip.lua); the game's label of the
+  -- watch checkbox (Options.lua, the option's help)
+  "C_Reputation", "GetWatchedFactionInfo", "C_GossipInfo", "FACTION_BAR_COLORS", "UnitSex",
+  "SHOW_FACTION_ON_MAINSCREEN",
+  -- the faction chosen in the options and the picker's list (Reputation.lua, Classic Era's
+  -- globals; the options' menu only, guarded)
+  "GetFactionInfoByID", "GetNumFactions", "GetFactionInfo", "ExpandFactionHeader",
+  "CollapseFactionHeader",
+  -- PvP (Pvp.lua, on events only; guarded, any may be nil, absent on Classic Era): the
+  -- honor currency, the PvP rank (major faction 2800), the week and season, the weekly
+  -- and daily resets, the honorable kills, a battleground's winner (after the match); the
+  -- cap alert's sound
+  "C_CurrencyInfo", "C_MajorFactions", "C_SeasonInfo", "C_DateAndTime",
+  "GetPVPSessionStats", "GetPVPYesterdayStats", "GetPVPLifetimeStats", "GetBattlefieldWinner",
+  "PlaySound", "SOUNDKIT",
+  -- the player's side in a match (the winner is compared with it) and the PvP season's
+  -- number (a lower season total without a new season is a transient read)
+  "GetBattlefieldArenaFaction", "GetCurrentArenaSeason",
 }
 
 -- Themes.lua alone reads the chunk loaders: it compiles the theme source texts in an empty

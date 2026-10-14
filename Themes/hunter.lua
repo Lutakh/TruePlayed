@@ -39,6 +39,7 @@
 --   media.sep_arrow: line - arrow - line separator
 --   bar.pad, gap: texts clear the 5 px strap by 2 px
 --   bar.height: default user height 8 -> 14 px track
+--   bar.rep: reputation strip 7 px under the track, 2 px clear of the strap
 --   bar.layers > strap: leather strap around the track (board: 5 px padding at x1.5, radius 6)
 --   bar.layers > stitchShadowTop: saddle stitching one row inside each long edge, its dark shadow 1
 --     px right and down. Layers hang from the track top, so the bottom rows are tall dash columns
@@ -113,6 +114,7 @@ return {
     pad = 8, gap = 7,
     height = { add = 6, min = 10 },
     maxAlpha = 0.35,
+    rep = { off = 7, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "strap", span = "track", nine = { "strap", 8, 8 }, pad = { 5, 5 }, top = -5, bottom = -5,
         layer = "BACKGROUND", sub = 0 },

@@ -76,8 +76,8 @@ do
   end
   Add("Orbitron", "Orbitron-Bold.ttf", false, { display = true, subst = {
     { "\194\183", "\226\128\162" },   -- middle dot -> bullet
-    { "\194\171", "\"" },             -- guillemets -> straight quote
-    { "\194\187", "\"" },
+    { "\194\187", ">" },               -- guillemets: in display texts, the addon's arrow
+    { "\194\171", "<" },               -- ("Level 30 » 31") -> > / <
   } })
   Add("Rajdhani", "Rajdhani-SemiBold.ttf", false)
   Add("Cinzel", "Cinzel-Bold.ttf", false)
@@ -107,12 +107,14 @@ Themes.FONTS = FONTS
 -- Locale keys of the texts a "display" font may render (with percent and number texts).
 Themes.DISPLAY_KEYS = { "LEVEL_SHORT_FMT", "LEVEL_TITLE_FMT", "LEVEL_PCT_FMT", "LEVEL_CAP_FMT",
   "LEVEL_CAP_TAG", "LEVEL_CAP_TAG_TITLE", "XP_LABEL", "ADDON_TITLE", "WIN_TITLE",
-  "GRAPH_TITLE_FMT", "GRAPH_WINDOW_30", "GRAPH_WINDOW_60", "GRAPH_WINDOW_300" }
+  "GRAPH_TITLE_FMT", "GRAPH_WINDOW_30", "GRAPH_WINDOW_60", "GRAPH_WINDOW_300",
+  "TT_SECTION_LEVEL", "TT_SECTION_CHAR", "TT_SECTION_REP", "REP_LABEL", "TT_SECTION_PVP", "PVP_LABEL",
+  "LEVEL_SPAN_FMT", "LV_PVP_TIP_FMT", "LD_PVP_TIP_FMT" }   -- the Levels tab's tooltip titles
 
 -- Media shared by every theme (6.1): "common/<name>" = Media/Themes/common/<name>.tga.
 local COMMON_MEDIA = {
   glow = { 64, 32, grey = true },   -- soft horizontal glow, 3-sliced with 16-texel caps
-  help = { 32, 32, grey = true },   -- circled "?" (Window.lua column header help icons)
+  help = { 32, 32, grey = true },   -- circled "?" (Window.lua column headers, Options.lua help)
 }
 Themes.COMMON_MEDIA = COMMON_MEDIA
 
@@ -158,7 +160,11 @@ do
   MT.text = { __index = { font = setmetatable({}, MT.font), size = setmetatable({}, MT.size),
     split = false, splitGap = 4, levelFmt = "upper",
     shadow = setmetatable({ c = { 0, 0, 0, 0.8 } }, MT.shadow) } }
-  MT.bar = { __index = { pad = 8, gap = 3, hAdd = 0, hMin = 4, maxAlpha = 0.35, panel = "backdrop" } }
+  -- the reputation strip under the track (2.4: bar.rep): off px below the track, h px high,
+  -- clear px above the text row under the bar, background colour c
+  MT.rep = { __index = { off = 2, h = 3, clear = 2, c = { 0, 0, 0, 0.6 } } }
+  MT.bar = { __index = { pad = 8, gap = 3, hAdd = 0, hMin = 4, maxAlpha = 0.35, panel = "backdrop",
+    rep = setmetatable({}, MT.rep) } }
   MT.fonts = { __index = function(t, k)                   -- num defaults to body
     if k == "num" then return rawget(t, "body") end
   end }
@@ -174,6 +180,22 @@ do
     levelLabel = Copy(K.label), levelValue = Copy(K.value), levelValueRested = Copy(K.value),
     rested = Copy(K.value), ccDim = C.CC.dim,
   }
+  -- The breakdown bar of the native themes (4.5, TooltipFrame.Bar): drawn by Tooltip.lua
+  -- to the right of the breakdown label of each native block, `min` px wide at least (a
+  -- block too narrow for it is widened), h px high, its segments g px apart in a 1 px
+  -- dark outline (the classic background). The segment colours, keyed like a theme's
+  -- gauge.colors (world, dungeon, raid, pvp, taxi, prof, dead, afk, inn, city), are the
+  -- default theme's (Futuriste: test_tooltip_theme checks they match).
+  Themes.CLASSIC_GAUGE = {
+    min = 80, h = 6, gap = 1, outline = Copy(K.bg),
+    colors = {
+      world = { 0x22 / 255, 0xd3 / 255, 0xee / 255, 1 }, dungeon = { 0xa8 / 255, 0x55 / 255, 0xf7 / 255, 1 },
+      raid = { 0x81 / 255, 0x8c / 255, 0xf8 / 255, 1 }, pvp = { 0xfb / 255, 0x92 / 255, 0x3c / 255, 1 },
+      taxi = { 0xf4 / 255, 0x72 / 255, 0xb6 / 255, 1 }, prof = { 0x34 / 255, 0xd3 / 255, 0x99 / 255, 1 },
+      dead = { 0xe1 / 255, 0x1d / 255, 0x48 / 255, 1 }, afk = { 0x64 / 255, 0x74 / 255, 0x8b / 255, 1 },
+      inn = { 0xfd / 255, 0xe6 / 255, 0x8a / 255, 1 }, city = { 0xfa / 255, 0xcc / 255, 0x15 / 255, 1 },
+    },
+  }
 end
 
 ---------------------------------------------------------------------------
@@ -186,8 +208,12 @@ end
 local K_LIT, K_XP, K_RESTED, K_BASE, K_NAME = 1, 2, 3, 4, 5
 local WHITE_NODE = { kind = K_LIT, r = 1, g = 1, b = 1, a = 1 }
 
--- Evaluation state: user colours (widget.xpColor / widget.restedColor) and the program.
-local E = { xpOn = false, xr = 0, xg = 0, xb = 0, rsOn = false, rr = 0, rg = 0, rb = 0, prog = nil }
+-- Evaluation state: user colours (widget.xpColor / widget.restedColor), the fill override
+-- (fo: the standing colour while the main bar shows the reputation, Themes.SetFillOverride;
+-- foXp: `xp` reads it too, while RunProgram writes the bar texts' override colours) and
+-- the program.
+local E = { xpOn = false, xr = 0, xg = 0, xb = 0, rsOn = false, rr = 0, rg = 0, rb = 0, prog = nil,
+            foOn = false, fr = 0, fg = 0, fb = 0, foXp = false }
 
 local Eval
 Eval = function(node, k)
@@ -201,6 +227,8 @@ Eval = function(node, k)
     r, g, b, a = Eval(node.ref, k)
   elseif kind == K_RESTED or (kind == K_BASE and k == 1) then
     if E.rsOn then r, g, b, a = E.rr, E.rg, E.rb, 1 else r, g, b, a = Eval(E.prog.rested, k) end
+  elseif (kind == K_BASE and E.foOn) or (kind == K_XP and E.foXp) then   -- the main bar's fill
+    r, g, b, a = E.fr, E.fg, E.fb, 1
   else                                           -- K_XP, or K_BASE in states 0 and 2
     if E.xpOn then r, g, b, a = E.xr, E.xg, E.xb, 1 else r, g, b, a = Eval(E.prog.xp, k) end
   end
@@ -222,7 +250,7 @@ local function UsesUser(node, k)
   if node.uRested and E.rsOn then return true end
   if node.uBase then
     if k == 1 then return E.rsOn end
-    return E.xpOn
+    return E.xpOn or E.foOn
   end
   return false
 end
@@ -230,7 +258,9 @@ end
 -- The colour program of a compiled theme (programs[th]): the dynamic colours only, 5
 -- entries each (out = the compiled array, node, def or false, k = fill state, f = alpha
 -- factor), plus xp / rested (the theme's nodes), dimOf (the tooltip palette when its dim
--- is dynamic: ccDim follows) and u (the user colours of the last run).
+-- is dynamic: ccDim follows), u (the user colours of the last run) and fo (the bar texts
+-- whose colour reads `xp`: 3 entries each, out = th.text.fo[role], node, def or false;
+-- while the fill override is on, `xp` reads it there, else they are the text colours).
 -- Rewrites every dynamic colour in place from the current E.
 local function RunProgram(prog)
   E.prog = prog
@@ -243,6 +273,22 @@ local function RunProgram(prog)
       r, g, b, a = Eval(node, k)
     end
     out[1], out[2], out[3], out[4] = r, g, b, a * prog[i + 4]
+  end
+  local fo = prog.fo
+  if fo then
+    local on = E.foOn
+    E.foXp = on
+    for i = 1, #fo, 3 do
+      local out, node, def = fo[i], fo[i + 1], fo[i + 2]
+      local r, g, b, a
+      if def and not on and not UsesUser(node, 0) then
+        r, g, b, a = Eval(def, 0)
+      else
+        r, g, b, a = Eval(node, 0)
+      end
+      out[1], out[2], out[3], out[4] = r, g, b, a
+    end
+    E.foXp = false
   end
   local tc = prog.dimOf
   if tc then tc.ccDim = ColorCode(tc.dim) end    -- only when the tooltip dim is dynamic
@@ -882,6 +928,18 @@ local function CompileBar(ctx, bar)
   if type(panel) == "table" and type(panel.parts) == "table" then
     out.panel = { parts = CompileParts(ctx, panel.parts, false) }
   end
+  -- the reputation strip (Bar.lua, BarSkin.lua): its place under the track and its
+  -- background colour; the fill takes the colour of the faction's standing
+  local rep = bar.rep
+  if type(rep) == "table" then
+    local r = setmetatable({}, MT.rep)
+    local off, rh, clear = Num(rep.off, 2, 0, 32, true), Num(rep.h, 3, 1, 8, true), Num(rep.clear, 2, 0, 16, true)
+    if off ~= 2 then r.off = off end
+    if rh ~= 3 then r.h = rh end
+    if clear ~= 2 then r.clear = clear end
+    if rep.color ~= nil then r.c = Single(ctx, rep.color) end
+    if next(r) ~= nil then out.rep = r end
+  end
   return out
 end
 
@@ -935,11 +993,28 @@ local function CompileText(ctx, text)
 
   local roles = type(text.colors) == "table" and text.colors or NO_SOURCE
   local colors = {}
+  local fo = nil
   for i = 1, #TEXT_ROLES do
     local role = TEXT_ROLES[i]
-    colors[role] = Single(ctx, roles[role], TEXT_ROLE_DEF[role])
+    local c, node, def = Single(ctx, roles[role], TEXT_ROLE_DEF[role])
+    colors[role] = c
+    -- a colour derived from the XP colour: its twin for the bar while the main track shows
+    -- another fill (Themes.SetFillOverride), written by the program (prog.fo)
+    if node.uXp or (def and def.uXp) then
+      local p = ctx.prog
+      local list = p.fo
+      if not list then
+        list = {}
+        p.fo = list
+      end
+      if not fo then fo = {} end
+      local twin = { 0, 0, 0, 0 }
+      fo[role] = twin
+      list[#list + 1], list[#list + 2], list[#list + 3] = twin, node, def or false
+    end
   end
   out.colors = colors
+  if fo then out.fo = fo end
 
   local sh = type(text.shadow) == "table" and text.shadow or NO_SOURCE
   local c = Single(ctx, sh.color, { 0, 0, 0, 0.8 })
@@ -1386,6 +1461,27 @@ function Themes.Active()
     end
   end
   return activeTh
+end
+
+-- The bar's fill colour (`base` in states 0 and 2, bar layers only: 2.3) replaced by r, g, b
+-- (the standing colour of the reputation the main bar shows, PvP's), or the theme's /
+-- user's again (nil). Runs the active theme's colour program again, without a new
+-- generation nor THEME_CHANGED (only the bar's layers read `base`: an open tooltip, the
+-- mini display and the options stay as they are); the bar repaints its skin. The bar's
+-- texts whose colour the theme derives from `xp` (futuriste's % marker: "xp+.45") have a
+-- twin in th.text.fo, where `xp` reads this colour while it is set (the bar uses them in
+-- its reputation and PvP modes: such a text follows the fill as it follows the XP colour;
+-- th.text.colors, which the mini display reads, keep the XP colour). The override stays
+-- for the themes compiled later. True when it changed.
+function Themes.SetFillOverride(r, g, b)
+  local on = r ~= nil
+  if on == E.foOn and (not on or (r == E.fr and g == E.fg and b == E.fb)) then return false end
+  E.foOn = on
+  E.fr, E.fg, E.fb = r or 0, g or 0, b or 0
+  local th = activeTh
+  local prog = th and programs[th]
+  if prog then RunProgram(prog) end
+  return true
 end
 
 function Themes.ActiveKey()

@@ -37,6 +37,8 @@
 --   media.sep: baked separator: white fading in, lavender fading out
 --   bar.pad, gap: the gap holds the frame rim and the needle's tab
 --   bar.height: default user height 8 -> 13 px track (board 20 px at x1.5)
+--   bar.rep: reputation strip 12 px under the track, 1 px clear of the needle's tab (11 px) at
+--     the fill end
 --   bar.layers > frame: pearly ivory frame with a silver edge, panel grooves on the rims, dark
 --     track bed
 --   bar.layers > rested: rested part ("holy glow"): lighter rested colour fading out, a sheen, a
@@ -98,6 +100,7 @@ return {
     pad = 8, gap = 8,
     height = { add = 5, min = 9 },
     maxAlpha = 0.35,
+    rep = { off = 12, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "frame", span = "track", nine = { "frame", 14, 7 }, pad = { 6, 6 }, top = -6, bottom = -6,
         layer = "BORDER", sub = -4 },

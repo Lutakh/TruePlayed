@@ -116,7 +116,12 @@ T.test("1. crash without level-up: split by own history, last zone, EMA fed", fu
   for i, k in ipairs(TRACKED) do
     T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "key " .. k)
     if AFK[k] then estAFK = estAFK + split[i]; afkBefore = afkBefore + (before[k] or 0) end
+    -- the rebuilt seconds per key (es) are the split itself, life and level alike
+    T.eq(ch.life.es[k] or 0, split[i], "life.es " .. k)
+    T.eq(ch.levels[10].es[k] or 0, split[i], "level es " .. k)
   end
+  T.eq(SumAll(ch.life.es), ch.life.est, "sum(es) == est")
+  T.eq(SumAll(ch.levels[10].es), ch.levels[10].est, "level: sum(es) == est")
   T.eq(saved.last.zone, 1411)
   -- last known zone, except the city share: to the main capital (E1, see test 13)
   local cityShare = split[IDX.c] + split[IDX.C]
@@ -130,6 +135,13 @@ T.test("1. crash without level-up: split by own history, last zone, EMA fed", fu
   local f1, _, ex1 = ns.Stats.Played(ch, 1, sync, now)
   T.eq(ex1, afkBefore + estAFK)
   T.eq(f0 - f1, afkBefore + estAFK)
+  -- ... and so does the rebuilt time shown under it (Stats.EstTime), the gross part kept
+  local e0, g0 = ns.Stats.EstTime(ch.life, 0)
+  local e1, g1 = ns.Stats.EstTime(ch.life, 1)
+  T.eq(e0, G); T.eq(g0, G)
+  T.eq(e1, G - estAFK, "AFK exclusion: the rebuilt AFK part is left out")
+  T.eq(g1, G, "gross: every key")
+  T.eq((ns.Stats.EstTime(ch.levels[10], 1)), G - estAFK, "the level alike")
   -- gap XP exact, classified by the historical a : q ratio
   T.eq(ch.life.xp - xpBefore, 3600)
   local p = LR(3600, { saved.life.xa, saved.life.xr, saved.life.xq })
@@ -166,6 +178,10 @@ T.test("2. crash with level-ups 10 -> 12: levels by server level time and XP wei
   T.eq(ch.levels[10].est, shares[1], "level 10 share")
   T.eq(ch.levels[11].est, shares[2], "level 11 share")
   T.eq(ch.life.est, G)
+  for l = 10, 12 do
+    T.eq(SumAll(ch.levels[l].es), ch.levels[l].est, "level " .. l .. ": sum(es) == est")
+  end
+  T.eq(SumAll(ch.life.es), G, "life: sum(es) == est")
   T.ok(ch.levels[11].rec, "level 11 reconstructed")
   T.eq(ch.levels[12].srvStart, total - P1)
   T.eq(ch.levels[11].srvEnd, ch.levels[12].srvStart)
@@ -280,6 +296,8 @@ T.test("8. late SV swap after a gap: no double counting", function()
   T.ok(ns.db == real)
   T.eq(ch.life.s.u, realU, "u of the real table unchanged")
   T.near(ch.life.est, 1800, 1, "the gap is re-added once")
+  T.eq(SumAll(ch.life.es), ch.life.est, "its rebuilt seconds per key, once")
+  T.eq(ns.Tracker.GetDelta().life.es, nil, "never in the delta")
   T.near(SumAll(ch.life.s), floor(Stub.server.total), 1, "no double counting")
   T.eq(ch.life.xp, savedChar.life.xp, "no XP invented")
 end)
@@ -578,7 +596,8 @@ T.test("19. a dropped segment is re-added where it was played (key, zone, level)
   local start, first = Stub.Now(), nil
   ns.RegisterMessage("TICK", "test-first-tick", function(_, now) if not first then first = now end end)
   local before = Copy(ch.life.s)
-  local est0 = ch.life.est
+  local est0, es0 = ch.life.est, SumAll(ch.life.es)
+  local lw0 = ch.levels[10].es and ch.levels[10].es.w or 0
   local dur0 = SumAll(ch.zones[1411].s)
   local tan0 = ch.zones[1446] and ch.zones[1446].s.w or 0
   Stub.Advance(1000, 1000)                  -- client frozen: the segment is dropped
@@ -596,6 +615,8 @@ T.test("19. a dropped segment is re-added where it was played (key, zone, level)
   T.ok(SumAll(ch.zones[1411].s) - dur0 <= G - known, "the last logout zone gets at most the rest")
   T.ok((ch.life.s.W or 0) - (before.W or 0) <= G - known, "no active time turned into AFK")
   T.eq(ch.life.est - est0, G, "still counted as estimated")
+  T.eq(SumAll(ch.life.es) - es0, G, "... and as rebuilt seconds per key")
+  T.ok(ch.levels[10].es.w - lw0 >= known, "the dropped seconds under their own key")
   T.eq(SumAll(ch.life.s), total)
 end)
 
@@ -748,4 +769,202 @@ T.test("22. at a detected server cap, gap XP (the cap was raised meanwhile) ends
   T.no(ns2.Tracker.IsMax(), "gap XP: the cap is over")
   T.eq(ch.capLevel, nil)
   T.eq(ch.noXP, 0)
+end)
+
+---------------------------------------------------------------------------
+-- Rebuilt time per key (es) and the recent habits (crash review, A1 and A3)
+---------------------------------------------------------------------------
+
+-- Session 1: install sync at level 10, an hour in Orgrimmar (city), then levels 11 to 16
+-- in the open world, `perLevel` seconds each plus a quarter of it AFK; clean save at
+-- level 16. Session 2: an hour in the Barrens with XP, then a crash. `tweak(saved char)`
+-- edits the save that the crash restart loads. Returns the ns of session 3 (3 s in).
+local function RecentHistory(perLevel, tweak)
+  local ns = Stub.LoadAddon()
+  Stub.LoginSequence()
+  Stub.Advance(15)                          -- install sync at +10 s
+  Stub.SetMap(1454); Stub.Advance(3600); Stub.SetMap(1411)
+  for _ = 11, 16 do
+    Stub.GrantXP(Stub.player.max - Stub.player.xp)
+    Stub.Advance(perLevel)
+    Stub.SetAFK(true); Stub.Advance(perLevel / 4); Stub.SetAFK(false)
+  end
+  Stub.Advance(5)
+  ns.settings.requestPlayedAtLogin = false
+  Stub.Restart({})
+  Stub.SetMap(1413)
+  for _ = 1, 60 do
+    Stub.Advance(60)
+    Stub.GrantXP(20)
+  end
+  if tweak then tweak(Saved()) end
+  local ns3 = Stub.Restart({ crash = true })
+  Stub.Advance(3)
+  return ns3
+end
+
+-- Expected weights of step 2 from the levels hi down to lo of a record (rec levels left
+-- out, s - es per key, a negative or instance value gives nothing: last seen outside).
+-- A level's part rebuilt by an earlier version (est - sum(es), no keys): the level counts
+-- for its real time only (s - es scaled by 1 - legacy / places), not at all when that
+-- part is over `most` (C.EST_MOST) of its place time. most = nil: that part counts in full
+-- (the split before this rule).
+local function RecentWeights(levels, lo, hi, most)
+  local factor = {}
+  for l = hi, lo, -1 do
+    local lb = levels[l]
+    if lb and not lb.rec then
+      local esSum, places = 0, 0
+      for _, v in pairs(lb.es or {}) do esSum = esSum + v end
+      for _, k in ipairs(TRACKED) do places = places + (lb.s[k] or 0) - (lb.es and lb.es[k] or 0) end
+      local legacy = (lb.est or 0) - esSum
+      if legacy <= 0 or not most then
+        factor[l] = 1
+      elseif places > 0 and legacy <= most * places then
+        factor[l] = 1 - legacy / places
+      end
+    end
+  end
+  local w = {}
+  for i, k in ipairs(TRACKED) do
+    local v = 0
+    for l = hi, lo, -1 do
+      local lb = levels[l]
+      if factor[l] then
+        local x = (lb.s[k] or 0) - (lb.es and lb.es[k] or 0)
+        if x > 0 and not KIND[k] then v = v + x * factor[l] end
+      end
+    end
+    w[i] = floor(v)
+  end
+  return w
+end
+
+T.test("23. the gap is split by the last levels' habits, not the whole life", function()
+  local ns = RecentHistory(300)
+  local ch = ns.char
+  T.eq(ns.Tracker.recLevel, 16, "L0: the level of the last save")
+  local before = Copy(ch.life.s)
+  local w = RecentWeights(ch.levels, 11, 16, ns.C.EST_MOST)  -- L0 down to L0 - C.RECENT_LEVELS
+  local total = Sync()
+  local G = total - SumAll(before)
+  T.ok(G >= 3590 and G <= 3610, "gap ~ 1 h, got " .. G)
+  local split = LR(G, w)
+  for i, k in ipairs(TRACKED) do
+    T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "key " .. k)
+    T.eq(ch.levels[16].es[k] or 0, split[i], "level 16 es " .. k)
+  end
+  T.ok(split[IDX.w] > 0 and split[IDX.W] > 0, "open world and AFK, as in the last levels")
+  T.ok(before.c >= 3600, "an hour of city at level 10 ...")
+  T.eq(split[IDX.c], 0, "... is not one of the recent habits")
+  T.ok(EstimatedSplit(before, G)[IDX.c] > 0, "the whole life would have given it a share")
+  T.eq(SumAll(ch.life.es), G)
+end)
+
+T.test("24. too little recent history: the whole life (without its rebuilt part), then all world", function()
+  local ns = RecentHistory(40)              -- levels 11 to 16: 300 s, under C.EST_MIN_HISTORY
+  local ch = ns.char
+  local w = RecentWeights(ch.levels, 11, 16, ns.C.EST_MOST)
+  local sum = 0
+  for i = 1, #w do sum = sum + w[i] end
+  T.ok(sum < ns.C.EST_MIN_HISTORY, "recent history under the threshold: " .. sum)
+  local before = Copy(ch.life.s)
+  local total = Sync()
+  local G = total - SumAll(before)
+  local split = EstimatedSplit(before, G)
+  for i, k in ipairs(TRACKED) do T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "key " .. k) end
+  T.ok(split[IDX.c] > 0, "the city of the whole life gets its share")
+  -- a second gap: the whole life again, without the seconds rebuilt by the first one
+  Stub.Advance(60)
+  local es = Copy(ch.life.es)
+  local before2 = Copy(ch.life.s)
+  Stub.server.total = Stub.server.total + 1800   -- 30 min the addon did not see
+  Stub.server.levelPlayed = Stub.server.levelPlayed + 1800
+  local total2 = Sync()
+  local G2 = total2 - SumAll(before2)
+  T.ok(G2 >= 1795 and G2 <= 1805, "second gap ~ 30 min, got " .. G2)
+  local w2 = {}
+  for i, k in ipairs(TRACKED) do w2[i] = floor(math.max(0, (before2[k] or 0) - (es[k] or 0))) end
+  local split2 = LR(G2, w2)
+  for i, k in ipairs(TRACKED) do T.eq((ch.life.s[k] or 0) - (before2[k] or 0), split2[i], "second gap, key " .. k) end
+  T.eq(SumAll(ch.life.es), G + G2, "life: sum(es) == est")
+  T.eq(ch.life.est, G + G2)
+end)
+
+T.test("25. a rebuilt level (rec) and the rebuilt seconds of a level are not habits", function()
+  -- level 13 with 5000 s of city: a share of city ...
+  local ns = RecentHistory(300, function(saved) saved.levels[13].s.c = 5000 end)
+  local before = Copy(ns.char.life.s)
+  local total = Sync()
+  local cityShare = (ns.char.life.s.c or 0) - (before.c or 0)
+  T.ok(cityShare > 0, "a real level's city counts: " .. cityShare)
+  T.ok(total - SumAll(before) > 3000)
+  -- ... none when that level was rebuilt (rec) ...
+  Stub.Reset()
+  ns = RecentHistory(300, function(saved)
+    saved.levels[13].s.c = 5000
+    saved.levels[13].rec = true
+  end)
+  local ch = ns.char
+  local w = RecentWeights(ch.levels, 11, 16, ns.C.EST_MOST)
+  before = Copy(ch.life.s)
+  total = Sync()
+  local split = LR(total - SumAll(before), w)
+  for i, k in ipairs(TRACKED) do T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "rec skipped, key " .. k) end
+  T.eq(split[IDX.c], 0, "no city share from a rebuilt level")
+  -- ... nor when those seconds were themselves rebuilt after a crash (es)
+  Stub.Reset()
+  ns = RecentHistory(300, function(saved)
+    saved.levels[14].s.c = 5000
+    saved.levels[14].est = 5000
+    saved.levels[14].es = { c = 5000 }
+  end)
+  ch = ns.char
+  w = RecentWeights(ch.levels, 11, 16, ns.C.EST_MOST)
+  before = Copy(ch.life.s)
+  total = Sync()
+  split = LR(total - SumAll(before), w)
+  for i, k in ipairs(TRACKED) do T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "es left out, key " .. k) end
+  T.eq(split[IDX.c], 0, "no city share from rebuilt seconds")
+  T.eq(ch.levels[14].es.c, 5000, "the earlier rebuilt seconds stay")
+end)
+
+T.test("25b. time rebuilt by an earlier version (est, no es): the level counts for its real time only", function()
+  -- level 16 (L0) rebuilt by an earlier version: 5000 s of city it never played, saved as
+  -- est without the per-key map. Mostly rebuilt (over C.EST_MOST): not a habit at all.
+  local ns = RecentHistory(300, function(saved)
+    saved.levels[16].s.c = 5000
+    saved.levels[16].est = 5000
+  end)
+  local ch = ns.char
+  T.eq(ch.levels[16].es, nil, "an earlier version: no per-key map")
+  local w = RecentWeights(ch.levels, 11, 16, ns.C.EST_MOST)
+  local before = Copy(ch.life.s)
+  local total = Sync()
+  local split = LR(total - SumAll(before), w)
+  for i, k in ipairs(TRACKED) do T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "L0 skipped, key " .. k) end
+  T.eq(split[IDX.c], 0, "no city share from an earlier estimate")
+  T.ok(split[IDX.w] > 0, "the real levels still count")
+  -- level 14 a little rebuilt by an earlier version (100 s of its ~475): it counts for its
+  -- real time, its seconds scaled by 1 - 100 / 475 (the rebuilt part valued like the level)
+  Stub.Reset()
+  ns = RecentHistory(300, function(saved)
+    saved.levels[14].s.c = 100
+    saved.levels[14].est = 100
+  end)
+  ch = ns.char
+  w = RecentWeights(ch.levels, 11, 16, ns.C.EST_MOST)
+  local raw = RecentWeights(ch.levels, 11, 16)
+  local lb = ch.levels[14]
+  local places = 0
+  for _, k in ipairs(TRACKED) do places = places + (lb.s[k] or 0) end
+  T.eq(w[IDX.c], floor(100 * (1 - 100 / places)), "the city scaled to the level's real share")
+  T.ok(w[IDX.c] > 0 and w[IDX.c] < 100)
+  before = Copy(ch.life.s)
+  total = Sync()
+  local G = total - SumAll(before)
+  split = LR(G, w)
+  local rawSplit = LR(G, raw)
+  T.ok(rawSplit[IDX.c] ~= split[IDX.c] or rawSplit[IDX.w] ~= split[IDX.w], "the scale changes the split")
+  for i, k in ipairs(TRACKED) do T.eq((ch.life.s[k] or 0) - (before[k] or 0), split[i], "scaled, key " .. k) end
 end)

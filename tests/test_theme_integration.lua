@@ -133,10 +133,11 @@ T.test("every setting value at run time: bar, tooltip short / Shift, graph, wind
       short = ShownRows(tf)
     end
     T.ok(short > 5, key .. ": short tooltip rows " .. short)
-    local function SepHalves(view)
+    local function SepHalves(view, f)
       if th.native then return end
-      for i = 1, tf.tp.nSeps do
-        local sp = tf.tp.seps[i]
+      f = f or tf
+      for i = 1, f.tp.nSeps do
+        local sp = f.tp.seps[i]
         local cfg = th.tt.sep[sp.kind]
         T.eq(sp.a:IsShown(), cfg ~= nil, format("%s %s: separator %d (%s) drawn", key, view, i, sp.kind))
         T.eq(sp.b:IsShown(), cfg ~= nil and (cfg.mirror == true or cfg.center ~= nil),
@@ -146,17 +147,29 @@ T.test("every setting value at run time: bar, tooltip short / Shift, graph, wind
       end
     end
     SepHalves("short")
+    -- Shift: block 2 (the character) under block 1
     Stub.SetShift(true)
     Stub.Advance(1)
-    local long = th.native and #GameTooltip._lines or ShownRows(tf)
-    T.ok(long > short, format("%s: Shift adds rows (%d -> %d)", key, short, long))
+    local tf2 = ns.TooltipFrame.frame2
+    local gt2 = rawget(_G, "TruePlayedCharTooltip")
+    local long
+    if th.native then
+      T.ok(gt2 and gt2:IsShown(), key .. ": Shift: block 2 (the second GameTooltip)")
+      long = #gt2._lines
+    else
+      T.ok(tf2 and tf2:IsShown(), key .. ": Shift: block 2 (the second private frame)")
+      long = ShownRows(tf2)
+    end
+    T.ok(long > 10, format("%s: Shift: block 2 rows %d", key, long))
     SepHalves("Shift")
+    SepHalves("Shift block 2", tf2)
     Stub.SetShift(false)
     Stub.Advance(1)
     SepHalves("short again")
     Stub.RunScript(frame, "OnLeave")
     T.ok(not (tf and tf:IsShown()) and not (th.native and GameTooltip:IsShown() and GameTooltip:GetOwner() == frame),
       key .. ": tooltip hidden on leave")
+    T.ok(not (tf2 and tf2:IsShown()) and not (gt2 and gt2:IsShown()), key .. ": block 2 hidden on leave")
     -- graph and window in the theme's colours
     ns.Graph.ShowFor(frame)
     Stub.Advance(1)
@@ -258,14 +271,26 @@ T.test("sliced gradients: one ramp over the 9 pieces of a panel (bar and tooltip
   Near4(b4, a1, "tooltip: middle -> top continuous")
   local h1 = tf:GetHeight()
   local cut = b7
-  Stub.SetShift(true)
+  Stub.player.rest = 3000                               -- the rested line: one more row
+  Stub.Fire("UPDATE_EXHAUSTION")
   Stub.Advance(1)
-  T.ok(tf:GetHeight() > h1, "Shift: taller tooltip")
+  T.ok(tf:GetHeight() > h1, "rested: taller tooltip")
   local _, b7s = Grad(bg[7])
   T.ok(math.abs(b7s[1] - cut[1]) + math.abs(b7s[4] - cut[4]) > 1e-6, "taller: the ramp is cut again")
   local _, b4s = Grad(bg[4])
   local a1s = Grad(bg[1])
   Near4(b4s, a1s, "taller: still continuous")
+  -- block 2 (Shift): its own panel, one ramp over its own height
+  Stub.SetShift(true)
+  Stub.Advance(1)
+  local tf2 = ns.TooltipFrame.frame2
+  local bg2 = tf2.tp.panel.bg
+  T.ok(tf2:IsShown() and type(bg2) == "table" and #bg2 == 9, "block 2 bg: 9 pieces")
+  local _, c7 = Grad(bg2[7])
+  local d4, c4 = Grad(bg2[4])
+  local d1 = Grad(bg2[1])
+  Near4(c7, d4, "block 2: bottom -> middle continuous")
+  Near4(c4, d1, "block 2: middle -> top continuous")
   Stub.SetShift(false)
   Stub.RunScript(frame, "OnLeave")
 end)

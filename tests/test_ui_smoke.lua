@@ -733,21 +733,28 @@ T.test("window: lazy, view switch, reset to current at Show, erase any record", 
   T.eq(Stub.onUpdateCount, 0)
 end)
 
+-- Levels tab rework: the live cells of the current level row became the Played chip and the
+-- strip's "Level N in progress" legend of the chart (the current bar's growth is checked in
+-- tests/test_level_chart.lua).
 T.test("window: live cells update while shown, nothing while hidden", function()
   local ns = Start()
   Stub.Advance(15)
   ns.Window.Show()
-  local tp = rawget(_G, "TruePlayedStatsFrame").tp
-  local row = tp.rows[1]
-  T.ok(row ~= nil, "current level row")
-  local cell = tp.cells[row][2]
-  local c0 = SetTextCount(cell)
+  local ch = rawget(_G, "TruePlayedStatsFrame").tp.chart
+  T.ok(ch ~= nil and ch.root:IsShown(), "the chart of the current character")
+  local played, cur = ch.chips[1].value, ch.strip.fs2
+  local c0 = SetTextCount(cur)
   Stub.Advance(180)
-  T.ok(SetTextCount(cell) > c0, "in-progress level time refreshed")
+  T.ok(SetTextCount(cur) > c0, "in-progress level time refreshed")
+  T.eq(cur:GetText(), format(ns.L.LV_CUR_FMT, 10, ns.Fmt.Duration(ch.state.curTime)))
+  local Stats = ns.Stats
+  T.eq(played:GetText(), ns.Fmt.Duration(Stats.Played(ns.char, ns.GetMask(), ns.Tracker.GetSync(), GetTime())),
+    "Played chip up to date (its text set only when it changes)")
   ns.Window.Hide()
-  local c1 = SetTextCount(cell)
+  local p1, c1 = SetTextCount(played), SetTextCount(cur)
   Stub.Advance(180)
-  T.eq(SetTextCount(cell), c1, "no refresh while hidden")
+  T.eq(SetTextCount(played), p1, "no refresh while hidden (chip)")
+  T.eq(SetTextCount(cur), c1, "no refresh while hidden")
 end)
 
 ---------------------------------------------------------------------------
@@ -857,8 +864,15 @@ local function HeaderOf(tp, id)
   return c and tp.header[c] or nil
 end
 
--- "29 » 30": the label of the row of level record 29.
-local function Span(l) return l .. " \194\187 " .. (l + 1) end
+-- Levels tab rework: the tooltip lines of the chart's bar of level k (GameTooltip, the
+-- classic theme), the bar left afterwards.
+local function BarTip(tp, k)
+  local hit = tp.chart.cols[k].hit
+  hit:GetScript("OnEnter")(hit)
+  local lines = TipLines()
+  hit:GetScript("OnLeave")(hit)
+  return lines
+end
 
 -- Zones tab cells: zone, time, raw, AFK, XP ("" for a column not shown).
 local function Cells(tp, row)
@@ -889,6 +903,71 @@ local function BadPlural(s)
   return nil
 end
 
+-- Crash review A1: the "~" of a level's time and its row tooltip line about the time
+-- rebuilt after a crash follow the exclusions (Stats row.estF), as the time shown does.
+-- Levels tab rework: the "~" is on the Played line of the bar tooltip; the line about the
+-- rebuilt time moves to the approximation notes of the detail sheet (the test below).
+T.test("window: a level's rebuilt mark and tooltip line follow the exclusions", function()
+  local rec = OtherRecord()
+  local lb = rec.levels[29]
+  lb.s, lb.z[1446].s = { w = 6000, W = 2000 }, { w = 6000, W = 2000 }
+  lb.est, lb.es = 2000, { W = 2000 }        -- 2000 s rebuilt, all of it AFK
+  local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = rec } } })
+  local L, Fmt = ns.L, ns.Fmt
+  Stub.Advance(15)
+  ns.Window.Show("levels", OTHER_GUID)
+  local tp = StatsTP()
+  local function Hover()
+    local lines = BarTip(tp, 29)
+    T.eq(lines[1][1], format(L.LEVEL_SPAN_FMT, 29, 30))
+    local played = FindLine(lines, L.LV_PLAYED)
+    return played and played[2]
+  end
+  T.eq(Hover(), "~" .. Fmt.Duration(8000), "no exclusion: the whole rebuilt part")
+  ns.Core.SetSetting("exclude.afk", true)
+  T.eq(Hover(), Fmt.Duration(6000), "AFK excluded: nothing rebuilt in the time shown, no mark")
+  -- an older record (est without es): the level's own AFK share is left out (2000 x 6/8)
+  ns.db.chars[OTHER_GUID].levels[29].es = nil
+  ns.Window.Refresh()
+  T.eq(Hover(), "~" .. Fmt.Duration(6000))
+end)
+
+-- Levels tab rework: the row tooltip line ROW_EST_TIP_FMT ("includes X rebuilt after a
+-- crash") is an approximation note of the detail sheet (LevelDetail, spec section 5.1); it
+-- follows the exclusions as above (2000, none with AFK excluded, 1500 for an older record)
+-- and so does the "~" of its Played card (click the bar of level 29, read the shown notes
+-- of frame.tp.detail).
+T.test("window: a level's rebuilt note in the detail sheet follows the exclusions", function()
+  local rec = OtherRecord()
+  local lb = rec.levels[29]
+  lb.s, lb.z[1446].s = { w = 6000, W = 2000 }, { w = 6000, W = 2000 }
+  lb.est, lb.es = 2000, { W = 2000 }
+  local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = rec } } })
+  local L, Fmt = ns.L, ns.Fmt
+  Stub.Advance(15)
+  ns.Window.Show("levels", OTHER_GUID)
+  local tp = StatsTP()
+  local pat = "^" .. L.ROW_EST_TIP_FMT:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):gsub("%%%%s", ".-") .. "$"
+  local function Note(want)
+    local hit = tp.chart.cols[29].hit
+    hit:GetScript("OnClick")(hit, "LeftButton")
+    local found = nil
+    for _, fs in ipairs(tp.detail.notes or {}) do
+      local text = fs:IsShown() and fs:GetText()
+      if type(text) == "string" and text:find(pat) then found = text end
+    end
+    T.eq(found, want and format(L.ROW_EST_TIP_FMT, Fmt.Duration(want)) or nil, "detail note")
+    local played = tp.detail.cards.played.value:GetText()
+    T.eq(played:sub(1, 1) == "~", want ~= nil, "the Played card's mark: " .. played)
+  end
+  Note(2000)
+  ns.Core.SetSetting("exclude.afk", true)
+  Note(nil)
+  ns.db.chars[OTHER_GUID].levels[29].es = nil
+  ns.Window.Refresh()
+  Note(1500)
+end)
+
 T.test("window: XP gains rebuild at most every 30 s, never for another character", function()
   local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = OtherRecord() } } })
   Stub.Advance(15)
@@ -917,63 +996,94 @@ T.test("window: XP gains rebuild at most every 30 s, never for another character
   T.eq(Stub.onUpdateCount, 0)
 end)
 
+-- Levels tab rework: the hint says that a bar can be clicked (L.LEVELS_HOVER_HINT, new
+-- text), the bar tooltip names the step; the level's zones move to the "Zones and
+-- instances" section of the detail sheet (the test below). Account view and other tabs:
+-- no hint, the account rows have no level tooltip.
 T.test("window: hovering a level row lists that level's zones, exclusions applied", function()
+  local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = RecordWithCity() } } })
+  local L = ns.L
+  Stub.Advance(15)
+  ns.Window.Show("levels", OTHER_GUID)
+  local tp = StatsTP()
+  T.match(tp.viewText:GetText(), "Tamar")
+  T.ok(tp.hint:IsShown(), "the Levels tab says that bars can be clicked")
+  T.eq(tp.hint:GetText(), L.LEVELS_HOVER_HINT)
+  T.eq(L.LEVELS_HOVER_HINT, "Click a bar to see the level's detail.")
+  local hit = tp.chart.cols[29].hit
+  hit:GetScript("OnEnter")(hit)
+  T.ok(GameTooltip:GetOwner() == hit, "a level's bar has a tooltip")
+  local lines = TipLines()
+  T.eq(lines[1][1], format(L.LEVEL_SPAN_FMT, 29, 30), "the title names the step")
+  T.eq(lines[#lines][1], L.LV_CLICK_HINT, "it says that a click shows the detail")
+  T.no(FindLine(lines, "Tanaris"), "no zone list in the bar tooltip (the detail sheet has it)")
+  hit:GetScript("OnLeave")(hit)
+  T.no(GameTooltip:IsShown())
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  T.eq(tp.detail.title:GetText(), format(L.LEVEL_SPAN_FMT, 29, 30), "the click shows the level's sheet")
+
+  -- the current character's chart (never another record's bars)
+  ns.Window.SetView("current")
+  T.ok(tp.hint:IsShown(), "hint in the current character's chart")
+  T.eq(tp.chart.state.level, 10)
+  T.ok(tp.chart.state.char == ns.char, "the current record")
+
+  -- account rows and other tabs: no level tooltip, no hint
+  ns.Window.SetView("account")
+  T.no(tp.hint:IsShown(), "no hint in the account view")
+  local row = tp.rows[1]
+  T.ok(row:IsShown(), "account rows")
+  T.eq(row:GetScript("OnEnter"), nil, "account rows have no level tooltip (no table row has one now)")
+  ns.Window.SetView("current")
+  ns.Window.Toggle("zones")
+  T.no(tp.hint:IsShown(), "no hint in the Zones tab")
+  T.eq(Stub.onUpdateCount, 0)
+end)
+
+-- Levels tab rework: the zones of a level (Stats.TopZones, the capital with its city mark,
+-- the excluded time as a dash and last) moved from the row tooltip to the "Zones and
+-- instances" section of the detail sheet (LevelDetail, spec section 5.5): click the bar of
+-- level 29, read the shown rows of frame.tp.detail (zones[1 .. nZones]: the pool keeps the
+-- texts of hidden rows).
+T.test("window: the detail sheet lists the selected level's zones, exclusions applied", function()
   local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = RecordWithCity() } } })
   local L, Fmt = ns.L, ns.Fmt
   Stub.Advance(15)
   ns.Window.Show("levels", OTHER_GUID)
   local tp = StatsTP()
-  T.match(tp.viewText:GetText(), "Tamar")
-  T.ok(tp.hint:IsShown(), "the Levels tab says that rows can be hovered")
-  T.eq(tp.hint:GetText(), L.LEVELS_HOVER_HINT)
-  local row = RowWith(tp, Span(29))
-  T.ok(row ~= nil, "level 29 row")
-  row:GetScript("OnEnter")(row)
-  T.ok(GameTooltip:GetOwner() == row, "a normal (not approximate) level has a tooltip")
-  local lines = TipLines()
-  T.eq(lines[1][1], format(L.LEVEL_SPAN_FMT, 29, 30), "the title names the step, as the row")
-  T.ok(FindLine(lines, format(L.ROW_ZONES_FMT, 29)) ~= nil, "zones header")
+  local function ZoneRows()
+    local hit = tp.chart.cols[29].hit
+    hit:GetScript("OnClick")(hit, "LeftButton")
+    local out = {}
+    for i = 1, tp.detail.nZones do
+      local z = tp.detail.zones[i]
+      T.ok(z.name:IsShown(), "zone row " .. i .. " shown")
+      out[i] = { z.name:GetText(), z.time:GetText() }
+    end
+    return out
+  end
+  local lines = ZoneRows()
   local tanaris = FindLine(lines, "Tanaris")
   T.ok(tanaris ~= nil, "Tanaris listed")
   T.eq(tanaris[2], Fmt.Duration(8000))
   local org = FindLine(lines, "Orgrimmar " .. L.CITY_MARK)
   T.ok(org ~= nil, "the capital is listed with the city mark")
   T.eq(org[2], Fmt.Duration(700))
-  row:GetScript("OnLeave")(row)
-  T.no(GameTooltip:IsShown())
-
   ns.Core.SetSetting("exclude.city", true)
-  row = RowWith(tp, Span(29))
-  row:GetScript("OnEnter")(row)
-  lines = TipLines()
+  lines = ZoneRows()
   local _, iT = FindLine(lines, "Tanaris")
   local iO
   org, iO = FindLine(lines, "Orgrimmar " .. L.CITY_MARK)
   T.ok(iT ~= nil, "Tanaris still listed")
   T.eq(org[2], "-", "excluded time shows a dash")
   T.ok(iO > iT, "the excluded capital comes last")
-  row:GetScript("OnLeave")(row)
-
-  -- the current character's level rows have it too (never another record's zones)
   ns.Window.SetView("current")
-  row = tp.rows[1]
-  row:GetScript("OnEnter")(row)
-  lines = TipLines()
-  T.ok(FindLine(lines, format(L.ROW_ZONES_FMT, 10)) ~= nil, "current level zones header")
-  T.no(FindLine(lines, "Tanaris"), "no zone of the other record")
-  row:GetScript("OnLeave")(row)
-
-  -- account rows and other tabs: no level tooltip, no hint
-  ns.Window.SetView("account")
-  T.no(tp.hint:IsShown(), "no hint in the account view")
-  row = tp.rows[1]
-  GameTooltip:Hide()
-  row:GetScript("OnEnter")(row)
-  T.no(GameTooltip:GetOwner() == row, "account rows have no level tooltip")
-  ns.Window.SetView("current")
-  ns.Window.Toggle("zones")
-  T.no(tp.hint:IsShown(), "no hint in the Zones tab")
-  T.eq(Stub.onUpdateCount, 0)
+  local hit = tp.chart.cols[10].hit
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  T.ok(tp.detail.nZones >= 1, "the current level's zones")
+  for i = 1, tp.detail.nZones do
+    T.no(tp.detail.zones[i].name:GetText() == "Tanaris", "no zone of the other record")
+  end
 end)
 
 T.test("window: zones tab shows filtered, raw and AFK times and the capitals block", function()
@@ -1624,25 +1734,64 @@ local function RecordWithInstances()
   return rec
 end
 
+-- In-game report (13/10/2026): one battleground under two keys (its first seconds under
+-- the instance key, then its map) is one row of the instances block.
+T.test("window: the keys of one instance are one row of the instances block", function()
+  local rec = RecordWithInstances()
+  rec.zones.i9489 = { s = { p = 30, P = 10 }, xp = 0, name = "Warsong Gulch" }
+  local ns = Start({ db = { schema = 1, chars = { [OTHER_GUID] = rec } } })
+  local L, Fmt = ns.L, ns.Fmt
+  Stub.Advance(15)
+  ns.Window.Show("zones", OTHER_GUID)
+  local tp = StatsTP()
+  local wsg = format(L.INST_ROW_FMT, "Warsong Gulch", L.KIND_PVP)
+  local count = 0
+  for i = 1, #tp.rows do
+    local row = tp.rows[i]
+    if row:IsShown() and tp.cells[row][1]:GetText() == wsg then count = count + 1 end
+  end
+  T.eq(count, 1, "Warsong Gulch listed once")
+  T.eq(Cells(tp, RowWith(tp, wsg)), { wsg, Fmt.Duration(1340), Fmt.Duration(1340), Fmt.Duration(110), "-" })
+  T.eq(Stub.onUpdateCount, 0)
+end)
+
 for _, locale in ipairs({ "enUS", "frFR" }) do
   T.test("tooltip breakdown: largest first, parts at 0 % left out, five parts per line (" .. locale .. ")", function()
     local ns = Start({ ui = { ldb = false }, locale = locale })
     local L, Fmt = ns.L, ns.Fmt
     Stub.Advance(3)
-    local life = ns.char.life
+    -- the short view shows the level's breakdown, Shift adds the character's: both get the
+    -- same seconds here, /tpl played prints the character's
+    local life, lb = ns.char.life, ns.char.levels[Stub.player.level]
+    T.ok(lb ~= nil, "the level in progress has a record")
+    local function Both(s)
+      local copy = {}
+      for k, v in pairs(s) do copy[k] = v end
+      life.s, lb.s = s, copy
+    end
     local function P(key, pct) return format(L.BD_PART_FMT, L[key], Fmt.Percent(pct / 100, 0)) end
     -- 10 000 s tracked (the untracked pre-install time is left out of the shares)
-    life.s = { w = 5000, W = 100, d = 2000, D = 500, r = 1000, p = 500, t = 200, i = 400, c = 300, u = 7000 }
+    Both({ w = 5000, W = 100, d = 2000, D = 500, r = 1000, p = 500, t = 200, i = 400, c = 300, u = 7000 })
     local lines = FillTip(ns, false)
-    local line, idx = FindLine(lines, L.TT_BREAKDOWN)
+    local line, idx = FindLine(lines, L.TT_BREAKDOWN_LEVEL)
     T.eq(line[2], table.concat({ P("BD_WORLD", 50), P("BD_DUNGEON", 20), P("BD_RAID", 10), P("BD_AFK", 6),
       P("BD_PVP", 5) }, L.SEP), "first line: world, dungeons, raids, AFK (all kinds), PvP")
     T.eq(lines[idx + 1], { " ", table.concat({ P("BD_INN", 4), P("BD_CITY", 3), P("BD_TAXI", 2) }, L.SEP) },
       "second line without a label: inn, city, flight")
+    -- Shift: the same two lines twice, the level's then the character's (its own label)
+    local det, n2 = FillTip(ns, true), 0
+    for i = 1, #det do
+      if det[i][1] == (n2 == 0 and L.TT_BREAKDOWN_LEVEL or L.TT_BREAKDOWN_TOTAL) then
+        n2 = n2 + 1
+        T.eq(det[i][2], line[2], "Shift breakdown " .. n2)
+        T.eq(det[i + 1], lines[idx + 1], "Shift breakdown " .. n2 .. ", second line")
+      end
+    end
+    T.eq(n2, 2, "Shift: the level's and the character's breakdowns")
     -- no raid, no PvP, 0.2 % of flight: those parts are left out, one line
-    life.s = { w = 6480, W = 100, d = 2000, D = 500, t = 20, i = 600, c = 300 }
+    Both({ w = 6480, W = 100, d = 2000, D = 500, t = 20, i = 600, c = 300 })
     lines = FillTip(ns, false)
-    line, idx = FindLine(lines, L.TT_BREAKDOWN)
+    line, idx = FindLine(lines, L.TT_BREAKDOWN_LEVEL)
     local expected = table.concat({ P("BD_WORLD", 65), P("BD_DUNGEON", 20), P("BD_AFK", 6), P("BD_INN", 6),
       P("BD_CITY", 3) }, L.SEP)
     T.eq(line[2], expected)
@@ -1653,23 +1802,24 @@ for _, locale in ipairs({ "enUS", "frFR" }) do
     Stub.RunSlash("played")
     T.ok(Printed(expected, n + 1), "/tpl played breakdown")
     -- nothing tracked yet: an explanation, never "0 %" parts
-    life.s = { u = 5000 }
-    line = FindLine(FillTip(ns, false), L.TT_BREAKDOWN)
+    Both({ u = 5000 })
+    line = FindLine(FillTip(ns, false), L.TT_BREAKDOWN_LEVEL)
     T.eq(line[2], L.TT_NO_RATE)
   end)
 end
 
-T.test("tooltip: instance time in the short view, each kind with its AFK part in the details; account in the window", function()
+T.test("tooltip: instance time and each kind with its AFK part in the character section (Shift); account in the window", function()
   local ns = Start({ ui = { ldb = false }, db = { schema = 1, chars = { [OTHER_GUID] = RecordWithInstances() } } })
   local L, Fmt = ns.L, ns.Fmt
   Stub.Advance(3)
-  T.no(FindLine(FillTip(ns, false), L.TT_INSTANCES), "no instance line before any instance")
+  T.no(FindLine(FillTip(ns, true), L.TT_INSTANCES), "no instance line before any instance")
   T.no(FindLine(FillTip(ns, true), L.BD_DUNGEON), "no dungeon line before any dungeon")
   local s = ns.char.life.s
   s.d, s.D, s.r, s.p, s.P = 3000, 600, 7200, 900, 100
-  T.eq(FindLine(FillTip(ns, false), L.TT_INSTANCES)[2], Fmt.Duration(11800))
+  T.no(FindLine(FillTip(ns, false), L.TT_INSTANCES), "the short view is the level: no instance line")
+  T.eq(FindLine(FillTip(ns, true), L.TT_INSTANCES)[2], Fmt.Duration(11800))
   ns.Core.SetSetting("exclude.afk", true)
-  T.eq(FindLine(FillTip(ns, false), L.TT_INSTANCES)[2], Fmt.Duration(11100), "AFK excluded")
+  T.eq(FindLine(FillTip(ns, true), L.TT_INSTANCES)[2], Fmt.Duration(11100), "AFK excluded")
   ns.Core.SetSetting("exclude.afk", false)
   local det = FillTip(ns, true)
   T.eq(FindLine(det, L.BD_DUNGEON)[2], format(L.TT_OF_WHICH_AFK_FMT, Fmt.Duration(3600), Fmt.Duration(600)))
@@ -1795,6 +1945,13 @@ T.test("window: most played instances with their kind, for the character and the
   T.eq(Stub.onUpdateCount, 0)
 end)
 
+-- Levels tab rework: the Levels instance column became the chart's Instances filter (the
+-- bars show the dungeon and raid parts only) and the Dungeon part of the bar tooltip. The
+-- AFK time spent in an instance (D) is the bar's AFK part now (Stats.LevelSegments), so
+-- the instance figure is 3000 whatever the AFK exclusion, while the whole bar loses those
+-- 300 s when AFK is excluded (the old column's "3300, 3000 without AFK" moved there). The
+-- level's main zone and its instance time (3300, 3000 without AFK: Stats.TopInstances)
+-- are in the detail sheet's "Zones and instances" rows.
 T.test("window: Levels and Sessions tabs have an instance column, under the exclusions", function()
   local rec = RecordWithInstances()
   rec.sessions[1].s.r, rec.sessions[1].s.R = 1800, 200
@@ -1803,17 +1960,32 @@ T.test("window: Levels and Sessions tabs have an instance column, under the excl
   Stub.Advance(15)
   ns.Window.Show("levels", OTHER_GUID)
   local tp = StatsTP()
-  T.eq(HeaderOf(tp, "inst"):GetText(), L.COL_INST)
-  T.eq(HeaderOf(tp, "zone"):GetText(), L.COL_MAIN_ZONE)
-  T.eq(HeaderOf(tp, "reached"):GetText(), L.COL_REACHED)
-  T.eq(tp.header[tp.layout.n]:GetText(), L.COL_REACHED, "Reached last")
-  local row29 = RowWith(tp, Span(29))
-  T.eq(CellOf(tp, row29, "inst"):GetText(), Fmt.Duration(3300), "instance time of the level")
-  T.eq(CellOf(tp, row29, "zone"):GetText(), "Tanaris", "main zone")
-  T.eq(CellOf(tp, RowWith(tp, Span(30)), "inst"):GetText(), "-", "no instance at level 30")
+  local ch = tp.chart
+  local lines = BarTip(tp, 29)
+  T.eq(FindLine(lines, L.BD_DUNGEON)[2], format(L.LV_PART_FMT, Fmt.Duration(3000), Fmt.Percent(3000 / 11300)),
+    "the level's dungeon part")
+  T.eq(FindLine(lines, L.BD_AFK)[2], format(L.LV_PART_FMT, Fmt.Duration(300), Fmt.Percent(300 / 11300)),
+    "its AFK time in the instance: the AFK part")
+  T.eq(FindLine(lines, L.LV_PLAYED)[2], Fmt.Duration(11300))
+  T.no(FindLine(BarTip(tp, 30), L.BD_DUNGEON), "no instance at level 30")
+  ch.filters[3].btn:Click("LeftButton")
+  T.eq(ch.state.filter, 3)
+  T.eq(ch.title:GetText(), L.LV_T_INST)
+  T.eq({ ch.cols[29].total, ch.cols[30].total }, { 3000, 0 }, "Instances filter: the instance time of the level")
   ns.Core.SetSetting("exclude.afk", true)
-  T.eq(CellOf(tp, RowWith(tp, Span(29)), "inst"):GetText(), Fmt.Duration(3000), "AFK part left out, like the time column")
+  T.eq({ ch.cols[29].total, ch.cols[30].total }, { 3000, 0 }, "AFK excluded: the instance figure unchanged")
+  ch.filters[1].btn:Click("LeftButton")
+  T.eq(ch.cols[29].total, 11000, "AFK excluded: the bar without the AFK part")
+  -- the detail sheet: the main zone first, then the instance (AFK excluded: 3000)
+  local hit = ch.cols[29].hit
+  hit:GetScript("OnClick")(hit, "LeftButton")
+  local dt = tp.detail
+  local inst = format(L.INST_ROW_FMT, "Ragefire Chasm", L.KIND_DUNGEON)
+  T.eq(dt.nZones, 2)
+  T.eq({ dt.zones[1].name:GetText(), dt.zones[2].name:GetText() }, { "Tanaris", inst }, "main zone, then the instance")
+  T.eq(dt.zones[2].time:GetText(), Fmt.Duration(3000), "AFK excluded: 3000")
   ns.Core.SetSetting("exclude.afk", false)
+  T.eq(dt.zones[2].time:GetText(), Fmt.Duration(3300), "AFK included: 3300")
   -- sessions
   ns.Window.Toggle("sessions")
   T.eq(HeaderOf(tp, "inst"):GetText(), L.COL_INST)

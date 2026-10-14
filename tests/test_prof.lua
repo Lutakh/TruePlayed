@@ -250,11 +250,16 @@ end)
 T.test("prof: breakdown lines hold at most 4 parts once professions or dead show, balanced", function()
   local ns = Login()
   local L = ns.L
+  -- the short view shows the breakdown of the level in progress: same seconds for the level
+  -- and the character
   local function Lines(s)
+    local copy = {}
+    for k, v in pairs(s) do copy[k] = v end
     ns.char.life.s = s
+    ns.char.levels[Stub.player.level].s = copy
     local lines, out = Fill(ns, false), {}
     for i, l in ipairs(lines) do
-      if l[1] == L.TT_BREAKDOWN then
+      if l[1] == L.TT_BREAKDOWN_LEVEL then
         out[1] = l[2]
         local j = i + 1
         while lines[j] and lines[j][1] == " " do out[#out + 1] = lines[j][2]; j = j + 1 end

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- common/help (32 x 32, grey): a circled question mark, the help icon after each column
-     header of the statistics window (Themes.COMMON_MEDIA.help, Window.lua). White, tinted
+     header of the statistics window (Themes.COMMON_MEDIA.help, Window.lua) and after the
+     automatic reload options (Options.lua, drawn at 14 x 14). White, tinted
      by vertex colour (the theme's ui.dim, ui.accent while hovered). Drawn at 10 x 10 UI
      units, i.e. 14 to 28 screen pixels at a UI scale of 1 (1080p to 4K): the ring (3.6
      texels) and the glyph (3.8 texels) stay at least one screen pixel wide when the

@@ -7,6 +7,7 @@
 -- Notes on the source text below (it carries no comment): its comments, keyed by the
 -- section and id they annotate ("> id": the layers or parts from that one on).
 --   colors: C.COLORS fill, restedFill, label, value, dim, accent, pause, track, bg, border.
+--   bar.rep: reputation strip (Reputation.lua) 2 px under the track, in the track colour
 --   bar.layers > rested: rested part: the rested colour 35 % lighter, fading out to the right;
 --     the hand-tuned blue when the user kept the built-in rested colour.
 --   bar.layers > fillHi: color = C.COLORS.fillHi.
@@ -26,6 +27,7 @@ return {
   },
   bar = {
     pad = 8, gap = 3, height = { add = 0, min = 4 }, maxAlpha = 0.35,
+    rep = { off = 2, h = 3, clear = 2, color = "track" },
     layers = {
       { id = "track", span = "track", caps = true, layer = "BORDER", sub = 0, color = "track" },
       { id = "rested", span = "rested", layer = "ARTWORK", sub = 1,

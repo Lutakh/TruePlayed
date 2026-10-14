@@ -552,7 +552,9 @@ local ALIGNS = { center = true, left = true, right = true }
 local LAYER_FIELDS = Set({ "id", "span", "layer", "sub", "file", "rect", "flipX", "flipY", "rot", "tile",
   "blend", "color", "grad", "flat", "alpha", "maxAlpha", "top", "h", "bottom", "band", "pad",
   "capInset", "w", "align", "dx", "caps", "three", "nine", "ticks" })
-local BAR_FIELDS = Set({ "pad", "gap", "height", "maxAlpha", "layers", "panel" })
+local BAR_FIELDS = Set({ "pad", "gap", "height", "maxAlpha", "layers", "panel", "rep" })
+local REP_FIELDS = Set({ "off", "h", "clear", "color" })
+local REP_BG = { 0, 0, 0, 0.6 }            -- the strip's background without a colour of the theme
 local PART_FIELDS = Set({ "id", "file", "nine", "rect", "flipX", "flipY", "tile", "blend", "color", "grad",
   "flat", "anchor", "inset", "x", "y", "w", "h", "alpha", "layer", "sub" })
 local POINTS = Set({ "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM",
@@ -814,6 +816,20 @@ local function CompileBar(ctx, bar)
     Warn(ctx, "bar.panel must be \"backdrop\" or { parts = { ... } }")
     out.panel = "backdrop"
   end
+  -- the reputation strip under the track: off, h, clear, background colour (every field)
+  local rep = bar.rep
+  if rep ~= nil and type(rep) ~= "table" then
+    Warn(ctx, "bar.rep must be { off, h, clear, color }")
+    rep = nil
+  end
+  rep = rep or {}
+  CheckFields(ctx, rep, REP_FIELDS, "bar.rep")
+  out.rep = {
+    off = Num(ctx, rep.off, 2, "bar.rep.off", 0, 32, true),
+    h = Num(ctx, rep.h, 3, "bar.rep.h", 1, 8, true),
+    clear = Num(ctx, rep.clear, 2, "bar.rep.clear", 0, 16, true),
+    c = Single(ctx, rep.color, "bar.rep.color", REP_BG),
+  }
   return out
 end
 
@@ -1461,8 +1477,10 @@ function TV.Canon(th)
   local bar = th.bar
   local layers = {}
   for i, L in ipairs(bar.layers or {}) do layers[i] = Layer(L, bar.maxAlpha) end
+  local rep = bar.rep or {}
   out.bar = { pad = bar.pad or 8, gap = bar.gap or 3, hAdd = bar.hAdd or 0, hMin = bar.hMin or 4, layers = layers,
-              panel = type(bar.panel) == "table" and Parts(bar.panel.parts) or (bar.panel or "backdrop") }
+              panel = type(bar.panel) == "table" and Parts(bar.panel.parts) or (bar.panel or "backdrop"),
+              rep = { off = rep.off or 2, h = rep.h or 3, clear = rep.clear or 2, c = Rgba(rep.c or REP_BG) } }
   local text = th.text
   local tx = { split = text.split == true, splitGap = text.splitGap or 4, levelFmt = text.levelFmt or "upper",
                font = {}, size = {}, colors = Map(text.colors, Rgba) }

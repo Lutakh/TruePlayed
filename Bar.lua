@@ -46,7 +46,48 @@ local Themes, Skin = ns.Themes, ns.BarSkin
 --   * hideAtMax hides the widget at the real max level only, never at a server level
 --     cap (the cap explanation stays one hover away, and the cap is temporary);
 --   * hidden (shown = false, hideAtMax, combatHide in combat) => TICK unregistered and
---     the "bar" token consumer released, so FPS/latency are no longer sampled for it.
+--     the "bar" token consumer released, so FPS/latency are no longer sampled for it;
+--   * reputation strip (widget.rep, Reputation.lua): while a faction is followed (the one
+--     chosen in the options, else the game's watched one), a thin strip under the XP
+--     track, its width, showing the progress inside the current standing in the standing's
+--     colour (full at Exalted). The theme places it (th.bar.rep: off px under the track, h
+--     px high, clear px above the text row under the bar): the frame grows by max(0, off +
+--     h + clear - gap) and the track, its ornaments and the top row move up with it, the
+--     text row under the bar staying where it is (no growth when the strip fits in the
+--     gap). Without a followed faction, or with the option off, the layout is exactly the
+--     one without the strip. Redrawn on REP_CHANGED only (a new layout when it appears or
+--     goes), never on TICK. Hovering the strip's area (the gap between the track and the
+--     text row) shows the reputation's detailed tooltip (Tooltip.ShowFor(.., "rep"),
+--     hanging off the bar's frame like the general one: never over the bar);
+--   * main bar mode (widget.main = "rep", with a followed faction): the main track shows
+--     the reputation (the progress inside the standing, filled in the standing's colour:
+--     Themes.SetFillOverride, no THEME_CHANGED; full and dimmed at Exalted, like the max
+--     level), the faction and its standing at the bottom left (in the XP text's font: a
+--     faction name may need glyphs a display font lacks; split themes: the standing in the
+--     level value), its points at the right ("1,234 / 6,000", split themes after the
+--     reputation label), the % marker on its fill; the XP goes to the strip (below the max
+--     level only: none at max level), in the XP (rested) colour. A bar text whose colour
+--     the theme derives from the XP colour follows the fill's (Themes' th.text.fo).
+--     hideAtMax never hides the bar while it shows the reputation. Hovering the main track
+--     shows the reputation's detailed tooltip, the rest of the bar the general one;
+--   * PvP (Pvp.lua, WoW Forever): the PvP strip (widget.pvp = "honor": the honor toward its
+--     cap, orange from Pvp.WARN of it, red at it; "rank": the points inside the PvP rank,
+--     full at the max rank) stacks under the first strip (pvp.GAP px below it, the same
+--     height and background; in its place when there is none), the frame growing by what
+--     both need. The main bar's PvP mode (Pvp.MainMode: widget.main = "pvp", or a
+--     battleground with widget.pvpAuto, a temporary override that never writes
+--     widget.main) shows the rank's progress (the rank's colour; full and dimmed at the max
+--     rank), "Rank 7 · title" at the left, the rank points per hour and the time to the
+--     next rank at the right (refreshed by the tick, made only when they change:
+--     Pvp.MainRight; it says when the next rank is this week's cap; "weekly cap reached",
+--     "max rank"; the points before a rate); before a season starts, the honor toward its
+--     cap instead. The first strip then shows the XP below the max level, the reputation
+--     (when shown) at it. A PvP strip that would show what the main track shows (the rank
+--     under the rank, the honor under the honor) is not drawn. hideAtMax never hides the
+--     bar while it shows PvP. Hovering the PvP strip (its part of the band under the
+--     track; its own region in the PvP mode) or the main track in the PvP mode shows the
+--     PvP detailed tooltip (Tooltip.ShowFor(.., "pvp")). Redrawn on PVP_CHANGED (a new
+--     layout when what shows changes).
 
 local math_floor, math_min, math_max = math.floor, math.min, math.max
 local type, tonumber = type, tonumber
@@ -174,6 +215,32 @@ local brxShown = true            -- XP text drawn
 local sepShown = false           -- separator drawn (XP text and slot 2 both drawn)
 local fillKey = -1               -- fill state: 0 normal, 1 rested, 2 max level
 local drawnMax = nil             -- IsMax() when the XP visuals were last drawn
+
+-- reputation (Reputation.lua's followed faction, BarSkin's strip textures): main = the main
+-- track shows it (widget.main = "rep" and a faction read); on = the strip is drawn (the
+-- reputation with Rep.Shown() in the XP mode; the XP below the max level in the
+-- reputation mode); px / react: the strip's drawn width and standing (XP in the strip: 0
+-- normal, 1 rested) (-1: draw again); fillReact: the standing whose colour fills the main
+-- track; blName / blW: the faction name drawn at the left, its bounded width (0: none);
+-- rowTop: top of the text row under the bar; hit: the hover region of the detailed
+-- tooltip, hitWant (the layout has one) / hitOn (shown)
+local rep = {
+  main = false, on = false, xs = false, px = -1, react = -1, fillReact = nil, blName = nil, blW = 0,
+  rowTop = 0, hit = nil, hitWant = false, hitOn = false,
+}
+-- xs: the first strip shows the XP (displaced by the reputation or PvP main bar, below the
+-- max level). PvP (Pvp.lua): main = the main track shows it (Pvp.MainMode) and kind what
+-- ("rank" | "honor"); on / strip = the PvP strip drawn and what it shows ("honor" |
+-- "rank"; never what the main track shows); px / ck: its drawn width and colour key (-1:
+-- draw again); y: its bottom; rver: version of the main track's right texts
+-- (Pvp.MainRight; -2: the points; -1: draw again); hit: its hover region (hitWant / hitOn
+-- as rep's: the main track's in the PvP mode, else the strip's); sh: the strip's own region
+-- in the PvP mode (same fields); GAP: px between the two strips
+local pvp = {
+  main = false, kind = nil, on = false, strip = nil, px = -1, ck = -1, y = 0, rver = -1,
+  hit = nil, hitWant = false, hitOn = false, GAP = 1,
+  sh = { hit = nil, hitWant = false, hitOn = false },
+}
 
 local ApplyHit                   -- forward declaration (graph hover regions)
 
@@ -386,21 +453,25 @@ local function SetColor(fs, c)
 end
 
 -- The theme's text colours (SPEC-themes 2.5 roles) or the custom colour on every text.
+-- While the main track shows the reputation or PvP, a colour the theme derives from the XP
+-- colour follows the fill's colour instead (Themes' twins, th.text.fo).
+local NO_FO = {}
 local function ApplyTextColors()
   local tc = th.text.colors
+  local fo = (rep.main or pvp.main) and th.text.fo or NO_FO
   local custom = customOn and customRGB
-  SetColor(bl, custom or tc.levelLabel)
-  SetColor(brx, custom or tc.xpText)
-  SetColor(sepFS, custom or tc.sep)
-  SetColor(marker, custom or tc.marker)
-  SetColor(hint, custom or tc.hint)
+  SetColor(bl, custom or fo.levelLabel or tc.levelLabel)
+  SetColor(brx, custom or fo.xpText or tc.xpText)
+  SetColor(sepFS, custom or fo.sep or tc.sep)
+  SetColor(marker, custom or fo.marker or tc.marker)
+  SetColor(hint, custom or fo.hint or tc.hint)
   if sp.blv then
-    SetColor(sp.blv, custom or tc.levelValue)
-    SetColor(sp.xpl, custom or tc.label)
+    SetColor(sp.blv, custom or fo.levelValue or tc.levelValue)
+    SetColor(sp.xpl, custom or fo.label or tc.label)
   end
-  slotColor[1] = custom or tc.value
-  slotColor[2] = custom or tc.slot2 or tc.value
-  slotColor[3] = custom or tc.slot3
+  slotColor[1] = custom or fo.value or tc.value
+  slotColor[2] = custom or fo.slot2 or tc.slot2 or tc.value
+  slotColor[3] = custom or fo.slot3 or tc.slot3
   for i = 1, NSLOTS do lastDim[i] = nil end    -- the next Refresh sets the slot colours
 end
 
@@ -670,6 +741,29 @@ local function PlaceMarker()
   end
 end
 
+-- Level value of a split theme (blv): text vt (nil: none) right of the wl px wide label.
+function sp.SetValue(vt, wl)
+  local blv = sp.blv
+  if not blv then return end
+  if vt then
+    if vt ~= sp.blvText then
+      sp.blvText = vt
+      blv:SetText(vt)
+    end
+    local x = math_floor(pad + wl + sp.gap + 0.5)
+    if x ~= sp.blvX then
+      sp.blvX = x
+      blv:ClearAllPoints()
+      blv:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, pad)
+    end
+  end
+  local on = vt ~= nil
+  if on ~= sp.blvOn then
+    sp.blvOn = on
+    if on then blv:Show() else blv:Hide() end
+  end
+end
+
 -- Level text (bottom left): "LEVEL 20", with the percent text `pct` (pctPos = "level")
 -- or the cap tag (isCap); levelFmt "title" gives "Level 20 · ...". Split themes draw
 -- the level label and that value as two texts (bl, blv). A level text wider than the
@@ -711,31 +805,14 @@ local function LevelText(level, pct, isCap)
     sp.blText = text
     bl:SetText(text)
   end
-  local blv = sp.blv
-  if not blv then return end
-  if vt then
-    if vt ~= sp.blvText then
-      sp.blvText = vt
-      blv:SetText(vt)
-    end
-    local x = math_floor(pad + wl + sp.gap + 0.5)
-    if x ~= sp.blvX then
-      sp.blvX = x
-      blv:ClearAllPoints()
-      blv:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", x, pad)
-    end
-  end
-  local on = vt ~= nil
-  if on ~= sp.blvOn then
-    sp.blvOn = on
-    if on then blv:Show() else blv:Hide() end
-  end
+  sp.SetValue(vt, wl)
 end
 
 -- XP text variants, left of slot 2: 1 = "XP: 1,234 / 5,678", 2 = compact numbers,
 -- 3 = compact numbers without the label (split themes: the label is its own text, xpW
 -- the width of label + gap + value). None at max level / before the first valid read.
-local function XPTexts(show, xp, max)
+-- bare: no label in any variant (the reputation's points, main bar mode).
+local function XPTexts(show, xp, max, bare)
   local valW = sp.valW
   if not show then
     xpText[1], xpText[2], xpText[3] = nil, nil, nil
@@ -754,8 +831,9 @@ local function XPTexts(show, xp, max)
     local lw = sp.wXPL + sp.gap
     xpW[1], xpW[2], xpW[3] = lw + valW[1], lw + valW[2], valW[2]
   else
-    xpText[1] = Skin.Sub("xp", format(L.XP_FMT, Fmt.Number(xp), Fmt.Number(max)))
-    xpText[2] = Skin.Sub("xp", format(L.XP_FMT, cx, cm))
+    local fmt = bare and L.XP_BARE_FMT or L.XP_FMT
+    xpText[1] = Skin.Sub("xp", format(fmt, Fmt.Number(xp), Fmt.Number(max)))
+    xpText[2] = Skin.Sub("xp", format(fmt, cx, cm))
     xpText[3] = Skin.Sub("xp", format(L.XP_BARE_FMT, cx, cm))
     for i = 1, 3 do
       local w = Skin.Measure("xp", xpText[i])
@@ -767,6 +845,23 @@ end
 ---------------------------------------------------------------------------
 -- Public: XP visuals
 ---------------------------------------------------------------------------
+
+-- The % marker wanted (or not) with `tenths` tenths of a percent: its text and width set
+-- when they change, its place by PlaceMarker.
+function rep.Marker(want, tenths)
+  if want ~= markerShown then
+    markerShown = want
+    if not want then SetMarkerVisible(false) end
+    markerDirty = true
+  end
+  if want and tenths ~= pctKey then
+    pctKey = tenths
+    local text = Skin.Sub("marker", ns.Tokens.PercentText(tenths))
+    marker:SetText(text)
+    wMarker = Skin.Measure("marker", text)
+    markerDirty = true
+  end
+end
 
 function Bar.UpdateXP()
   if not frame then return end
@@ -785,6 +880,10 @@ function Bar.UpdateXP()
   valid = (valid and type(xp) == "number" and type(max) == "number" and max > 0) and true or false
   xpPending = (not valid) and not isMax
   local showXP = valid and not isMax
+  if rep.main or pvp.main then                     -- the main track shows the reputation or PvP
+    rep.MainXP(isMax, showXP, xp, max, rested)
+    return
+  end
 
   -- fill + rested (integer pixels, redrawn only on change)
   local pct, rfrac, E = 0, 0, 0
@@ -837,19 +936,7 @@ function Bar.UpdateXP()
   end
 
   -- % marker following the fill (shown by PlaceMarker when it has room)
-  local wantMarker = usePctMarker and showXP
-  if wantMarker ~= markerShown then
-    markerShown = wantMarker
-    if not wantMarker then SetMarkerVisible(false) end
-    markerDirty = true
-  end
-  if wantMarker and tenths ~= pctKey then
-    pctKey = tenths
-    local text = Skin.Sub("marker", Tokens.PercentText(tenths))
-    marker:SetText(text)
-    wMarker = Skin.Measure("marker", text)
-    markerDirty = true
-  end
+  rep.Marker(usePctMarker and showXP, tenths)
   if bottomDirty then LayoutBottom() end
   if markerDirty then PlaceMarker() end
 end
@@ -908,6 +995,10 @@ local function ResetTextLayout()
   Skin.SetMeterFonts(fontSize, outline)
   brxX, sepX, s3X, s1Bound, brxCur = false, false, false, -1, nil
   sp.blvX, sp.xplX = false, false
+  if rep.blW ~= 0 then                             -- the faction name's bound (main bar mode)
+    rep.blW = 0
+    bl:SetWidth(0)
+  end
   sepFS:Hide()
   sepShown = false
 end
@@ -961,9 +1052,21 @@ local function ApplyBarStyle(w)
     HideSplit()
   end
   bottomRow = bottomRow + 2
-  local trackY = pad + bottomRow + gap
+  rep.rowTop = pad + bottomRow
+  -- main bar mode: the faction name (the rank) in the XP text's font (any glyph), same row
+  -- height
+  if rep.main or pvp.main then ElemFont(bl, "xp", size.xp) end
+  -- the strips: room under the track beyond the gap (0 when they fit in the gap)
+  local rb = 0
+  if rep.on or pvp.on then
+    local r = bar.rep
+    local band = r.off + r.h
+    if rep.on and pvp.on then band = band + pvp.GAP + r.h end
+    rb = math_max(0, band + r.clear - gap)
+  end
+  local trackY = pad + bottomRow + gap + rb
   topY = trackY + H + gap
-  local fw, fh = W + 2 * pad, pad + topRow + gap + H + gap + bottomRow + pad
+  local fw, fh = W + 2 * pad, pad + topRow + gap + H + gap + bottomRow + pad + rb
   frame:SetSize(fw, fh)
   ox, oy, lineW, lineH = pad, trackY, W, H
 
@@ -1008,7 +1111,7 @@ local function ApplyBarStyle(w)
   usePctMarker = (w.pctPos ~= "level")
   usePctLevel = not usePctMarker
   if sp.on then
-    local xl = Skin.Sub("xpLabel", L.XP_LABEL)
+    local xl = Skin.Sub("xpLabel", (rep.main and L.REP_LABEL) or (pvp.main and L.PVP_LABEL) or L.XP_LABEL)
     sp.xpl:SetText(xl)
     sp.wXPL = Skin.Measure("xpLabel", xl)
   end
@@ -1020,6 +1123,383 @@ local function ApplyBarStyle(w)
   end
   topDirty, bottomDirty = true, true
   return fw, fh
+end
+
+-- The strip's fill (the reputation): redrawn when its pixel width or the standing changed.
+-- While the main track shows the reputation or PvP the strip shows the XP (rep.MainXP).
+function rep.Draw()
+  if not rep.on or rep.xs then return end
+  local R = ns.Rep
+  local _, react, value, span, full = R.Get()
+  if react == nil then return end
+  local px = full and lineW or math_floor(lineW * value / span + 0.5)
+  if px ~= rep.px or react ~= rep.react then
+    rep.px, rep.react = px, react
+    Skin.RepDraw(px, R.Color(react))
+  end
+end
+
+-- The strips under the track (the theme's bar.rep), or none: after ApplyBarStyle. The
+-- PvP strip under the first one (pvp.GAP px below), else in its place.
+function rep.Layout()
+  local r = th.bar.rep
+  local y1 = oy - r.off - r.h
+  Skin.RepLayout(rep.on, ox, y1, lineW, r.h, r.c)
+  rep.px, rep.react = -1, -1
+  rep.Draw()
+  pvp.y = rep.on and (y1 - pvp.GAP - r.h) or y1
+  Skin.PvpLayout(pvp.on, ox, pvp.y, lineW, r.h, r.c)
+  pvp.px, pvp.ck = -1, -1
+  pvp.Draw()
+  pvp.rver = -1
+end
+
+-- What the main track and the strips show (before the layout): rep.main, rep.on, rep.xs,
+-- pvp.main, pvp.kind, pvp.on, pvp.strip.
+function rep.Mode(w)
+  local R, P = ns.Rep, ns.Pvp
+  local mode = (P and P.MainMode(w)) or (w.main == "pvp" and "xp") or w.main
+  local main = mode == "rep" and R ~= nil and R.Has() or false
+  rep.main = main
+  pvp.main = mode == "pvp"
+  pvp.kind = pvp.main and P.MainKind() or nil
+  local xs = (main or pvp.main) and not IsMax()   -- the XP in the strip, below the max level
+  rep.xs = xs
+  if xs then
+    rep.on = true
+  elseif main then
+    rep.on = false
+  else
+    rep.on = R ~= nil and R.Shown() and true or false
+  end
+  pvp.strip = P and P.StripKind(w) or nil
+  if pvp.main and pvp.strip == pvp.kind then pvp.strip = nil end   -- it would repeat the track
+  pvp.on = pvp.strip ~= nil
+end
+
+-- The main track's fill colour: the standing's in the reputation mode, PvP's (Pvp.Color)
+-- in the PvP mode, else the theme's (or the user's). True when the theme's colours were
+-- rewritten (the skin recolours).
+function rep.Fill()
+  local key, r, g, b = nil, nil, nil, nil
+  if rep.main then
+    local R = ns.Rep
+    local _, rr = R.Get()
+    key = rr
+    if key then r, g, b = R.Color(key) end
+  elseif pvp.main then
+    local P = ns.Pvp
+    local _, _, ck = P.Value(pvp.kind)
+    if ck then
+      key = 100 + ck
+      r, g, b = P.Color(ck)
+    end
+  end
+  rep.fillReact = key
+  return Themes.SetFillOverride(r, g, b)
+end
+
+-- A new fill colour (rep.Fill) on a drawn bar: the skin, and the texts whose colour the
+-- theme derives from it (th.text.fo).
+function rep.Recolor()
+  Skin.Recolor()
+  if th.text.fo then ApplyTextColors() end
+end
+
+-- XP colour of the strip in the reputation mode (the rested one while rested XP is left):
+-- the user's, else the theme's, else the built-in one (as the mini display).
+function rep.XPColor(restedOn)
+  local w = Widget()
+  local cs = th.colors
+  local c
+  if restedOn then
+    c = (w and type(w.restedColor) == "table" and w.restedColor[1] and w.restedColor) or (cs and cs.rested)
+      or C.COLORS.restedFill
+  else
+    c = (w and type(w.xpColor) == "table" and w.xpColor[1] and w.xpColor) or (cs and cs.xp) or C.COLORS.fill
+  end
+  return c[1], c[2], c[3]
+end
+
+-- The bottom left of the reputation main bar: "Faction · Standing" (" · 20.6 %" more with
+-- pctPos = "level"; split themes: the faction in bl, the standing (and percent) in blv),
+-- shorter while it leaves no room for the compact points (faction and standing, the
+-- faction alone), then the faction cut with "..." (bounded width). In the XP text's font.
+-- The PvP main bar gives "Rank 7" and the rank's title the same way (standing: EMPTY when
+-- there is none).
+function rep.LeftText(name, standing, pct)
+  local limit = lineW
+  if xpText[3] ~= nil then limit = lineW - xpW[3] - EDGE_GAP end
+  if limit < 1 then limit = 1 end
+  local text = Skin.Sub("xp", name)
+  local wl = Skin.Measure("xp", text)
+  local w, vt = wl, nil
+  if sp.on then
+    for c = 1, 2 do
+      local v = nil
+      if c == 1 and pct and standing ~= EMPTY then
+        v = standing .. L.SEP .. pct
+      elseif c == 2 and standing ~= EMPTY then
+        v = standing
+      end
+      if v and vt == nil then
+        v = Skin.Sub("levelValue", v)
+        local wv = Skin.Measure("levelValue", v)
+        if wl + sp.gap + wv <= limit then vt, w = v, wl + sp.gap + wv end
+      end
+    end
+  elseif standing ~= EMPTY then
+    local found = false
+    for c = 1, 2 do
+      local t = nil
+      if c == 1 and pct then
+        t = name .. L.SEP .. standing .. L.SEP .. pct
+      elseif c == 2 then
+        t = name .. L.SEP .. standing
+      end
+      if t and not found then
+        t = Skin.Sub("xp", t)
+        local tw = Skin.Measure("xp", t)
+        if tw <= limit then text, w, found = t, tw, true end
+      end
+    end
+  end
+  local bound = 0
+  if w > limit then bound, w = limit, limit end   -- the faction alone is too wide: "..."
+  if bound ~= rep.blW then
+    rep.blW = bound
+    bl:SetWidth(bound)
+  end
+  wBL = w
+  if text ~= sp.blText then
+    sp.blText = text
+    bl:SetText(text)
+  end
+  sp.SetValue(vt, wl)
+end
+
+-- The main track and its texts in the reputation mode: the progress inside the standing
+-- in the standing's colour (full and dimmed at Exalted), the faction and standing at the
+-- left, the points at the right, the % marker. On REP_CHANGED, XP messages and layouts
+-- only; every draw call skipped when nothing it shows changed.
+function rep.DrawMain()
+  local R = ns.Rep
+  local name, react, value, span, full = R.Get()
+  if name == nil then return end
+  if react ~= rep.fillReact and rep.Fill() then rep.Recolor() end
+  local fk = full and 2 or 0
+  if fk ~= fillKey then
+    fillKey = fk
+    Skin.SetState(fk)
+    fillPx = -1
+  end
+  local px = full and lineW or math_floor(lineW * value / span + 0.5)
+  if px ~= fillPx or restPx ~= 0 then
+    if px ~= fillPx then markerDirty = true end
+    fillPx, restPx = px, 0
+    Skin.Draw(px, 0)
+  end
+  local Tokens = ns.Tokens
+  local nums = not full
+  local tenths = nums and Tokens.PercentTenths(value, span) or 0
+  local xkey = nums and (value * 1000003 + span) or -3
+  local newRight = xkey ~= brxKey
+  if newRight then
+    brxKey = xkey
+    XPTexts(nums, value, span, true)
+    bottomDirty = true
+  end
+  local withPct = usePctLevel and nums
+  local key = react * 10000 + (withPct and (tenths + 1) or 0)
+  if newRight or key ~= blKey or name ~= rep.blName then
+    blKey, rep.blName = key, name
+    local Tt = ns.Tooltip
+    rep.LeftText(name, Tt and Tt.StandingName and Tt.StandingName(react) or EMPTY,
+      withPct and Tokens.PercentText(tenths) or nil)
+    bottomDirty = true
+  end
+  rep.Marker(usePctMarker and nums, tenths)
+  if bottomDirty then LayoutBottom() end
+  if markerDirty then PlaceMarker() end
+end
+
+-- Bar.UpdateXP in the reputation or PvP mode: the XP in the strip (a new layout when the
+-- strip comes or goes with the max level), then the main track.
+function rep.MainXP(isMax, showXP, xp, max, rested)
+  if rep.xs == isMax then
+    Bar.ApplyLayout()
+    return
+  end
+  if rep.xs then
+    local px = 0
+    if showXP then
+      local f = xp / max
+      if f < 0 then f = 0 elseif f > 1 then f = 1 end
+      px = math_floor(lineW * f + 0.5)
+    end
+    local k = (type(rested) == "number" and rested > 0) and 1 or 0
+    if px ~= rep.px or k ~= rep.react then
+      rep.px, rep.react = px, k
+      Skin.RepDraw(px, rep.XPColor(k == 1))
+    end
+  end
+  if rep.main then rep.DrawMain() else pvp.DrawMain() end
+end
+
+---------------------------------------------------------------------------
+-- PvP (Pvp.lua): the strip and the main bar's PvP mode
+---------------------------------------------------------------------------
+
+-- The PvP strip's fill: redrawn when its pixel width or its colour changed.
+function pvp.Draw()
+  if not pvp.on then return end
+  local P = ns.Pvp
+  local v, span, ck, full = P.Value(pvp.strip)
+  if v == nil then return end
+  local px = full and lineW or math_floor(lineW * v / span + 0.5)
+  if px ~= pvp.px or ck ~= pvp.ck then
+    pvp.px, pvp.ck = px, ck
+    Skin.PvpDraw(px, P.Color(ck))
+  end
+end
+
+-- The main track's right texts (rank: Pvp.MainRight's three variants, measured like the XP
+-- text's); the points ("1,234 / 25,000") for the honor and before a rank rate, none at the
+-- max rank (Pvp.MainRight's). True when they changed.
+function pvp.Right(kind, v, span, done)
+  local t1, t2, t3, ver
+  if kind == "rank" then
+    local GetMask = ns.GetMask
+    t1, t2, t3, ver = ns.Pvp.MainRight(GetMask and GetMask() or 0)
+  end
+  if t1 == nil then
+    local xkey = done and -3 or (v * 1000003 + span)
+    if xkey == brxKey and pvp.rver == -2 then return false end
+    brxKey, pvp.rver = xkey, -2
+    XPTexts(not done, v, span, true)
+    return true
+  end
+  if ver == pvp.rver then return false end
+  pvp.rver, brxKey = ver, -4
+  local valW = sp.valW
+  xpText[1], xpText[2], xpText[3] = Skin.Sub("xp", t1), Skin.Sub("xp", t2), Skin.Sub("xp", t3)
+  for i = 1, 3 do valW[i] = Skin.Measure("xp", xpText[i]) end
+  local lw = sp.on and (sp.wXPL + sp.gap) or 0
+  xpW[1], xpW[2], xpW[3] = lw + valW[1], lw + valW[2], valW[3]
+  return true
+end
+
+-- The main track in the PvP mode: the rank's progress (or the honor toward its cap) in its
+-- colour (full and dimmed at the max rank), the rank and its title at the left, the right
+-- texts, the % marker. On PVP_CHANGED, XP messages, layouts and when the right texts
+-- change (pvp.Tick); every draw call skipped when nothing changed.
+function pvp.DrawMain()
+  local P = ns.Pvp
+  local kind = pvp.kind
+  local v, span, ck, full = P.Value(kind)
+  if v == nil then return end
+  if 100 + ck ~= rep.fillReact and rep.Fill() then rep.Recolor() end
+  local done = full and kind == "rank"             -- the max rank (the honor's cap stays red)
+  local fk = done and 2 or 0
+  if fk ~= fillKey then
+    fillKey = fk
+    Skin.SetState(fk)
+    fillPx = -1
+  end
+  local px = full and lineW or math_floor(lineW * v / span + 0.5)
+  if px ~= fillPx or restPx ~= 0 then
+    if px ~= fillPx then markerDirty = true end
+    fillPx, restPx = px, 0
+    Skin.Draw(px, 0)
+  end
+  local Tokens = ns.Tokens
+  local nums = not done
+  local tenths = nums and Tokens.PercentTenths(v, span) or 0
+  local newRight = pvp.Right(kind, v, span, done)
+  if newRight then bottomDirty = true end
+  local withPct = usePctLevel and nums
+  local name, title
+  local lv = 99
+  if kind == "rank" then
+    local _, level = P.Rank()
+    lv = level
+    name, title = P.RankName(level)
+  else
+    name, title = L.TT_PVP_HONOR, L.PVP_NO_SEASON
+  end
+  local key = lv * 10000 + (withPct and (tenths + 1) or 0)
+  if newRight or key ~= blKey or name ~= rep.blName then
+    blKey, rep.blName = key, name
+    rep.LeftText(name, title or EMPTY, withPct and Tokens.PercentText(tenths) or nil)
+    bottomDirty = true
+  end
+  rep.Marker(usePctMarker and nums, tenths)
+  if bottomDirty then LayoutBottom() end
+  if markerDirty then PlaceMarker() end
+end
+
+-- TICK in the PvP mode: the rank points per hour and the time to the next rank drawn again
+-- when their texts changed (no allocation otherwise).
+function pvp.Tick()
+  if pvp.kind ~= "rank" then return end
+  local GetMask = ns.GetMask
+  local t1, _, _, ver = ns.Pvp.MainRight(GetMask and GetMask() or 0)
+  if (t1 == nil and pvp.rver ~= -2) or (t1 ~= nil and ver ~= pvp.rver) then pvp.DrawMain() end
+end
+
+-- Region of table st (rep or pvp; its handle frame.tp[key]) at (y, ht), or none.
+function rep.SetHit(st, key, want, y, ht)
+  if want and ht < 1 then want = false end
+  st.hitWant = want
+  if want then
+    local h = st.hit or rep.NewHit(st, key)
+    h:ClearAllPoints()
+    h:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", ox, y)
+    h:SetSize(lineW, ht)
+  end
+end
+
+-- The detailed tooltips' hover regions: the reputation's over the main track in its mode,
+-- else over its strip's part of the band between the track and the text row (the whole
+-- band without a PvP strip); the PvP one over the main track in its mode (then the PvP
+-- strip has its own: pvp.sh), else over its strip's part of the band (the band below the
+-- first strip, or all of it). The XP strip's part keeps the general tooltip. After the
+-- layout.
+function rep.PlaceHit()
+  local top, bot = oy, rep.rowTop
+  local split = (rep.on and pvp.on) and (pvp.y + th.bar.rep.h + pvp.GAP) or nil
+  if rep.main then
+    rep.SetHit(rep, "repHit", true, oy, lineH)
+  else
+    local y = split or bot
+    rep.SetHit(rep, "repHit", rep.on and not rep.xs, y, top - y)
+  end
+  if pvp.main then
+    rep.SetHit(pvp, "pvpHit", true, oy, lineH)
+    rep.SetHit(pvp.sh, "pvpStripHit", pvp.on, bot, (split or top) - bot)
+  else
+    rep.SetHit(pvp, "pvpHit", pvp.on, bot, (split or top) - bot)
+    rep.SetHit(pvp.sh, "pvpStripHit", false, 0, 0)
+  end
+  rep.ApplyHit()
+end
+
+-- The regions shown while the widget is active and the layout has them (Show/Hide on
+-- change).
+function rep.ApplyHit()
+  for i = 1, 3 do
+    local st = (i == 1 and rep) or (i == 2 and pvp) or pvp.sh
+    local want = (active and st.hitWant) and true or false
+    if want ~= st.hitOn then
+      st.hitOn = want
+      local h = st.hit
+      if want then
+        h:Show()
+      elseif h then
+        h:Hide()
+      end
+    end
+  end
 end
 
 function Bar.ApplyLayout()
@@ -1036,11 +1516,13 @@ function Bar.ApplyLayout()
   fontSize = math_floor(Clamp(w.fontSize, 9, 16, 11))
   frame:SetScale(Clamp(w.scale, 0.5, 2.0, 1.0))
   ReadTextStyle(w)
+  rep.Mode(w)
+  local fillChanged = rep.Fill()                 -- the standing's colour or the theme's
   if rebuild then
     Skin.Build(t)                                -- regions of the theme's layers and panel
     SetupSplit()
     ApplyVeil()
-  elseif t.gen ~= skinGen then
+  elseif t.gen ~= skinGen or fillChanged then
     Skin.Recolor()                               -- colours rewritten in place (gen + 1)
     ApplyVeil()
   end
@@ -1051,6 +1533,8 @@ function Bar.ApplyLayout()
   local fw, fh = ApplyBarStyle(w)
   ApplyBackground(w, fw, fh)
   Skin.Layout(ox, oy, lineW, lineH)              -- static layers placed
+  rep.Layout()
+  rep.PlaceHit()
 
   ElemFont(hint, "hint", math_max(9, fontSize + (th.text.size.hint or -1)) - fontSize)
   hint:SetText(Skin.Sub("hint", L.UNLOCKED_HINT))
@@ -1058,6 +1542,7 @@ function Bar.ApplyLayout()
 
   -- force every cached visual to be redrawn once
   fillPx, restPx, blKey, brxKey, pctKey, fillKey = -1, -1, -1, -1, -1, -1
+  rep.blName, pvp.rver = nil, -1
   marker:Hide()
   markerShown, markerVisible, markerX, markerDirty = false, false, false, true
 
@@ -1083,6 +1568,10 @@ local function OnThemeChanged(_, _, _, kind)
     Skin.Recolor()                               -- layers and panel, current fill state
     ApplyVeil()
     ApplyTextColors()
+    if rep.main or pvp.main then                   -- the XP strip in the new XP colour
+      rep.react = -1
+      Bar.UpdateXP()
+    end
     Bar.Refresh()
     return
   end
@@ -1213,6 +1702,54 @@ do
     HideGraph(self)
   end
 
+  -- The reputation's and PvP's regions (rep.PlaceHit): their detailed tooltip instead of the
+  -- general one, hanging off the bar's frame as the general one (a region lies inside the
+  -- bar: anchored to it, the tooltip would cover the track or a text row).
+  local function RepEnter(self)
+    hovered = true
+    ApplyAlpha()
+    if dragging then return end
+    HideTooltip(frame)
+    HideGraph()
+    local Tooltip = ns.Tooltip
+    local kind = (self == pvp.hit or self == pvp.sh.hit) and "pvp" or "rep"
+    if Tooltip and Tooltip.ShowFor then Tooltip.ShowFor(self, nil, kind, frame) end
+  end
+
+  local function RepLeave(self)
+    hovered = false
+    ApplyAlpha()
+    HideTooltip(self)
+  end
+
+  local function RepDragStart(self)
+    local w = Widget()
+    if w and not w.locked then HideTooltip(self) end
+    OnDragStart(frame)
+  end
+
+  local function RepHide(self)
+    local Tooltip = ns.Tooltip
+    if Tooltip and Tooltip.IsShownFor and Tooltip.IsShownFor(self) then Tooltip.Hide(self) end
+  end
+
+  function rep.NewHit(st, key)
+    local h = CreateFrame("Frame", nil, frame)
+    h:EnableMouse(true)
+    h:RegisterForDrag("LeftButton")
+    h:SetScript("OnEnter", RepEnter)
+    h:SetScript("OnLeave", RepLeave)
+    h:SetScript("OnMouseDown", HitMouseDown)
+    h:SetScript("OnMouseUp", HitMouseUp)
+    h:SetScript("OnDragStart", RepDragStart)
+    h:SetScript("OnDragStop", HitDragStop)
+    h:SetScript("OnHide", RepHide)
+    h:Hide()
+    st.hit, st.hitOn = h, false
+    frame.tp[key] = h
+    return h
+  end
+
   NewHit = function(i)
     local h = CreateFrame("Frame", nil, frame)
     h:SetAllPoints(slotFS[i])
@@ -1333,6 +1870,7 @@ local function OnTick()
   elseif xpPending then
     Bar.UpdateXP()
   end
+  if pvp.main then pvp.Tick() end
   Bar.Refresh()
 end
 
@@ -1359,6 +1897,7 @@ local function SetActive(on)
     Bar.UpdateXP()
     Bar.Refresh()
     for i = 1, NSLOTS do ApplyHit(i) end
+    rep.ApplyHit()
   else
     ns.UnregisterMessage("TICK", Bar)
     ns.UnregisterMessage("STATE_CHANGED", Bar)
@@ -1367,6 +1906,7 @@ local function SetActive(on)
     ns.UnregisterMessage("CHAR_RESET", Bar)
     Tokens.Release("bar")
     for i = 1, NSLOTS do ApplyHit(i) end
+    rep.ApplyHit()
     if frame then OnHide(frame) end
   end
 end
@@ -1421,8 +1961,11 @@ UpdateVisibility = function()
   local shown = w.shown and true or false
   SetWatching(shown)
   SetRegenEvents(shown and w.combatHide and true or false)
-  -- hideAtMax: the real max level only (a server level cap is temporary)
-  local want = shown and not (w.hideAtMax and IsMax() and not IsServerCap())
+  -- hideAtMax: the real max level only (a server level cap is temporary), never while the
+  -- bar shows the reputation (main bar mode with a faction read) or PvP
+  local R, P = ns.Rep, ns.Pvp
+  local other = (w.main == "rep" and R ~= nil and R.Has()) or (P ~= nil and P.MainMode(w) == "pvp")
+  local want = shown and not (w.hideAtMax and IsMax() and not IsServerCap() and not other)
   if want and not frame then CreateWidget() end
   if frame then
     if want then
@@ -1444,9 +1987,36 @@ end
 -- Messages kept while initialised (rare: needed to come back when shown again)
 ---------------------------------------------------------------------------
 
+-- REP_CHANGED and PVP_CHANGED: at the max level with hideAtMax, a reputation or PvP main
+-- bar brings the bar back or lets it go; a new layout when the main track's content or a
+-- strip changes, else the main track and the strips drawn again. A hidden frame follows
+-- too (ApplyLayout works on it): shown again later (hideAtMax off, the bar shown, the end
+-- of a fight), it never draws a mode or a fill colour that no longer applies.
+function rep.OnChanged()
+  local w = Widget()
+  if not w then return end
+  if w.hideAtMax and IsMax() then UpdateVisibility() end
+  if not frame then return end
+  local m, o, x, pm, pk, po, ps = rep.main, rep.on, rep.xs, pvp.main, pvp.kind, pvp.on, pvp.strip
+  rep.Mode(w)
+  if m ~= rep.main or o ~= rep.on or x ~= rep.xs or pm ~= pvp.main or pk ~= pvp.kind or po ~= pvp.on
+      or ps ~= pvp.strip then
+    Bar.ApplyLayout()
+    return
+  end
+  if rep.main then rep.DrawMain() elseif pvp.main then pvp.DrawMain() end
+  rep.Draw()
+  pvp.Draw()
+end
+
 local function OnSettingsChanged(_, path)
   if VISIBILITY_PATHS[path] then
     UpdateVisibility()
+    return
+  end
+  if path == "widget.main" or path == "widget.pvp" or path == "widget.pvpAuto" then   -- what the bar shows
+    UpdateVisibility()
+    if frame then Bar.ApplyLayout() end
     return
   end
   if not frame then return end
@@ -1487,6 +2057,8 @@ function Bar.Init()
   ns.RegisterMessage("SETTINGS_CHANGED", Bar, OnSettingsChanged)
   ns.RegisterMessage("DB_SWAPPED", Bar, OnDBSwapped)
   ns.RegisterMessage("THEME_CHANGED", Bar, OnThemeChanged)
+  ns.RegisterMessage("REP_CHANGED", Bar, rep.OnChanged)
+  ns.RegisterMessage("PVP_CHANGED", Bar, rep.OnChanged)
   UpdateVisibility()
 end
 

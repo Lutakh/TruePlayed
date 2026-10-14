@@ -36,6 +36,8 @@
 --   media.drip: poison drip with a falling drop, black outline
 --   bar.pad, gap: the gap holds the sheath rim and the needle's tab
 --   bar.height: default user height 8 -> 13 px track (board 20 px at x1.5)
+--   bar.rep: reputation strip 11 px under the track, 1 px clear of the needle's tab (10 px) at
+--     the fill end
 --   bar.layers > sheath: leather sheath with its steel edge, saddle stitches on the rims, dark
 --     track bed
 --   bar.layers > rested: rested part ("shadow smoke"): lighter rested colour fading out, a sheen,
@@ -95,6 +97,7 @@ return {
     pad = 8, gap = 7,
     height = { add = 5, min = 9 },
     maxAlpha = 0.35,
+    rep = { off = 11, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "sheath", span = "track", nine = { "sheath", 12, 6 }, pad = { 5, 5 }, top = -5, bottom = -5,
         layer = "BORDER", sub = -4 },

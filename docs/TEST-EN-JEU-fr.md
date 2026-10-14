@@ -3,6 +3,1011 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## À vérifier en premier (nouveau) : l'onglet Niveaux en histogramme
+
+**Quittez complètement le jeu et relancez-le d'abord** : cette version ajoute deux
+fichiers de plus (`LevelChart.lua` et `LevelDetail.lua`), et un `/reload` ne charge pas
+les nouveaux fichiers. Activez les erreurs Lua (`/console scriptErrors 1`) pour toute
+cette partie. Cochez chaque point vérifié ; s'il ne se passe pas ce qui est écrit, notez
+ce que vous voyez (une capture d'écran aide beaucoup ici : c'est une nouvelle page, que
+les tests hors du jeu dessinent sans la voir). Le JcJ sauvage ne se mesure qu'à partir de
+cette version : les niveaux déjà terminés l'indiquent comme non mesuré, c'est normal.
+
+### Ouvrir l'onglet, la taille de la fenêtre
+
+- [ ] **`/tpl stats levels`** (ou clic gauche sur la barre, onglet **Niveaux**) : la
+  fenêtre montre, sous les onglets, une rangée de sept encadrés, le titre « Temps joué
+  par niveau » avec à droite un résumé (« 1 j 04 h sur 17 niveaux »), les filtres, le
+  graphique en barres, la bande « Progression vers le niveau 60 » en bas, et à droite la
+  **fiche** du niveau en cours. Plus de tableau de niveaux, plus d'en-têtes de colonnes.
+- [ ] **L'aide de l'en-tête** dit « Cliquez sur une barre pour voir le détail du niveau. »
+  (entière, rien de coupé).
+- [ ] **La taille** : la fenêtre fait au moins 1040 x 640 sur cet onglet, même si vous
+  l'aviez réduite. Passez sur **Zones** ou **Sessions** : elle reprend votre taille
+  enregistrée. Revenez sur Niveaux et tirez le coin en bas à droite : elle s'agrandit,
+  mais ne descend pas sous 1040 x 640 ; la taille choisie est gardée après un `/reload`.
+- [ ] **La poignée sur Niveaux ne garde que ce que vous changez** : sur Niveaux, un simple
+  clic sur le coin en bas à droite (sans tirer), puis Zones : la taille de Zones n'a
+  pas changé (pas 1040 x 640). Sur Niveaux, tirez le coin **vers le bas seulement**,
+  puis Zones : la hauteur est la nouvelle, la largeur celle d'avant.
+- [ ] **Petit écran ou grande échelle d'interface** (nouveau) : la fenêtre doit tenir à
+  l'écran, un peu plus étroite que lui s'il fait moins de 1040 de large (écran 4:3,
+  ou échelle d'interface au maximum) : les barres sont plus étroites, la fiche garde sa
+  largeur, rien ne sort de la fenêtre ni de l'écran, les encadrés du haut ne débordent
+  pas. Dites-moi votre résolution et votre échelle si quelque chose déborde.
+
+### Les sept chiffres du haut
+
+- [ ] **Temps joué** (« niveaux 1 à N ») : le même que « Temps de jeu » dans l'infobulle
+  (Maj), avec vos exclusions.
+- [ ] **/played serveur** (« tout compris ») : le même que la commande `/played`.
+- [ ] **Moyenne par niveau**, avec « 5 derniers : … » dessous.
+- [ ] **JcJ** (« BG … · sauvage … ») : **survolez-le** : une infobulle donne chaque champ
+  de bataille avec son temps, le JcJ sauvage, sa définition, et « JcJ sauvage mesuré
+  depuis le … » (la date de cette mise à jour).
+- [ ] **Vol** (« … du temps joué ») : votre temps en vol de taxi, **AFK en vol compris**
+  (sauf si vous excluez l'AFK) ; « < 1 % du temps joué » pour un tout petit vol, jamais
+  « 0 % » s'il y a eu du vol.
+- [ ] **Morts** (« … mort ou fantôme ») : le nombre de morts et le temps passé mort.
+- [ ] **Niveau 60 dans** (« au rythme actuel ») : un temps avec `~`. **Au plafond du
+  serveur** (niveau 20 sur la bêta), l'encadré dit « Plafond serveur » / « niveau 20 » à
+  la place, et la bande du bas « Plafond du serveur : niveau 20 » ; pareil quand vous
+  regardez un **autre personnage** resté au plafond (flèches de l'en-tête).
+- [ ] **XP désactivée** (si vous avez un personnage à l'XP bloquée chez le PNJ, sous le
+  niveau max) : l'encadré dit « XP désactivée » / « niveau N » et la bande du bas « XP
+  désactivée au niveau N », jamais « Niveau max » ni « Progression vers le niveau 60 »
+  à côté d'un niveau maximum atteint.
+- [ ] **Dans une langue longue** (`/tpl lang de`, puis `es`, `pt` ; `/reload` à chaque
+  fois, puis `/tpl lang auto`) : rien ne déborde des encadrés ; un sous-titre trop long
+  passe en jours ou en heures entières (en allemand « BG 12 T · Welt 3 T »), c'est
+  voulu.
+
+### Les filtres et les barres
+
+- [ ] **Une barre par niveau**, empilée par couleur (monde, JcJ sauvage, donjons, raids,
+  champs de bataille, vol, métiers, mort, ville, auberge, AFK, et en gris le temps avant
+  l'installation ou non suivi), dans l'ordre de bas en haut, aux couleurs de la
+  répartition de l'infobulle.
+- [ ] **Les axes** : à gauche des durées rondes (« 1 h », « 2 h »… ou « 30 min »), en bas
+  les numéros de niveau 1, 5, 10…
+- [ ] **Les filtres** (Tout, Monde, Instances, JcJ, Vol, Métiers, Mort) : un clic ne garde
+  que cette activité, le filtre choisi est mis en évidence, l'échelle se recalcule, le
+  titre change (« Temps JcJ par niveau (BG + sauvage) », « Temps de vol par niveau »,
+  « Temps mort ou fantôme par niveau »…) et le résumé de droite dit « … au total · N
+  niveaux concernés », ou « Aucun temps enregistré » pour une activité jamais faite
+  (jamais « 0 niveaux »). **Tout** revient à l'affichage complet.
+- [ ] **Survol d'une barre sous un filtre** (nouveau) : sous un filtre, survolez une
+  barre. Juste sous le titre, une ligne donne l'activité du filtre, sa durée dans cette
+  barre et sa part du niveau ; dessous, les lignes habituelles du niveau entier. Avec
+  **Tout**, pas de cette ligne. La partie vol s'y appelle « Vol », comme l'encadré.
+  - Une seule activité a du temps dans la barre (toujours le cas sous Monde, Vol, Métiers,
+    Mort ; sous Instances quand il n'y a que des donjons, sous JcJ quand il n'y a que des
+    champs de bataille) : la ligne porte le nom de cette activité dans sa couleur et la
+    valeur en couleur d'accent (« Mort  5 min · 4 % »), et cette activité n'apparaît
+    **qu'une fois** (plus de « Mort » en bleu puis en rouge).
+  - Deux activités ont du temps (donjons et raid, ou champs de bataille et JcJ sauvage) :
+    la ligne est en couleur d'accent avec le nom du filtre (« JcJ  12 min · 15 % »), puis
+    chaque activité dans la liste. Un tiret si rien.
+  - Une part non nulle de moins d'un demi pour cent se lit « < 1 % », jamais « 0 % »,
+    comme sur la fiche du niveau.
+  - Thème **futuriste** : le titre se lit « Niveau 30 > 31 » (« Level 30 > 31 » en
+    anglais), sans carré entre les deux nombres.
+- [ ] **Les niveaux à venir** (avec Tout) : après le niveau en cours, des barres estompées
+  jusqu'au niveau 59, de leur durée estimée ; le niveau en cours a sa partie jouée, un
+  trait de couleur en haut, puis une partie estompée pour ce qui reste. **« Masquer les
+  niveaux à venir »** les retire (le bouton devient « Afficher les niveaux à venir ») ;
+  ce choix est gardé à la réouverture de la fenêtre, pas le filtre.
+- [ ] **La moyenne** : une ligne horizontale « moyenne … » à la hauteur de la moyenne des
+  niveaux terminés.
+- [ ] **Un niveau sans données** (atteint avant l'installation de TruePlayed) : un tout
+  petit trait gris au lieu d'une barre.
+- [ ] **Survol d'une barre** : une infobulle titrée `Niveau 12 » 13`, avec le temps joué (`~`
+  s'il est en partie estimé), chaque activité avec sa durée et sa part, les morts, l'XP
+  par heure, « Atteint le » avec la date (ou « en cours »), et « Clic : détail du
+  niveau ». Sur une barre à venir : « À venir : ~… estimé » et l'XP à gagner. Sur un
+  niveau sans données : la phrase qui l'explique.
+- [ ] **La bande du bas** « Progression vers le niveau 60 » : la partie terminée, la
+  partie du niveau en cours, le reste estimé ; à droite « ~P % du temps total estimé ·
+  Q % de l'XP » ; dessous « Niveaux 1 à N : … · Niveau C en cours : … · Reste ~… », ce
+  dernier temps écrit exactement comme dans l'encadré « Niveau 60 dans ». Un « + » après
+  ce temps (« ~6 j 22 h+ ») dit qu'une partie des niveaux à venir n'a pas de taille d'XP
+  connue : le temps est alors un minimum.
+- [ ] **Les axes d'un très long niveau** : sur un niveau de plusieurs jours de jeu (un
+  personnage resté longtemps au plafond), l'axe de gauche compte en jours entiers
+  (« 1 j », « 2 j »…, ou « 20 j », « 40 j »… pour un niveau de deux mois), jamais
+  « 24 h » ; ses lignes restent dans le graphique, la plus haute au sommet.
+
+### La fiche d'un niveau (clic sur une barre)
+
+- [ ] **À l'ouverture**, la fiche montre le niveau en cours, dont la barre est entourée.
+  **Cliquez** sur une autre barre : le cadre passe dessus et la fiche change.
+- [ ] **L'en-tête** : `Niveau 12 » 13`, puis « Terminé le » avec la date (au format de
+  vos options), ou « En cours : P % de l'XP du niveau », « À venir », « Pas de
+  données ». Pour un niveau commencé avant l'installation, reconstitué après un
+  plantage ou resté longtemps sans XP, une note grise l'explique.
+- [ ] **Les six encadrés** : Temps joué, /played serveur, **Estimé au départ** (avec
+  « X de plus que prévu » en jaune ou « X de moins que prévu » en vert), Cumul depuis le
+  niveau 1 (« niveau 1 » sur un personnage de niveau 1, pas « niveaux 1 à 1 »), XP par
+  heure, Morts (avec le temps mort, ou « aucune »). Pour le niveau en cours :
+  « Estimation du niveau » et « reste environ … ».
+- [ ] **L'écart à l'estimation suit vos exclusions** (nouveau) : sur un niveau commencé
+  et terminé avec cette version, notez « X de plus / de moins que prévu », puis changez
+  une exclusion (Options : exclure l'AFK) : l'écart disparaît (l'estimation a été prise
+  sans cette exclusion), la valeur estimée reste. Remettez le réglage : il revient.
+- [ ] **« Répartition du temps »** : une barre de couleurs et une ligne par activité, de
+  la plus longue à la plus courte, avec la durée et le pourcentage (« < 1 % » pour une
+  toute petite part, jamais « 0 % »). La ligne **Vol** est toujours là (un tiret quand
+  il n'y a pas eu de vol).
+- [ ] **La ligne JcJ** (sur un niveau où vous avez fait un champ de bataille) porte
+  « (survoler) » : **survolez-la** : « Temps JcJ à ce niveau : … », chaque champ de
+  bataille avec son temps, « JcJ sauvage (monde ouvert) », la définition du JcJ sauvage,
+  et pour un niveau terminé avant cette version « JcJ sauvage non mesuré à ce niveau
+  (avant cette version). » (pour le niveau en cours au moment de la mise à jour :
+  « … seulement sur une partie de ce niveau. »).
+- [ ] **« Expérience »** : « xp / XP du niveau », puis Monstres, Quêtes et autres, Bonus de
+  repos, chacun avec sa valeur et son pourcentage, et une barre en trois couleurs.
+- [ ] **« Zones et instances »** : les zones du niveau avec leur temps et une petite
+  barre, une capitale marquée « (ville) », puis les donjons, raids et champs de bataille
+  avec leur type (5 au plus). Sur un niveau où vous avez fait plus de 5 instances, la
+  6e et les suivantes ne sont pas listées du tout, jamais comme des zones du monde.
+- [ ] **Un niveau à venir** : « Durée estimée » (~…), « D'après votre rythme sur les
+  derniers niveaux » (ou, juste après l'installation, tant que vous n'avez pas assez de
+  niveaux terminés, « D'après votre XP par heure actuelle »), l'XP à gagner et « Atteint
+  dans environ … de jeu ».
+- [ ] **Le défilement** : si la fiche est plus haute que la fenêtre, la barre de
+  défilement apparaît à droite et ne cache aucun texte ; changer de niveau remonte en
+  haut de la fiche.
+
+### En jouant, fenêtre ouverte
+
+- [ ] **Le niveau en cours grandit** : laissez la fenêtre ouverte en jouant quelques
+  minutes : sa barre monte, le « Temps joué », le « /played serveur », « Niveau 60 dans »
+  et la bande du bas suivent, sans à-coup ni ralentissement (FPS stables, voir
+  `/tpl perf`).
+- [ ] **La fiche du niveau en cours** suit aussi (Temps joué, Cumul, /played serveur, la
+  répartition : son total, ses lignes, leur ordre et leurs pourcentages, sa barre, et
+  l'encadré Morts) ; les zones, les notes et l'XP se mettent à jour après votre
+  prochain gain d'XP.
+- [ ] **En direct pendant un vol, un champ de bataille, une mort** (nouveau), fenêtre
+  ouverte sur le niveau en cours : pendant un vol de taxi, l'encadré **Vol** et la ligne
+  Vol de la fiche avancent (la ligne remonte dans l'ordre quand elle dépasse une autre) ;
+  dans un champ de bataille, l'encadré **JcJ** (« BG … ») et une ligne JcJ qui apparaît
+  dans la fiche ; après une mort, l'encadré **Morts** (« 1 », puis le temps mort qui
+  avance) et la ligne Mort de la fiche. Tout cela sans gain d'XP, sans à-coup.
+- [ ] **Un long vol qui passe AFK** (nouveau) : prenez un vol de plus de 5 minutes sans
+  toucher au clavier (le jeu vous met AFK) : à l'arrivée, l'encadré **Vol** et la ligne
+  Vol de la fiche comptent tout le vol, AFK compris, comme la ligne « En vol » de
+  l'infobulle (Maj) ; la ligne AFK de la fiche ne le compte pas. Avec l'AFK exclu, le
+  vol ne garde que la partie non AFK.
+- [ ] **Une montée de niveau** fenêtre ouverte : la barre du niveau terminé devient
+  pleine, le nouveau niveau en cours prend le trait de couleur et sa partie estompée, la
+  fiche reste sur le niveau choisi (qui affiche alors « Terminé le … »), aucune erreur.
+
+### Autre personnage, vue du compte, thèmes
+
+- [ ] **Un autre personnage** (flèches de l'en-tête) : son histogramme et sa fiche, sans
+  rien qui bouge en direct ; la sélection revient sur son niveau en cours.
+- [ ] **La vue du compte** : l'onglet Niveaux y reste un **tableau** (un niveau par
+  ligne, avec les personnages qui l'ont terminé, leur temps moyen et leur XP par heure),
+  comme avant.
+- [ ] **Les thèmes** : `/tpl theme futuriste`, `pixel`, `actuel` (Classique), `warlock`
+  et un ou deux autres, fenêtre ouverte : les couleurs suivent le thème (barres aux
+  couleurs de la répartition, cadres et titres du thème), rien ne se chevauche, les
+  infobulles des barres et de la ligne JcJ prennent l'aspect du thème (en Classique :
+  l'infobulle du jeu). Changer la couleur de la barre d'XP dans les options ne change
+  pas la fenêtre.
+
+### Le JcJ sauvage
+
+À faire une fois, en monde ouvert (pas en champ de bataille ni en arène), avec deux
+victoires honorables ou deux gains d'honneur.
+
+- [ ] **Deux victoires à moins de 15 minutes d'écart** : tuez un joueur de l'autre faction,
+  restez en monde ouvert (sans être AFK, en vol, en ville ni à l'auberge), puis tuez-en
+  un autre moins de 15 minutes plus tard. Ouvrez `/tpl stats levels`, cliquez sur votre
+  niveau en cours et survolez la ligne JcJ : « JcJ sauvage (monde ouvert) » vaut à peu
+  près le temps entre les deux victoires. Le filtre **JcJ** montre ce temps sur la barre
+  du niveau, et l'encadré JcJ du haut l'ajoute au « sauvage ».
+- [ ] **Une victoire isolée ne compte rien** : après une seule victoire, rien ne s'ajoute,
+  même 15 minutes plus tard ; le temps passé après la dernière victoire ne compte jamais.
+- [ ] **Une reconnexion ne compte pas comme une victoire** (nouveau) : un jour où vous
+  avez déjà des victoires honorables, déconnectez-vous et reconnectez-vous (puis un
+  `/reload`), restez 10 minutes en monde ouvert et faites une seule victoire : le JcJ
+  sauvage du niveau ne bouge pas (le premier nombre de victoires lu à la connexion est
+  un point de départ, même si le jeu donne d'abord 0).
+- [ ] **Avec le JcJ masqué** (bande JcJ sur « Aucune », aucune info JcJ) : le JcJ sauvage
+  se mesure quand même.
+
+## À vérifier ensuite : le JcJ (honneur, rang, bande, barre principale, alerte au plafond)
+
+**Quittez complètement le jeu et relancez-le d'abord** : cette version ajoute deux
+fichiers de plus (`Pvp.lua` et `PvpOptions.lua`), et un `/reload` ne charge pas les
+nouveaux fichiers. Activez les erreurs Lua (`/console scriptErrors 1`) pour toute cette
+partie. Cochez chaque point vérifié ; s'il ne se passe pas ce qui est écrit, notez ce que
+vous voyez (une capture d'écran aide). La bêta n'a pas de saison JcJ en ce moment : tout
+ce qui touche au rang (points, plafond de la semaine, rang suivant) ne pourra se vérifier
+qu'une fois la saison ouverte ; l'honneur, les victoires honorables et les champs de
+bataille se vérifient dès maintenant.
+
+### Ce que le jeu renvoie (à faire une fois, en copiant le résultat)
+
+TruePlayed ne lit que ces fonctions ; leurs valeurs réelles confirment ce que les tests
+hors du jeu supposent. Tapez chaque ligne dans le chat et notez le résultat :
+
+- [ ] `/dump C_CurrencyInfo.GetCurrencyInfo(1792)` : `quantity` (votre honneur) et
+  `maxQuantity` (le plafond, 25000 le 12 octobre).
+- [ ] `/dump C_MajorFactions.GetMajorFactionProgressionInfo(2800)` : `renownLevel` (le
+  rang), `renownReputationEarned`, `renownLevelThreshold`, `weekNumber` (-1 : pas de
+  saison), `currentWeekProgressiveMaxLevel` (le plafond de la semaine).
+- [ ] `/dump C_DateAndTime.GetSecondsUntilWeeklyReset()` et
+  `/dump C_SeasonInfo.GetTimeUntilCurrentPVPSeasonEnd()` : des secondes (0 pour la fin
+  de saison tant qu'il n'y en a pas).
+- [ ] `/dump GetPVPSessionStats()`, `/dump GetPVPYesterdayStats()`,
+  `/dump GetPVPLifetimeStats()` : les victoires honorables du jour, de la veille, de
+  toujours (et votre meilleur rang). Refaites le dernier **juste après une connexion** :
+  s'il renvoie 0 un instant, TruePlayed l'ignore (le total ne recule jamais).
+- [ ] `/dump PVP_RANK_11_0, PVP_RANK_11_1, PVP_RANK_11_0_FEMALE` : les titres du rang 7
+  (Horde, Alliance, féminin). S'ils renvoient `nil`, la barre affiche « Rang 7 » sans
+  titre : dites-le-moi.
+- [ ] `/dump GetCurrentArenaSeason()` (le numéro de la saison JcJ, 36 sur la bêta) et
+  `/dump C_DateAndTime.GetSecondsUntilDailyReset()` (des secondes).
+- [ ] **Ce que le jeu renvoie au tout début de la connexion** (`PLAYER_LOGIN`, avant la
+  fin de l'écran de chargement) : tapez `/tpl debug` (le chat confirme le mode
+  débogage), puis **déconnectez-vous et reconnectez-vous**. Deux lignes `[debug]`
+  apparaissent : `PvP read: honor … / … (base …), rank …` (la lecture de `PLAYER_LOGIN`)
+  puis `PvP world: …` (celle de l'entrée dans le monde). Notez-les, refaites la même
+  chose avec un `/reload`, puis `/tpl debug` pour éteindre. Si la première ligne montre
+  `honor 0 / 0` (ou un rang 0 avec `max rank 0`) alors que vous avez de l'honneur ou des
+  points de rang, c'est le cas prévu : elle doit dire `base 0` (TruePlayed ne prend pas
+  cette lecture vide comme point de départ, sinon tout votre honneur compterait comme
+  gagné), et la ligne `PvP world` doit donner vos vraies valeurs avec `base 1`. Dans
+  tous les cas, « Gagné cette session » doit rester à 0 juste après la connexion.
+
+### La page « JcJ » des options
+
+- [ ] **La page existe** : Options > AddOns > TruePlayed : une sous-page **JcJ** apparaît
+  sous **Réputation**. Elle contient, dans l'ordre : « Bande sous la barre » (Aucune /
+  Honneur / Rang JcJ), « Barre principale » (Expérience / Réputation / **JcJ**), « JcJ sur
+  la barre en champ de bataille », « Alerte au plafond d'honneur », puis « Honneur et
+  rang par heure » avec son bouton « Réinitialiser » ; chacun avec son « ? ».
+- [ ] **Les « ? »** : survolez chacun ; le texte est clair et entier (rien de coupé).
+- [ ] **« Barre principale » est le même réglage** que sur la page Réputation : changez-le
+  sur une page, l'autre suit (la page Réputation propose aussi **JcJ**).
+- [ ] **La page principale** (`/tpl`) : dans les choix des infos de la barre, sept infos
+  JcJ apparaissent : Honneur, Honneur par heure, Temps avant le plafond d'honneur, Rang
+  JcJ, Points de rang par heure, Temps avant le rang JcJ suivant, Victoires honorables
+  du jour.
+
+### La bande JcJ sous la barre
+
+- [ ] **Honneur** : « Bande sous la barre » > **Honneur**. Une fine bande dorée apparaît
+  sous la barre, remplie selon votre honneur / le plafond (1 024 sur 25 000 : un tout
+  petit bout). Elle passe en **orange dès 90 %** et en **rouge au plafond** (si vous y
+  arrivez).
+- [ ] **Sous la bande de réputation** : avec une faction suivie, la bande JcJ se place
+  **1 pixel sous** celle de la réputation, de même largeur et de même hauteur ; la barre
+  grandit juste de ce qu'il faut. Sans faction suivie (ou réputation décochée), elle
+  prend la place de la bande de réputation.
+- [ ] **Dans les 13 thèmes** (`/tpl theme futuriste`, `actuel`, `heroic`, `pixel`, puis
+  les classes) : les deux bandes empilées, rien ne chevauche les textes ni le repère de
+  la barre, aucune erreur.
+- [ ] **Le survol** : la bande de réputation ouvre l'infobulle de la réputation, la bande
+  JcJ l'**infobulle JcJ** (titre « JcJ »). Un clic ou un glisser sur les bandes agit sur
+  la barre comme avant.
+- [ ] **Rang JcJ** : « Bande sous la barre » > **Rang JcJ** : la bande montre vos points
+  dans le rang (vide sans saison). **Aucune** : la barre redevient exactement comme avant.
+- [ ] **Sous la barre principale JcJ** (« Barre principale » > **JcJ**) : une bande qui
+  répéterait la grande barre n'apparaît pas (la bande **Rang JcJ** sous le rang ; avant
+  la saison, la bande **Honneur** sous l'honneur). L'autre bande reste, et son survol
+  ouvre bien l'**infobulle JcJ** (pas l'infobulle générale).
+
+### La barre principale en mode JcJ
+
+- [ ] **Basculer** : « Barre principale » > **JcJ**. Sans saison (le cas actuel), la
+  grande barre montre votre **honneur** par rapport au plafond, et la mention « Saison
+  JcJ non commencée ». Votre XP passe dans la fine bande dessous (aucune au niveau max).
+- [ ] **Avec une saison** (plus tard) : à gauche « Rang N » et le titre du rang dans la
+  langue du jeu, à droite les points de rang par heure et le temps avant le rang suivant ;
+  quand le rang suivant est le **plafond de la semaine**, le texte de droite le dit
+  (« rang 4 (plafond hebdo) dans 1 h 35 ») et l'infobulle aussi (« Le rang 4 est le
+  plafond de la semaine… ») ; « Plafond de la semaine atteint » quand il vous bloque,
+  « Rang max » au rang 14.
+- [ ] **Sous le niveau max**, avec le JcJ en barre principale (ou en champ de bataille
+  avec l'option automatique) : la fine bande montre votre **XP**, et la bande de
+  réputation n'est **pas** affichée ; elle revient avec « Expérience ». Les « ? » de
+  « Barre principale » et de « JcJ sur la barre en champ de bataille » le disent.
+- [ ] **Au niveau max** avec « Masquer au niveau max » coché : la barre reste affichée
+  tant qu'elle montre le JcJ.
+- [ ] **Dans les 13 thèmes**, sans erreur ; revenez sur « Expérience » : la barre
+  redevient exactement comme avant.
+
+### Le JcJ automatique en champ de bataille
+
+- [ ] Cochez **« JcJ sur la barre en champ de bataille »**, laissez « Barre principale »
+  sur Expérience, entrez dans un **champ de bataille** : la barre passe en JcJ dès
+  l'arrivée.
+- [ ] **À la sortie** : la barre revient sur l'XP, et la page des options affiche toujours
+  **Expérience** (le réglage n'a pas été touché). Même essai avec « Réputation » : retour
+  sur la réputation.
+- [ ] **En arène** (si vous en faites une) : la barre ne change pas (les arènes comptent
+  dans le temps JcJ, mais pas pour ce mode automatique), et l'arène ne s'ajoute pas aux
+  « Champs de bataille (session) » de l'infobulle.
+
+### Honneur par heure, pause après 15 minutes
+
+- [ ] **En champ de bataille** : survolez la bande JcJ. « Honneur par heure » dit d'abord
+  « après votre premier gain », puis une valeur grisée, puis normale après une dizaine de
+  minutes. Tout le temps du champ de bataille compte, avec ou sans gain.
+- [ ] **Les points réalistes** : comparez l'honneur gagné pendant la session (ligne
+  « Gagné cette session ») avec ce que vous avez vu en jeu.
+- [ ] **La pause** : sortez du champ de bataille et faites autre chose (quêtes, ville)
+  **plus de 15 minutes** sans gagner d'honneur : la valeur garde son chiffre, avec un `*`,
+  et une note dans l'infobulle explique la pause ; elle reprend à votre prochain gain
+  d'honneur. Avant 15 minutes, elle continue normalement.
+- [ ] **Dépenser** de l'honneur chez un vendeur JcJ ne fait **pas** baisser l'honneur par
+  heure ni « Gagné cette session ».
+- [ ] **Après un `/reload`** ou une reconnexion : l'honneur par heure reprend où il en
+  était (pas de remise à zéro), et les compteurs de la session continuent.
+- [ ] **Réinitialiser** (page JcJ) puis `/tpl reset rate` : l'honneur par heure repart de
+  zéro. Le bouton de la page JcJ ne touche ni l'XP par heure ni la réputation par heure.
+- [ ] **L'info « Points de rang par heure »** dans un emplacement de la barre s'affiche
+  « Pts de rang 312/h » (et non « Rang 312/h », qu'on lirait comme un numéro de rang).
+- [ ] **Le rang et les champs de bataille ne sont suivis que si quelque chose montre le
+  JcJ** : bande sur « Aucune », barre principale sur Expérience, option automatique
+  décochée, aucune info JcJ, alerte décochée ; faites un champ de bataille, puis remettez
+  la bande « Honneur » : ce champ de bataille n'apparaît pas dans « Champs de bataille
+  (session) » de l'infobulle (c'est voulu). Son honneur, lui, compte bien dans « Gagné
+  cette session » : depuis l'onglet Niveaux en histogramme, l'honneur et les victoires
+  honorables sont toujours lus, car ils mesurent le JcJ sauvage de chaque niveau.
+
+### L'alerte au plafond d'honneur
+
+Seulement si vous approchez du plafond (25 000).
+
+- [ ] **Au plafond, en combat** : rien tout de suite. **À la fin du combat** : un son et
+  une petite fenêtre en haut de l'écran (même aspect que celle du rechargement
+  automatique) disent que votre honneur est au plafond et que l'honneur gagné est perdu ;
+  « OK » la ferme.
+- [ ] **Une seule fois** : d'autres gains au plafond, un `/reload`, une reconnexion : pas
+  de nouvelle alerte. Dépensez de l'honneur puis revenez au plafond : l'alerte revient.
+- [ ] **Au plafond**, l'infobulle JcJ dit en rouge depuis combien de temps vous y êtes, et
+  l'honneur par heure ne bouge plus.
+- [ ] **Décochée** (« Alerte au plafond d'honneur ») : plus de son ni de fenêtre.
+
+### L'infobulle JcJ
+
+- [ ] **Honneur** : votre honneur / le plafond (pourcentage), gagné cette session, par
+  heure, temps avant le plafond.
+- [ ] **Rang** : sans saison, « Saison JcJ non commencée » et rien de divisé par zéro ;
+  avec une saison, le rang et son titre, les points dans le rang, le total de la saison,
+  le plafond de la semaine N (rang et points), ce qu'il reste cette semaine, les points
+  par heure, le temps avant le rang suivant (ou « bloqué par le plafond » avec le temps
+  avant la réinitialisation hebdomadaire), la fin de la saison.
+- [ ] **Victoires honorables** : aujourd'hui, hier, cette session, au total, meilleur
+  rang. Comparez avec le panneau JcJ du jeu (touche H). Tuez un joueur : « Aujourd'hui »
+  et « Cette session » montent de 1.
+- [ ] **Champs de bataille (session)** : pendant une partie, « Un en cours : compté à la
+  sortie ». Après la sortie : « Joués » 1, « Victoires - défaites » correct (**vérifiez bien qui a
+  gagné**), honneur moyen, durée moyenne. Une deuxième partie met les moyennes à jour.
+- [ ] **Deux champs de bataille à la suite** : restez inscrit dans la file pendant une
+  partie ; à la fin, quand la file s'ouvre, entrez **directement** dans le suivant sans
+  repasser par le monde (le même champ de bataille ou un autre). Après la sortie du
+  second : « Joués » doit avoir pris **2**, et « Victoires - défaites » les deux
+  résultats. Un `/reload` pendant une partie ne doit **pas** la compter deux fois.
+- [ ] **Les victoires honorables du jour après minuit** (la remise à zéro quotidienne,
+  si vous êtes connecté à ce moment-là) : sans tuer personne, l'info « VH » de la barre
+  et la ligne « Aujourd'hui » de l'infobulle passent à 0 dans la minute ; « Hier » prend
+  l'ancien chiffre.
+- [ ] **Thème Classique** (`/tpl theme actuel`) : la même infobulle, dans l'infobulle du
+  jeu. Rien n'est coupé, dans tous les thèmes.
+
+### Pour aller plus loin (facultatif, `/etrace`)
+
+- [ ] **Un gain d'honneur** : `/etrace` filtré sur `CURRENCY` : notez ce que porte
+  `CURRENCY_DISPLAY_UPDATE` (l'id 1792, la quantité, et surtout `quantityChange`). **Au
+  plafond**, gagnez encore de l'honneur : dites-moi si l'événement arrive et ce que vaut
+  `quantityChange` (TruePlayed ne compte jamais plus que la hausse réelle).
+- [ ] **Un gain de points de rang** (avec une saison) : filtrez sur `FACTION` : arrive-t-il
+  `UPDATE_FACTION`, `MAJOR_FACTION_RENOWN_LEVEL_CHANGED` (au changement de rang), ou
+  autre chose ?
+- [ ] **Le passage à un nouveau rang** (avec une saison) : avec `/etrace` filtré sur
+  `FACTION`, notez **l'ordre** de `MAJOR_FACTION_RENOWN_LEVEL_CHANGED` et
+  d'`UPDATE_FACTION`, et faites `/dump C_MajorFactions.GetMajorFactionProgressionInfo(2800)`
+  juste après : le rang et les points vont-ils ensemble ? TruePlayed ne compte les gains
+  qu'à `UPDATE_FACTION` (la lecture de l'autre événement peut mélanger l'ancien rang et
+  les nouveaux points) : « Gagné cette session » (section Rang) doit monter des seuls
+  points gagnés, pas d'un rang entier.
+- [ ] **Le reset hebdomadaire** (avec une saison, en restant connecté au moment du reset
+  et en étant au plafond de la semaine) : avec `/etrace` filtré sur `FACTION`, un
+  événement arrive-t-il au reset ? Sans rien faire, dans la minute qui suit, la barre ne
+  doit plus dire « Plafond de la semaine atteint » et l'infobulle doit montrer le
+  nouveau plafond (TruePlayed relit le rang quand le compte à rebours du reset repart,
+  et à chaque ouverture de l'infobulle).
+- [ ] **La fin d'une partie** : filtrez sur `PVP` : notez la valeur `winner` de
+  `PVP_MATCH_COMPLETE` (0 Horde, 1 Alliance attendu) et, **avant de sortir**,
+  `/dump GetBattlefieldWinner()` et `/dump GetBattlefieldArenaFaction()` (votre camp
+  dans la partie, comparé au vainqueur). Dites-moi votre faction et qui a gagné.
+
+## À vérifier ensuite : la page Réputation, la faction à suivre, l'infobulle de la réputation, la réputation par heure, la réputation en barre principale
+
+**Quittez complètement le jeu et relancez-le d'abord** : cette version ajoute un fichier
+de plus (`RepOptions.lua`, en plus de `AutoReload.lua` et `Reputation.lua`), et un
+`/reload` ne charge pas les nouveaux fichiers. Activez les erreurs Lua
+(`/console scriptErrors 1`) pour toute cette partie. Cochez chaque point vérifié ; s'il
+ne se passe pas ce qui est écrit, notez ce que vous voyez (une capture d'écran aide).
+
+### La page « Réputation » des options (vos demandes du 12 octobre)
+
+- [ ] **La page existe** : Options > AddOns > TruePlayed : sous TruePlayed, une
+  sous-page **Réputation** apparaît (cliquez la petite flèche à gauche de TruePlayed si
+  elle est repliée). Elle contient, dans l'ordre : « Afficher la réputation suivie sous la
+  barre » (avec son « ? »), « Barre principale » (Expérience / Réputation, avec son « ? »),
+  « Faction à suivre » (avec son « ? »), une note, puis le bouton « Réinitialiser la
+  réputation/h ».
+- [ ] **Le renvoi** : dans la page principale, section Affichage, la case de la réputation
+  a disparu ; à sa place une note dit que la réputation a sa propre page.
+- [ ] **Les « ? »** : survolez chacun. Celui de la case dit quelle case cocher dans le
+  panneau Réputation du jeu (avec le libellé de votre jeu) ; celui de « Barre
+  principale » explique l'inversion et cite « Masquer au niveau max » ; celui de
+  « Faction à suivre » explique le mode auto, le choix par personnage et la remise à zéro
+  du rythme.
+- [ ] **`/tpl` ouvre toujours la page principale** ; passer d'une page à l'autre ne
+  donne aucune erreur, et ce qui change ailleurs (par exemple `/tpl theme druid` tapé
+  avec la page Réputation ouverte) n'en casse rien.
+
+### La faction à suivre
+
+- [ ] **Auto par défaut** : « Faction à suivre » affiche « Suivie par le jeu (auto) » :
+  la bande suit la faction cochée dans le panneau Réputation du jeu, comme avant.
+- [ ] **La liste** : ouvrez la liste. Les factions du jeu y sont rangées par catégorie
+  (Classique, Alliance ou Horde, Inactives...), chacune avec son rang entre parenthèses.
+  Comparez avec le panneau Réputation du jeu : rien ne manque, surtout pas les factions
+  rangées sous une catégorie **repliée** dans le panneau.
+- [ ] **Le panneau du jeu n'a pas bougé** : après avoir ouvert la liste, ouvrez le
+  panneau Réputation du jeu (fenêtre du personnage) : les catégories que vous aviez
+  repliées le sont toujours, celles dépliées aussi. Refaites l'essai **avec le panneau
+  Réputation ouvert** pendant que vous ouvrez la liste (si l'interface le permet), puis
+  **en combat** : aucun message « action bloquée » (`ADDON_ACTION_BLOCKED`), aucune
+  erreur.
+- [ ] **Choisir une autre faction** : prenez-en une autre que celle cochée dans le jeu.
+  La bande passe aussitôt à cette faction (longueur, couleur), et la faction cochée
+  dans le jeu **reste cochée** (la barre de réputation du jeu, si vous l'affichez, ne
+  change pas).
+- [ ] **Par personnage** : reconnectez-vous (ou `/reload`) : le choix est gardé. Sur un
+  autre personnage, la page affiche « auto » (chaque personnage a le sien).
+- [ ] **Revenir au jeu** : reprenez « Suivie par le jeu (auto) » : la bande revient à la
+  faction cochée dans le jeu.
+- [ ] **Une faction jamais rencontrée** (si vous en trouvez une dans la liste sans
+  points) : la choisir ne donne pas d'erreur. Si la bande montre alors la faction du jeu
+  à la place, l'infobulle de la réputation doit le dire (« La faction choisie dans les
+  options n'a pas pu être lue... »). Notez ce que vous voyez : c'est un point que les
+  tests hors du jeu ne peuvent pas confirmer.
+- [ ] **Une faction choisie rangée sous une catégorie repliée** : choisissez une faction,
+  gagnez un peu de réputation avec elle, puis repliez sa catégorie dans le panneau
+  Réputation du jeu. Si la barre passe alors à la faction du jeu (l'infobulle le dit),
+  dépliez la catégorie : la faction choisie revient avec **sa réputation par heure et
+  son gain de la session intacts**. Notez si la barre a changé de faction au repliage :
+  c'est un point que les tests hors du jeu ne peuvent pas confirmer.
+- [ ] **Les sous-catégories** : dans la liste, une sous-catégorie (Alliance, Horde,
+  Forces de l'Alliance...) n'apparaît comme choix que si elle a sa propre barre de
+  réputation dans le panneau du jeu.
+
+### L'infobulle de la réputation (survol de la bande)
+
+- [ ] **Le survol** : passez la souris sur la fine bande sous la barre d'XP (la zone
+  entre la piste et les textes du bas). Une infobulle « **Réputation** » s'ouvre à la
+  place de l'infobulle générale : la faction en en-tête, la ligne « Amical · 1 200 /
+  6 000 (20,0 %) » de la couleur du rang, puis « encore 4 800 avant Honoré ». Dites si la
+  zone est **assez facile à viser** (elle fait quelques pixels de haut), dans plusieurs
+  thèmes (Futuriste, Druide, Pixel, Chaman, Classique).
+- [ ] **Sa place** : l'infobulle s'ouvre **au-dessus de la barre** (en dessous si la
+  barre est dans la moitié haute de l'écran), comme l'infobulle générale, **jamais
+  par-dessus la barre** (la piste et ses textes restent visibles). Même chose en mode
+  Réputation (survol de la grande barre) et pour la bande JcJ.
+- [ ] **Les 8 rangs** : sous « Rangs », de Haï à Exalté : ceux déjà atteints grisés
+  avec « atteint », le rang actuel marqué « » Amical » avec son pourcentage, et pour
+  chacun des suivants les points restants (« encore 16 800 »), puis le temps estimé dès
+  que le rythme est connu. Les seuils doivent correspondre au jeu (Neutre 0 → 3 000,
+  Amical 3 000 → 9 000, Honoré 9 000 → 21 000, Révéré 21 000 → 42 000, Exalté au-delà).
+  Pour un personnage féminin, les libellés du jeu au féminin (« Amicale »...) si votre
+  jeu les a.
+- [ ] **Exalté** : avec une faction Exaltée, la ligne du rang dit « rang maximal », il
+  n'y a pas de ligne « Rang suivant ». Si vous pouvez voir les points d'une faction tout
+  juste Exaltée, notez-les (le jeu compte-t-il jusqu'à 42 999 ou 43 000 ?).
+- [ ] **Clics et glisser** : sur la bande, un clic ouvre les statistiques, un clic
+  droit le menu de la barre, comme sur la barre elle-même ; barre déverrouillée, faire
+  glisser depuis la bande déplace la barre (et l'infobulle se ferme pendant ce temps).
+- [ ] **Thème Classique** (`/tpl theme actuel`) : la même infobulle, dans l'infobulle du
+  jeu.
+
+### La réputation par heure et le temps avant le rang suivant
+
+- [ ] **Au départ** : « Réputation par heure » dit « après votre premier gain » (grisé).
+- [ ] **Après quelques gains** (quêtes ou monstres qui donnent de la réputation pendant
+  une dizaine de minutes) : une valeur par heure, puis le temps avant le rang suivant.
+  Dites si les chiffres vous paraissent **réalistes** (comparez avec les gains affichés
+  dans le chat).
+- [ ] **Les pertes ne comptent pas** : une perte de réputation (tuer un monstre d'une
+  faction amie de celle-ci, par exemple) ne fait pas baisser la réputation par heure.
+- [ ] **Le gel** : restez 20 minutes de jeu sans gain de réputation (hors AFK) : la valeur
+  passe en grisé avec un `*` et une note explique pourquoi ; elle reprend à votre
+  prochain gain.
+- [ ] **Changer de faction** remet le rythme à zéro ; « Réinitialiser la réputation/h »
+  (page Réputation) aussi, sans toucher l'XP par heure. « Réinitialiser les taux/h »
+  (page principale, section Données) et `/tpl reset rate` remettent à zéro **tous** les
+  taux (XP, réputation, JcJ), et le message le dit.
+- [ ] **Les deux infos de la barre** : Options > Barre, choisissez « Réputation par
+  heure » puis « Temps avant le rang de réputation » dans un emplacement :
+  « Rép. 312/h », « Honoré : 2h 10m ». Au niveau maximum, elles se choisissent aussi
+  dans les infos du niveau max.
+
+### La réputation en barre principale
+
+- [ ] **Basculer** : page Réputation > « Barre principale » > **Réputation**. La grande
+  barre montre la réputation : à gauche la faction et son rang, à droite les points, le
+  repère de pourcentage au bout du remplissage, le remplissage **de la couleur du rang**.
+  La fine bande dessous montre maintenant **votre XP** (couleur d'XP du thème, ou la
+  vôtre). Rien ne se chevauche.
+- [ ] **Dans les 13 thèmes** : passez de thème en thème (`/tpl theme ...`) en mode
+  Réputation : la couleur du rang, les graduations ou segments du thème, la bande d'XP
+  dessous, sans erreur. Revenez sur « Expérience » : la barre redevient exactement
+  comme avant.
+- [ ] **Un changement de rang** pendant que l'infobulle est ouverte : la couleur change
+  sans fermer l'infobulle.
+- [ ] **Exalté** : remplissage plein et atténué, pas de points ni de repère.
+- [ ] **Niveau maximum** (ou un personnage au niveau max) : plus de bande d'XP. Avec
+  « Masquer au niveau max » coché, la barre **reste affichée** tant qu'elle montre une
+  réputation ; sans faction suivie, elle se masque comme avant.
+- [ ] **Sans faction suivie** (auto, rien coché dans le jeu) : la barre montre l'XP
+  comme d'habitude, même en mode Réputation.
+- [ ] **La case de la bande** : en mode Réputation, « Afficher la réputation suivie sous
+  la barre » est **grisée**, avec une note dessous (la bande montre alors l'XP) ; en
+  mode JcJ la case reste active et la note s'affiche aussi ; en mode Expérience, pas de
+  note.
+- [ ] **Le repère de pourcentage en Futuriste** : en mode Réputation (ou JcJ), il prend
+  une teinte claire de la couleur du remplissage (vert clair pour Amical), et non plus
+  le violet de l'XP.
+- [ ] **Réapparition au niveau max** : personnage au niveau max, mode Réputation,
+  « Masquer au niveau max » coché. Décochez la faction dans le jeu (la barre se masque),
+  puis décochez « Masquer au niveau max » : la barre revient avec **NIVEAU 60** aux
+  couleurs de l'XP, pas avec l'ancienne faction.
+
+### Pour aller plus loin (facultatif, `/etrace`)
+
+- [ ] Avec `/etrace` ouvert et filtré sur `FACTION`, gagnez de la réputation :
+  `UPDATE_FACTION` arrive après chaque gain ; notez ce que porte
+  `FACTION_STANDING_CHANGED` quand vous changez de rang. Ouvrez la liste « Faction à
+  suivre » : une rafale d'`UPDATE_FACTION` (dépliage, repliage), sans effet visible sur
+  la barre. Notez si la rafale arrive **pendant** l'ouverture de la liste (juste avant
+  ou au moment où elle s'affiche) ou **après** (une fraction de seconde plus tard) : les
+  deux cas sont prévus et sans effet visible, mais c'est ce que les tests hors du jeu ne
+  peuvent pas savoir.
+
+## À vérifier en premier : la réputation sous la barre, la barre en Classique, les deux infobulles, « Recharger maintenant », ville et intervalle
+
+**Quittez complètement le jeu et relancez-le d'abord** : cette version ajoute deux
+fichiers (`AutoReload.lua` et `Reputation.lua`), et un `/reload` ne charge pas les
+nouveaux fichiers. Cochez chaque point vérifié ; s'il ne se passe pas ce qui est écrit,
+notez ce que vous voyez (une capture d'écran aide).
+
+### La réputation suivie sous la barre (votre demande du 9 octobre)
+
+Votre demande : la réputation à suivre, au choix, quelque chose de discret sous la barre
+d'expérience. Par défaut, TruePlayed suit la faction que vous choisissez **dans le jeu**
+(ou celle choisie dans sa page Réputation, voir plus haut) et l'affiche en une fine bande
+de 3 pixels sous sa barre d'XP.
+
+- [ ] **Sans faction suivie** : rien ne change, la barre est exactement comme avant
+  (même hauteur, textes à la même place). Survolez-la : pas de ligne de réputation dans
+  l'infobulle.
+- [ ] **Choisir une faction** : ouvrez la fenêtre du personnage, onglet Réputation,
+  cliquez une faction (Hurlevent, Orgrimmar...) et cochez la case qui l'affiche comme
+  barre d'expérience (« Barre de réputation » sur un client français : c'est le libellé
+  du jeu). **La bande apparaît aussitôt** sous la barre d'XP de TruePlayed,
+  sans attendre un gain de réputation. Si elle ne vient qu'après un monstre tué ou une
+  quête rendue, notez-le : c'est le point que les tests hors du jeu ne peuvent pas
+  confirmer.
+- [ ] **L'aspect** : la bande est aussi large que la barre d'XP, juste en dessous, sans
+  toucher les textes du dessous (`NIVEAU 18`, le pourcentage, `XP : ...`). Elle se
+  remplit selon votre progression **dans le rang actuel**, sur un fond sombre discret.
+  Dites si elle vous paraît assez discrète, ou trop, et si 3 pixels de haut vous
+  conviennent.
+- [ ] **La couleur du rang** : rouge (Haï, Hostile), orange (Inamical), jaune
+  (Neutre), vert (Amical et au-dessus), les couleurs de la barre de réputation du jeu.
+  Une faction à Exalté donne une bande **pleine**.
+- [ ] **La bande avance** : gagnez un peu de réputation avec cette faction (une quête de
+  la faction, ou un monstre qui en donne) : la bande avance un peu, sans clignoter. Si
+  vous changez de rang, elle repart du début, à la couleur du nouveau rang.
+- [ ] **Changer de faction** : cochez la case pour une autre faction : la bande change
+  aussitôt (longueur et couleur). Décochez la case dans le jeu (plus aucune faction
+  suivie) : la bande disparaît et la barre revient exactement à son état d'avant.
+- [ ] **L'infobulle** : survolez la barre. Dans « Niveau en cours », juste après le bloc
+  XP, une ligne avec **le nom de la faction à gauche** et, à droite, le rang et vos
+  points, par exemple « Amical · 1 200 / 6 000 (20,0 %) » (à Exalté : « Exalté » seul).
+  Les chiffres doivent correspondre à ceux du panneau Réputation du jeu. Rien n'est
+  coupé ; seul un nom de faction très long pourrait être raccourci par « ... », jamais
+  les chiffres. Même chose en thème Classique (`/tpl theme actuel`), sur le bouton de la
+  minicarte et sur le mini-affichage (qui, lui, n'a pas de bande).
+- [ ] **L'option** : Options > TruePlayed > Réputation (elle était dans Affichage) :
+  « **Afficher la réputation suivie sous la barre** », cochée par défaut. Survolez son « ? » : la
+  bulle dit quelle case cocher dans le panneau Réputation (avec le libellé de votre jeu),
+  ce que montre la bande, et que le détail est dans l'infobulle. **Décochez-la** : la
+  bande et la ligne de l'infobulle disparaissent, la barre revient exactement à son état
+  d'avant. Recochez : elles reviennent aussitôt.
+- [ ] **Les thèmes** : changez de thème (`/tpl theme futuriste`, `druid`, `pixel`,
+  `heroic`, `priest`, `actuel`...) avec la bande affichée : elle suit chaque thème, sous
+  la piste, sans chevaucher les ornements du cadre ni les textes. Selon le thème la barre
+  grandit de 4 à 10 pixels, ou pas du tout (Chaman, où la bande tient dans l'espace sous
+  la piste). Le repère qui marque le bout de la progression d'XP (flèche, aiguille,
+  onglet) ne descend jamais sur la bande : en Pixel, Prêtre, Voleur, Démoniste et
+  Futuriste, la bande passe juste sous lui, d'où une barre un peu plus haute. Vérifiez-le
+  en particulier dans ces thèmes.
+- [ ] **Aucune erreur Lua** pendant tout cela (`/console scriptErrors 1`), y compris en
+  changeant de faction ou de thème plusieurs fois de suite.
+
+### La barre de répartition en thème Classique (votre retour du 9 octobre)
+
+Votre remarque : en thème Classique, la répartition n'avait que les valeurs, sans barre.
+Elle a maintenant sa barre, comme dans les autres thèmes. Passez en thème Classique
+(`/tpl theme actuel`) pour toute cette partie.
+
+- [ ] **Sans Maj** : survolez la barre d'XP. Dans « Niveau en cours », le libellé
+  « **Répartition du niveau** » est **seul à gauche de sa ligne**, et **à sa droite une
+  barre colorée** commence juste après lui (environ 8 pixels) et va **jusqu'au bord
+  droit du texte** de l'infobulle (là où finissent les valeurs des lignes du dessus).
+  Les parts (« Monde x % · AFK x % ... ») sont **sur la ligne d'en dessous** (et la
+  suivante s'il y en a beaucoup), **alignées à droite**, comme en Futuriste.
+- [ ] **La barre vient tout de suite** : elle apparaît en même temps que l'infobulle,
+  pas une seconde après. Survolez la barre d'XP une dizaine de fois de suite : jamais
+  d'infobulle d'abord sans barre, jamais de barre trop courte qui s'allonge ensuite.
+  C'est le point que les tests hors du jeu ne peuvent pas confirmer : s'il y a un
+  retard, notez-le.
+- [ ] **L'aspect** : la barre est centrée sur la ligne du libellé, sans déborder sur les
+  lignes voisines ; la plus grande part est à gauche ; un fin contour sombre l'entoure.
+  Les couleurs sont celles de la jauge du thème Futuriste (monde cyan, donjon violet,
+  AFK gris...) : dites si elles vous conviennent sur l'infobulle du jeu, ainsi que la
+  hauteur de la barre (6 pixels plus le contour) et le contour sombre.
+- [ ] **Maj enfoncée** : « Total du personnage » s'ouvre à droite avec **sa propre
+  barre**, à côté de « **Répartition totale** », jusqu'à son bord droit, les parts
+  dessous. **Les deux barres sont exactement à la même hauteur** : s'il y a un décalage,
+  notez de combien de pixels et laquelle est la plus haute (une capture d'écran aide).
+  Relâchez Maj : la barre de droite disparaît avec son infobulle, celle de gauche reste
+  à côté de son libellé. Appuyez et relâchez plusieurs fois : rien ne clignote.
+- [ ] **Aucune barre ne reste** : survolez la barre d'XP, puis passez **vite** la souris
+  sur un objet de votre sac, un bouton de vos barres d'action, un personnage, la
+  minicarte : la barre de répartition disparaît **tout de suite** et ne se dessine
+  jamais sur l'infobulle d'autre chose. Même chose avec Maj enfoncée, et en fermant
+  d'un clic le menu du compartiment d'addons après avoir survolé l'entrée TruePlayed.
+  Si une barre reste un instant (au plus une seconde) sur une autre infobulle, notez
+  laquelle et ce que vous avez survolé.
+- [ ] **Largeur** : l'infobulle d'objet que vous survolez ensuite a sa largeur normale.
+  La barre fait toujours au moins 80 pixels : si « Niveau en cours » est trop étroite
+  pour elle, l'infobulle s'élargit juste ce qu'il faut (cela devrait être rare : en
+  général le libellé et la barre tiennent dans la largeur des autres lignes).
+- [ ] **Infobulle mise à l'échelle** : si un addon change la taille des infobulles
+  (TipTac, ElvUI...), la barre suit (même hauteur que le libellé, jusqu'au bord droit),
+  avec Maj aussi. Sans un tel addon, simulez-le : tapez
+  `/run GameTooltip:SetScale(1.5)`, survolez la barre d'XP sans puis avec Maj : les
+  deux infobulles sont plus grandes, leurs barres aussi, toujours à leur place et à la
+  même hauteur. Tapez ensuite `/reload` pour revenir à la taille normale.
+- [ ] **Écran étroit** : `/run UIParent:SetScale(UIParent:GetScale() * 2)` (deux fois sur
+  un écran très large), puis survolez la barre d'XP avec Maj : les deux infobulles
+  empilées, chacune avec sa barre à côté de son libellé, rien qui déborde, aucune barre
+  sur l'autre infobulle. `/reload` pour revenir à l'échelle normale.
+- [ ] **Les autres affichages** : sur le bouton de la minicarte, le mini-affichage
+  (`/tpl mini`) et l'entrée du compartiment d'addons, la même barre. Un affichage Data
+  Broker (Titan Panel, ChocolateBar...), si vous en avez un, garde le texte seul : chaque
+  libellé et ses premières parts sur la même ligne, pas de barre.
+
+### Les deux infobulles côte à côte (touche Maj)
+
+- [ ] **Barre en haut de l'écran, sans Maj** : survolez la barre. Une seule infobulle,
+  « Niveau en cours », sous la barre, placée comme avant. Sa répartition s'appelle
+  maintenant « **Répartition du niveau** ».
+- [ ] **Maj enfoncée, thème Futuriste** (`/tpl theme futuriste`) : une **deuxième
+  infobulle**, « Total du personnage », s'ouvre **à droite** de la première, avec un petit
+  écart (environ 4 pixels). La première reste centrée sur la barre, à sa place, et gagne
+  le détail du rythme (XP/h). Chaque infobulle garde sa propre largeur.
+- [ ] **Les deux jauges face à face** : la jauge « Répartition du niveau » (à gauche) et
+  la jauge « **Répartition totale** » (à droite) sont **exactement à la même hauteur**.
+  La deuxième infobulle commence donc en général un peu plus bas que la première. S'il y
+  a un décalage, notez de combien de pixels et laquelle est la plus haute.
+- [ ] **Thème Classique** (`/tpl theme actuel`), Maj enfoncée : deux infobulles du jeu
+  côte à côte, et les lignes « Répartition du niveau » et « Répartition totale » (et
+  leurs barres, voir la partie précédente) **à la même hauteur**. C'est le point que les tests hors du jeu ne peuvent pas confirmer :
+  s'il y a un décalage, notez de combien de pixels et laquelle est la plus haute (une
+  capture d'écran aide). Relâchez et réappuyez Maj plusieurs fois : l'alignement est le
+  même à chaque fois. Ensuite, survolez un objet de votre sac : son infobulle a sa
+  largeur normale. Avec un addon qui change l'aspect des infobulles, la deuxième peut
+  garder l'aspect d'origine du jeu : notez-le seulement.
+- [ ] **Les libellés** : « Répartition du niveau » et « Répartition totale », avec leurs
+  accents, rien de coupé, en Futuriste, Classique, Pixel et un thème de classe. Un
+  libellé ne touche jamais sa jauge (ni sa barre en Classique).
+- [ ] **Thème Héroïque** (`/tpl theme heroic`, le seul sans jauge) : « Répartition du
+  niveau » (et, avec Maj, « Répartition totale ») est **seul sur sa ligne** ; les parts
+  (« Monde x % · ... ») sont sur les lignes en dessous, rien n'est coupé.
+- [ ] **Maj relâchée** : la deuxième disparaît, la première reste où elle est. Appuyez et
+  relâchez plusieurs fois : rien ne saute ni ne clignote.
+- [ ] **La ligne d'aide** (« Maj : détails · Clic : statistiques · Clic droit : menu ») est
+  en bas de « Niveau en cours » sans Maj, et en bas de « Total du personnage » (à droite)
+  avec Maj, plus du tout dans la première.
+- [ ] **Barre en bas de l'écran** (déplacez-la dans la moitié basse) : l'infobulle s'ouvre
+  au-dessus de la barre. Avec Maj, les deux sont côte à côte au-dessus de la barre, les
+  jauges toujours face à face : le bas de la plus basse (en général « Total du
+  personnage ») est juste au-dessus de la barre, si bien que « Niveau en cours » monte un
+  peu quand vous appuyez sur Maj.
+- [ ] **Barre au bord droit de l'écran** (déplacez-la tout à droite, puis survolez-la avec
+  Maj) : « Total du personnage » ne sort pas de l'écran. Les **deux infobulles se
+  décalent ensemble** vers la gauche, jamais une seule, sans se chevaucher, et les jauges
+  restent face à face. Même chose au bord gauche (elles se décalent ensemble vers la
+  droite).
+- [ ] **Pas de place dessous ou dessus** (avec Maj, thème Futuriste ou Pixel, barre à sa
+  place par défaut ou bouton de la minicarte en haut à droite) : c'est plus rare
+  maintenant qu'elles sont côte à côte, mais si les deux ne tiennent pas de leur côté de
+  la barre (ou du bouton), elles se décalent **ensemble** et recouvrent la barre (ou le
+  bouton), sans jamais se chevaucher, et rien ne sort de l'écran. Si l'ensemble est plus
+  haut que tout l'écran, « Niveau en cours » reste entière et seul le bas de « Total du
+  personnage » sort de l'écran.
+- [ ] **Petit écran ou grande échelle d'interface** : quand les deux ne tiennent pas côte à
+  côte en largeur, « Total du personnage » passe **sous** « Niveau en cours », les deux
+  **de la même largeur**, 4 pixels d'écart, « Niveau en cours » en haut (au-dessus de la
+  barre, l'ensemble monte et « Niveau en cours » reste en haut). Pour l'essayer sur un
+  grand écran, doublez l'échelle de l'interface avec
+  `/run UIParent:SetScale(UIParent:GetScale() * 2)` (si elles restent côte à côte, sur
+  un écran très large, tapez la commande une deuxième fois), puis survolez la barre avec
+  Maj. À cette échelle, l'ensemble peut être plus haut que l'écran : « Niveau en cours »
+  reste alors entière en haut et seul le bas de « Total du personnage » sort de l'écran.
+  Tapez ensuite `/reload` pour revenir à l'échelle normale : les deux infobulles
+  reviennent côte à côte. Faites-le aussi en thème Classique : les deux infobulles du jeu
+  empilées ont exactement la même largeur (s'il y a un écart, notez de combien de pixels
+  et laquelle est la plus large). Et sur votre petit écran (celui de la capture où « Total du
+  personnage » était coupé en bas) : notez si elles sont côte à côte ou empilées, et si
+  quelque chose sort de l'écran.
+- [ ] **Maj tenue une dizaine de secondes** : les chiffres des deux infobulles se mettent à
+  jour chaque seconde, sans que rien ne bouge (ni les infobulles, ni l'alignement des
+  jauges).
+- [ ] **Quittez le survol** en gardant Maj : les deux infobulles disparaissent ensemble.
+- [ ] **Changement de thème pendant le survol** : le clic droit cache l'infobulle avant
+  d'ouvrir le menu, le changement se fait donc avec un délai. Tapez
+  `/run C_Timer.After(5, function() SlashCmdList.TRUEPLAYED("theme heroic") end)`, puis
+  dans les 5 secondes survolez la barre en gardant Maj enfoncée : quand le thème change,
+  les deux infobulles disparaissent ensemble, aucune ne reste à l'écran. Repassez ensuite
+  au thème de votre choix (`/tpl theme futuriste` par exemple).
+- [ ] **Même chose ailleurs** : sur le bouton de la minicarte, sur le mini-affichage
+  (`/tpl mini`) et sur l'entrée TruePlayed du compartiment d'addons (le bouton des addons
+  près de la minicarte) : deux infobulles côte à côte avec Maj, jauges face à face, la
+  ligne d'aide en bas de « Total du personnage ». Près du bord droit de l'écran (le bouton
+  de la minicarte), elles se décalent ensemble vers la gauche. En thème Classique, après
+  avoir survolé l'entrée du compartiment d'addons avec Maj puis fermé ce menu d'un clic,
+  survolez aussitôt un bouton de vos barres d'action : son infobulle a sa largeur
+  normale.
+- [ ] **Un affichage Data Broker** (Titan Panel, ChocolateBar, Bazooka...), si vous en avez
+  un : son infobulle TruePlayed reste **une seule** infobulle ; avec Maj enfoncée au
+  moment du survol, « Total du personnage » vient sous « Niveau en cours », dans la même
+  infobulle, avec « Répartition du niveau » puis « Répartition totale ».
+
+### Le bouton « Recharger maintenant » sur Forever
+
+Sur WoW Forever, un addon ne peut recharger l'interface qu'après un clic du joueur :
+TruePlayed ne recharge jamais tout seul, il le demande avec une petite fenêtre. Pour la
+faire venir vite : Options > « Rechargement automatique », cochez « Recharger aussi à
+intervalle régulier », mettez l'intervalle à 10 min, puis jouez 10 minutes dans le monde,
+**hors des capitales et des auberges** (si « Recharger en capitale ou à l'auberge » est
+cochée aussi, l'intervalle ne demande jamais en ville : voir ci-dessous).
+
+- [ ] La fenêtre « TruePlayed » apparaît en haut de l'écran. Un clic sur **« Recharger
+  maintenant » recharge l'interface**, sans message rouge « Interface action failed
+  because of an AddOn » ni fenêtre « TruePlayed a été bloqué ».
+- [ ] **Juste après un gain d'XP hors combat** (rendez une quête ou découvrez un lieu),
+  fenêtre affichée : « Recharger maintenant » reste **grisé une ou deux secondes**, ne
+  s'éclaire pas au survol, et un clic ne fait rien ; puis il redevient normal et recharge
+  au clic. Si cette quête vous fait monter de niveau, il reste grisé environ 40 secondes.
+- [ ] **Engagez un combat** (un monstre à tuer), fenêtre affichée : elle disparaît dès le
+  début du combat et revient quelques secondes après la fin, bouton **actif** (environ
+  40 secondes après la fin si le monstre vous a fait monter de niveau) : elle attend que
+  le gain d'XP du combat soit lu pour revenir, le bouton grisé ne se voit donc pas ici.
+- [ ] Si un clic sur « Recharger maintenant » non grisé ne recharge pas, le chat doit
+  dire, au plus 5 secondes après, « Pas de rechargement depuis ce bouton pour
+  l'instant : tapez /reload. » Cela ne devrait pas arriver : notez-le si vous le voyez.
+- [ ] Le bouton « Recharger l'interface » des options (Options > Affichage, sous
+  « Langue ») recharge toujours au clic.
+- [ ] Pour finir, décochez la case (réglage par défaut), surtout avant la partie sur le
+  plantage simulé plus bas.
+
+### En ville après 60 minutes, l'intervalle hors des villes (vos retours du 9 octobre)
+
+Deux changements demandés après votre premier essai : la ville (ou l'auberge) attend
+maintenant **60 minutes** de jeu non enregistrées au lieu de 10, et quand les deux cases
+sont cochées, l'intervalle **laisse les capitales et les auberges** à la case ville (plus
+de doublon). Détail des étapes dans la partie suivante (points 2, 3 et 6) ; l'essentiel :
+
+- [ ] **Bulles** : le « ? » de la case ville dit « après 60 minutes de jeu non
+  enregistrées » ; celui de la case intervalle a une ligne de plus : « Si la case
+  « Recharger en capitale ou à l'auberge » est cochée aussi, l'intervalle lui laisse les
+  capitales et les auberges et n'agit qu'ailleurs. »
+- [ ] **Case ville seule** : 15 à 20 minutes après le dernier chargement, sortez au moins
+  10 secondes puis entrez en ville et restez-y immobile une minute : **rien ne vient**.
+  Après 60 minutes de jeu depuis le dernier chargement, la fenêtre vient en ville comme
+  avant (point 3).
+- [ ] **Les deux cases, intervalle à 10 min** : faites un `/reload` en ville et restez-y
+  plus de 10 minutes : **rien ne vient en ville**. Sortez dans le monde : la fenêtre
+  demande quelques secondes après. Rentrez en ville sans répondre : elle **disparaît**
+  aussitôt ; ressortez : elle revient quelques secondes après (point 6).
+
+## Rechargement automatique (nouvelle option) et bouton « Recharger l'interface »
+
+**Cette partie ajoute un fichier (`AutoReload.lua`) : quittez complètement le jeu et
+relancez-le** (un `/reload` ne charge pas les nouveaux fichiers). Cela vaut pour toute
+cette version, parties suivantes comprises.
+
+Sur WoW Forever, le jeu n'accepte un rechargement demandé par un addon qu'après un clic :
+TruePlayed ne recharge donc **jamais tout seul**, il demande toujours avec une petite
+fenêtre, dont le bouton « Recharger maintenant » recharge à votre clic. Le décompte de
+5 secondes dans le chat (« bougez pour annuler ») ne concerne que les autres clients
+(Classic Era, retail) : vous ne le verrez pas sur Forever.
+
+1. **Le bouton « Recharger l'interface »** (Options > Affichage, sous « Langue ») : un
+   clic recharge l'interface. Aucune fenêtre « TruePlayed a été bloqué » ni message rouge
+   « Interface action failed because of an AddOn ».
+2. **Les options** : Options > « Rechargement automatique », juste après « Calcul » et
+   avant « Villes » : deux cases décochées par défaut, chacune suivie d'un petit « ? »
+   cerclé (le même que dans `/tpl stats`), puis le curseur « Intervalle de rechargement »
+   (30 min), grisé tant que « Recharger aussi à intervalle régulier » est décochée.
+   Survolez chaque « ? » : une bulle avec le nom de l'option en blanc puis les explications
+   en doré ; le « ? » prend la couleur d'accent du thème. Case ville : « Pourquoi : … »,
+   « Comment : … », puis la ligne « Sur ce client du jeu, un addon ne peut recharger
+   l'interface qu'après votre clic : TruePlayed vous le demande donc avec un bouton. ».
+   Case intervalle : « Comment : … », puis « Si la case « Recharger en capitale ou à
+   l'auberge » est cochée aussi, l'intervalle lui laisse les capitales et les auberges et
+   n'agit qu'ailleurs. », puis la même ligne du clic (pas de « Pourquoi », c'est voulu).
+   Sur Forever, le « comment » de la case ville dit « après 60 minutes de jeu non
+   enregistrées » et qu'« une petite fenêtre propose de recharger », et ne parle **ni**
+   d'avertissement dans le chat **ni** de mouvement qui annule. Celui de la case
+   intervalle dit qu'une petite fenêtre propose de recharger en ville (« même sans en être
+   sorti ») **comme partout ailleurs**, et que « rien ne se recharge sans votre clic » : il
+   ne dit plus que la ville recharge d'elle-même.
+   Rien ne déborde, en français et en anglais, et le « ? » suit le thème quand vous en
+   changez.
+3. **En ville (comptez une heure)** : cochez « Recharger en capitale ou à l'auberge » et
+   décochez « Recharger aussi à intervalle régulier ».
+   - **Avant 60 minutes** : 15 à 20 minutes après le dernier chargement, sortez dans le
+     monde au moins 10 secondes, entrez dans une capitale et restez-y immobile une
+     minute : **rien ne vient** (on peut rester longtemps en ville sans rien faire).
+   - **Après 60 minutes** de jeu depuis le dernier chargement, entrez dans une capitale
+     (ou une auberge) en venant du monde et restez immobile 10 secondes, hors combat, sans
+     fenêtre ouverte. Une petite fenêtre « TruePlayed » apparaît en haut de l'écran, aux
+     couleurs du thème : « Temps de jeu pas encore enregistré : 1 h … », boutons
+     « Recharger maintenant » et « Plus tard ».
+   - Pour voir qu'elle attend : entrez en ville et, dans les 10 secondes, ouvrez Échap >
+     Options ; restez-y 30 secondes : rien ne vient ; fermez : elle arrive quelques
+     secondes après. Elle attend de même tant qu'une fenêtre du jeu est ouverte
+     (personnage, sorts, marchand, banque, courrier…), pendant une saisie dans le chat, un
+     sort en cours ou un craft à l'hôtel des ventes (le temps de métiers n'est pas « en
+     ville ») ; « Plus tard » (ci-dessous) donne une nouvelle occasion 10 minutes après.
+   - « Plus tard » la ferme ; elle revient 10 minutes après si vous êtes toujours en
+     ville, immobile.
+   - Le survol de « Recharger maintenant » l'éclaire ; un clic recharge l'interface, sans
+     message d'erreur ni fenêtre de blocage. Après le chargement, la session continue (même
+     temps de session) et aucune nouvelle ligne /played n'apparaît dans le chat.
+   - Si jamais un clic ne recharge pas, le chat dit de taper `/reload`, au plus
+     5 secondes après (cela ne devrait pas arriver : notez-le).
+   - Facultatif (long) : restez ensuite en ville plus d'une heure (AFK compris) : la
+     fenêtre ne revient pas tant que vous n'êtes pas ressorti au moins 10 secondes.
+4. **Combat** : la fenêtre affichée (le plus simple : celle de l'intervalle dans le monde,
+   point 5), engagez un monstre. Elle disparaît dès le début du combat et revient quelques
+   secondes après la fin ; elle n'apparaît jamais en combat.
+5. **Intervalle** : cochez « Recharger aussi à intervalle régulier », mettez l'intervalle
+   à 10 min et décochez l'option de ville. Dans le monde, 10 minutes après le dernier
+   chargement, la fenêtre demande. En donjon, en vol ou mort, elle attend que vous en
+   sortiez ; pendant une cueillette, un minage ou un dépeçage aussi (même dans un donjon,
+   elle ne vient jamais). Elle ne vient pas non plus pendant une invitation ou une
+   proposition. Le texte de la bulle du « ? » suit l'intervalle choisi. Case ville décochée, l'intervalle demande aussi **en ville**
+   (même sans en être sorti), comme avant.
+   - **Fenêtre déjà affichée** : entrez dans un donjon (ou prenez un vol, ou mourez) sans
+     répondre : elle disparaît aussitôt, et revient quelques secondes après votre sortie.
+   - Toujours affichée dans le monde, gagnez de l'XP **hors combat** (rendez une quête,
+     découvrez un lieu) : la fenêtre **reste**, mais « Recharger maintenant » se grise une
+     ou deux secondes (il ne s'éclaire plus au survol et un clic ne fait rien), puis
+     redevient normal. Si la quête vous fait monter de niveau, il reste grisé environ
+     40 secondes.
+   - Toujours affichée, tuez un monstre : le combat la cache (point 4) ; elle revient
+     quelques secondes après, bouton actif (environ 40 secondes après si vous avez pris
+     un niveau).
+6. **Les deux cases cochées** (intervalle à 10 min) : l'intervalle laisse les capitales et
+   les auberges à la case ville, pour ne pas faire doublon.
+   - Faites un `/reload` dans une capitale et restez-y plus de 10 minutes : **rien ne
+     vient en ville**.
+   - Sortez dans le monde : la fenêtre demande quelques secondes après. Rentrez en ville
+     sans répondre : elle **disparaît** aussitôt (et ne revient pas tant que vous y
+     restez) ; ressortez : elle revient quelques secondes après. Pareil en entrant dans
+     une auberge.
+   - « Plus tard » dans le monde, puis rentrez en ville : même après 10 minutes, rien en
+     ville ; elle redemande une fois ressorti.
+   - Décochez la case ville en restant en ville, puis fermez les options : la fenêtre
+     demande quelques secondes après, en ville (l'intervalle y agit de nouveau).
+     Recochez-la, fenêtre affichée : elle disparaît dans la seconde.
+   - La case ville garde sa propre règle. Pour que la fenêtre de l'intervalle ne brouille
+     pas ce contrôle (affichée dehors, elle resterait en entrant en ville ; un « Plus
+     tard » repousserait aussi la case ville, et « Recharger maintenant » remettrait
+     l'heure à zéro), mettez d'abord l'intervalle à 120 min (le maximum : il n'est alors
+     dû qu'après l'heure de la case ville), puis faites un `/reload`. Après 60 minutes de
+     jeu depuis ce chargement, en revenant du monde, la fenêtre vient en ville (point 3).
+7. **Aucun effet de bord** : après quelques rechargements par la fenêtre, pas d'erreur Lua,
+   pas de fenêtre « TruePlayed a été bloqué » (qui proposerait de désactiver l'addon), et
+   les réglages des autres addons et du jeu sont toujours là.
+8. Avec WTFix qui protège encore TruePlayed (le message du chat au chargement), la fenêtre
+   ne vient jamais : c'est voulu (un rechargement remettrait d'anciennes données).
+9. **Pour finir, décochez les deux cases** (réglage par défaut) : la partie suivante simule
+   un plantage, et un rechargement en cours de route le fausserait.
+
+## Temps reconstitué après un plantage : exclusions, habitudes récentes, avertissement
+
+Avec la partie ci-dessus, relancez le jeu une fois (nouveau fichier) ; ensuite un
+`/reload` suffit pour ces vérifications.
+
+1. **Le cas signalé, sur vos données actuelles** : excluez l'AFK (`/tpl afk`) et survolez
+   la barre. Sous « Ce niveau », la ligne « dont reconstitué après un plantage : … » ne
+   dépasse **jamais** « Ce niveau » (avant : « Ce niveau 1 h 21 min » puis « dont
+   reconstitué… : 1 h 46 min »). Ce temps ayant été reconstitué par l'ancienne version,
+   sa part AFK est estimée d'après la part d'AFK du niveau. Même règle avec Maj sous
+   « Temps de jeu », dans `/tpl played`, et dans l'onglet Niveaux de `/tpl stats` (le `~`
+   devant le temps et la ligne « Dont reconstitué… » de la bulle de la ligne). Réactivez
+   l'AFK (`/tpl afk`) : la ligne revient à sa valeur complète.
+2. **L'avertissement** : sous la répartition du niveau, une ligne grisée « NN %
+   reconstitué après un plantage : répartition estimée » apparaît quand plus de la moitié
+   du temps de ce niveau a été reconstitué (c'est sans doute le cas du niveau où vous
+   avez vu une répartition identique à celle du personnage). Avec Maj, la même ligne sous
+   la répartition du personnage, seulement si plus de la moitié de **tout** son temps est
+   reconstituée (rare). Elle revient à la ligne proprement, en français et en anglais,
+   dans plusieurs thèmes.
+3. **Un plantage simulé** : vérifiez que les deux cases du rechargement automatique sont
+   décochées (sinon répondez « Plus tard » à sa fenêtre : un rechargement sauvegarderait
+   la session et il n'y aurait presque plus rien à reconstituer). Faites un `/reload`
+   (sauvegarde), jouez une vingtaine de minutes dans le monde dont une dizaine AFK
+   (`/afk`), puis quittez le jeu de force (Moniteur d'activité, « Forcer à quitter »).
+   Relancez et attendez 10 secondes : le chat annonce le temps récupéré. Dans
+   l'infobulle :
+   - « dont reconstitué après un plantage » sous « Ce niveau » ; avec l'AFK exclu, elle
+     perd exactement sa part AFK (environ la part AFK de vos derniers niveaux) ;
+   - la répartition du niveau ressemble à celle de **vos derniers niveaux** (le niveau en
+     cours et les 5 d'avant), et non plus à celle de tout le personnage : un passé
+     lointain en ville ou en auberge ne donne plus de part de ville ou d'auberge si vos
+     derniers niveaux n'en ont pas. Un niveau surtout reconstitué par l'ancienne version
+     (celui où vous aviez vu la répartition du personnage) ne compte plus comme
+     habitude ;
+   - si le temps reconstitué fait plus de la moitié du niveau, la ligne grisée du point 2.
+4. Le temps reconstitué **avant** cette version garde sa répartition (on ne peut pas la
+   refaire) ; seules la ligne « dont reconstitué » (avec exclusions) et l'avertissement
+   changent pour lui.
+
+## Infobulle en deux parties : « Niveau en cours » et « Total du personnage »
+
+Le contenu de chaque partie ; leur affichage en deux infobulles côte à côte est dans la
+liste en tête de fiche.
+
+1. **Survol simple** de la barre : un titre « Niveau en cours » sous le nom, puis
+   uniquement le niveau : XP, repos, temps restant, monstres à tuer, XP/h, session,
+   « Ce niveau », « Zone : … » (le temps passé dans cette zone **pendant ce niveau**,
+   jamais plus que « Ce niveau », même juste après une réponse /played du serveur) et la
+   **répartition de ce niveau**, « Répartition du niveau » (sa jauge avec les thèmes à
+   jauge). Plus de « Temps de
+   jeu », d'« En instance », de /played du serveur ni de « Moyenne des 5 derniers ».
+2. **Passez un niveau** : juste après, « Ce niveau », la ligne « Zone » et la
+   répartition au survol repartent de zéro (quelques secondes, « Monde 100 % » par
+   exemple), alors que la répartition de Maj (Total du personnage) garde tout
+   l'historique.
+3. **Maj enfoncée** : l'infobulle « Niveau en cours » reste à sa place (avec le détail du
+   rythme XP/h), et une **deuxième infobulle** s'ouvre à sa droite (placement et
+   alignement : voir la liste en tête de fiche), titrée « **Total du personnage** » :
+   temps de jeu (avec vos exclusions), « En instance », « Zone : … » (tout le temps du
+   personnage dans cette zone), /played du serveur, moyenne des 5 derniers niveaux, la
+   **répartition du personnage**, « Répartition totale » (sa propre jauge, face à celle
+   du niveau), puis zones, continents, capitales, temps et morts comme avant.
+4. Les deux titres se distinguent bien du reste dans chaque thème (Futuriste, Classique,
+   Héroïque, Pixel et un thème de classe), sans rien de coupé, en français et en anglais.
+5. Au niveau maximum (ou au plafond de la bêta), « Niveau en cours » montre la ligne du
+   niveau maximum et le temps passé à ce niveau.
+
 ## Retours du 7 octobre : aide des colonnes, instances, « Other »
 
 Cette partie **ajoute un fichier** (l'icône `Media/Themes/common/help.tga`) : quittez et
@@ -41,9 +1046,9 @@ partie A est déjà installée (sinon, quittez et relancez le jeu pour `Activity
 
 ### L'infobulle
 
-1. Survolez la barre : la ligne « Répartition » liste les parts **de la plus grande à la
-   plus petite** (par exemple « Monde 62 % · AFK 20 % · Ville 10 % · ... »), et la jauge
-   des thèmes qui en ont une est dans le même ordre.
+1. Survolez la barre : la ligne « Répartition du niveau » liste les parts **de la plus
+   grande à la plus petite** (par exemple « Monde 62 % · AFK 20 % · Ville 10 % · ... »),
+   et la jauge des thèmes qui en ont une est dans le même ordre.
 2. L'infobulle courte ne montre plus « Moyenne par niveau » ; « Moyenne des 5 derniers
    niveaux » reste dès qu'il y a assez de niveaux.
 3. Maj enfoncée : « Zones principales » liste vos **3 zones les plus jouées sur tout le
@@ -120,8 +1125,8 @@ suivra) : on vérifie surtout que les chiffres sont justes.
    deux minutes, si possible en traversant une autre zone), puis ressuscitez. Recommencez
    une deuxième fois, en ressuscitant cette fois auprès d'un guide spirituel ou par un
    sort de résurrection si vous en avez l'occasion.
-3. Survolez la barre : la ligne « Répartition » contient « Mort x % » (avec sa propre
-   couleur dans la jauge des thèmes qui en ont une).
+3. Survolez la barre : la ligne « Répartition du niveau » contient « Mort x % » (avec sa
+   propre couleur dans la jauge des thèmes qui en ont une).
 4. Maj : la ligne « Morts » donne le nombre et le temps sur une seule ligne, par exemple
    « Morts 2 (6 min) ». Le temps doit correspondre à ce que vous avez chronométré (de la
    mort jusqu'au retour à la vie, course du fantôme comprise).
@@ -559,8 +1564,9 @@ Sur votre druide (barre en haut de l'écran, trois exclusions activées) :
   affiche `Reposé : 11 600 XP (50 %)`. Une fois le repos consommé, la barre redevient
   violette.
 - **Le temps en instance** : faites un donjon (par exemple les Cavernes des lamentations)
-  ou un champ de bataille. Dans l'infobulle : une ligne `En instance`, et « Répartition »
-  cite `Donjons` (ou `JcJ`). Maj enfoncée : `Donjons | 45 min (dont AFK 2 min)`. Dans
+  ou un champ de bataille. Au survol, « Répartition du niveau » cite `Donjons` (ou `JcJ`).
+  Maj enfoncée, dans « Total du personnage » : une ligne `En instance`, « Répartition
+  totale » cite aussi `Donjons`, et `Donjons | 45 min (dont AFK 2 min)`. Dans
   `/tpl stats zones`, un bloc « Instances les plus jouées » avec `(donjon)`, `(raid)` ou
   `(JcJ)` après le nom ; dans l'onglet Niveaux et l'onglet Sessions, une colonne `Inst.`.
   Le temps passé en instance **avant** cette mise à jour reste compté comme « Monde » :

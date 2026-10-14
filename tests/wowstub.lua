@@ -33,6 +33,24 @@
 --   to r g b a), _gradA (SetGradientAlpha arguments). _vSeq / _gSeq / _gaSeq order the
 --   colour calls of a texture (the last of SetVertexColor / SetGradient /
 --   SetGradientAlpha is what the game draws).
+--   Automatic reload (AutoReload.lua): Stub.busy (reset by every Reset: casting, channel,
+--   keyFocus, popup, panels[area], cinematic, cursor, targeting, combat, lockdown) behind
+--   UnitAffectingCombat (also true with Stub.combat), InCombatLockdown (busy.lockdown: the
+--   lockdown alone, e.g. a pet's fight), UnitCastingInfo, UnitChannelInfo,
+--   GetCurrentKeyBoardFocus, StaticPopup_IsAnyDialogShown, GetUIPanel, InCinematic,
+--   CursorHasItem and SpellIsTargeting; IsPlayerMoving (Stub.player.moving); MovieFrame,
+--   ReadyCheckFrame and the game's menu and options (SettingsPanel, GameMenuFrame,
+--   KeyBindingFrame, InterfaceOptionsFrame: hidden named frames, never shown by the
+--   stub's Settings; tests show them).
+--   The tooltip pair (Tooltip.lua): the GameTooltipTemplate (in Stub.templates by
+--   default); a GameTooltip's Show sizes it from its lines (6 px a character) and its
+--   SetMinimumWidth (GetMinimumWidth reads it back); a named one's Show also lays out
+--   its lines' left texts as the client does ("<name>TextLeft<i>" globals: 8 px of top
+--   padding, 14 px a line) and the right texts of its double lines ("<name>TextRight<i>",
+--   right-aligned 10 px in), made by the stub (not counted in Stub.created). Geometry: a
+--   frame clamped to the screen (SetClampedToScreen; every GameTooltip is) has its rect
+--   plus its SetClampRectInsets moved inside UIParent by GetRect and the other getters,
+--   and the frames anchored to it follow (the game's behaviour).
 local Stub = {}
 
 local unpack = unpack or table.unpack
@@ -62,12 +80,12 @@ end
 
 Stub.FILES = {   -- SPEC-themes 5.1 load order (fallback when the TOC is missing)
   "Locales/enUS.lua", "Locales/frFR.lua", "Core.lua", "Format.lua", "Stats.lua",
-  "Tracker.lua", "Played.lua", "Tokens.lua", "Themes.lua", "Themes/actuel.lua",
+  "Tracker.lua", "Pvp.lua", "Played.lua", "AutoReload.lua", "Tokens.lua", "Themes.lua", "Themes/actuel.lua",
   "Themes/futuriste.lua", "Themes/heroic.lua", "Themes/pixel.lua", "Themes/warrior.lua",
   "Themes/paladin.lua", "Themes/hunter.lua", "Themes/rogue.lua", "Themes/priest.lua",
   "Themes/shaman.lua", "Themes/mage.lua", "Themes/warlock.lua", "Themes/druid.lua",
   "Graph.lua", "TooltipFrame.lua", "Tooltip.lua", "BarSkin.lua", "Bar.lua", "Window.lua",
-  "Options.lua", "Broker.lua",
+  "Options.lua", "PvpOptions.lua", "Broker.lua",
 }
 
 Stub.SECRET = setmetatable({}, { __tostring = function() return "<secret>" end })
@@ -427,7 +445,20 @@ local function Rect(o, depth)
   local ax, ay = rl + rw * ra[1] + p.x, rb + rh * ra[2] + p.y
   local w, h = o:GetWidth(), o:GetHeight()
   local an = ANCHOR[p.point] or ANCHOR.CENTER
-  return ax - w * an[1], ay - h * an[2], w, h
+  local l, b = ax - w * an[1], ay - h * an[2]
+  if o._clamped then
+    -- SetClampedToScreen: the clamp rect (the frame's rect plus SetClampRectInsets) is
+    -- moved inside the screen, and the frames anchored to this one follow it; a clamp
+    -- rect larger than the screen keeps its left and top edges on it (a stub choice)
+    local sw, sh = UIParentObj._width, UIParentObj._height
+    local cl, cr = l + (o._clampL or 0), l + w + (o._clampR or 0)
+    local cb, ct = b + (o._clampB or 0), b + h + (o._clampT or 0)
+    if cr > sw then l, cl = l - (cr - sw), cl - (cr - sw) end
+    if cl < 0 then l = l - cl end
+    if cb < 0 then b, ct = b - cb, ct - cb end
+    if ct > sh then b = b - (ct - sh) end
+  end
+  return l, b, w, h
 end
 
 function Methods:GetRect() return Rect(self) end
@@ -477,6 +508,12 @@ function Methods:RegisterForDrag(...) self._drag = { ... } end
 function Methods:RegisterForClicks(...) self._clicks = { ... } end
 function Methods:SetClampedToScreen(v) self._clamped = v and true or false end
 function Methods:IsClampedToScreen() return self._clamped == true end
+function Methods:SetClampRectInsets(l, r, t, b)
+  self._clampL, self._clampR, self._clampT, self._clampB = l or 0, r or 0, t or 0, b or 0
+end
+function Methods:GetClampRectInsets()
+  return self._clampL or 0, self._clampR or 0, self._clampT or 0, self._clampB or 0
+end
 function Methods:StartMoving() self._moving = true end
 function Methods:StopMovingOrSizing() self._moving = false end
 function Methods:SetFrameStrata(s) self._strata = s end
@@ -709,10 +746,71 @@ function TooltipMethods:Hide()
   Methods.Hide(self)
   self._owner = nil
 end
+-- Show sizes the tooltip like the game, roughly: 6 px a character, 40 px between the two
+-- texts of a double line, 10 px of padding each side, 14 px a line (+ 16), and at least
+-- the SetMinimumWidth width (kept until set again, as the stub does not know when the
+-- game resets it).
+-- The left text of line i of named GameTooltip `tt` ("<name>TextLeft<i>", a global as in
+-- the game), or its right text when `right` ("<name>TextRight<i>"): made by the stub like
+-- the client's own lines, so neither Stub.created nor Stub.regions counts it; the left
+-- text's TOPLEFT 10 px in, the right text's TOPRIGHT 10 px in from the right edge (right-
+-- aligned, as the client lays out a double line), 8 + 14 * (i - 1) px down.
+local function TooltipLineText(tt, i, right)
+  local name = tt._name .. (right and "TextRight" or "TextLeft") .. i
+  local fs = rawget(_G, name)
+  if fs == nil or fs._parent ~= tt then
+    local created, regions = Stub.created, Stub.regions
+    Stub.created, Stub.regions = nil, nil
+    fs = NewObject("FontString", name, tt)
+    Stub.created, Stub.regions = created, regions
+    if right then
+      fs:SetPoint("TOPRIGHT", tt, "TOPRIGHT", -10, -(8 + 14 * (i - 1)))
+    else
+      fs:SetPoint("TOPLEFT", tt, "TOPLEFT", 10, -(8 + 14 * (i - 1)))
+    end
+  end
+  return fs
+end
+
+function TooltipMethods:Show()
+  local lines, w = self._lines, 0
+  for i = 1, #lines do
+    local l = lines[i]
+    local lw = 6 * VisibleLength(l[1])
+    if l[2] ~= nil then lw = lw + 40 + 6 * VisibleLength(l[2]) end
+    if lw > w then w = lw end
+  end
+  w = w + 20
+  local min = rawget(self, "_minWidth") or 0
+  if w < min then w = min end
+  self._width, self._height = w, 14 * #lines + 16
+  if self._name then
+    for i = 1, #lines do
+      local fs = TooltipLineText(self, i)
+      fs._text, fs._width, fs._height, fs._shown = lines[i][1], 6 * VisibleLength(lines[i][1]), 14, true
+      local r = lines[i][2]
+      if r ~= nil then
+        local rs = TooltipLineText(self, i, true)
+        rs._text, rs._width, rs._height, rs._shown = r, 6 * VisibleLength(r), 14, true
+      elseif rawget(_G, self._name .. "TextRight" .. i) ~= nil then
+        TooltipLineText(self, i, true)._shown = false
+      end
+    end
+    for i = #lines + 1, rawget(self, "_nLineTexts") or 0 do
+      TooltipLineText(self, i)._shown = false
+      if rawget(_G, self._name .. "TextRight" .. i) ~= nil then TooltipLineText(self, i, true)._shown = false end
+    end
+    self._nLineTexts = #lines
+  end
+  Methods.Show(self)
+end
+function TooltipMethods:SetMinimumWidth(w) self._minWidth = w end
+function TooltipMethods:GetMinimumWidth() return rawget(self, "_minWidth") or 0 end
 
 local function InitTooltip(tt)
   tt._lines, tt._colors = {}, {}
   tt._shown = false
+  tt._clamped = true                     -- the game's tooltip templates are clamped to the screen
   for k, fn in pairs(TooltipMethods) do rawset(tt, k, fn) end
 end
 
@@ -942,7 +1040,26 @@ function API.GetAddOnMemoryUsage() return Stub.memKB end
 function API.UpdateAddOnCPUUsage() Count("UpdateAddOnCPUUsage") end
 function API.GetAddOnCPUUsage() return Stub.cpuMS end
 function API.debugprofilestop() return clock.g * 1000 end
-function API.InCombatLockdown() return Stub.combat == true end
+function API.InCombatLockdown() return Stub.combat == true or Stub.busy.lockdown == true end
+-- automatic reload: is the player busy (Stub.busy, Stub.player.moving)
+function API.UnitAffectingCombat(unit)
+  return unit == "player" and (Stub.combat == true or Stub.busy.combat == true)
+end
+function API.UnitCastingInfo(unit)
+  if unit ~= "player" then return nil end
+  return Stub.busy.casting
+end
+function API.UnitChannelInfo(unit)
+  if unit ~= "player" then return nil end
+  return Stub.busy.channel
+end
+function API.GetCurrentKeyBoardFocus() return Stub.busy.keyFocus end
+function API.StaticPopup_IsAnyDialogShown() return Stub.busy.popup == true end
+function API.GetUIPanel(area) return Stub.busy.panels[area] end
+function API.InCinematic() return Stub.busy.cinematic == true end
+function API.CursorHasItem() return Stub.busy.cursor == true end
+function API.SpellIsTargeting() return Stub.busy.targeting == true end
+function API.IsPlayerMoving() return Stub.player.moving == true end
 function API.IsShiftKeyDown() return Stub.shift == true end
 function API.GetFramerate()
   Count("GetFramerate")
@@ -1194,6 +1311,13 @@ local function InstallGlobals()
   local tt = CreateFrameImpl("GameTooltip", "GameTooltip", ui)
   tt._backdropTemplate = true
 
+  -- frames the automatic reload looks at (hidden unless a test shows them)
+  for _, name in ipairs({ "MovieFrame", "ReadyCheckFrame", "SettingsPanel", "GameMenuFrame", "KeyBindingFrame",
+                          "InterfaceOptionsFrame" }) do
+    local f = NewObject("Frame", name, ui)
+    f._shown = false
+  end
+
   local fonts = { "GameFontNormal", "GameFontHighlight", "GameFontHighlightSmall", "GameFontDisable" }
   for i = 1, #fonts do
     local fo = NewObject("Font", fonts[i], nil)
@@ -1235,7 +1359,7 @@ function Stub.Reset(opts)
     Stub.build = { version = "1.60.1", build = "70124", date = "Sep 2026", interface = 16001 }
     Stub.templates = {
       UICheckButtonTemplate = true, UIPanelScrollFrameTemplate = true,
-      UIPanelCloseButton = true, BackdropTemplate = true,
+      UIPanelCloseButton = true, BackdropTemplate = true, GameTooltipTemplate = true,
     }
     Stub.xpTable = NewXPTable()
     Stub.unknownEvents = { UNKNOWN_TEST_EVENT = true }
@@ -1245,6 +1369,7 @@ function Stub.Reset(opts)
   end
 
   Stub.combat, Stub.shift = false, false
+  Stub.busy = { panels = {} }    -- automatic reload: casting, keyFocus, popup, panels[area]...
   Stub.target = nil
   Stub.party = {}                -- levels of party1..party4 (nil: no such member)
   Stub.printed, Stub.displayed, Stub.popups = {}, {}, {}

@@ -307,7 +307,8 @@ local function RealWidths(body)
 end
 
 -- A level-20 character (as on the boards) after some play: "kills" = 8 kills in 4 min
--- (estimate status, the widest values), "none" = no kill yet, "long" = an hour of kills.
+-- (estimate status, the widest values), "none" = no kill yet, "long" = an hour of kills,
+-- "crash" = an hour lost in a crash and rebuilt (most of the level and of the character).
 local function StartPlay(theme, locale, play)
   Stub.InstallUI({ ldb = false })
   Stub.theme = theme
@@ -336,28 +337,68 @@ local function StartPlay(theme, locale, play)
     Stub.SetResting(true); Stub.Advance(600); Stub.SetResting(false)
   elseif play == "cap" then
     for _ = 1, 3 do Stub.KillNoXP() end
+  elseif play == "crash" then
+    -- crash review A2: 10 min of kills saved, then an hour the save never got (a crash),
+    -- rebuilt from the login /played: the rebuilt sub-lines under "This level" and
+    -- "Played", and the "mostly rebuilt" notes under both breakdowns
+    for _ = 1, 10 do Stub.Advance(60); Stub.Kill(171) end
+    Stub.Logout()
+    Stub.Reset({ keepWorld = true })      -- drops the UI stubs: installed again below
+    Stub.Advance(3600)
+    Stub.InstallUI({ ldb = false })
+    _G.TruePlayedDB = Stub.DeepCopy(Stub.saved)
+    ns = Stub.LoadAddon()
+    Stub.LoginSequence({ settle = 15 })   -- the login /played request (+10 s)
   end
   Stub.Advance(2)
   return ns, ns.Bar.frame
 end
 
--- Rows of the shown private tooltip that do not fit: a cut label (a pair whose label and
--- value do not fit the inner width) or a single-line row wider than the inner width.
+-- The shown blocks of the private tooltip: block 1, and block 2 while Shift is held.
+local function Shown(ns)
+  local TF = ns.TooltipFrame
+  local out = { TF.frame }
+  if TF.frame2 and TF.frame2:IsShown() then out[2] = TF.frame2 end
+  return out
+end
+
+-- Rows of the shown private tooltip (both blocks) that are outputs of the format `fmt`
+-- (its %s / %d matched lazily): the crash play checks that its notes are drawn, hence
+-- measured.
+local function RowsOf(ns, fmt)
+  local p = fmt:gsub("%%[sd]", "@@@"):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):gsub("@@@", ".-")
+  local n = 0
+  for _, tf in ipairs(Shown(ns)) do
+    for i = 1, tf.tp.n do
+      local row = tf.tp.rows[i]
+      if row.left:IsShown() and tostring(row.left:GetText()):find("^" .. p .. "$") then n = n + 1 end
+    end
+  end
+  return n
+end
+
+-- Rows of the shown private tooltip (both blocks) that do not fit: a cut label (a pair
+-- whose label and value do not fit the inner width), a single-line row wider than the
+-- inner width, or a gauge row whose label reaches its gauge (the gauge has a fixed width
+-- at the right of its row).
 local function CutRows(ns)
-  local tf = ns.TooltipFrame.frame
   local tt = ns.Themes.Active().tt
-  local inner = tf:GetWidth() - tt.pad[1] - tt.pad[2]
   local out = {}
-  for i = 1, tf.tp.n do
-    local row = tf.tp.rows[i]
-    if not row.wrap and row.left:IsShown() then
-      local lw = row.left:GetUnboundedStringWidth()
-      local need = lw
-      if row.right:IsShown() and row.kind ~= "title" then
-        need = lw + tt.gap + row.right:GetUnboundedStringWidth()
-      end
-      if (rawget(row.left, "_width") or 0) > 0 or need > inner + 0.5 then
-        out[#out + 1] = format("%q %.0f > %.0f", tostring(row.left:GetText()), need, inner)
+  for b, tf in ipairs(Shown(ns)) do
+    local inner = tf:GetWidth() - tt.pad[1] - tt.pad[2]
+    for i = 1, tf.tp.n do
+      local row = tf.tp.rows[i]
+      if not row.wrap and row.left:IsShown() then
+        local lw = row.left:GetUnboundedStringWidth()
+        local need = lw
+        if row.right:IsShown() and row.kind ~= "title" then
+          need = lw + tt.gap + row.right:GetUnboundedStringWidth()
+        elseif row.kind == "gauge" then
+          need = lw + tt.gap + tt.gauge.w + 1           -- the label clear of its gauge
+        end
+        if (rawget(row.left, "_width") or 0) > 0 or need > inner + 0.5 then
+          out[#out + 1] = format("block %d: %q %.0f > %.0f", b, tostring(row.left:GetText()), need, inner)
+        end
       end
     end
   end
@@ -370,7 +411,7 @@ T.test("F1-fidelity: no tooltip row is cut with the real fonts (every theme, enU
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
         for _, locale in ipairs({ "enUS", "frFR" }) do
-          for _, play in ipairs({ "kills", "none", "long", "stall", "cap", "activity" }) do
+          for _, play in ipairs({ "kills", "none", "long", "stall", "cap", "activity", "crash" }) do
             Stub.Reset()
             local ns, frame = StartPlay(key, locale, play)
             for _, shift in ipairs({ false, true }) do
@@ -379,6 +420,13 @@ T.test("F1-fidelity: no tooltip row is cut with the real fonts (every theme, enU
               Stub.Advance(1)
               for _, s in ipairs(CutRows(ns)) do
                 bad[#bad + 1] = format("%s %s %s %s: %s", key, locale, play, shift and "Shift" or "short", s)
+              end
+              if play == "crash" then
+                local L, want = ns.L, shift and 2 or 1
+                if RowsOf(ns, L.TT_EST_FMT) ~= want or RowsOf(ns, L.TT_EST_MOST_FMT) ~= want then
+                  bad[#bad + 1] = format("%s %s crash %s: the rebuilt notes are missing", key, locale,
+                                         shift and "Shift" or "short")
+                end
               end
               ns.Tooltip.Hide()
             end
@@ -544,22 +592,23 @@ T.test("F6-fidelity: the leaf, arrow, rune and elemental separators are not stre
       Stub.SetShift(shift)
       ns.Tooltip.ShowFor(frame)
       Stub.Advance(1)
-      local tf = ns.TooltipFrame.frame
-      local inner = tf:GetWidth() - th.tt.pad[1] - th.tt.pad[2]
-      for i = 1, tf.tp.nSeps do
-        local s = tf.tp.seps[i]
-        local cfg = th.tt.sep[s.kind]
-        if cfg and cfg.tex.path:find("sep", 1, true) then
-          local where = format("%s %s sep %d (%s)", key, shift and "Shift" or "short", i, s.kind)
-          T.ok(cfg.center ~= nil, where .. ": a centred ornament")
-          T.ok(s.c and s.c:IsShown() and s.a:IsShown() and s.b:IsShown(), where .. ": three pieces shown")
-          local sx, sy = Scale(s.c, cfg.tex)
-          T.near(sx / sy, 1, 0.03, where .. ": ornament proportions")
-          T.near(s.a:GetWidth() + s.c:GetWidth() + s.b:GetWidth(), inner, 1e-9, where .. ": pieces fill the width")
-          local ax = select(4, s.a:GetPoint(1))
-          T.eq(select(4, s.c:GetPoint(1)), ax + s.a:GetWidth(), where .. ": ornament after the left side")
-          T.eq(select(4, s.b:GetPoint(1)), ax + s.a:GetWidth() + s.c:GetWidth(), where .. ": right side after it")
-          seen[key] = true
+      for b, tf in ipairs(Shown(ns)) do                -- both blocks with Shift
+        local inner = tf:GetWidth() - th.tt.pad[1] - th.tt.pad[2]
+        for i = 1, tf.tp.nSeps do
+          local s = tf.tp.seps[i]
+          local cfg = th.tt.sep[s.kind]
+          if cfg and cfg.tex.path:find("sep", 1, true) then
+            local where = format("%s %s block %d sep %d (%s)", key, shift and "Shift" or "short", b, i, s.kind)
+            T.ok(cfg.center ~= nil, where .. ": a centred ornament")
+            T.ok(s.c and s.c:IsShown() and s.a:IsShown() and s.b:IsShown(), where .. ": three pieces shown")
+            local sx, sy = Scale(s.c, cfg.tex)
+            T.near(sx / sy, 1, 0.03, where .. ": ornament proportions")
+            T.near(s.a:GetWidth() + s.c:GetWidth() + s.b:GetWidth(), inner, 1e-9, where .. ": pieces fill the width")
+            local ax = select(4, s.a:GetPoint(1))
+            T.eq(select(4, s.c:GetPoint(1)), ax + s.a:GetWidth(), where .. ": ornament after the left side")
+            T.eq(select(4, s.b:GetPoint(1)), ax + s.a:GetWidth() + s.c:GetWidth(), where .. ": right side after it")
+            seen[key] = true
+          end
         end
       end
       ns.Tooltip.Hide()

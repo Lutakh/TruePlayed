@@ -32,6 +32,7 @@
 --   media.sep_school: baked footer separator: arcane, fire, frost
 --   bar.pad, gap: gap clears the 4 px crystal frame and its aura
 --   bar.height: default user height 8 -> 13 px track (board: 20 px at 1.5x)
+--   bar.rep: reputation strip 6 px under the track, 2 px clear of the frame
 --   bar.layers > aura: cyan aura around the crystal frame
 --   bar.layers > frame: crystal frame: 1 px ink outline, indigo lit from above, cyan inner ring,
 --     rune row
@@ -98,6 +99,7 @@ return {
     pad = 12, gap = 7,
     height = { add = 5, min = 6 },
     maxAlpha = 0.35,
+    rep = { off = 6, h = 3, clear = 2, color = "ink@.7" },
     layers = {
       { id = "aura", span = "track", three = { "common/glow", 16, 10 }, pad = { 8, 8 }, top = -9, bottom = -9,
         layer = "BORDER", sub = -6, blend = "ADD", color = "accent@.3" },
