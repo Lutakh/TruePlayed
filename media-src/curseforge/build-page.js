@@ -1,6 +1,7 @@
 // media-src/curseforge/build-page.js - the CurseForge page images (page/*.png): real renders
 // of the addon (scene.lua -> render-scene.js) composed on the brand background.
-//   NODE_PATH=$(npm root -g) node media-src/curseforge/build-page.js [hero|themes|detail|stats|compact ...]
+//   NODE_PATH=$(npm root -g) node media-src/curseforge/build-page.js
+//       [hero|themes|detail|stats|compact|reputation|pvp ...]
 // Needs lua (5.1+) on the PATH, Node.js and Playwright's Chromium. Intermediate files go to a
 // temporary directory (removed at the end; --keep keeps it and prints its path).
 const fs = require('fs');
@@ -41,6 +42,19 @@ function scene(scenario, theme) {
         resolve(JSON.parse(fs.readFileSync(out, 'utf8')));
       });
   });
+}
+
+// The bounds of a scene's items below the TOOLTIP strata: the bar of a hovered bar's scene,
+// without its tooltip (shot's region).
+function barRegion(sc) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const it of sc.items) {
+    if (it.strata === 'TOOLTIP') continue;
+    const r = it.rect;
+    x0 = Math.min(x0, r[0]); y0 = Math.min(y0, r[1]);
+    x1 = Math.max(x1, r[0] + r[2]); y1 = Math.max(y1, r[1] + r[3]);
+  }
+  return [x0, y0, x1 - x0, y1 - y0];
 }
 
 // Renders a scene at `zoom` CSS px per UI unit (x SS device px): { src, w, h, map(x, y) }.
@@ -99,10 +113,6 @@ h1 .acc{background:linear-gradient(90deg,#ff3cc7,#38bdf8);-webkit-background-cli
 .label{position:absolute;font-family:Barlow;font-size:17px;letter-spacing:2.5px;text-transform:uppercase;color:#7f96a9;}
 .brand{position:absolute;display:flex;align-items:center;gap:14px;font-family:Orbitron;font-size:22px;color:#e6f7ff;}
 .brand svg{filter:drop-shadow(0 0 6px rgba(34,211,238,.35));}
-@font-face{font-family:Signika;src:url(${FONT('Signika-Medium.ttf')});}
-.gtip{position:absolute;transform:translate(-50%,-100%);font-family:Signika;line-height:1.25;
-  background:rgba(4,6,18,.94);border:2px solid #8f96a3;box-shadow:0 0 0 1px #2a2f3a,0 14px 30px rgba(0,0,0,.55);
-  text-shadow:1px 1px 0 #000;}
 </style></head><body>
 <div class="grid"></div>
 <div class="blob" style="width:620px;height:420px;left:-180px;top:${height - 380}px;background:rgba(255,43,214,.16);"></div>
@@ -170,42 +180,48 @@ async function themes(browser) {
   await capture(browser, page(H, ['13 themes.', 'One click.'], body), H, 'themes');
 }
 
-// detail.png: the detailed (Shift) tooltip, Futuristic and Heroic fantasy side by side.
+// detail.png: the Shift view (two tooltips side by side: the current level, the character
+// total), Futuristic and Heroic fantasy next to each other, zoomed to fit the page. The two
+// views are lined up on their breakdown rows (scene info.bdLevel), so the four bars face
+// each other; a view without that row is top-aligned.
 async function detail(browser) {
-  const zoom = 1.08;
   const [a, b] = await Promise.all([scene('tooltipshift', 'futuriste'), scene('tooltipshift', 'heroic')]);
-  const sa = await shot(browser, a, zoom, 'detail-fut'), sb = await shot(browser, b, zoom, 'detail-her');
-  const gap = 70, top = 220;
-  const total = sa.w + gap + sb.w;
-  const x0 = (WIDTH - total) / 2;
-  const H = Math.round(top + Math.max(sa.h, sb.h) + 70);
-  const body = img(sa, x0, top, 'float') + img(sb, x0 + sa.w + gap, top, 'float');
+  const gap = 56, margin = 44, pad = 4;
+  const zoom = Math.min(1.08, (WIDTH - 2 * margin - gap) / (a.bounds[2] + b.bounds[2] + 4 * pad));
+  const sa = await shot(browser, a, zoom, 'detail-fut', { pad }), sb = await shot(browser, b, zoom, 'detail-her', { pad });
+  const labelTop = 206, top = 246;
+  const ya = a.info.bdLevel !== undefined ? sa.map(0, a.info.bdLevel)[1] : 0;
+  const yb = b.info.bdLevel !== undefined ? sb.map(0, b.info.bdLevel)[1] : 0;
+  const line = Math.max(ya, yb);
+  const ta = top + line - ya, tb = top + line - yb;
+  const x0 = (WIDTH - (sa.w + gap + sb.w)) / 2, xb = x0 + sa.w + gap;
+  const H = Math.round(Math.max(ta + sa.h, tb + sb.h) + 70);
+  const label = (x, w, name) =>
+    `<div class="label" style="left:${x}px;width:${w}px;text-align:center;top:${labelTop}px;">${name}</div>`;
+  const body = label(x0, sa.w, 'Futuristic') + label(xb, sb.w, 'Heroic fantasy') +
+    img(sa, x0, ta, 'float') + img(sb, xb, tb, 'float');
   await capture(browser, page(H, ['Hold Shift.', 'See everything.'], body), H, 'detail');
 }
 
-// The GameTooltip of a hovered column header (scene info.tip: its lines and the header's
-// rectangle), drawn in the game's tooltip style: game art, not exported by scene.lua.
-// ANCHOR_TOP: centred above the header. `s` is the shot of the window, (ox, oy) its place.
-function headerTip(s, tip, zoom, ox, oy) {
-  if (!tip) return '';
-  const [cx, cy] = s.map(tip.rect[0] + tip.rect[2] / 2, tip.rect[1]);
-  const rgb = (c) => `rgb(${c.slice(0, 3).map((v) => Math.round(v * 255)).join(',')})`;
-  const lines = tip.lines.map((l, i) => `<div style="color:${rgb(l.color)};font-size:${(i === 0 ? 14 : 12) * zoom}px;` +
-    `margin-top:${i === 0 ? 0 : 3 * zoom}px;">${l.text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join('');
-  return `<div class="gtip" style="left:${ox + cx}px;top:${oy + cy - 2 * zoom}px;max-width:${250 * zoom}px;` +
-    `padding:${8 * zoom}px ${10 * zoom}px;border-radius:${4 * zoom}px;">${lines}</div>`;
-}
-
-// stats.png: the statistics window, the Levels tab (top, its Server header hovered with the
-// help tooltip) and the Zones tab (bottom right, in front: an opaque plate of the window
-// colour under it, as over a dark game scene). The Levels window is as wide as its columns:
-// zoomed to fit the page.
+// stats.png: the statistics window, the Levels tab (top: the character's histogram, level
+// 16 selected and its detail sheet; the window made taller so that the sheet shows all of
+// it) and the Zones tab in front at the bottom left (an opaque plate of the window colour
+// under it, as over a dark game scene). The Zones window covers the Levels window's
+// progress strip and footer only: its top at the strip's, below the chart's plot, its right
+// edge just past the strip's, short of the detail sheet (scene info.strip / info.plot /
+// info.detail). The Levels window is zoomed to fit the page, the Zones window to that
+// width.
 async function stats(browser) {
-  const [lv, zn] = await Promise.all([scene('levels', 'futuriste'), scene('zones', 'futuriste')]);
-  const zoom = Math.min(1.4, (WIDTH - 90) / (lv.bounds[2] + 8)), zoomZ = 1.25;
-  const sl = await shot(browser, lv, zoom, 'stats-levels'), sz = await shot(browser, zn, zoomZ, 'stats-zones');
+  const [lv, zn] = await Promise.all([scene('chart', 'futuriste'), scene('chartzones', 'futuriste')]);
+  const zoom = Math.min(1.42, (WIDTH - 90) / (lv.bounds[2] + 8));
+  const sl = await shot(browser, lv, zoom, 'stats-levels');
   const top = 240, x0 = Math.round((WIDTH - sl.w) / 2);
-  const fx = WIDTH - 40 - sz.w, fy = top + Math.round(sl.h * 0.55);
+  const fx = 32, right = x0 + sl.map(lv.info.strip[0] + lv.info.strip[2], 0)[0] + 8;
+  if (right > x0 + sl.map(lv.info.detail[0], 0)[0] - 8) throw new Error('stats: the Zones window would cover the detail sheet');
+  const zoomZ = (right - fx) / (zn.bounds[2] + 8);
+  const sz = await shot(browser, zn, zoomZ, 'stats-zones');
+  const fy = Math.round(top + sl.map(0, lv.info.strip[1])[1] - sz.map(0, zn.bounds[1])[1]);
+  if (fy < top + sl.map(0, lv.info.plot[1] + lv.info.plot[3])[1]) throw new Error('stats: the Zones window would cover the chart');
   const H = Math.round(fy + sz.h + 60);
   // the window's own backdrop (largest backdrop item) -> plate under the front window
   const bd = zn.items.filter((i) => i.kind === 'backdrop').sort((a, b) => b.rect[2] * b.rect[3] - a.rect[2] * a.rect[3])[0];
@@ -214,9 +230,46 @@ async function stats(browser) {
   const c = bd.bg.slice(0, 3).map((v) => Math.round(v * 255)).join(',');
   const body = `<div style="opacity:.92">${img(sl, x0, top, 'float')}</div>` +
     `<div style="position:absolute;left:${fx + px}px;top:${fy + py}px;width:${pw}px;height:${ph}px;` +
-    `background:rgb(${c});box-shadow:0 28px 60px rgba(0,0,0,.6);"></div>` + img(sz, fx, fy) +
-    headerTip(sl, lv.info.tip, zoom, x0, top);
+    `background:rgb(${c});box-shadow:0 28px 60px rgba(0,0,0,.6);"></div>` + img(sz, fx, fy);
   await capture(browser, page(H, ['Every level.', 'Every zone.'], body), H, 'stats');
+}
+
+// hero.png's layout: the headline on the left (the brand above it, a subhead, then a
+// labelled second view of the bar: `side` = { shot, label }), a hovered bar with its
+// tooltip at the bottom right (`ui`).
+function sidePage(H, headline, sub, ui, side) {
+  const x = WIDTH - 64 - ui.w, y = H - 30 - ui.h;
+  const ly = 520;
+  const body = img(ui, x, y, 'float') +
+    `<div class="label" style="left:96px;top:${ly}px;">${side.label}</div>` + img(side.shot, 92, ly + 34, 'float');
+  return page(H, headline, body, { align: 'left', headTop: 236, size: 58, brand: true, sub });
+}
+
+// reputation.png: the followed faction's strip under the XP bar (Futuristic), hovered: its
+// tooltip (the faction and its points, the 8 standings with the time to each one ahead,
+// reputation per hour, time to the next standing, this session's gain); on the left, the
+// reputation as the main bar (Heroic fantasy: the XP in the strip under it).
+async function reputation(browser) {
+  const H = 820;
+  const [rp, mb] = await Promise.all([scene('rep', 'futuriste'), scene('repmain', 'heroic')]);
+  const s = await shot(browser, rp, 1.32, 'rep-ui'), sm = await shot(browser, mb, 1.4, 'rep-main');
+  const html = sidePage(H, ['Your reputation,<br>', 'by the hour.'], 'Reputation per hour. Time to every standing.',
+    s, { shot: sm, label: 'Heroic fantasy, as the main bar' });
+  await capture(browser, html, H, 'reputation');
+}
+
+// pvp.png: the PvP main bar (Futuristic: the rank and its title, rank points per hour,
+// time to the next rank; the honor in the strip under it), hovered: the PvP tooltip
+// (honor, rank and this week's cap, honorable kills, this session's battlegrounds); on the
+// left, the same bar in the Warrior theme (without its tooltip).
+async function pvp(browser) {
+  const [pv, wr] = await Promise.all([scene('pvp', 'futuriste'), scene('pvp', 'warrior')]);
+  const s = await shot(browser, pv, 1.2, 'pvp-ui');
+  const sw = await shot(browser, wr, 1.2, 'pvp-warrior', { region: barRegion(wr) });
+  const H = Math.round(s.h + 30 + 50);
+  const html = sidePage(H, ['Honor and rank,<br>', 'by the hour.'], 'Rank points per hour. Time to the next rank.',
+    s, { shot: sw, label: 'Warrior' });
+  await capture(browser, html, H, 'pvp');
 }
 
 // compact.png: the mini display (the XP bar hidden): one line in three themes on the left,
@@ -251,6 +304,8 @@ async function compact(browser) {
     if (want('detail')) await detail(browser);
     if (want('stats')) await stats(browser);
     if (want('compact')) await compact(browser);
+    if (want('reputation')) await reputation(browser);
+    if (want('pvp')) await pvp(browser);
   } finally {
     await browser.close();
     if (keep) console.log('intermediate files: ' + TMP);

@@ -2,20 +2,52 @@
 -- CurseForge images (render-scene.js turns a scene into a PNG). Not a test: it loads the
 -- addon in the offline stub (tests/wowstub.lua + tests/stub_ui.lua, real text widths from
 -- tests/fontmetrics.lua), plays a believable leveling character from level 1 (see
--- Simulate below), then writes every shown texture and font string of the asked view.
+-- Simulate below; pvp: SimulatePvp), then writes every shown texture and font string of
+-- the asked view.
 --
 -- Usage (from the root of the checkout):
 --   TZ=UTC lua media-src/curseforge/scene.lua <scenario> <theme> <out.json>
 -- scenario: bar | tip | tipshift | tooltip | tooltipshift | hero | heroshift | levels |
---           zones | sessions
+--           zones | sessions | chart | chartzones | minih | miniv | minitip | rep |
+--           repmain | pvp
 --   bar       the XP bar alone
---   tip       the bar + its short tooltip (shift: the detailed one)
---   tooltip   the tooltip alone (the private frame of the themed tooltips)
+--   tip       the bar + its tooltip: block 1, the level (shift: + block 2, the character)
+--   tooltip   the tooltip alone (the private frames of the themed tooltips, one or two)
 --   hero      like tip, the bar 600 wide at the bottom of the screen
---   levels / zones / sessions   the statistics window on that tab, AFK excluded (levels:
---             the Server header hovered, its tooltip lines in info.tip)
+--   levels / zones / sessions   the statistics window on that tab, AFK excluded. levels:
+--             the character's histogram (LevelChart.lua) with level 16 selected (its
+--             Warsong Gulch match and the world PvP below) and the detail sheet's PvP row
+--             hovered: the themed tooltip frame is exported with the window; under a
+--             native theme (actuel) the GameTooltip is game art, exported as its lines
+--             and the row's rectangle (info.tip, like a hovered column header). This
+--             scene, chart and chartzones have Forever's PvP API (tests/stub_pvp.lua) and,
+--             at level 16, a few kills in a row that also kill a player (an honorable kill
+--             and its honor: the world PvP signals); every other scene but pvp keeps
+--             Classic Era's case (no PvP API) and draws what it drew before.
+--   chart / chartzones   the views of stats.png: the Levels tab like levels, nothing
+--             hovered, the window 770 high (the detail sheet shown down to its end); the
+--             Zones tab like zones, the window 4 px taller (its list ends on a whole row).
+--             Both have levels' PvP and give the quests their XP (Quest: the detail sheet
+--             tells them from the monsters). chart's info.plot, info.strip, info.detail: the
+--             rectangles of the chart's plot, its progress strip and the detail sheet
+--   minih / miniv / minitip   the mini display alone: one line, stacked (three infos and
+--             the level %), one line hovered with its tooltip
+--   rep       the bar with the reputation's strip under the XP track, hovered: the
+--             reputation's tooltip. Stormwind (Honored) is the game's watched faction from
+--             the start of the last session, each of its Duskwood quests worth 75 to 350
+--             reputation (QuestRep): the reputation per hour and the times are the addon's
+--   repmain   the same, the reputation on the main track (widget.main = "rep"), the XP in
+--             the strip under it, the bar's infos the reputation's (slots 1 and 2:
+--             rep_eta, reph), nothing hovered
+--   pvp       another evening (SimulatePvp): the character at level 60 on WoW Forever,
+--             battlegrounds in a PvP season; the PvP main track (rank) with the honor strip,
+--             the bar 520 wide (PVP_W), hovered: the PvP tooltip
 -- theme: futuriste | actuel | heroic | pixel | warrior | paladin | hunter | rogue |
 --        priest | shaman | mage | warlock | druid
+-- SCENE_REP=<reaction>[:<fraction>] (optional, previews only: the page images other than
+-- rep / repmain watch no faction): the character watches Stormwind at that standing (1
+-- Hated .. 8 Exalted), that far into it (default 0.62), e.g. SCENE_REP=6:0.35;
+-- SCENE_REP_NAME overrides the faction's name.
 --
 -- The scene: coordinates in WoW UI units (UIParent 1920 x 1080), origin top-left, y down.
 -- items[] are in drawing order (strata, frame level, frame, draw layer, sublayer, creation).
@@ -38,6 +70,8 @@ local Stub = dofile(ROOT .. "tests/wowstub.lua")
 Stub.ROOT = ROOT
 Stub.AddInstaller(dofile(ROOT .. "tests/stub_ui.lua"))
 Stub.AddInstaller(dofile(ROOT .. "tests/stub_activity.lua"))   -- deaths, professions
+Stub.AddInstaller(dofile(ROOT .. "tests/stub_reputation.lua")) -- no watched faction unless REP / SCENE_REP
+Stub.AddInstaller(dofile(ROOT .. "tests/stub_pvp.lua"))        -- no PvP API unless WORLD_PVP / PVP
 local FM = dofile(ROOT .. "tests/fontmetrics.lua")
 local Width = FM.New(ROOT)
 
@@ -95,6 +129,13 @@ local ZONE = { elwynn = 1429, westfall = 1436, loch = 1432, redridge = 1433, dus
 local INST = { deadmines = { 36, 291 }, sfk = { 33, 310 } }
 local WSG = 489                  -- Warsong Gulch: an instance without a map of its own
 local FISHING = 7620             -- Fishing (a channel)
+-- chart / chartzones (stats.png): the tab shown and the window's height (its grip; 640 for
+-- the Levels tab and 440 for the others by default)
+local STATS_VIEW = { chart = { tab = "levels", h = 770 }, chartzones = { tab = "zones", h = 444 } }
+local WORLD_PVP = SCENARIO == "levels" or STATS_VIEW[SCENARIO] ~= nil   -- Forever's PvP API and world PvP
+local LEVEL_SHOWN = 16           -- levels, chart: the level selected in the chart
+local REP = SCENARIO == "rep" or SCENARIO == "repmain"   -- Stormwind followed (see the usage)
+local PVP = SCENARIO == "pvp"    -- the level 60 character of the PvP evening (SimulatePvp)
 
 ---------------------------------------------------------------------------
 -- Simulation helpers
@@ -122,10 +163,22 @@ local function MobXP(lvl, diff)
   return floor((5 * lvl + 45) * (1 + 0.05 * diff) + 0.5)
 end
 
+-- A quest turned in, worth `xp`. chart and chartzones give QUEST_TURNED_IN its XP reward,
+-- as the game does, so that the detail sheet tells quests from monsters; the scenes made
+-- before them give none (the quest's name in its place) and draw what they drew.
+local QUEST_XP = STATS_VIEW[SCENARIO] ~= nil
+local function Quest(xp)
+  Stub.GrantXP(xp, { quest = QUEST_XP and xp or "Quest" })
+end
+
 -- Plays `sec` seconds in the current place: a kill every `every` seconds (mob levels
 -- `diffLo`..`diffHi` above the player), a quest every `qEvery` seconds worth `qXP`
--- (a fraction of the level when < 1), stopping early at `untilLevel`.
+-- (a fraction of the level when < 1), stopping early at `untilLevel`. While `pvpKills`
+-- is above 0, a kill also kills a player of the other faction (an honorable kill and its
+-- honor: a world PvP signal; WORLD_PVP only): the time between two of them less than
+-- 15 minutes apart is world PvP. Neither the time nor the random draws change.
 local sinceKill, killGap = 0, nil   -- the kill rhythm carries over between Play calls
+local pvpKills = 0
 local function Play(sec, o)
   o = o or {}
   local every, qEvery = o.every or 90, o.qEvery or 0
@@ -145,12 +198,17 @@ local function Play(sec, o)
       local lvl = Stub.player.level
       local d = (o.diffLo or 0) + floor(Rand() * ((o.diffHi or 2) - (o.diffLo or 0) + 1))
       Stub.Kill(MobXP(lvl, d))
+      if pvpKills > 0 then
+        pvpKills = pvpKills - 1
+        Stub.HK(1)
+        Stub.GainHonor(40)
+      end
       sinceKill, killGap = 0, every * (0.6 + 0.8 * Rand())
     end
     if t >= nextQuest then
       local q = o.qXP or 0.08
       if q < 1 then q = floor(Stub.player.max * q / 5) * 5 end
-      Stub.GrantXP(q, { quest = "Quest" })
+      Quest(q)
       nextQuest = t + qEvery
     end
     if o.untilLevel and Stub.player.level >= o.untilLevel then return t end
@@ -254,6 +312,17 @@ local function Battleground(minutes, back)
   Stub.Advance(1)
 end
 
+-- rep / repmain: the Stormwind reputation of a Duskwood quest of the last session (Classic's
+-- quest values, in turn). No time passes and no random draw is made: the XP is the same.
+local REP_START = 9000 + 1840    -- Stormwind at the start of the last session: Honored, 1,840 in
+local REP_QUEST = { 250, 150, 350, 75, 250, 150, 350 }
+local repQuests = 0
+local function QuestRep()
+  if not REP then return end
+  repQuests = repQuests + 1
+  Stub.GainRep(REP_QUEST[(repQuests - 1) % #REP_QUEST + 1])
+end
+
 -- Logs out and back in `offline` seconds later; the rest pool grows as in the game
 -- (5 % of the level per 8 h in an inn, 1/4 of it outside, capped at 1.5 levels).
 local TRACE = os.getenv("SCENE_TRACE")
@@ -291,6 +360,7 @@ local function Simulate(theme)
   p.level, p.xp, p.max, p.rest = 1, 0, Stub.xpTable[1], 0
   p.mapID, p.zoneText = ZONE.elwynn, "Elwynn Forest"
   Stub.server.total, Stub.server.levelPlayed = 0, 0
+  if WORLD_PVP then Stub.SetPvpAPI("forever") end
   ns = Stub.LoadAddon()
   Stub.LoginSequence({ settle = 3 })
   ns.Core.SetSetting("widget.locked", true)
@@ -344,6 +414,7 @@ local function Simulate(theme)
   Taxi(9 * 60)
   Dungeon("sfk", 64, 34, "duskwood")
   Battleground(26, "redridge")
+  if WORLD_PVP then pvpKills = 5 end   -- a Horde party contests the Redridge quests
   Go("redridge"); Lv(110); Afk(35 * 60)
   Taxi(3 * 60); City("stormwind", 28 * 60, 25 * 60)
   Relog(18 * 3600, true)
@@ -365,6 +436,12 @@ local function Simulate(theme)
 
   -- Last session: 1 h 40 in Duskwood (a kill every ~2 min, a quest every ~10 min, a short
   -- AFK), level 17 -> 18, ending 42 % into 18 (the last quest of the session tops it up).
+  -- rep / repmain: Stormwind followed (the game's watched faction) from its start, each
+  -- quest worth some Stormwind reputation (QuestRep)
+  if REP then
+    local t = Stub.REP_THRESHOLDS[6]
+    Stub.WatchFaction({ name = "Stormwind", factionID = 72, reaction = 6, min = t[1], max = t[2], value = REP_START })
+  end
   Go("duskwood")
   local GOAL = floor(Stub.xpTable[18] * 0.42 / 5) * 5
   local x0 = p.xp
@@ -378,7 +455,8 @@ local function Simulate(theme)
     Play(120, { every = 108, diffLo = 3, diffHi = 5 })
     t, qx = t + 120, qx + 120
     if qx >= 480 and Gained() + 500 < total * t / LAST_SESSION then
-      Stub.GrantXP(floor(p.max * 0.03 / 5) * 5, { quest = "Quest" })
+      Quest(floor(p.max * 0.03 / 5) * 5)
+      QuestRep()
       qx = 0
     end
     if not afkDone and t >= 2700 then
@@ -387,10 +465,86 @@ local function Simulate(theme)
     end
   end
   Trace("pre-end")
-  if p.level == 18 and p.xp < GOAL then Stub.GrantXP(GOAL - p.xp, { quest = "Quest" }) end
+  if p.level == 18 and p.xp < GOAL then
+    Quest(GOAL - p.xp)
+    QuestRep()
+  end
   if t < LAST_SESSION then Stub.Advance(LAST_SESSION - t, 2) end
   Stub.Advance(1)
   Trace("end")
+  return ns
+end
+
+---------------------------------------------------------------------------
+-- pvp: Lutak at level 60 on WoW Forever, week 7 of a PvP season (this week's cap: rank 9),
+-- rank 7 (Knight-Lieutenant) with 60 points in it. An evening of battlegrounds queued from
+-- Stormwind (2 h 10): five matches, Warsong Gulch and Arathi Basin, three won; honorable
+-- kills worth some honor during a match, the match's honor and rank points at its end.
+-- The bar's main track shows the PvP rank (widget.main = "pvp"), its strip the honor.
+---------------------------------------------------------------------------
+local BG = { wsg = 489, ab = 529 }
+local PVP_W = 520                -- the bar's width: room for the rank's whole right text
+-- The game's Alliance rank titles (PVP_RANK_<4 + rank>_1, enUS): the stub's are "Alliance N".
+local RANK_TITLES = { "Private", "Corporal", "Sergeant", "Master Sergeant", "Sergeant Major",
+  "Knight", "Knight-Lieutenant", "Knight-Captain", "Knight-Champion", "Lieutenant Commander",
+  "Commander", "Marshal", "Field Marshal", "Grand Marshal" }
+
+-- A battleground of `minutes` with `kills` honorable kills spread over it (14 to 26 honor
+-- each), then its result and its end-of-match honor (420 won, 160 lost) and rank points
+-- (300 won, 125 lost), a minute on the scoreboard, and back in Stormwind (resting).
+local function Match(key, minutes, kills, won)
+  Stub.SetResting(false)
+  Stub.SetInstance(true, "pvp", BG[key], nil)
+  Stub.Advance(1)
+  local per = minutes * 60 / (kills + 1)
+  for _ = 1, kills do
+    Stub.Advance(per, 5)
+    Stub.HK(1)
+    Stub.GainHonor(14 + floor(Rand() * 13))
+  end
+  Stub.Advance(per, 5)
+  Stub.MatchComplete(won and 1 or 0, minutes * 60)
+  Stub.GainHonor(won and 420 or 160)
+  Stub.GainRankPoints(won and 300 or 125)
+  Stub.Advance(60, 5)
+  Stub.SetInstance(false, "none", 0, ZONE.stormwind)
+  Stub.SetResting(true)
+  Stub.Advance(1)
+end
+
+local function SimulatePvp(theme)
+  Stub.Reset()
+  Stub.InstallUI({ ldb = false })
+  for id, m in pairs(MAPS) do Stub.maps[id] = m end
+  Stub.theme = theme
+  local p = Stub.player
+  p.instanceNames[BG.wsg], p.instanceNames[BG.ab] = "Warsong Gulch", "Arathi Basin"
+  p.faction, p.class, p.classLocalized = "Alliance", "MAGE", "Mage"
+  p.level, p.xp, p.max, p.rest = 60, 0, 0, 0
+  p.mapID, p.zoneText, p.resting = ZONE.stormwind, "Stormwind City", true
+  Stub.server.total, Stub.server.levelPlayed = 9 * 86400 + 6 * 3600 + 12 * 60, 3 * 86400 + 2 * 3600
+  for r, title in ipairs(RANK_TITLES) do rawset(_G, "PVP_RANK_" .. (4 + r) .. "_1", title) end
+  Stub.SetPvpAPI("forever")
+  Stub.SetWeek(7, 9, 8, { quiet = true })
+  local s = Stub.pvp
+  s.total, s.q = Stub.PVP_TOTALS[7] + 60, 8960
+  s.hkToday, s.hkYest, s.hkLife, s.hkHigh = 31, 96, 3274, 11   -- 11: Enum.PvPRanks of rank 7
+  s.seasonEnd, s.reset = 41 * 86400 + 6 * 3600, 2 * 86400 + 9 * 3600
+  ns = Stub.LoadAddon()
+  Stub.LoginSequence({ settle = 3 })
+  ns.Core.SetSetting("widget.locked", true)
+  ns.Core.SetSetting("widget.main", "pvp")
+  ns.Core.SetSetting("widget.pvp", "honor")
+  ns.Core.SetSetting("widget.width", PVP_W)
+  Stub.Advance(1)
+
+  Stub.Advance(4 * 60, 5)                              -- in the queue
+  Match("wsg", 18, 24, true);  Stub.Advance(3 * 60, 5)
+  Match("ab", 26, 38, false);  Stub.Advance(4 * 60, 5)
+  Match("wsg", 21, 27, true);  Stub.Advance(3 * 60, 5)
+  Match("ab", 23, 35, true);   Stub.Advance(5 * 60, 5)
+  Match("wsg", 15, 19, false)
+  Stub.Advance(90, 5)
   return ns
 end
 
@@ -790,14 +944,24 @@ end
 ---------------------------------------------------------------------------
 -- Views
 ---------------------------------------------------------------------------
-local hoverCell                  -- a hovered column header of the statistics window (levels)
+local hoverOwner                 -- the owner of a shown GameTooltip (game art): info.tip
 
 local function Main()
   -- real text widths for the addon's layout (the hook patches the stub's shared method
   -- table, which Stub.Reset keeps)
   FM.Install(Stub, Width)
-  local nsx = Simulate(THEME)
+  local nsx = (PVP and SimulatePvp or Simulate)(THEME)
   local Core = nsx.Core
+  local repSpec = os.getenv("SCENE_REP")
+  if repSpec and repSpec ~= "" then
+    local r, frac = repSpec:match("^(%d)[:]?([%d%.]*)$")
+    r = tonumber(r) or 5
+    frac = tonumber(frac) or 0.62
+    local t = Stub.REP_THRESHOLDS[r]
+    Stub.WatchFaction({ name = os.getenv("SCENE_REP_NAME") or "Stormwind", factionID = 72, reaction = r,
+                        min = t[1], max = t[2], value = math.floor(t[1] + (t[2] - t[1]) * frac) })
+    Stub.Advance(1)
+  end
   local w = rawget(_G, "TruePlayedWidget")
   local roots = { w }
   if SCENARIO == "hero" or SCENARIO == "heroshift" then
@@ -817,23 +981,61 @@ local function Main()
       Stub.SetShift(true)
       Stub.Advance(1)
     end
+    -- the tooltip is two private frames: block 1 (the level) always, block 2 (the whole
+    -- character) to its right while Shift is held, its breakdown row level with block 1's
+    -- (stacked under it only when the pair is wider than the screen)
+    local TF = nsx.TooltipFrame
+    if SCENARIO:find("^tooltip") then roots = {} end
+    for _, tf in ipairs({ TF and TF.frame, TF and TF.frame2 }) do
+      if tf and tf:IsShown() then roots[#roots + 1] = tf end
+    end
+  elseif SCENARIO == "rep" or SCENARIO == "pvp" then
+    -- the reputation's strip (rep) or the PvP main track (pvp) hovered: its detailed
+    -- tooltip, block 1's private frame (one block: Shift does nothing there)
+    local hit = w.tp[SCENARIO == "rep" and "repHit" or "pvpHit"]
+    if not (hit and hit:IsShown()) then error(SCENARIO .. ": no hover region") end
+    Stub.SetShift(false)
+    Stub.RunScript(hit, "OnEnter")
+    Stub.Advance(1)
     local tf = nsx.TooltipFrame and nsx.TooltipFrame.frame
     if tf and tf:IsShown() then roots[#roots + 1] = tf end
-    if SCENARIO:find("^tooltip") then roots = { tf } end
-  elseif SCENARIO == "levels" or SCENARIO == "zones" or SCENARIO == "sessions" then
+  elseif SCENARIO == "repmain" then
+    -- the reputation on the main track, the XP in the strip under it; the reputation's
+    -- infos (the default slot 2, the XP per hour, would follow the reputation's points)
+    Core.SetSetting("widget.main", "rep")
+    Core.SetSetting("widget.slots.1", "rep_eta")
+    Core.SetSetting("widget.slots.2", "reph")
+    Stub.Advance(1)
+  elseif SCENARIO == "levels" or SCENARIO == "zones" or SCENARIO == "sessions" or STATS_VIEW[SCENARIO] then
     -- AFK left out (the window header names it): Time and Server differ
     Core.SetSetting("exclude.afk", true)
-    nsx.Window.Show(SCENARIO)
+    local view = STATS_VIEW[SCENARIO]
+    if view then Core.SetSetting("window.height", view.h) end
+    nsx.Window.Show(view and view.tab or SCENARIO)
     Stub.Advance(1)
     local sf = rawget(_G, "TruePlayedStatsFrame")
     roots = { sf }
-    -- Levels: the Server header hovered (its help icon lit); the GameTooltip it opens is
-    -- game art, exported as its lines and the header's rectangle (info.tip)
+    -- Levels: level LEVEL_SHOWN clicked in the chart, its detail sheet's PvP row hovered
+    -- (see the usage; chart: nothing hovered); the themed tooltip frame joins the roots,
+    -- the GameTooltip of a native theme is exported as its lines and the row's rectangle
+    -- (info.tip)
     local tp = sf.tp
-    local c = SCENARIO == "levels" and tp.layout and tp.layout.pos.server
-    if c then
-      hoverCell = tp.headerCells[c]
-      Stub.RunScript(hoverCell, "OnEnter")
+    local ch = (SCENARIO == "levels" or SCENARIO == "chart") and tp.chart
+    if ch then
+      local col = ch.cols[LEVEL_SHOWN]
+      if not (col and col.hit) then error(SCENARIO .. ": no column for level " .. LEVEL_SHOWN) end
+      Stub.RunScript(col.hit, "OnClick", "LeftButton")
+      local dt = tp.detail
+      if not (dt and dt.pvpHit and dt.pvpHit:IsShown()) then error(SCENARIO .. ": the detail sheet has no PvP row") end
+      if SCENARIO == "levels" then
+        Stub.RunScript(dt.pvpHit, "OnEnter")
+        if rawget(_G, "GameTooltip"):GetOwner() == dt.pvpHit then
+          hoverOwner = dt.pvpHit
+        else
+          local tf = nsx.TooltipFrame and nsx.TooltipFrame.frame
+          if tf and tf:IsShown() then roots[#roots + 1] = tf end
+        end
+      end
     end
   elseif SCENARIO:find("^mini") then
     -- the mini display alone (the XP bar hidden): minih = one line, miniv = stacked with
@@ -853,8 +1055,10 @@ local function Main()
       Stub.SetShift(false)
       Stub.RunScript(md, "OnEnter")
       Stub.Advance(1)
-      local tf = nsx.TooltipFrame and nsx.TooltipFrame.frame
-      if tf and tf:IsShown() then roots[#roots + 1] = tf end
+      local TF = nsx.TooltipFrame
+      for _, tf in ipairs({ TF and TF.frame, TF and TF.frame2 }) do
+        if tf and tf:IsShown() then roots[#roots + 1] = tf end
+      end
     end
   elseif SCENARIO ~= "bar" then
     error("unknown scenario " .. SCENARIO)
@@ -863,13 +1067,33 @@ local function Main()
   local info = { level = p.level, xp = p.xp, max = p.max, rest = p.rest,
                  played = Stub.server.total, zone = p.zoneText }
   local scene = Export(roots, info)
-  if hoverCell then
-    local l, b, tw, th = TrueRect(hoverCell)
+  -- the breakdown rows of the tooltip blocks (their labels: centre y, top-left
+  -- coordinates): info.bdLevel (block 1), info.bdTotal (block 2); build-page.js lines up
+  -- the views on them
+  local L = nsx.L
+  for _, it in ipairs(scene.items) do
+    if it.kind == "text" and (it.text == L.TT_BREAKDOWN_LEVEL or it.text == L.TT_BREAKDOWN_TOTAL) then
+      info[it.text == L.TT_BREAKDOWN_LEVEL and "bdLevel" or "bdTotal"] = it.rect[2] + it.rect[4] / 2
+    end
+  end
+  if SCENARIO == "chart" then
+    -- the chart's plot, its progress strip and the detail sheet (top-left coordinates):
+    -- build-page.js keeps the Zones window off the plot and the sheet
+    local tp = rawget(_G, "TruePlayedStatsFrame").tp
+    info.plot, info.strip, info.detail = RectTL(tp.chart.plot), RectTL(tp.chart.strip.frame), RectTL(tp.detail.panel)
+  end
+  if hoverOwner then
+    -- lines[i] = { text, color[, right, rcolor] }: a double line keeps its right text
+    local l, b, tw, th = TrueRect(hoverOwner)
     local tt = rawget(_G, "GameTooltip")
     local lines = {}
     for i = 1, #tt._lines do
-      local col = tt._colors[i]
-      lines[i] = { text = PlainText(tt._lines[i][1]), color = { col[1] or 1, col[2] or 1, col[3] or 1 } }
+      local col, ln = tt._colors[i], tt._lines[i]
+      lines[i] = { text = PlainText(ln[1]), color = { col[1] or 1, col[2] or 1, col[3] or 1 } }
+      if ln[2] ~= nil then
+        lines[i].right = PlainText(ln[2])
+        lines[i].rcolor = { col[4] or 1, col[5] or 1, col[6] or 1 }
+      end
     end
     info.tip = { rect = { l, rawget(UIParentObj, "_height") - b - th, tw, th }, anchor = tt._anchor,
                  lines = lines }
@@ -880,7 +1104,7 @@ local function Main()
   local errs = Stub.errors or {}
   for i = 1, #errs do io.stderr:write("addon error: ", tostring(errs[i]):match("^[^\n]*"), "\n") end
   io.stderr:write(format("%s %s: %d items, level %d %.1f%%, rest %d, played %.0f s\n", SCENARIO, THEME,
-    #scene.items, p.level, 100 * p.xp / p.max, floor(p.rest or 0), Stub.server.total))
+    #scene.items, p.level, p.max > 0 and 100 * p.xp / p.max or 0, floor(p.rest or 0), Stub.server.total))
 end
 
 Main()

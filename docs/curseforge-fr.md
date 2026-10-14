@@ -14,7 +14,8 @@ inclus dans le zip de l'addon. Le guide `docs/PUBLISHING-fr.md` indique où va c
 - **Résumé** (une phrase, « WoW Forever » en premier) : sur CurseForge, collez le résumé
   anglais de `docs/curseforge-en.md`. Version française (Wago, présentation) :
   WoW Forever : votre vrai /played - XP par heure, temps avant le prochain niveau, temps
-  par niveau et par zone, sans le temps AFK, en auberge ou en ville si vous le souhaitez.
+  par niveau et par zone, sans le temps AFK, en auberge ou en ville si vous le souhaitez,
+  plus réputation, honneur et points de rang JcJ par heure.
 - **Version de jeu des fichiers** : Forever 1.60.1 (réglée par l'outil de publication
   d'après `## Interface: 16001` ; à choisir à la main seulement pour un envoi manuel).
 - **Catégorie principale** : Quests & Leveling. **Catégorie supplémentaire** :
@@ -25,8 +26,10 @@ inclus dans le zip de l'addon. Le guide `docs/PUBLISHING-fr.md` indique où va c
   montre du jeu), avec un petit badge « FOREVER ».
 - **Mots-clés** : WoW Forever, Forever, played, /played, XP par heure, temps avant le
   niveau, montée en niveau, AFK, auberge, repos, temps par zone, temps en instance,
-  donjons, raids, temps mort, temps de métiers, monstres à tuer, graphique FPS, thèmes,
-  thèmes de classe.
+  donjons, raids, temps mort, temps de métiers, monstres à tuer, réputation, réputation
+  par heure, temps avant le rang de réputation suivant, honneur, honneur par heure,
+  plafond d'honneur, JcJ, rang JcJ, points de rang, points de rang par heure, champs de
+  bataille, JcJ sauvage, victoires honorables, graphique FPS, thèmes, thèmes de classe.
 - **Signalements / code source** : https://github.com/Lutakh/TruePlayed
 
 Tout ce qui suit le trait est la **description** (Markdown), traduction de la description
@@ -48,6 +51,11 @@ XP par heure. Temps avant le niveau. Monstres à tuer. Repos compris.
 
 Par niveau. Par zone. Par instance. Par personnage, ou pour tout le compte.
 
+### Niveau maximum ? Continuez.
+
+Réputation par heure. Honneur par heure. Points de rang par heure. Temps avant votre
+prochain rang de réputation et avant votre prochain rang JcJ.
+
 ![13 thèmes. Un clic.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/themes.png)
 
 Futuriste, Héroïque, Pixel, Classique, et un par classe. La barre, l'infobulle et la
@@ -55,14 +63,30 @@ fenêtre de statistiques changent ensemble.
 
 ![Maintenez Maj. Voyez tout.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/detail.png)
 
-Votre rythme, vos zones, votre temps par continent, en donjon et en JcJ, vos morts et vos
-métiers.
+Au survol, le niveau en cours. Avec Maj, une deuxième infobulle à côté pour tout le
+personnage, les deux répartitions face à face : votre rythme, vos zones, votre temps par
+continent, en donjon et en JcJ, vos morts et vos métiers.
 
 ![Chaque niveau. Chaque zone.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/stats.png)
 
-Tout l'historique dans une fenêtre, `/tpl stats` : le temps de chaque niveau à côté de
-l'estimation faite à son début, le temps mis pour y arriver, les morts, les métiers. Une
-colonne vous intrigue ? Survolez son en-tête.
+Tout votre parcours dans une fenêtre, `/tpl stats` : une barre par niveau, découpée selon
+ce que vous y avez fait (monde ouvert, donjons, champs de bataille et JcJ sauvage, vols,
+métiers, morts, villes et auberges), les niveaux qui restent, et quand vous atteindrez le
+60 à votre rythme. Cliquez sur un niveau pour tout savoir : son estimation de départ, son
+JcJ, son XP, ses zones. Chaque zone et chaque session dans les onglets suivants.
+
+![Votre réputation, heure par heure.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/reputation.png)
+
+Suivez la faction de votre choix : une fine bande sous votre barre d'XP, ou toute la barre.
+Survolez-la pour chaque rang à venir, votre réputation par heure et le temps avant le
+suivant. Au niveau maximum aussi.
+
+![Honneur et rang, heure par heure.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/pvp.png)
+
+Votre honneur face à son plafond, votre rang JcJ et le plafond de la semaine : honneur et
+points de rang par heure, temps avant le rang suivant, champs de bataille gagnés et
+perdus. Sur une bande, ou sur toute la barre, qui peut passer d'elle-même au JcJ en champ
+de bataille. Et une alerte quand votre honneur atteint son plafond.
 
 ![Votre barre, ou aucune.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/compact.png)
 
@@ -103,11 +127,17 @@ English, Français, Deutsch, Español, Italiano, Português, Русский, 한
 Ensuite, c'est /played moins ce temps. Rien n'est jamais effacé : réactivez-le et les
 chiffres reviennent.
 
-**Que signifie `~` ?** Une estimation tirée de votre /played serveur, utilisée les dix
-premières minutes après l'installation.
+**Que signifie `~` ?** Une estimation : un temps à venir (avant le prochain niveau, le
+rang suivant, le plafond d'honneur, le niveau maximum), les monstres à tuer et, les dix
+premières minutes après l'installation, un rythme tiré de votre /played serveur.
 
 **Textures ou polices manquantes ?** Quittez et relancez le jeu : `/reload` ne suffit pas
 après une installation ou une mise à jour.
+
+**Réputation ? JcJ ?** La bande de réputation suit la faction pour laquelle vous cochez
+« Barre de réputation » dans le panneau Réputation du jeu, ou celle que vous choisissez
+dans Options > TruePlayed > Réputation. L'honneur et le rang s'affichent dès
+que vous choisissez une bande ou toute la barre dans Options > TruePlayed > JcJ.
 
 **WTFix ?** Ouvrez `/wtfix` et décochez TruePlayed. **RXPGuides ?** Compatible.
 

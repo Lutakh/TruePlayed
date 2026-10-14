@@ -8,10 +8,10 @@ the addon zip. See `docs/PUBLISHING-fr.md` for where each text goes.
 - **Name**: TruePlayed (exactly this: CurseForge forbids game or version names in the
   project name, so "Forever" goes in the summary, the description and the logo).
 - **Summary** (one sentence, "WoW Forever" first; the field takes at most 256 characters,
-  this one has 137): paste only the line below.
+  this one has 189): paste only the line below.
 
   ```
-  WoW Forever: your real /played - XP per hour, time to level, mobs to kill and time per zone, without AFK, inn or city time, in 13 themes.
+  WoW Forever: your real /played - XP per hour, time to level, mobs to kill and time per zone without AFK, inn or city time, plus reputation, honor and PvP rank points per hour, in 13 themes.
   ```
 
 - **Game version of the files**: Forever 1.60.1 (set by the packager from
@@ -24,7 +24,9 @@ the addon zip. See `docs/PUBLISHING-fr.md` for where each text goes.
 - **Keywords** (put them naturally in the summary and description): WoW Forever, Forever,
   played, /played, XP per hour, time to level, leveling, AFK, inn, rested, zone time,
   time per zone, instance time, dungeon time, raid time, death time, professions time,
-  mobs to kill, FPS graph, themes, class themes.
+  mobs to kill, reputation, reputation per hour, time to next standing, honor, honor per
+  hour, honor cap, PvP, PvP rank, rank points, rank points per hour, battlegrounds, world
+  PvP, honorable kills, FPS graph, themes, class themes.
 - **Issues / source**: https://github.com/Lutakh/TruePlayed
 
 Everything below the line is the **Description** (Markdown editor). The images are the
@@ -55,6 +57,11 @@ XP per hour. Time to level. Mobs to kill. Rested XP included.
 
 Per level. Per zone. Per instance. Per character, or your whole account.
 
+### Max level? Keep going.
+
+Reputation per hour. Honor per hour. Rank points per hour. Time to your next standing and
+to your next PvP rank.
+
 ![13 themes. One click.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/themes.png)
 
 Futuristic, Heroic, Pixel, Classic, and one for every class. The bar, the tooltip and the
@@ -62,14 +69,29 @@ statistics window change together.
 
 ![Hold Shift. See everything.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/detail.png)
 
-Your pace, your top zones, your time per continent, in dungeons and in PvP, your deaths
-and your professions.
+Hover for the level you are on. Hold Shift and a second tooltip opens beside it for your
+whole character, the two breakdowns face to face: your pace, your top zones, your time
+per continent, in dungeons and in PvP, your deaths and your professions.
 
 ![Every level. Every zone.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/stats.png)
 
-A full history in one window, `/tpl stats`: the time of each level next to the estimate
-made when it began, the time it took to get there, deaths, professions. Wondering what a
-column means? Hover its header.
+Your whole journey in one window, `/tpl stats`: a bar for every level, split by what you
+did there (open world, dungeons, battlegrounds and world PvP, flights, professions,
+deaths, cities and inns), the levels still ahead, and when you will reach 60 at your
+pace. Click a level for everything about it: its estimate when it began, its PvP, its XP,
+its zones. Every zone and every session in the next tabs.
+
+![Your reputation, by the hour.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/reputation.png)
+
+Follow the faction of your choice: a thin strip under your XP bar, or the whole bar. Hover
+it for every standing ahead, your reputation per hour and the time to the next one. At
+max level too.
+
+![Honor and rank, by the hour.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/pvp.png)
+
+Your honor toward its cap, your PvP rank and the week's cap: honor and rank points per
+hour, time to the next rank, battlegrounds won and lost. On a strip, or on the whole bar,
+by itself in battlegrounds if you like. And an alert when your honor is capped.
 
 ![Your bar, or no bar.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/compact.png)
 
@@ -109,11 +131,17 @@ English, Français, Deutsch, Español, Italiano, Português, Русский, 한
 /played minus that time. Nothing is ever deleted: switch it back on and the numbers come
 back.
 
-**What does `~` mean?** An estimate from your server /played, used for the first ten
-minutes after install.
+**What does `~` mean?** An estimate: a time still to come (to the next level, standing or
+rank, to the honor cap, to the max level), the mobs to kill and, for the first ten minutes
+after install, a pace taken from your server /played.
 
 **Textures or fonts missing?** Quit the game and launch it again: `/reload` is not enough
 after installing or updating.
+
+**Reputation? PvP?** The reputation strip follows the faction you tick "Show as Experience
+Bar" for in the game's Reputation panel, or the one you pick in Options > TruePlayed >
+Reputation. Honor and rank show once you pick a strip or the whole bar in Options >
+TruePlayed > PvP.
 
 **WTFix?** Open `/wtfix` and untick TruePlayed. **RXPGuides?** Works with it.
 
