@@ -277,6 +277,8 @@ T.test("locales: dates, numbers and short duration units of each language", func
       { L.DUR_D_H, { 12, 23 }, 11 }, { L.DUR_H_M, { 9, 55 }, 11 }, { L.DUR_H, { 23 }, 6 },
       { L.DUR_M, { 59 }, 6 }, { L.DUR_LT_1M, {}, 7 }, { L.ETA_LT_1M, {}, 7 },
       { L.PFX_AVG_FMT, { "9h 55m" }, 18 }, { L.KILLS_FMT, { "1,234" }, 14 }, { L.PCTH_FMT, { "12.5" }, 9 },
+      -- the statistics window's and tooltip's times to the minute (Fmt.DurationFull)
+      { L.DUR_D_H_M, { 12, 23, 59 }, 16 },
     }
     for _, c in ipairs(cases) do
       local s = format(c[1], unpack(c[2]))
@@ -869,7 +871,18 @@ T.test("widths: the widest XP rows fit every theme's widest tooltip with a margi
       { L.TT_NEXT_LEVEL, format(L.TT_WARMING_FMT, Fmt.Duration(ns.C.WARMUP_FULL)) },
       { L.TT_RESTED, format(L.TT_RESTED_FMT, Fmt.Number(123456), Fmt.Percent(1.5, 1)) },
       { L.TT_PLAYED_EXCL_FMT:format(ns.Stats.MaskLabel(7)), Fmt.Duration(123 * 86400) },
+      -- the level's times to the minute (12d 23h 59m), the server's estimated
+      { L.TT_THIS_LEVEL, Fmt.DurationFull(12 * 86400 + 86399) },
+      { L.TT_THIS_LEVEL_SERVER, ns.Tokens.Approx(Fmt.DurationFull(12 * 86400 + 86399)) },
     }
+    -- the level's XP row: its parts two a line on continuation rows (a blank label), any
+    -- two of them (three parts: monsters and quests, then the rested bonus alone)
+    local xpParts = { format(L.BD_PART_FMT, L.LD_XP_MOBS, Fmt.Percent(0.33, 0)),
+      format(L.BD_PART_FMT, L.LD_XP_QUESTS, Fmt.Percent(0.33, 0)),
+      format(L.BD_PART_FMT, L.LD_XP_RESTED, Fmt.Percent(0.34, 0)) }
+    for a = 1, 2 do
+      for b = a + 1, 3 do rows[#rows + 1] = { " ", xpParts[a] .. L.SEP .. xpParts[b] } end
+    end
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
         ns.Core.SetSetting("theme", key)
@@ -1168,8 +1181,9 @@ end)
 -- cards' label / value / sub within a card, each section's title with its right text, a
 -- breakdown row's label (the PvP row with its hover hint) left of its value column, the
 -- value and percent columns, the XP columns, the zone times, the upcoming level's box and
--- lines: a level's widest durations are 2d 23h and 9h 59m, the total since level 1 and
--- the time until a level is reached the chart's), and no row of the bar, PvP chip or
+-- lines: a level's widest durations are 2d 23h and 9h 59m, 2d 23h 59m and 23h 59m to the
+-- minute (Fmt.DurationFull: every measured one), the total since level 1 and the time
+-- until a level is reached the chart's), and no row of the bar, PvP chip or
 -- detail PvP row tooltips is cut (the private tooltip; the classic GameTooltip grows;
 -- wrapped notes and the no-record line wrap). The Levels hint
 -- (332 px) is checked by "widths: the statistics window" above (the chart is the Levels
@@ -1213,28 +1227,33 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
           local w, which = Widest(fs, texts)
           Need(what, w, limit, which)
         end
-        -- formats of one wide duration (D) or a pair of them
+        -- formats of one wide duration (D; F: a measured one, to the minute) or a pair of them
         local SECS = { 125 * 86400 + 23 * 3600, 12 * 86400 + 23 * 3600, 9 * 3600 + 59 * 60 }
-        local D = {}
+        local D, F = {}, {}
         for i, v in ipairs(SECS) do D[i] = Fmt.Duration(v) end
-        local function With(fmt, ...)
-          local args, out = { ... }, {}
-          for _, d in ipairs(D) do
+        for i, v in ipairs({ 125 * 86400 + 23 * 3600 + 59 * 60, 12 * 86400 + 23 * 3600 + 59 * 60, 23 * 3600 + 59 * 60 }) do
+          F[i] = Fmt.DurationFull(v)
+        end
+        local function Over(list, fmt, args)
+          local out = {}
+          for _, d in ipairs(list) do
             local a = {}
             for i, v in ipairs(args) do a[i] = (v == "D") and d or v end
             out[#out + 1] = format(fmt, (unpack or table.unpack)(a))
           end
           return out
         end
+        local function With(fmt, ...) return Over(D, fmt, { ... }) end
+        local function WithF(fmt, ...) return Over(F, fmt, { ... }) end
         -- the chips' label, value and fixed sub lines (the duration sub lines: below)
         local inner = geo.chipW - 16
         local serverSub = { L.LV_SERVER_SUB, Fmt.Ago(7200), Fmt.Ago(86400 * 45) }
         local texts = {
-          { { L.LV_PLAYED }, D, { format(L.LV_PLAYED_SUB_FMT, 59), L.LV_PLAYED_SUB_ONE } },
-          { { L.TT_SERVER }, D, serverSub },
-          { { L.LV_AVG }, D, {} },
-          { { L.BD_PVP }, D, {} },
-          { { L.LV_FLIGHT }, D, { format(L.LV_FLIGHT_SUB_FMT, Fmt.Percent(0.123)),
+          { { L.LV_PLAYED }, F, { format(L.LV_PLAYED_SUB_FMT, 59), L.LV_PLAYED_SUB_ONE } },
+          { { L.TT_SERVER }, F, serverSub },
+          { { L.LV_AVG }, F, {} },
+          { { L.BD_PVP }, F, {} },
+          { { L.LV_FLIGHT }, F, { format(L.LV_FLIGHT_SUB_FMT, Fmt.Percent(0.123)),
             format(L.LV_FLIGHT_SUB_FMT, format(L.LV_LT_FMT, Fmt.Percent(0.01))) } },
           { { L.TT_DEATHS }, { Fmt.Number(1234) }, {} },
           { { format(L.LV_TOP_IN_FMT, 60), L.MAX_LEVEL, L.CAP_SHORT, L.LV_XP_OFF },
@@ -1258,9 +1277,9 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
         -- every chart title with the summary on its row
         local titles = { "LV_T_ALL", "LV_T_WORLD", "LV_T_INST", "LV_T_PVP", "LV_T_FLIGHT", "LV_T_PROF", "LV_T_DEAD" }
         for f, tkey in ipairs(titles) do
-          local sums = With(f == 1 and L.LV_SUM_FMT or L.LV_SUM_FILTER_FMT, "D", 59)
+          local sums = WithF(f == 1 and L.LV_SUM_FMT or L.LV_SUM_FILTER_FMT, "D", 59)
           sums[#sums + 1] = L.LV_SUM_NONE                     -- no level to count
-          for _, s in ipairs(With(L.LD_TOTAL_FMT, "D")) do sums[#sums + 1] = s end   -- seconds alone
+          for _, s in ipairs(WithF(L.LD_TOTAL_FMT, "D")) do sums[#sums + 1] = s end   -- seconds alone
           local sw, stext = Widest(ch.summary, sums)
           Need("title " .. tkey .. " + summary", FSWidth(Width, ch.title, L[tkey]) + 12 + sw, geo.colW,
             L[tkey] .. " | " .. stext)
@@ -1282,20 +1301,42 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
           end
         end
         Fits("axis label", ch.grid[1].label, rawget(ch.plot, "_points")[1].x - 6, labels)
-        Fits("average label", ch.avg.label, math.floor(geo.plotW / 2), With(L.LV_AVG_FMT, "D"))
-        -- the strip: its title and share on one row, its legend on one row
+        Fits("average label", ch.avg.label, math.floor(geo.plotW / 2), WithF(L.LV_AVG_FMT, "D"))
+        -- the strip: its title (the prefix, the two range pickers at their widest number with
+        -- their padding, the arrow between them: "Progress: level [59] » [60]") and share on
+        -- one row, its legend on one row
         local st = ch.strip
         local sW = (rawget(st.frame, "_width") or 0) - 20
         local shareW, shareT = Widest(st.share, { format(L.LV_SHARE_FMT, 100, 100), format(L.LV_XP_SHARE_FMT, 100),
-          L.TT_MAX_LEVEL, format(L.LV_CAP_FMT, 60), format(L.LV_XP_OFF_FMT, 60) })
-        local title = format(L.LV_PROGRESS_FMT, 60)
-        Need("strip title + share", FSWidth(Width, st.title, title) + 20 + shareW, sW, title .. " | " .. shareT)
-        local w1, t1 = Widest(st.fs1, With(L.LV_DONE_FMT, 59, "D"))
-        local w2, t2 = Widest(st.fs2, With(L.LV_CUR_FMT, 59, "D"))
+          L.TT_MAX_LEVEL, format(L.LV_CAP_FMT, 60), format(L.LV_XP_OFF_FMT, 60),
+          format(L.LV_RANGE_REACHED_FMT, Fmt.PercentInt(100), 60) })
+        local nums = {}
+        for n = 1, 60 do nums[n] = tostring(n) end
+        local pick = math.max(16, math.ceil(Widest(st.pickFS[1], nums)) + 10)
+        T.eq(rawget(st.picks[2], "_width"), math.max(16, math.ceil(FSWidth(Width, st.pickFS[2], "60")) + 10),
+          where .. ": the picker's width")
+        local titleW = FSWidth(Width, st.title, L.LV_RANGE_TITLE) + 4 + pick + 3 + FSWidth(Width, st.arrow, "\194\187")
+          + 3 + pick
+        Need("strip title + pickers + share", titleW + 20 + shareW, sW, L.LV_RANGE_TITLE .. " [59] [60] | " .. shareT)
         local lefts = {}                                     -- the chip's ETA text, "+" when partial
         for i, v in ipairs(SECS) do lefts[i] = format(L.LV_LEFT_FMT, Fmt.ETA(v) .. "+") end
         local w3, t3 = Widest(st.fs3, lefts)
-        Need("strip legend", 3 * (8 + 4) + w1 + 14 + w2 + 14 + w3, sW, t1 .. " | " .. t2 .. " | " .. t3)
+        -- a range ahead: its estimated time alone ("+": levels without an XP size in it)
+        local ahead = {}
+        for i, v in ipairs(SECS) do ahead[i] = format(L.LV_UPCOMING_FMT, Fmt.ETA(v) .. "+") end
+        Fits("strip: a range ahead", st.fs3, sW - 12, ahead)
+        -- the legend to the minute, else (LevelChart FitLegend) without the minutes past 10 h;
+        -- its complete levels from level 1 or from a later one (a range: "Level 10 » 59")
+        local function Legend(fmtOf)
+          local done = fmtOf(L.LV_DONE_SPAN_FMT, 1, 59, "D")
+          for _, t in ipairs(fmtOf(L.LV_DONE_SPAN_FMT, 10, 59, "D")) do done[#done + 1] = t end
+          local w1, t1 = Widest(st.fs1, done)
+          local w2, t2 = Widest(st.fs2, fmtOf(L.LV_CUR_FMT, 59, "D"))
+          return 3 * (8 + 4) + w1 + 14 + w2 + 14 + w3, t1 .. " | " .. t2 .. " | " .. t3
+        end
+        local lw, lt = Legend(WithF)
+        if lw > sW then lw, lt = Legend(With) end
+        Need("strip legend", lw, sW, lt)
         -- the detail sheet: its title and status
         local hit = ch.cols[ch.state.level].hit
         hit:GetScript("OnClick")(hit, "LeftButton")
@@ -1307,29 +1348,32 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
         -- the detail sheet's sections (inner width 348 px, cards of 170 px with 8 px each side)
         local IW, CARD_IN = 348, 170 - 16
         local DL = { Fmt.Duration(2 * 86400 + 23 * 3600), Fmt.Duration(9 * 3600 + 59 * 60) }
-        local function WithL(fmt)
+        local FL = { Fmt.DurationFull(2 * 86400 + 23 * 3600 + 59 * 60), Fmt.DurationFull(23 * 3600 + 59 * 60) }
+        local function WithL(fmt, list)
           local out = {}
-          for i, d in ipairs(DL) do out[i] = format(fmt, d) end
+          for i, d in ipairs(list or DL) do out[i] = format(fmt, d) end
           return out
         end
         local cards = det.cards
         Fits("detail card label", cards.played.label, CARD_IN,
           { L.LV_PLAYED, L.TT_SERVER, L.LD_ETA, L.LD_ETA_CUR, L.LD_CUM, L.TT_XPH, L.TT_DEATHS })
         local values = { L.DOTS, Fmt.Rate(250000), Fmt.Number(1234), Fmt.ETA(SECS[1]), Fmt.ETA(SECS[2]) }
-        for _, d in ipairs(D) do values[#values + 1] = "~" .. d end
+        for _, d in ipairs(D) do values[#values + 1] = d end          -- Estimated at start
+        for _, d in ipairs(F) do values[#values + 1] = "~" .. d end   -- Played, Server /played, Total
         Fits("detail card value", cards.played.value, CARD_IN, values)
-        local subs = { format(L.TT_EXCL_FMT, ns.Stats.MaskLabel(7)), L.LV_SERVER_SUB, format(L.LV_PLAYED_SUB_FMT, 59),
-                       L.LD_NONE }
-        for _, f in ipairs({ L.LD_MORE_FMT, L.LD_LESS_FMT, L.LD_LEFT_FMT, L.LV_DEAD_SUB_FMT }) do
+        local subs = { format(L.TT_EXCL_FMT, ns.Stats.MaskLabel(7)), L.LV_SERVER_SUB, format(L.LD_CUM_SUB_FMT, 60),
+                       format(L.LD_CUM_SUB_CUR_FMT, 60), L.LD_NONE }
+        for _, f in ipairs({ L.LD_MORE_FMT, L.LD_LESS_FMT, L.LD_LEFT_FMT }) do
           for _, t in ipairs(WithL(f)) do subs[#subs + 1] = t end
         end
+        for _, t in ipairs(WithL(L.LV_DEAD_SUB_FMT, FL)) do subs[#subs + 1] = t end
         Fits("detail card sub", cards.played.sub, CARD_IN, subs)
         local tm, dxp = det.time, det.xp
         local function Head(what, sec, head, rights)
           local rw, rt = Widest(sec.right, rights)
           Need(what, FSWidth(Width, sec.title, head) + 12 + rw, IW, head .. " | " .. tostring(rt))
         end
-        Head("detail time title", tm, L.LD_TIME, WithL(L.LD_TOTAL_FMT))
+        Head("detail time title", tm, L.LD_TIME, WithL(L.LD_TOTAL_FMT, FL))
         Head("detail XP title", dxp, L.LD_XP, { format(L.LD_XP_FMT, Fmt.Number(999999), Fmt.Number(999999)) })
         Fits("detail zones title", det.zonesTitle, IW, { L.LD_ZONES })
         Fits("detail no zone", det.zonesEmpty, IW, { L.ROW_ZONES_EMPTY })
@@ -1340,7 +1384,16 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
           if k == "BD_PVP" then w = w + 4 + FSWidth(Width, row.hint, L.LD_HOVER) end
           Need("detail row label", w, 244 - 28 - 4, L[k])        -- the value column starts at 244
         end
-        Fits("detail row value", row.value, 64, DL)
+        -- a value column (LevelDetail DurFit): the minutes when they fit, else without them
+        local FLS = { 2 * 86400 + 23 * 3600 + 59 * 60, 23 * 3600 + 59 * 60 }
+        local function FitsDur(what, fs)
+          for _, v in ipairs(FLS) do
+            local t = Fmt.DurationFull(v)
+            if FSWidth(Width, fs, t) > 64 then t = Fmt.Duration(v) end
+            Need(what, FSWidth(Width, fs, t), 64, t)
+          end
+        end
+        FitsDur("detail row value", row.value)
         Fits("detail row percent", row.pct, 52, { Fmt.Percent(0.999), Fmt.Percent(0.123),
           format(L.LV_LT_FMT, Fmt.PercentInt(1)) })                -- a share that rounds to 0
         local xcol = math.floor((IW - 16) / 3)
@@ -1348,7 +1401,7 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
         Fits("detail XP label", col.label, xcol - 12, { L.LD_XP_MOBS, L.LD_XP_QUESTS, L.LD_XP_RESTED })
         Fits("detail XP value", col.value, xcol, { Fmt.Number(999999) })
         Fits("detail XP percent", col.pct, xcol, { Fmt.Percent(0.999) })
-        if det.zones[1] then Fits("detail zone time", det.zones[1].time, 64, DL) end
+        if det.zones[1] then FitsDur("detail zone time", det.zones[1].time) end
         hit = ch.cols[ch.state.level + 1].hit
         hit:GetScript("OnClick")(hit, "LeftButton")
         local up = det.up
@@ -1368,6 +1421,12 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
             frame:GetScript("OnLeave")(frame)
           end
           for _, k in ipairs({ ch.state.level, ch.state.level + 1, 5 }) do Hover("bar " .. k, ch.cols[k].hit) end
+          -- the range pickers' tooltips, with the game's menus and without (the cycle hint)
+          Hover("range picker", ch.strip.picks[1])
+          local mu = rawget(_G, "MenuUtil")
+          rawset(_G, "MenuUtil", nil)
+          Hover("range picker (no menu)", ch.strip.picks[2])
+          rawset(_G, "MenuUtil", mu)
           ch.filters[4].btn:Click("LeftButton")
           Hover("bar (PvP filter)", ch.cols[ch.state.level].hit)
           Hover("PvP chip", ch.chips[4].frame)

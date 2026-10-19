@@ -5,6 +5,81 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 version numbers follow [Semantic Versioning](https://semver.org/).
 Each version section becomes the release notes shown on CurseForge.
 
+## [Unreleased]
+
+### Added
+
+- **Choose the range of the Levels tab's progress strip**: the strip under the chart now
+  reads "Progress: level [1] » [60]", and its two level boxes choose another range, such
+  as 1 » 10 or 10 » 20 (a click opens the list of levels: "From level" 1 to 59, "To
+  level" from the next level to 60). The strip then counts only those levels: the
+  completed ones in full ("Level 10 » 18: 1d 06h 10m"), the level in progress when it is
+  in the range, and the estimated time left to reach the range's last level ("~6h 15m
+  left"), with the shares of time and XP of the range. A range already behind you is
+  full ("100% · level 15 reached"); a range still ahead is empty, with its estimated time
+  ("Upcoming: ~4d 06h estimated"). The chart's background is lightly tinted behind the
+  chosen levels. The range is saved for each character (another character keeps its own;
+  erasing your current character's statistics keeps it, like the followed faction), and
+  "Default: level 1 » 60" at the top of the list brings the strip back exactly as before.
+  A "from" at or above the "to" moves the "to" to the max level. Without the game's
+  menus, a click on a box steps to the next level, a right-click to the previous one.
+  A range over levels TruePlayed did not record (reached before you installed it) gives
+  "..." for their time, never a wrong figure, and "~" when one of them was only partly
+  recorded; the strip then shows its share of the XP alone. A time left that cannot be
+  estimated at all reads "...", never "<1m".
+- **Total since level 1 in a level's tooltip**: hovering a bar of the Levels tab now ends
+  with the time from level 1 to the end of that level, the figure of the detail sheet's
+  "Total since level 1" card, to the minute; for the level in progress, up to the moment
+  you hover it (hover it again to see it move on); for an upcoming level, its estimate
+  ("~3d 15h"). Nothing for a level reached before TruePlayed was installed.
+- **The level's server /played in the bar's tooltip**: while you exclude something (AFK,
+  inn or city time), a new line right under "This level" gives the level's /played with
+  nothing left out, "This level (server /played)": the difference with "This level" is
+  what your exclusions took off. It is the figure of the "Server /played" card in the
+  level's detail sheet (with "~" when it is an estimate). It shows once the game has
+  answered a /played (a few seconds after logging in), and never when nothing is
+  excluded (both lines would be the same).
+- **The level's XP by source in the bar's tooltip**: right above "Level breakdown", a
+  "Level XP" row shows where the XP of your level came from, as the detail sheet's
+  Experience bar does: monsters, quests and other, rested bonus ("Monsters 80% · Quests
+  and other 10% · Rested bonus 10%"; on two lines in the Classic theme and in the
+  languages where one would be too wide), with a small bar in the colours of your XP bar
+  (your own XP and rested colours when you chose them). In every theme, Classic
+  included, where its bar lines up with the breakdown's; with Shift held, the two
+  breakdowns still face each other. Nothing at the maximum level, nor before the level's
+  first XP. The tooltip is two or three lines taller for it (one more with the server
+  /played line above), and so is the pair with Shift.
+
+### Changed
+
+- **The progress strip's legend says the level reached**: "Level 1 » 10: 2h 37m" instead
+  of "Levels 1 to 9: 2h 37m", in the notation of the strip's title and of the level
+  sheets. It is the same time, until you reached level 10, the level 9 » 10 included: the
+  old wording could read as if that last level were left out.
+- **"Total since level 1" in a level's detail sheet** says what it counts in the sheet
+  title's notation: "level 1 » 19" on the sheet of "Level 18 » 19", the time until you
+  reached 19 (it read "levels 1 to 18", which was confusing next to the "Time played"
+  card's "levels 1 to 19", which counts the level in progress), and "level 1 » 21, in
+  progress" on the sheet of the level in progress: up to now.
+- **Minutes past 10 hours** in the statistics window: a time of 10 hours or more keeps
+  its minutes ("10h 23m" instead of "10h", "1d 19h 05m" instead of "1d 19h"). This covers
+  the Levels tab (top cards, summary, average line, progress strip, bar tooltips), the
+  level's detail sheet (cards, time breakdown, zones of a completed level) and the
+  window's footer, which now also follows your playing time minute by minute in the
+  account view. The Sessions table's Duration column keeps the minutes up to a day
+  ("23h 59m"), then shows days and hours as before ("2d 03h"): the column has no room
+  for more in every language. The Zones tab, the other Sessions columns and the zones of
+  the level in progress stay as before: they are only refreshed after an XP gain, and
+  their minutes would lag behind. Where a text would not fit (the second line of a top
+  card, the detail sheet's value column, the progress strip in a long language on a
+  small screen), it drops the minutes past 10 hours as before. Estimates ("~"), the
+  chart's scale and the XP bar's own texts are unchanged.
+- **The detail sheet's Experience bar** takes your own XP and rested colours when you
+  chose them, as the XP bar does.
+- **The detail sheet's "Server /played" card** of the level in progress now also follows
+  the time live when the server's last answer did not include the level's own time.
+- **"This level" in the bar's tooltip** keeps its minutes past 10 hours too.
+
 ## [1.2.0] - 2026-10-14
 
 **Quit the game and launch it again after updating** (a `/reload` is not enough): this

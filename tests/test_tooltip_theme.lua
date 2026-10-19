@@ -19,7 +19,9 @@ local function Ema(a, r, q, d)
 end
 
 -- Character record of the stub player: completed levels, zones, a capital, and play in
--- every kind of place so the breakdown has 7 parts (two lines: a continuation row).
+-- every kind of place so the breakdown has 7 parts (two lines: a continuation row). The
+-- level in progress has XP from two sources (monsters, rested bonus): its XP row of block 1
+-- is a gauge of 2 segments and one short text row, block 1 staying the narrower block.
 local function Record()
   local p = Stub.player
   local lvl = p.level
@@ -43,7 +45,7 @@ local function Record()
                        est = 0, max = 5000, t0 = 1789900000 + lv * 1000, t1 = 1789900000 + lv * 1000 + 999,
                        z = { [1411] = { s = { w = 3000, W = 200 }, xp = 5000 } } }
   end
-  rec.levels[lvl] = { s = { w = 1000, W = 60 }, xp = 3000, xa = 2400, xr = 300, xq = 300, d = 0,
+  rec.levels[lvl] = { s = { w = 1000, W = 60 }, xp = 3000, xa = 2700, xr = 300, xq = 0, d = 0,
                       est = 0, t0 = 1789990000, z = { [1411] = { s = { w = 1000, W = 60 }, xp = 3000 } } }
   return rec
 end
@@ -143,16 +145,17 @@ local function Native(ns, detailed)
   return tt._lines, tt._colors
 end
 
--- Those lines (and colours) as ShowFor's native blocks show them: each breakdown's label
--- alone on its line (its right text a space, under the bar), its first parts on a
--- continuation row of their own (same colours: label and value), the next ones as they
--- were.
+-- Those lines (and colours) as ShowFor's native blocks show them: each breakdown's label,
+-- and the level's XP row's, alone on its line (its right text a space, under the bar), its
+-- first parts on a continuation row of their own (same colours: label and value), the next
+-- ones as they were.
 local function BarLayout(ns, lines, colors)
   local L = ns.L
   local outL, outC = {}, {}
   for i, l in ipairs(lines) do
     local c = colors and colors[i]
-    if (l[1] == L.TT_BREAKDOWN_LEVEL or l[1] == L.TT_BREAKDOWN_TOTAL) and l[2] ~= L.TT_NO_RATE then
+    if (l[1] == L.TT_BREAKDOWN_LEVEL or l[1] == L.TT_BREAKDOWN_TOTAL or l[1] == L.TT_XP_LEVEL)
+        and l[2] ~= L.TT_NO_RATE then
       outL[#outL + 1] = { l[1], " " }
       outC[#outC + 1] = c
       outL[#outL + 1] = { " ", l[2] }
@@ -262,8 +265,8 @@ T.test("content parity, separators and gauge: short and Shift (block 2 beside bl
     end
     T.eq(texts, NativeTexts(lines), "row texts in order (shift " .. tostring(shift) .. ")")
     T.eq(seps, { header = 1, block = NativeBlanks(lines) - (shift and 1 or 0), footer = 1 }, "separators")
-    -- kinds: title first, then the level section's title; block 1's breakdown is a gauge
-    -- row then continuation rows only; the hint is the last row of the last block
+    -- kinds: title first, then the level section's title; block 1's XP row and breakdown
+    -- are gauge rows then continuation rows only; the hint is the last row of the last block
     T.eq(tp.rows[1].kind, "title")
     T.eq(tp.rows[2].kind, "section")
     T.eq(tp.rows[2].left:GetText(), L.TT_SECTION_LEVEL)
@@ -280,9 +283,13 @@ T.test("content parity, separators and gauge: short and Shift (block 2 beside bl
     local levelParts = Tooltip.BreakdownParts(
       ns.Stats.Breakdown(ns.char.levels[ns.Tokens.ctx.level], {}), {})
     T.ok(levelParts > 0, "the level in progress has a breakdown")
-    T.eq(#gaugeRows, 1, "block 1: the level's breakdown alone")
-    T.eq(tp.rows[gaugeRows[1]].left:GetText(), L.TT_BREAKDOWN_LEVEL, "block 1: the level's breakdown label")
-    T.eq(ShownCount(tp.gauges[1]), levelParts, "the level's gauge: one segment per part")
+    T.eq(#gaugeRows, 2, "block 1: the level's XP row and breakdown")
+    T.eq(tp.rows[gaugeRows[1]].left:GetText(), L.TT_XP_LEVEL, "block 1: the level's XP label first")
+    T.eq(tp.rows[gaugeRows[1] + 1].kind, "cont", "block 1: the XP parts on a text row")
+    T.eq(gaugeRows[2], gaugeRows[1] + 2, "block 1: the breakdown right under the XP row")
+    T.eq(ShownCount(tp.gauges[1]), 2, "the XP gauge: monsters and rested bonus (no quest XP)")
+    T.eq(tp.rows[gaugeRows[2]].left:GetText(), L.TT_BREAKDOWN_LEVEL, "block 1: the level's breakdown label")
+    T.eq(ShownCount(tp.gauges[2]), levelParts, "the level's gauge: one segment per part")
     if shift then
       -- block 2: its section title first, the character's breakdown with its own gauge
       local tp2 = f2.tp
@@ -303,13 +310,105 @@ T.test("content parity, separators and gauge: short and Shift (block 2 beside bl
       T.eq(nParts, 7)
       T.eq(ShownCount(tp2.gauges[1]), nParts, "the character's gauge: one segment per part")
       T.eq(ShownCount(tp2.gauges[2]), 0)
-      T.eq(ShownCount(tp.gauges[2]), 0, "block 1: no second gauge")
+      T.eq(ShownCount(tp.gauges[3]), 0, "block 1: no third gauge")
     end
     Tooltip.Hide(w)
     T.no(ns.TooltipFrame.frame:IsShown())
     T.ok(f2 == nil or not f2:IsShown(), "hide hides both blocks")
   end
   Stub.shift = false
+end)
+
+-- The level's XP row from three sources: a gauge of three segments (monsters, quests and
+-- other, rested bonus, in that order), its parts on one row when that row fits the frame
+-- at its widest (TP_Fits: the theme's maximum width), else two a row (labels too long:
+-- the fallback of es, pt, ru with the real fonts); none at 0 XP. The XP and rested
+-- segments in the bar's colours: the theme's, the user's once chosen.
+T.test("frame themes: the level's XP row from three sources, on one row when it fits, else two a row", function()
+  local ns, w = Start(nil)
+  local Tooltip, L, Fmt = ns.Tooltip, ns.L, ns.Fmt
+  local lb = ns.char.levels[ns.Tokens.ctx.level]
+  lb.xa, lb.xq, lb.xr = 2400, 300, 300
+  Tooltip.ShowFor(w)
+  local tp = ns.TooltipFrame.frame.tp
+  -- a GameTooltip (Broker's) keeps two parts a row: on the frame they are one row
+  local native = NativeTexts((Native(ns, false)))
+  for k = 1, #native do
+    if native[k] == L.TT_XP_LEVEL then
+      native[k + 1] = native[k + 1] .. L.SEP .. native[k + 2]
+      table.remove(native, k + 2)
+      break
+    end
+  end
+  T.eq(FrameTexts(tp), native, "the rows of Fill, in order (the XP parts on one row)")
+  local function XPRow()
+    for i = 1, tp.n do
+      if tp.rows[i].kind == "gauge" and tp.rows[i].left:GetText() == L.TT_XP_LEVEL then return i end
+    end
+  end
+  local g = XPRow()
+  T.ok(g ~= nil, "the XP gauge row")
+  local function Part(key, x) return format(L.BD_PART_FMT, L[key], Fmt.Percent(x, 0)) end
+  local one = Part("LD_XP_MOBS", 0.8) .. L.SEP .. Part("LD_XP_QUESTS", 0.1) .. L.SEP .. Part("LD_XP_RESTED", 0.1)
+  T.eq({ tp.rows[g + 1].kind, tp.rows[g + 1].right:GetText() }, { "cont", one }, "the three parts on one row")
+  T.eq(tp.rows[g + 2].left:GetText(), L.TT_BREAKDOWN_LEVEL, "then the level's breakdown")
+  T.eq(ShownCount(tp.gauges[1]), 3, "three segments")
+  local th = ns.Themes.Active()
+  local function Colours(cols, what)
+    for i = 1, 3 do
+      local r, gg, b = tp.gauges[1][i]:GetVertexColor()
+      T.ok(Near(r, cols[i][1]) and Near(gg, cols[i][2]) and Near(b, cols[i][3]), what .. ": segment " .. i)
+    end
+  end
+  Colours({ th.colors.xp, th.tt.gauge.colors.city, th.colors.rested }, "the theme's colours")
+  -- a steady refresh measures nothing again (TP_Fits: change-only); the frame's own
+  -- texts only (the bar measures its own)
+  local f = ns.TooltipFrame.frame
+  local M = getmetatable(tp.rows[1].left).__index
+  local unb, gsw, measured = M.GetUnboundedStringWidth, M.GetStringWidth, 0
+  rawset(M, "GetUnboundedStringWidth", function(self)
+    if self:GetParent() == f then measured = measured + 1 end
+    return unb(self)
+  end)
+  rawset(M, "GetStringWidth", function(self)
+    if self:GetParent() == f then measured = measured + 1 end
+    return gsw(self)
+  end)
+  Stub.Advance(1)
+  rawset(M, "GetUnboundedStringWidth", unb)
+  rawset(M, "GetStringWidth", gsw)
+  T.eq(tp.rows[g + 1].right:GetText(), one, "steady: the same row")
+  T.eq(measured, 0, "steady: no width measured")
+  -- the user's XP and rested colours (the bar's): the segments follow at the next show
+  ns.Core.SetSetting("widget.xpColor", { 0.1, 0.9, 0.1 })
+  ns.Core.SetSetting("widget.restedColor", { 0.9, 0.5, 0.1 })
+  Tooltip.ShowFor(w)
+  Colours({ { 0.1, 0.9, 0.1 }, th.tt.gauge.colors.city, { 0.9, 0.5, 0.1 } }, "the user's colours")
+  ns.Core.SetSetting("widget.xpColor", false)
+  ns.Core.SetSetting("widget.restedColor", false)
+  Tooltip.ShowFor(w)
+  Colours({ th.colors.xp, th.tt.gauge.colors.city, th.colors.rested }, "the theme's again")
+  -- labels too long for one row at the theme's widest: two parts a row
+  local quests = L.LD_XP_QUESTS
+  L.LD_XP_QUESTS = "Quests, dungeon quests and every other source of experience"
+  Stub.Advance(1)
+  g = XPRow()
+  T.eq({ tp.rows[g + 1].kind, tp.rows[g + 1].right:GetText() },
+    { "cont", Part("LD_XP_MOBS", 0.8) .. L.SEP .. Part("LD_XP_QUESTS", 0.1) }, "monsters and quests on a row")
+  T.eq({ tp.rows[g + 2].kind, tp.rows[g + 2].right:GetText() }, { "cont", Part("LD_XP_RESTED", 0.1) },
+    "the rested bonus on the next")
+  T.eq(tp.rows[g + 3].left:GetText(), L.TT_BREAKDOWN_LEVEL, "then the level's breakdown")
+  L.LD_XP_QUESTS = quests
+  Stub.Advance(1)
+  T.eq(tp.rows[XPRow() + 1].right:GetText(), one, "back on one row")
+  -- no XP by source: no XP row, the breakdown's gauge first
+  lb.xa, lb.xq, lb.xr = 0, 0, 0
+  Stub.Advance(1)
+  for i = 1, tp.n do T.ok(tp.rows[i].left:GetText() ~= L.TT_XP_LEVEL, "no XP row") end
+  T.eq(ShownCount(tp.gauges[1]), Tooltip.BreakdownParts(ns.Stats.Breakdown(lb, {}), {}), "the breakdown's gauge")
+  T.eq(ShownCount(tp.gauges[2]), 0, "no second gauge")
+  Tooltip.Hide(w)
+  T.eq(#Stub.errors, 0)
 end)
 
 T.test("palette roles: rows take the theme's tooltip colours", function()
@@ -393,13 +492,20 @@ T.test("panel, title icon, separators, leaders, gauge and fonts follow the theme
     end
     T.ok(n > 3, "leaders shown")
   end
-  -- gauge colours by part key (the short view: the level's breakdown)
+  -- gauge colours by part key (the short view: the level's XP row, then its breakdown).
+  -- The XP row: monsters in the theme's XP colour, the rested bonus in its rested colour
+  -- (quests and other, in the gauge's city colour, are 0 here: no segment)
+  local function SegIs(seg, c, what)
+    local r, g, b = seg:GetVertexColor()
+    T.ok(Near(r, c[1]) and Near(g, c[2]) and Near(b, c[3]), what)
+  end
+  T.ok(tp.gauge == tp.gauges[1], "tp.gauge: the first gauge (the XP row)")
+  SegIs(tp.gauges[1][1], th.colors.xp, "XP segment 1: monsters, the theme's XP colour")
+  SegIs(tp.gauges[1][2], th.colors.rested, "XP segment 2: rested bonus, the theme's rested colour")
   local keys = {}
   ns.Tooltip.BreakdownFracs(ns.Stats.Breakdown(ns.char.levels[ns.Tokens.ctx.level], {}), {}, keys)
   for i = 1, #keys do
-    local c = tt.gauge.colors[keys[i]]
-    local r, g, b = tp.gauge[i]:GetVertexColor()
-    T.ok(Near(r, c[1]) and Near(g, c[2]) and Near(b, c[3]), "segment " .. i .. " colour " .. keys[i])
+    SegIs(tp.gauges[2][i], tt.gauge.colors[keys[i]], "segment " .. i .. " colour " .. keys[i])
   end
   -- fonts: the title role on the title and the section titles, body on the rows
   local title = tp.rows[1].left
@@ -507,16 +613,19 @@ local function ScreenWidth(w)
 end
 
 -- Centre y (screen) of a block's breakdown bar: on a private frame, its gauge (the first
--- segment) when the row labelled `label` is a gauge row, else that row's label; on a
--- GameTooltip, the left text of the line labelled `label` (the client's
--- "<name>TextLeft<i>"). nil when the block has no such row.
+-- segment; the gauges come in row order: block 1's XP row has the first one) when the row
+-- labelled `label` is a gauge row, else that row's label; on a GameTooltip, the left text
+-- of the line labelled `label` (the client's "<name>TextLeft<i>"). nil when the block has
+-- no such row.
 local function BarY(f, label)
   if rawget(f, "TP_Row") then
     local tp = f.tp
+    local g = 0
     for i = 1, tp.n do
       local row = tp.rows[i]
+      if row.kind == "gauge" then g = g + 1 end
       if row.left:GetText() == label and row.left:IsShown() then
-        local r = row.kind == "gauge" and tp.gauges[1][1] or row.left
+        local r = row.kind == "gauge" and tp.gauges[g][1] or row.left
         return (select(2, r:GetCenter()))
       end
     end
@@ -994,6 +1103,9 @@ T.test("stack: a stack that does not fit on its side moves as one piece, never o
     local ns, w = Start(theme)
     local Tooltip = ns.Tooltip
     ScreenWidth(600)
+    -- pixel's stack (its large fonts; block 1's XP row) is taller than a 1080-high screen:
+    -- a 1200-high one (a UI scale of 0.9) for it
+    if theme == "pixel" then rawset(UIParent, "_height", 1200) end
     local H = UIParent:GetHeight()
     local cases = { { y = 60, what = "below an owner" }, { y = -60, what = "above an owner" } }
     if theme ~= "actuel" then cases[3] = { owner = w, what = "above the bar (default place)" } end
@@ -1075,7 +1187,8 @@ T.test("stack: block 1 changes height: the stack is placed again at that refresh
     local ns = Start(theme)
     local Tooltip = ns.Tooltip
     ScreenWidth(600)
-    for _, y in ipairs({ 500, -450 }) do
+    -- (above: an owner low enough for the stack and its read-only line to fit over it)
+    for _, y in ipairs({ 500, -470 }) do
       local where = theme .. (y > 0 and " below" or " above")
       local owner = Owner(y)
       Stub.SetShift(true)
@@ -1351,7 +1464,7 @@ end)
 
 -- A steady refresh of the shown pair allocates nothing outside the fill (whose texts are
 -- strings): Tooltip.Fill is replayed (the last real fill's rows, no string built, the
--- same breakdown rows returned), and on the GameTooltips the stub's own line and size
+-- same breakdown and XP rows returned), and on the GameTooltips the stub's own line and size
 -- work is taken out (it builds strings). What is measured: the refresh handler, the
 -- second block's target, the show (natural widths or one width), the fit test, the
 -- breakdown rows' positions (TP_RowY, the line texts looked up once) and the anchor checks.
@@ -1371,13 +1484,16 @@ T.test("pair: a steady refresh allocates nothing (side by side and stacked, both
       local fill = Tooltip.Fill
       local rec = {}
       Tooltip.Fill = function(tt, ...)
-        local more, row = fill(tt, ...)
-        rec[tt] = { more = more, row = row }
-        return more, row
+        local more, row, xrow = fill(tt, ...)
+        rec[tt] = { more = more, row = row, xrow = xrow }
+        return more, row, xrow
       end
       Stub.Advance(1)
       Tooltip.Fill = fill
       T.ok(rec[f1] and rec[f2] and rec[f1].row > 0 and rec[f2].row > 0, where .. ": both fills seen, with their rows")
+      if not rawget(f1, "TP_Row") then
+        T.ok((rec[f1].xrow or 0) > 0 and (rec[f2].xrow or 0) == 0, where .. ": block 1's XP row, none in block 2")
+      end
       local replay
       local saved = {}                          -- the GameTooltips' own ClearLines and Show
       if rawget(f1, "TP_Row") then
@@ -1394,7 +1510,7 @@ T.test("pair: a steady refresh allocates nothing (side by side and stacked, both
         replay = function(tt)
           local r = rec[tt]
           for i = 1, r.n do tt:TP_Row(r.kinds[i], r.lefts[i], r.rights[i], pal.label, pal.value) end
-          return r.more, r.row
+          return r.more, r.row, r.xrow
         end
       else
         for _, f in ipairs({ f1, f2 }) do
@@ -1404,7 +1520,7 @@ T.test("pair: a steady refresh allocates nothing (side by side and stacked, both
         end
         replay = function(tt)
           local r = rec[tt]
-          return r.more, r.row
+          return r.more, r.row, r.xrow
         end
       end
       Tooltip.Fill = replay
@@ -1412,12 +1528,13 @@ T.test("pair: a steady refresh allocates nothing (side by side and stacked, both
       Refresh()
       Refresh()
       local _, _, _, t1 = Edges(f1)
-      -- native: both breakdown bars shown, never anchored, sized or recoloured again
-      local bars, barCalls = { ns.TooltipFrame.bar, ns.TooltipFrame.bar2 }, 0
+      -- native: both breakdown bars and the XP row's bar shown, never anchored, sized or
+      -- recoloured again
+      local bars, barCalls = { ns.TooltipFrame.bar, ns.TooltipFrame.bar2, ns.TooltipFrame.bar3 }, 0
       local barMethods = { "ClearAllPoints", "SetPoint", "SetSize", "SetFrameLevel", "SetScale", "SetVertexColor",
                            "Show", "Hide" }
       if not rawget(f1, "TP_Row") then
-        T.ok(BarOn(bars[1]) and BarOn(bars[2]), where .. ": both bars shown")
+        T.ok(BarOn(bars[1]) and BarOn(bars[2]) and BarOn(bars[3]), where .. ": the three bars shown")
         for _, b in ipairs(bars) do
           for _, r in ipairs({ b.frame, b.segs[1], b.segs[2] }) do
             for _, m in ipairs(barMethods) do
@@ -1437,7 +1554,7 @@ T.test("pair: a steady refresh allocates nothing (side by side and stacked, both
       T.eq(select(4, Edges(f1)), t1, where .. ": in place")
       if not rawget(f1, "TP_Row") then
         T.eq(barCalls, 0, where .. ": the bars untouched on steady refreshes")
-        T.ok(BarOn(bars[1]) and BarOn(bars[2]), where .. ": both bars still shown")
+        T.ok(BarOn(bars[1]) and BarOn(bars[2]) and BarOn(bars[3]), where .. ": the three bars still shown")
         for _, b in ipairs(bars) do
           for _, r in ipairs({ b.frame, b.segs[1], b.segs[2] }) do
             for _, m in ipairs(barMethods) do rawset(r, m, nil) end
@@ -1536,14 +1653,22 @@ T.test("Broker keeps one tooltip with both sections and both breakdown labels; t
     T.eq(tt._lines, (Native(ns, true)), theme .. ": the classic lines of Fill")
     T.eq(ns.TooltipFrame.frame2, nil, theme .. ": no block 2 frame")
     T.eq(rawget(_G, "TruePlayedCharTooltip"), nil, theme .. ": no second GameTooltip")
-    -- text only: each breakdown's label with its first parts, no bar
-    for _, l in ipairs(tt._lines) do
-      if l[1] == L.TT_BREAKDOWN_LEVEL or l[1] == L.TT_BREAKDOWN_TOTAL then
+    -- text only: each breakdown's label, and the level's XP row's, with its first parts,
+    -- no bar
+    local xpRows = 0
+    for i, l in ipairs(tt._lines) do
+      if l[1] == L.TT_BREAKDOWN_LEVEL or l[1] == L.TT_BREAKDOWN_TOTAL or l[1] == L.TT_XP_LEVEL then
         T.ok(type(l[2]) == "string" and l[2]:find("%%"), theme .. ": " .. l[1] .. " with its parts (" .. tostring(l[2]) .. ")")
       end
+      if l[1] == L.TT_XP_LEVEL then
+        xpRows = xpRows + 1
+        T.eq(tt._lines[i + 1][1], L.TT_BREAKDOWN_LEVEL, theme .. ": the XP row right above the level's breakdown")
+      end
     end
+    T.eq(xpRows, 1, theme .. ": the level's XP row, once")
     T.eq(ns.TooltipFrame.bar, nil, theme .. ": no breakdown bar")
     T.eq(ns.TooltipFrame.bar2, nil, theme .. ": no breakdown bar")
+    T.eq(ns.TooltipFrame.bar3, nil, theme .. ": no XP bar")
   end
 end)
 
@@ -1727,6 +1852,117 @@ T.test("native bars: on both blocks, the label alone and the parts below; the cl
   Tooltip.Hide(w)
   Stub.SetShift(false)
   T.eq(Stub.onUpdateCount, 0, "no OnUpdate")
+  T.eq(#Stub.errors, 0)
+end)
+
+-- The level's XP row of block 1 (Tooltip FillXPRow, TooltipFrame.Bar(3)): on the native
+-- blocks its label alone on its line, a bar to the right text edge, the parts (monsters,
+-- quests and other, rested bonus: those of 1 % or more, in that order) on the next rows,
+-- two a row (a GameTooltip would grow for three); the bar's segments in the detail sheet's Experience
+-- colours (the bar's XP colour, the gauge's city colour, the bar's rested colour: the
+-- theme's, the user's once chosen). Right above the level's breakdown, its bar and the
+-- breakdown's starting at one edge, 8 px right of the longer label (review of
+-- 17/10/2026: each 8 px right of its own label made two bars of different lengths), and
+-- ending at the same right edge; never in block 2; the breakdown bars still face to face.
+T.test("native bars: block 1's XP row, its bar in the detail sheet's XP colours, above the breakdown", function()
+  local ns, w = Start("actuel")
+  local Tooltip, L, TF, Fmt = ns.Tooltip, ns.L, ns.TooltipFrame, ns.Fmt
+  local G = ns.Themes.CLASSIC_GAUGE
+  local th = ns.Themes.Active()
+  local K = ns.C.COLORS
+  local xpC = type(th.colors) == "table" and th.colors.xp or K.accent
+  local restC = type(th.colors) == "table" and th.colors.rested or K.restedFill
+  local function Same(seg, c, what)
+    local r, g, b, a = seg:GetVertexColor()
+    T.ok(Near(r, c[1]) and Near(g, c[2]) and Near(b, c[3]) and Near(a, c[4] or 1), what)
+  end
+  local lb = ns.char.levels[ns.Tokens.ctx.level]
+  for _, shift in ipairs({ false, true }) do
+    local where = shift and "Shift" or "short"
+    Stub.SetShift(shift)
+    Tooltip.ShowFor(w)
+    local b = TF.bar3
+    T.ok(BarOn(b), where .. ": the XP row's bar")
+    T.ok(b.frame:GetParent() == UIParent, where .. ": a frame of UIParent, as block 1's breakdown bar")
+    local i = LineOf(GameTooltip, L.TT_XP_LEVEL)
+    T.ok(i ~= nil, where .. ": the XP row")
+    T.eq(GameTooltip._lines[i], { L.TT_XP_LEVEL, " " }, where .. ": the label alone on its line")
+    T.eq(GameTooltip._lines[i + 1], { " ", format(L.BD_PART_FMT, L.LD_XP_MOBS, Fmt.Percent(0.9, 0)) .. L.SEP
+      .. format(L.BD_PART_FMT, L.LD_XP_RESTED, Fmt.Percent(0.1, 0)) }, where .. ": its parts below (no quest XP)")
+    T.eq(LineOf(GameTooltip, L.TT_BREAKDOWN_LEVEL), i + 2, where .. ": right above the level's breakdown")
+    local lf = _G["GameTooltipTextLeft" .. i]
+    local rf = _G["GameTooltipTextRight" .. i]
+    local k = LineOf(GameTooltip, L.TT_BREAKDOWN_LEVEL)
+    local klf = _G["GameTooltipTextLeft" .. k]
+    T.ok(klf:GetRight() > lf:GetRight() + 1, where .. ": the fixture: the breakdown's label the longer")
+    local fl, fb, fw, fh = b.frame:GetRect()
+    local bl, _, bw = TF.bar.frame:GetRect()
+    T.near(fl, klf:GetRight() + 8, 1e-9, where .. ": 8 px right of the longer label (the breakdown's)")
+    T.near(fl, bl, 1e-9, where .. ": the same left edge as the breakdown's bar")
+    T.near(fw, bw, 1e-9, where .. ": the same width")
+    T.near(fl + fw, rf:GetRight(), 1e-9, where .. ": up to the line's right text")
+    T.near(fb + fh / 2, select(2, lf:GetCenter()), 1e-9, where .. ": on the label's line")
+    T.ok(fw >= G.min, where .. ": at least the minimum width")
+    T.eq(b.n, 2, where .. ": monsters and rested bonus")
+    T.eq({ b.key[1], b.key[2] }, { "xp", "rested" }, where .. ": the XP keys in their order")
+    T.near(b.fr[1], 0.9, 1e-9, where .. ": monsters' share")
+    Same(b.segs[1], xpC, where .. ": monsters in the theme's XP colour")
+    Same(b.segs[2], restC, where .. ": rested bonus in the theme's rested colour")
+    local _, _, w1 = b.segs[1]:GetRect()
+    local _, _, w2 = b.segs[2]:GetRect()
+    T.ok(w1 > 8 * w2 - 9 and w1 < 9 * w2 + 9, where .. ": widths in proportion (" .. w1 .. ", " .. w2 .. ")")
+    local t2 = rawget(_G, "TruePlayedCharTooltip")
+    if shift then
+      T.eq(LineOf(t2, L.TT_XP_LEVEL), nil, "block 2: no XP row")
+      CheckSide(ns, GameTooltip, t2, "with the XP row")
+      T.near(select(2, TF.bar.frame:GetCenter()), select(2, TF.bar2.frame:GetCenter()), 1e-9,
+        "the breakdown bars level (not the XP row's)")
+      T.ok(select(2, b.frame:GetCenter()) > select(2, TF.bar.frame:GetCenter()), "the XP bar above them")
+    end
+    Tooltip.Hide(w)
+    T.no(BarOn(b), where .. ": hidden with block 1")
+  end
+  Stub.SetShift(false)
+  -- quest XP too: three segments, the quests in the classic gauge's city colour, the
+  -- parts two a row
+  lb.xa, lb.xq, lb.xr = 2400, 300, 300
+  Tooltip.ShowFor(w)
+  local b = TF.bar3
+  T.eq(b.n, 3)
+  T.eq({ b.key[1], b.key[2], b.key[3] }, { "xp", "city", "rested" })
+  Same(b.segs[2], G.colors.city, "quests and other: the gauge's city colour")
+  Same(b.segs[3], restC, "rested bonus after them")
+  local i = LineOf(GameTooltip, L.TT_XP_LEVEL)
+  local function Part(key, x) return format(L.BD_PART_FMT, L[key], Fmt.Percent(x, 0)) end
+  T.eq(GameTooltip._lines[i + 1], { " ", Part("LD_XP_MOBS", 0.8) .. L.SEP .. Part("LD_XP_QUESTS", 0.1) },
+    "monsters and quests on a row")
+  T.eq(GameTooltip._lines[i + 2], { " ", Part("LD_XP_RESTED", 0.1) }, "the rested bonus on the next")
+  T.eq(LineOf(GameTooltip, L.TT_BREAKDOWN_LEVEL), i + 3, "right above the level's breakdown")
+  local bl, _, bw = TF.bar.frame:GetRect()
+  local fl, _, fw = b.frame:GetRect()
+  T.ok(Near(fl, bl) and Near(fw, bw), "the two bars still on one edge, one width")
+  -- the user's XP and rested colours (the bar's): at the next show
+  ns.Core.SetSetting("widget.xpColor", { 0.1, 0.9, 0.1 })
+  ns.Core.SetSetting("widget.restedColor", { 0.9, 0.5, 0.1 })
+  Tooltip.ShowFor(w)
+  Same(b.segs[1], { 0.1, 0.9, 0.1 }, "monsters: the user's XP colour")
+  Same(b.segs[2], G.colors.city, "quests and other: still the gauge's city colour")
+  Same(b.segs[3], { 0.9, 0.5, 0.1 }, "rested bonus: the user's rested colour")
+  ns.Core.SetSetting("widget.xpColor", false)
+  ns.Core.SetSetting("widget.restedColor", false)
+  Tooltip.ShowFor(w)
+  Same(b.segs[1], xpC, "the theme's XP colour again")
+  Same(b.segs[3], restC, "the theme's rested colour again")
+  -- no XP by source (a level whose gains were not split): no row, no bar
+  lb.xa, lb.xq, lb.xr = 0, 0, 0
+  Stub.Advance(1)
+  T.eq(LineOf(GameTooltip, L.TT_XP_LEVEL), nil, "no XP: no row")
+  T.no(BarOn(b), "no XP: no bar")
+  T.ok(BarOn(TF.bar), "the breakdown's bar stays")
+  lb.xa, lb.xr = 2700, 300
+  Stub.Advance(1)
+  T.ok(BarOn(b), "back with XP")
+  Tooltip.Hide(w)
   T.eq(#Stub.errors, 0)
 end)
 
@@ -2099,10 +2335,11 @@ T.test("breakdown of 10 parts: 8 segments filling the native bar and the frame g
   T.eq({ keys[1], keys[8] }, { "world", "afk" }, "(the 8 largest: world to afk)")
   ns.Tooltip.Hide(w)
   T.eq(#Stub.errors, 0)
-  -- a frame theme: the gauge spans the same width as with the level's own parts
+  -- a frame theme: the gauge spans the same width as with the level's own parts (the
+  -- breakdown's gauge: the second of block 1, under the XP row's)
   ns, w = Start(nil)
   ns.Tooltip.ShowFor(w)
-  local segs = ns.TooltipFrame.frame.tp.gauges[1]
+  local segs = ns.TooltipFrame.frame.tp.gauges[2]
   local function Span(n)
     local l1 = segs[1]:GetRect()
     local ln, _, wn = segs[n]:GetRect()
@@ -2376,7 +2613,13 @@ end
 -- Levels hint keeps everything but its text (a new text, "Click a bar to see the level's
 -- detail.": checked apart), and so does the frame height (the chart's minimum height:
 -- checked apart). The table's content frame is the scroll child when no row was created
--- yet (a window first shown on the chart).
+-- yet (a window first shown on the chart). The footers keep their minutes past 10 h now
+-- (Fmt.DurationFull: "10h 07m", "3d 19h 21m"): their texts are compared without those
+-- minutes (NoMinutes), the minutes checked apart.
+local function NoMinutes(text)
+  return (text:gsub("(%d+d %d+h) %d+m", "%1"):gsub("(%d%d+h) %d+m", "%1"))
+end
+
 local function Snapshot(root, chrome)
   local out = {}
   local tp = rawget(root, "tp")
@@ -2408,6 +2651,7 @@ local function Snapshot(root, chrome)
       local fo = rawget(o, "_fontObject")
       local text, shown = V(o._text), V(o._shown)
       if chrome and tp and o == tp.hint then text = "<hint>" end
+      if chrome and tp and (o == tp.footer1 or o == tp.footer2) then text = NoMinutes(text) end
       if chrome and o == scrollF then shown = "<table>" end
       out[#out + 1] = table.concat({
         o._type, V(o._layer), V(o._texture), V(o._vR), V(o._vG), V(o._vB), V(o._vA), text,
@@ -2499,6 +2743,8 @@ T.test("Window: under Classic the window is exactly the pre-theme one (baseline 
     local after, ns, afterH = Play(tab)
     T.ok(#after > 20, tab .. " regions: " .. #after)
     T.eq(after, before, tab)
+    T.ok(rawget(_G, "TruePlayedStatsFrame").tp.footer1:GetText():find("%d%dh %d%dm"),
+      tab .. ": the footer's average per level with its minutes past 10 h")
     T.eq(beforeH, 440, tab .. ": the pre-theme height")
     T.eq(afterH, tab == "levels" and 640 or beforeH, tab .. ": the height (the chart: its minimum)")
     -- the redesigned parts keep the classic look: game font objects, classic colours

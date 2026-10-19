@@ -109,7 +109,7 @@ Themes.DISPLAY_KEYS = { "LEVEL_SHORT_FMT", "LEVEL_TITLE_FMT", "LEVEL_PCT_FMT", "
   "LEVEL_CAP_TAG", "LEVEL_CAP_TAG_TITLE", "XP_LABEL", "ADDON_TITLE", "WIN_TITLE",
   "GRAPH_TITLE_FMT", "GRAPH_WINDOW_30", "GRAPH_WINDOW_60", "GRAPH_WINDOW_300",
   "TT_SECTION_LEVEL", "TT_SECTION_CHAR", "TT_SECTION_REP", "REP_LABEL", "TT_SECTION_PVP", "PVP_LABEL",
-  "LEVEL_SPAN_FMT", "LV_PVP_TIP_FMT", "LD_PVP_TIP_FMT" }   -- the Levels tab's tooltip titles
+  "LEVEL_SPAN_FMT", "LV_PVP_TIP_FMT", "LD_PVP_TIP_FMT", "LV_RANGE_FROM", "LV_RANGE_TO" }   -- the Levels tab's tooltip titles
 
 -- Media shared by every theme (6.1): "common/<name>" = Media/Themes/common/<name>.tga.
 local COMMON_MEDIA = {

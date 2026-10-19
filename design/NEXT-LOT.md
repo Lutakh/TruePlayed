@@ -954,7 +954,8 @@ most the screen less 20 px, never below 700 x 300).
   average line on a Graph-style stalk), one hit Button per column (bar tooltip, click
   selects), the progress strip. Lazy and pooled; a second Build creates nothing; live
   growth is SetHeight only; Live is allocation-free (keys from `Fmt.DurationKey` /
-  `ETAKey`). It also owns the one-shot tooltip helper shared with LevelDetail
+  `ETAKey`; Part Y: `Fmt.DurationFullKey`, one string build a minute per live time). It
+  also owns the one-shot tooltip helper shared with LevelDetail
   (`TipBegin` / `TipRow` / `TipSep` / `TipShow` / `TipHide` / `Owns`: TooltipFrame frame 1
   under a non-native theme, else the GameTooltip; nothing of the palette kept after
   TipShow, P5).
@@ -1010,14 +1011,16 @@ most the screen less 20 px, never below 700 x 300).
   local parts) goes to "untracked"; `COL_REACHED` / `ROW_IN_PROGRESS` reused; two keys
   not in the spec (`LV_WPVP_NONE`, no w0 yet; `LV_PVP_TIP_FMT`); `AXIS_W` 58 instead of
   40 ("2 h 30 min", ruRU, koKR); a chip sub line that does not fit shows its durations by
-  their largest unit (`SubFit` / `Compact`, `LV_DAYS_FMT`), measured only on a rebuild or
-  a key change; instance AFK (D, R) is in the AFK part, so the Instances filter shows
+  their largest unit (`SubFit` / `Compact`, `LV_DAYS_FMT`; Part Y: first without the
+  minutes past 10 h, then by the largest unit), measured only on a rebuild or a key
+  change; instance AFK (D, R) is in the AFK part, so the Instances filter shows
   dungeon + raid without their AFK; Live rebuilds the chart when the projection class
   changes; `Stub.FILES` (tests/wowstub.lua) not edited, the TOCs are read; the PvP chip's
   battleground rows are read with AFK left out (`C.MASK_AFK` set), like the sheet's.
 - **Sheet**: body font for the title too (`Themes.DISPLAY_KEYS`); notes in `ui.dim`;
-  the XP split in the theme's XP colour (not the user's), the gauge city colour and the
-  theme's rested colour; more / less than expected in `C.COLORS.warn` / `good`, shown
+  the XP split in the theme's XP colour (not the user's; Part Y: the user's once chosen,
+  as the bar and the tooltip's XP row), the gauge city colour and the theme's rested
+  colour (Part Y: likewise); more / less than expected in `C.COLORS.warn` / `good`, shown
   from 60 s and only for a level neither partial nor rebuilt; the level in progress with
   a projection shows "Level estimate" instead of its own `row.eta`; "~" on Played for
   partial, rec, estF > 0 or gap > 0 (a stall is a note only); rows of at least 1 s,
@@ -1353,3 +1356,344 @@ reviewer, the verifier's fix was applied.
   tooltip anchor; the body font on the titles; the world PvP signals on Forever's real
   events (docs/TEST-EN-JEU-fr.md, top section).
 - The 9 non-French translations of the 80 new keys were not reviewed by native speakers.
+
+## Part Y: minutes past 10 h, the level's server /played, the level's XP by source (user request, 2026-10-17)
+The author's request (screenshot of the Levels tab: "Time played 10h", "Server /played
+12h"): (1) the statistics keep the minutes past 10 h; (2) under the bar tooltip's "This
+level" (filtered), the level's /played without any filter, to see the difference at a
+glance; (3) the detail sheet's XP by source (monsters, quests, rested bonus) in the bar
+tooltip, right above "Level breakdown". Reviewed the same day; the review's seven
+findings are folded in below.
+
+### Formats
+- **`Fmt.DurationFull(sec)`** (Format.lua): `Fmt.Duration`'s text below 10 h, then
+  "10h 23m" (`DUR_H_M`) up to a day, then "1d 19h 05m" (`DUR_D_H_M`, new key in the 11
+  locales: "%d j %02d h %02d" in French, 16 characters at most for "12 d 23 h 59 min");
+  `Fmt.DurationFullKey(sec)` = the whole minutes (equal keys <=> equal texts).
+- **Measured durations** take it: the Levels tab (chips, title summary, average line,
+  strip legend, bar and PvP tooltips), the detail sheet (Played, Server /played and Total
+  cards, the dead time, the notes, the time breakdown, the zones, the PvP row's
+  tooltip), the window's footers and the account's average per level, the tooltip's
+  "This level" and "This level (server /played)". **Unchanged** (`Fmt.Duration` /
+  `Fmt.ETA`): every estimate with "~" (level 60 in, estimated at start and its verdict,
+  time left, upcoming levels), the axis ticks, the XP bar's slots, the mini display.
+- **Where a text does not fit**: a chip's sub line tries `DurationFull`, then
+  `Duration`, then the largest unit (`SubFit` with `FIT`, replacing Part X's two-step
+  `SubFit` / `Compact`); the strip's legend drops the minutes past 10 h when the row is
+  wider than the track (`FitLegend`: ruRU at the 4:3 minimum, 552 px for 542); the
+  sheet's 64 px value columns (breakdown, zones) drop them when wider (`DurFit`: "2 d 23 h
+  59 min" is 75 to 87 px; the column cannot widen: the longest label already takes 212 of
+  212 px).
+- **Only where the value is fixed or refreshed live** (review finding 1): a time that
+  grows while shown and is refreshed only at the next rebuild (an XP gain) keeps
+  `Fmt.Duration`, whose hour precision past 10 h never falls behind. So: the Sessions
+  table's Duration column keeps the minutes up to a day (`CellDur`: "23h 59m"; past
+  sessions never change, the session in progress is a live cell keyed by `CellDurKey`),
+  every other table cell (the Zones tab, the Sessions' AFK / Inst. / Dead / Prof.) keeps
+  `Fmt.Duration` (`DurText`); the sheet's notes and zones of the current character's
+  level in progress keep it too (`Grows` / `Rough`); the footer is live in the account
+  view as well (`LiveFooter`: the account's filtered total and instance time, keys at the
+  minute; the current character's life grows there), and its instance time has a key of
+  its own in both views. The days forms of `DurationFull` (73 to 84 px in es, it, pt, ru,
+  ko) do not fit the 58 to 64 px duration columns, and the Sessions table already takes
+  646 of 650 px: no column was widened.
+- **Keys at the minute**: every live time of the chart and sheet is keyed by
+  `DurationFullKey` (Part X: `DurationKey`): one string build per minute and per live
+  time, nothing otherwise (test_level_chart: at most 4 ticks of 60 allocate, under 1 KB
+  each). The sheet's Server card is live on both rules of `Stats.LevelServer` (before:
+  only while the sync carried the level part).
+
+### Tooltip
+- **"This level"** keeps its minutes past 10 h. **"This level (server /played)"**
+  (`TT_THIS_LEVEL_SERVER`, FR "Ce niveau (/played serveur)") right under it (after the
+  crash-rebuild note when there is one), only while something is excluded (mask not 0:
+  otherwise both lines are the same) and once a value is known: `Stats.LevelServer(char,
+  level, sync, now)`, new, the rule of the level in progress's row and of the sheet's
+  Server card (the sync's level part projected to now, else the server total projected
+  less `lb.srvStart`; nil below 0 or without a valid sync; "~" when `srvStartEst` /
+  `srvEndEst`). `FillLevelRow` uses it too.
+- **The level's XP row** (`FillXPRow`, `TT_XP_LEVEL` "Level XP" / "XP du niveau"): right
+  above "Level breakdown", never at the max level nor without XP by source (`lb.xa`,
+  `xq`, `xr` all 0); its parts (`LD_XP_MOBS`, `LD_XP_QUESTS`, `LD_XP_RESTED`, those that
+  round to 0 % left out, fixed order) on one line on a private frame when that row fits
+  the frame at its widest (`TP_Fits`, new: the theme's maximum width, measured change-only
+  in a hidden FontString; review finding 3: a row less), else two a line (`XP_PER_LINE`:
+  es, pt, ru with the real fonts); a GameTooltip (Classic, Broker) always two a line, as
+  it has no maximum width (one line made the Classic block 1 76 to 94 px wider in en, es,
+  ru for a 14 px row). A gauge on the frames (`MAX_GAUGES` 3), bar 3 (`TF.Bar(3)`) on the
+  Classic block 1, starting and ending with the breakdown's bar 1 (review finding 2:
+  `PlaceBars` takes the longer label's right edge for both). Never the pair's alignment
+  row: the two breakdowns still face each other.
+- **Colours**: monsters and rested bonus in the bar's colours, the user's
+  (`widget.xpColor` / `widget.restedColor`) once chosen, else the theme's `th.colors`;
+  quests in the gauge's city colour; the same in the detail sheet's Experience bar
+  (`LevelDetail.ReadColors`; a recolour repaints the shown sheet without a rebuild:
+  `LevelDetail.Recolor` on Window's `THEME_CHANGED` "colors"). This supersedes Part X's
+  "the XP split in the theme's XP colour (not the user's)" (review finding 4: in one
+  tooltip, the rested segment and the "Rested" value differed).
+
+### Tests and limits
+- New or changed: test_format (DurationFull, its key), test_stats (`LevelServer`),
+  test_level_chart, test_level_detail (DurFit; the level in progress's zones; the Server
+  card live on the fallback rule; the user's XP colours repainted without a rebuild),
+  test_window_cols (the Sessions' Duration column; the current zone never behind; the
+  account footer live, set once a minute), test_tooltip_theme (the server line; the XP
+  row on one row, its two-a-row fallback, no width read on a steady refresh; the Classic
+  bars on one edge; the user's colours), test_locales and test_round4_regress (widths:
+  `DUR_D_H_M`, the two tooltip lines, the XP parts two by two in every theme). The tests
+  of the review's fixes were mutation-checked (each fails on the code before its fix).
+- Fixtures of test_tooltip_theme: the level in progress has two XP sources (monsters,
+  rested), so that block 1 stays the narrower block (with three on one row, the stub's
+  6 px a character makes block 1 as wide as block 2: the side-by-side tests assume it
+  narrower); the pixel stack test runs on a 1200 high screen and the "block 1 changes
+  height" owner moved from -450 to -470: block 1 is two rows taller (the XP row: gauge row
+  and parts row; three in Classic with three sources, and in es, pt, ru), one more with an
+  exclusion (the server line).
+- The pair with Shift is taller by those rows in every theme (about 25 px a row in
+  pixel): on a game UI without UI scale (768 units high) it went past the screen before
+  and goes further now; the clamp keeps block 1 whole.
+- Not checked in game yet: the hidden FontString measure of `TP_Fits` on the real
+  client, the Classic bars' common edge with the real fonts, the account footer ticking
+  in the account view (docs/TEST-EN-JEU-fr.md, top section).
+
+## Part Z: the total since level 1 (sheet and bar tooltip), the progress strip's range (user request, 2026-10-17)
+The player's three requests on the Levels tab, the same day as part Y (built on it, same
+branch):
+1. The sheet of "Level 18 » 19" showed "Total since level 1 - 11h" with the sub label
+   "levels 1 to 18" (`LV_PLAYED_SUB_FMT` reused) under the summary's "Time played 11h -
+   levels 1 to 19", which counts level 19 in progress: confusing. The card counts the
+   time until 19 was reached.
+2. The same total in the bar tooltip of every level.
+3. "The player should be able to choose his own range in 'Progress toward level 60',
+   e.g. levels 1-10 or 10-20."
+
+### Sheet and tooltip (requests 1 and 2)
+- **Card sub label** (`LevelDetail.FillCards`): `LD_CUM_SUB_FMT` "level 1 » %d" (level +
+  1: the sheet title's arrow notation) for a completed level; `LD_CUM_SUB_CUR_FMT` "level
+  1 » %d, in progress" for the level in progress (the card is the played total up to now,
+  live). No level-1 special case is needed any more (`LV_PLAYED_SUB_ONE` stays the Played
+  chip's); the Played chip keeps "levels 1 to N".
+- **Bar tooltip** (`LevelChart` OnColEnter): a pair `LD_CUM` right after "Reached" (the
+  end of the level), before the PvP filter's note and the hint: `row.cum` to the minute
+  (`Fmt.DurationFull`) for a completed level, `S.played` for the level in progress (the
+  value the sheet's card follows live: `Stats.Played` of the last live step; nothing when
+  the level has no row, as the card shows "..."); no line for a level without a record
+  (the sheet has no card either). Upcoming bars already show an estimate ("Upcoming: ~X
+  estimated"), so they get one too: `RG.UpcomingTotal(k)` = `S.played` + `fut.cur` + the
+  estimates of levels + 1 .. k, written `Fmt.ETA` ("~3d 15h"), nothing when one of them
+  is missing (a level without an XP size before k). Same value and same exclusions as the
+  card: the tests compare the tooltip with the card under mask 0 and mask 5.
+
+### The progress strip's range (request 3)
+Design announced to the player, implemented as such:
+- **Title**: "Progress: level [a] » [b]": `LV_RANGE_TITLE` (the prefix, replaces
+  `LV_PROGRESS_FMT`, removed from the 11 locales), then two pickers (`NewBox` buttons like
+  the filter pills, 16 px high, the number in the body font at 12, 5 px padding, at least
+  16 px wide, measured only when the number or the fonts change), "»" between them (a
+  constant: every locale's `LEVEL_SPAN_FMT` uses it; Orbitron's glyph replacement applies
+  through `Text`). Anchored once: picker 1 on the title's right (+4), the arrow (+3), picker
+  2 (+3); the share stays right-aligned on the same row.
+- **Choices**: from = 1 .. top - 1, to = from + 1 .. top (top = `Util.MaxLevel()`, the
+  strip's max level as before; "1..max" for "from" in the request: a range must hold a
+  level, so the max level cannot start one). A "from" at or above "to" moves "to" to the
+  max level (25 » 60 after 10 » 20, from 25).
+- **Menus** (`MenuUtil.CreateContextMenu`, the pattern of the bar's right-click menu; no
+  UIDropDownMenu, lint51 forbids it): a title ("From level" / "To level"), "Default: level
+  1 » 60" then a divider while the range is not the default one (at the top: the list
+  scrolls), one radio a level (checked: the current one), `SetScrollMode(400)` when the
+  client has it. Without MenuUtil (the Options fallback's case): a click steps to the next
+  level, a right-click to the previous one, wrapping through the picker's choices (the
+  default is reachable that way). Hover tooltip (LevelChart's one-shot helper: the themed
+  frame or the GameTooltip): the title and `LV_RANGE_HINT` "Click: choose a level", or
+  `LV_RANGE_CYCLE_HINT` without MenuUtil, below the picker (review fixes below). No secure
+  frame, no protected call: nothing to taint.
+- **Saved per character**: `char.lvRange = { a, b }`, like the followed faction
+  (`char.rep.id`): a field only when it differs from the default (a nil: 1; b nil: the max
+  level, so a range "to 60" follows a max level that rises), the whole record nil for 1 »
+  top. Written on the viewed character's record (another character's too: its own range),
+  refused in read-only mode (`L.READONLY_ACTION`, like the faction picker). `Core.RepairChar`
+  (`RepairLvRange`): a table, a and b whole numbers >= 1 (b >= 2), a = 1 dropped, the record
+  dropped when a >= b or empty. `Core.ResetChar` keeps it (a setting, as `rep.id`).
+  `RG.Read(char, top)` clamps at read time: a not a number -> 1; a outside 1 .. top - 1
+  (or not whole) -> the default range; b not a number, not whole, not above a or above
+  top -> top. A saved level above the max level is kept (a beta capped at 20 shows 10 »
+  20 for a saved 10 » 30, and 10 » 30 again when the cap rises).
+- **Semantics** (`RG.Sums`, a Build or a pick only): behind = at the max level or level
+  >= b; ahead = level < a; else in it. Complete levels a .. m - 1 (m = min(level, b)):
+  from level 1, the played total less the current level's time and the recorded levels m
+  .. level - 1 (`cols[k].sumAll` = `Stats.Sum` under the mask): the sheet's "Total since
+  level 1" of level m - 1 (the test checks "Levels 1 to 14" against the card of 14 » 15);
+  from a later level, their own times (a level without a record adds nothing; review
+  fixes below: such a time is then shown as unknown, "..."). XP:
+  `Stats.XPOf` over a .. b - 1, done over a .. m - 1, the current XP when in it. Time left
+  (`RG.Left`, Live too): `fut.total` itself when the range ends at the max level and holds
+  the current level (the default: the chip's text and key, unchanged), else `fut.cur` +
+  the estimates up to b - 1, or for a range ahead the estimates of a .. b - 1. `S.rPartial`
+  (a level to play in the range without an estimate): the projection's flag when the
+  range ends at the max level, else a scan; "+" after the time and no share, as before.
+- **Texts**: the default range (1 » top) is the strip of part X exactly (same keys, same
+  values: `LV_DONE_FMT` / `LV_DONE_ONE_FMT`, `LV_CUR_FMT`, `LV_LEFT_FMT`, the shares, "Max
+  level reached" at the max level). From a later level: `LV_DONE_SPAN_FMT` "Levels 10 to
+  17: X", `LV_DONE_LEVEL_FMT` "Level 19: X". Behind: a full track, the share
+  `LV_RANGE_REACHED_FMT` "100% · level 15 reached" (`Fmt.PercentInt(100)`), no level in
+  progress, no time left. Ahead: an empty track (both parts hidden), `LV_SHARE_FMT` 0 / 0
+  ("~0% of the estimated total time · 0% of the XP"), the legend's only item at its start:
+  `LV_UPCOMING_FMT` "Upcoming: ~X estimated" (the bar tooltips' wording); without an
+  estimate, "0% of the XP" (or the cap / XP disabled texts, as before) and no legend.
+  The third legend square is anchored after the level in progress, else at the legend's
+  start (`S.leftAt`, anchored again only when that changes). `FitLegend` measures the
+  items actually shown.
+- **Band** (the optional outline, kept: one texture): a custom range tints its shown
+  columns' background (`RG.band`, plot BACKGROUND -1, under the gridlines; `ui.accent` α
+  0.07) from 1 px left of column a to 1 px right of column min(b - 1, shown columns);
+  hidden for the default range or a range wholly in hidden upcoming levels; anchored again
+  only when its x, width or height change (a Build after a resize, a pick).
+- **Cost**: a pick calls `FillStrip` and `RG.DrawBand` only (no chart rebuild: the tests
+  count `LevelChart.Build` calls), and a pick of the shown range does nothing. Live reads
+  the cached sums: no `Stats.XPOf` call in 30 min of live steps, `LevelChart.Live` with a
+  custom range allocates nothing (< 0.05 KB over 600 calls); `RG.Left` adds at most 58
+  numbers a live step (every 5 ticks).
+- **Lua 5.1 locals**: LevelChart.lua is near the 200 active main-chunk locals (the range's
+  code as plain locals did not compile: 25 more); the range's code is the field-function
+  table `RG` (constants, picker map, band, functions), and `XPSums` went into `RG.Sums`:
+  193 now (max active, luac 5.5 listing).
+- **Memory**: the after-login budgets of test_theme_memory (1570 / 1700 KB on 5.5) were
+  already almost reached by part Y; parts Y and Z measure 1584.9 (actuel) and 1709.8
+  (futuriste) in the full suite, 33.4 KB more than HEAD measured the same way (1551.5 /
+  1676.4). Fewer function prototypes first (one `RG.IsPicked` / `RG.Pick` pair and one
+  `RG.Menu` generator for both pickers, data: a level for "from", minus a level for "to";
+  the pickers' sizing inlined in `FillStrip`: 1.4 KB), then both budgets raised by 35 KB
+  (1605 / 1735, 5.4: 1705 / 1845), the measure + 20.1 / 25.2 KB, the margin kept by part X.
+
+### Locales (11 files, real translations)
+11 keys added, 1 removed (`LV_PROGRESS_FMT`; 703 -> 713 keys a file): `LV_RANGE_TITLE`, `LV_RANGE_FROM`,
+`LV_RANGE_TO`, `LV_RANGE_HINT`, `LV_RANGE_CYCLE_HINT`, `LV_RANGE_RESET_FMT`,
+`LV_RANGE_REACHED_FMT`, `LV_DONE_SPAN_FMT`, `LV_DONE_LEVEL_FMT`, `LD_CUM_SUB_FMT`,
+`LD_CUM_SUB_CUR_FMT`; `LV_PLAYED_SUB_ONE`'s comment (the card no longer uses it). EN /
+FR: "Progress: level" / "Progression : niveau", "From level" / "Du niveau", "To level" /
+"Jusqu'au niveau", "Click: choose a level" / "Clic : choisir un niveau", "Click: next
+level · Right-click: previous" / "Clic : niveau suivant · Clic droit : précédent",
+"Default: level 1 » %d" / "Par défaut : niveau 1 » %d", "%s · level %d reached" / "%s ·
+niveau %d atteint", "Levels %d to %d: %s" / "Niveaux %d à %d : %s", "Level %d: %s" /
+"Niveau %d : %s", "level 1 » %d" / "niveau 1 » %d", "level 1 » %d, in progress" /
+"niveau 1 » %d, en cours". The 9 other translations were not reviewed by native speakers.
+
+### Tests
+- New: test_level_chart "the bar tooltip gives the total since level 1, the sheet's
+  card (completed, in progress, upcoming)", "an upcoming level after a level without an
+  estimate has no total in its tooltip", "the progress range: default 1 » 60 is the strip
+  as before, its pickers and their menus", "... around the current level (10 » 30)",
+  "... behind the character", "... ahead of the character", "... saved per character,
+  kept by a reset of the character, back to the default" (read-only refused), "a saved
+  progress range that does not fit the max level or is not valid is read as the
+  default", "without MenuUtil a range picker steps through its levels", "the range
+  pickers in a themed window"; test_level_detail "'Total since level 1' reads 'level 1 »
+  19' for level 18, ', in progress' for the current level" (EN and FR literals, another
+  character); test_core "RepairChar validates the Levels tab's progress range". The width
+  test (test_locales "widths: the Levels chart...") measures the strip's title with both
+  pickers at their widest number and the arrow beside its widest share (the reached text
+  included), the range legends ("Levels 10 to 58", "Level 58") and a range ahead's text,
+  the card's new sub labels, and hovers both pickers' tooltips (with and without
+  MenuUtil) in every language and theme, 4:3 included. check_globals hovers and clicks
+  both pickers (every menu entry; without MenuUtil a step each way) for the current and
+  another character.
+- Mutation-checked (each fails the suite on the mutant): the from-1 sum without the
+  levels above the range, `RG.Left` ignoring b, a range ahead without its estimate, the
+  tooltip's level in progress not live, no upcoming total, read-only not refused, a "from"
+  at the max level accepted at read, b saved at the max level, the card's "in progress"
+  label, `RepairLvRange` keeping a >= b, `ResetChar` dropping the range.
+- Legacy tests ported (none weakened): test_level_chart "the progress strip..." (the
+  title is now the prefix and the pickers "1" » "60": still "toward level 60"), "a
+  level-1 character reads 'level 1'..." (the chip keeps `LV_PLAYED_SUB_ONE`; the sheet's
+  card reads "level 1 » 2, in progress", never "levels 1 to 1"), test_level_detail "a
+  completed level..." (the card of 12 » 13: "level 1 » 13" instead of "levels 1 to 12").
+- Renders (scratch copies of scene.lua setting `char.lvRange` and hovering a bar or a
+  picker; the committed scenarios and page images untouched): futuriste default, 10 » 20,
+  30 » 40 ahead, 5 » 15 behind, the bars 12, 18 (in progress) and 25 (upcoming) hovered,
+  the "from" picker hovered; pixel and actuel 10 » 20 (actuel: the GameTooltip's lines
+  in `info.tip`). Nothing overlaps or is cut in the strip or the tooltips. Seen in passing,
+  not from this part (the same in a render of HEAD): the `levels` scene's PvP row tooltip
+  draws its two wrapped notes over each other (the stub's wrapped height vs the
+  renderer's wrap).
+
+### Review fixes (2026-10-17)
+Four findings of the review of this part, verified on the test fixture (no record of
+levels 1 and 2, a partial level 3, a rebuilt level 4) and fixed:
+- **A range's time over levels not (fully) recorded** (major): from a later level, a
+  level without a record counted 0 s and a partial one its recorded part; from level 1,
+  every level taken off (m .. level - 1) without a record or partly recorded left its
+  time in the range (1 » 2 gave level 1 the 80 h before the install); both shown as exact
+  figures ("Level 2: <1m · 100% · level 3 reached" next to the bar's "No data").
+  `RG.Sums` now also sets `S.rDoneQ` from the levels the sum adds (a > 1: a .. m - 1) or
+  takes off (a = 1: m .. level - 1): 2 when one is "none" (its whole time missing or
+  misplaced: the legend's duration is `L.DOTS`), else 1 when one is partial, rebuilt, with
+  a rebuilt part or a gap (`RG.Approx`, the bar tooltip's own "~" test, now shared:
+  "~" before the duration), else 0. With 1 or 2, `DrawStrip` takes the track and the
+  share by XP alone (`LV_XP_SHARE_FMT`, the share of time would rest on that time); the
+  time left and the level in progress are unchanged. From level 1 to a level not reached
+  yet nothing is taken off: the default range stays exact, as in part X. Computed at a
+  Build or a pick only (Live allocates nothing: tested). Not changed: the sheet's "Total
+  since level 1" card and the bar tooltip's line (the same `row.cum`, requests 1 and 2),
+  which the player asked for as they are.
+- **A time left none of which is known** (minor): a range ahead whose levels all lack an
+  XP size read "Upcoming: <1m+ estimated"; a range around the level in progress whose
+  remainder is unknown (`fut.cur` nil: another character above the known XP sizes) read
+  "<1m left" with a share. `RG.Missing()` (`fut.missing` > 0 or `fut.cur` nil) is now the
+  projection's lower-bound flag (`S.partial`, Live's rebuild test too), `RG.Sums` sets
+  `S.rPartial` when `fut.cur` is nil in a range around the level in progress, and
+  `TopETA(v, partial)` (chip 7 and the strip) writes `L.DOTS` for a lower bound of 0 (the
+  upcoming bars' "Upcoming: ... estimated"). A character at the level before the max one
+  with an unknown remainder no longer reads "Level 70 in ~<1m".
+- **The pickers' tooltip** (minor): anchored 4 px above the picker, the bottom ornaments
+  of the themed tooltip frames (hunter's feather, 128 px; heroic's shadow; warlock's,
+  druid's, paladin's, futuriste's glows) covered the hovered picker or the strip's title.
+  Below it at 4 px, the top ornaments (mage's crystal, 16 px above the frame; paladin,
+  rogue, shaman, warlock, priest, druid) covered it in turn (renders of the 13 themes):
+  `RG.TIP_GAP` = 18 px below the picker, clear of both; the tooltip covers the legend's
+  row, the track stays visible.
+- **The pickers' tooltip titles in the display font** (minor): `LV_RANGE_FROM` /
+  `LV_RANGE_TO` are "title" rows, drawn in the theme's display font, but were not in
+  `Themes.DISPLAY_KEYS`, so check_media did not check their glyphs (none missing):
+  added (24 keys; SPEC-themes' list).
+- Docs: the in-game checklist's "plus « niveaux 1 à 18 »" read as "as well as" (now "et
+  non plus"), and the changelog and the checklist called the bar tooltip's total of the
+  level in progress live: it is the value at the moment of the hover (like the rest of
+  that tooltip), now said so.
+- Tests: test_level_chart "the progress range over levels without a record or partly
+  recorded: '...' or '~', the share by XP" (2 » 3, 1 » 2, 1 » 3, 1 » 5 against the card
+  of level 4, 2 » 30, 3 » 30, 5 » 30, live allocation, the default range), "a time left
+  with no known part reads '...'" (61 » 65 at top 70, another character at 62: chip,
+  default range, 62 » 63; at 69); the pickers' tooltip anchor in the default-range and
+  themed tests; test_theme's DISPLAY_KEYS count. Mutation-checked: the unknown remainder
+  of the level in progress, `RG.Missing` without it, `RG.Approx` always false, the "none"
+  levels ignored, the share by time kept, no "..." for a lower bound of 0, the levels
+  taken off from level 1 not scanned.
+
+### Known limits, not checked in game yet
+- A range over levels reached before the install (or a gap) gives no time for its
+  complete levels ("..."), only their XP share; a partly recorded or rebuilt level gives
+  "~".
+- The picker menus' scroll (`SetScrollMode`) and the radios' close-on-click are the game's
+  Menu behaviour on Forever's client; without MenuUtil only the cycling is tested.
+- The band is a tint behind the bars only (no frame): on the lightest themes it may be
+  faint.
+
+## Part Z follow-up: the progress strip's legend says the level reached (user request, 2026-10-19)
+
+- **Request**: under "Progress: level 1 » 10" and "100% · level 10 reached", the legend
+  read "Levels 1 to 9: ~2h 37m". It was right (level 9 is the time from reaching 9 until
+  reaching 10), but a player who counts levels as the moments they are reached can wonder
+  whether 9 » 10 is counted.
+- **Change**: one key for every case, `LV_DONE_SPAN_FMT` "Level %d » %d: %s" / "Niveau
+  %d » %d : %s" (first level of the range, level reached = `S.ra + S.nDone`, duration):
+  "Level 1 » 10", "Level 10 » 18", "Level 19 » 20". It is the notation of the strip's
+  title, of the level tooltips and sheets (`LEVEL_SPAN_FMT`) and of the sheet's "Total
+  since level 1" card (`LD_CUM_SUB_FMT`). Removed: `LV_DONE_FMT` and `LV_DONE_ONE_FMT`
+  (released in 1.2.0), `LV_DONE_LEVEL_FMT` (part Z); 713 -> 710 keys a file. Each
+  translation is its locale's `LEVEL_SPAN_FMT` with its colon (fr " : ", zh "："). The
+  "~" / "..." of `S.rDoneQ` and FitLegend are unchanged.
+- **Unchanged**: `LV_CUR_FMT` "Level C in progress: X"; the "Time played" chip's "levels
+  1 to C" (C, the level in progress, is counted: right in both readings; not asked).
+- Tests: test_level_chart (the legend cases rewritten, plus a literal EN check "Level 1
+  » 15: X" against the sheet of 14 » 15), test_window_cols (the Total of 11 » 12),
+  test_locales' strip width (1 » 59 and 10 » 59).

@@ -87,6 +87,14 @@
 -- 25.4 for the Levels tab's data). A first raise of 100 + 70 KB (1580 / 1710) left 40.5 /
 -- 45.6 KB over the measure, about twice that margin: a resident regression of 30 KB would
 -- have passed. The 5.4 budgets rose by the same 160 KB (not measured: no 5.4 here).
+-- The Levels tab's minutes, server /played and XP lines (lot of 17/10, part Y) and its
+-- progress range (part Z: the strip's two level pickers and their menus, the tinted band of
+-- the histogram, the bars' "Total since level 1" line, char.lvRange's repair in Core.lua;
+-- 10 more strings in every locale): measured in the full suite 1584.9 (actuel) and 1709.8
+-- (futuriste) on 5.5, i.e. 33.4 and 33.4 KB more than HEAD measured the same way (1551.5 /
+-- 1676.4). They raised both after-login budgets by 35 KB, to 1605 / 1735: the measure +
+-- 20.1 / 25.2 KB, the margin kept above. The 5.4 budgets rose by the same 35 KB (not
+-- measured: no 5.4 here).
 local Stub, T = ...
 
 local KEYS = { "futuriste", "actuel", "heroic", "pixel", "warrior", "paladin", "hunter", "rogue",
@@ -100,12 +108,12 @@ local BUDGET = {
   ["Lua 5.5"] = {
     compiled = { futuriste = 38, actuel = 9, heroic = 33, pixel = 26, warrior = 30, paladin = 31, hunter = 38,
                  rogue = 34, priest = 33, shaman = 28, mage = 33, warlock = 40, druid = 32 },
-    engine = 125, loginActuel = 1570, loginFuturiste = 1700,
+    engine = 125, loginActuel = 1605, loginFuturiste = 1735,
   },
   ["Lua 5.4"] = {
     compiled = { futuriste = 43, actuel = 10, heroic = 37, pixel = 30, warrior = 34, paladin = 35, hunter = 42,
                  rogue = 38, priest = 37, shaman = 31, mage = 37, warlock = 44, druid = 36 },
-    engine = 128, loginActuel = 1670, loginFuturiste = 1810,
+    engine = 128, loginActuel = 1705, loginFuturiste = 1845,
   },
 }
 local SOURCES_KB = 80          -- NEXT-LOT M3: the resident theme sources, in total

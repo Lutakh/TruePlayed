@@ -1985,6 +1985,37 @@ T.test("RepairChar validates the optional pre-install estimate (char.prior)", fu
   T.eq(R(nil), nil)
 end)
 
+-- Request 2026-10-17: the Levels tab's progress range, a per-character setting
+-- (LevelChart.lua): whole numbers, a < b, nil fields for the default ones; a level above
+-- the max level is kept (the chart clamps it when it reads it).
+T.test("RepairChar validates the Levels tab's progress range (char.lvRange)", function()
+  local ns = Load()
+  local function R(r)
+    local c = { lvRange = r }
+    ns.Core.RepairChar(c)
+    return c.lvRange
+  end
+  T.eq(R({ a = 10, b = 20 }), { a = 10, b = 20 })
+  T.eq(R({ a = 10 }), { a = 10 }, "b: the max level")
+  T.eq(R({ b = 20 }), { b = 20 }, "a: level 1")
+  T.eq(R({ a = 10, b = 99 }), { a = 10, b = 99 }, "above the max level: kept")
+  T.eq(R({ a = 1, b = 20 }), { b = 20 }, "a = 1 is the default")
+  T.eq(R({ a = 1 }), nil, "the default range: nothing saved")
+  T.eq(R({ a = 20, b = 10 }), nil, "from >= to")
+  T.eq(R({ a = 20, b = 20 }), nil)
+  T.eq(R({ a = 0, b = 20 }), { b = 20 })
+  T.eq(R({ a = -3 }), nil)
+  T.eq(R({ a = 2.5, b = 20 }), { b = 20 })
+  T.eq(R({ a = "10", b = 20 }), { b = 20 }, "not a number")
+  T.eq(R({ a = 0 / 0, b = 20 }), { b = 20 })
+  T.eq(R({ a = 10, b = math.huge }), { a = 10 })
+  T.eq(R({ a = 10, b = 1 }), { a = 10 }, "b below 2")
+  T.eq(R({ a = 10, b = true }), { a = 10 })
+  T.eq(R({}), nil)
+  T.eq(R("x"), nil)
+  T.eq(R(nil), nil)
+end)
+
 T.test("RepairChar validates the last kill (char.lastKill)", function()
   local ns = Load()
   local function R(lk)

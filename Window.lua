@@ -5,7 +5,7 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- first Show. It listens to messages only while shown: a full rebuild on data
 -- events, and every C.WINDOW_ROW_REFRESH ticks only the live parts (the Levels chart of
 -- the current character through LevelChart.Live, duration of the live session, footer
--- total) are updated.
+-- totals of the current character or of the account) are updated.
 -- XP gains only mark the view dirty: the rebuild they need (XP, XP/h, zone order)
 -- waits for a live-cell step at least DIRTY_REBUILD_TICKS after the last rebuild,
 -- and never happens while another character is viewed (our XP cannot change it).
@@ -33,6 +33,13 @@ local L, C, Util, Fmt = ns.L, ns.C, ns.Util, ns.Fmt
 -- exclusions; the footer adds the instance total when there is one. Dates follow the
 -- settings window.dateFmt and window.clock (Fmt.DateTime).
 -- Continents with less than C.CONT_MIN_SECS of total time are not listed.
+-- Durations: the footers and the account's average per level keep their minutes past
+-- 10 h (Fmt.DurationFull: "10h 23m", "1d 19h 05m"), the footers being live in the
+-- account view too (the current character's time grows there); the Sessions table's
+-- Duration column keeps them up to a day only (CellDur: "12 d 23 h 59 min" would not fit
+-- its 64 px in the languages with long units); the other cells of the Zones and Sessions
+-- tables keep Fmt.Duration (DurText: the current zone's or session's grow between two
+-- rebuilds, which minutes past 10 h would show).
 -- Column help: every column header is followed by a small circled "?" (the addon's
 -- Media/Themes/common/help.tga, tinted ui.dim, ui.accent while hovered); hovering the
 -- header cell (an invisible frame the width of the column, the only mouse-enabled part of
@@ -175,7 +182,7 @@ local dirty = false                -- XP changed since the last rebuild
 
 -- live cells (current character only)
 local liveSessionRow, liveSessionKey = nil, -1
-local liveTotalKey = -1
+local liveTotalKey, liveInstKey = -1, -1   -- the footer's total and instance time (to the minute)
 
 -- reused data tables for Stats (alloc) functions: Stats recycles the row tables
 -- found in `out` and returns the row count, so they are never wiped here
@@ -241,6 +248,23 @@ local function LevelSpan(l)
   return format(L.RANGE_FMT, IntText(l), IntText(l + 1))
 end
 
+-- A session's duration (the Sessions table's Duration column): its minutes up to a day
+-- (Fmt.DurationFull: "23h 59m" fits the column in every language), then days and hours
+-- (Fmt.Duration: "1d 19h"). Exact: a past session's never changes, the session in
+-- progress is a live cell (UpdateLiveCells). CellDurKey: equal keys <=> equal CellDur strings.
+local function CellDur(sec)
+  if sec < 86400 then return Fmt.DurationFull(sec) end
+  return Fmt.Duration(sec)
+end
+
+local function CellDurKey(sec)
+  if sec < 86400 then return Fmt.DurationFullKey(sec) end
+  return Fmt.DurationKey(sec)
+end
+
+-- Every other table cell (Zones, the Sessions' AFK / Inst. / Dead / Prof.): Fmt.Duration,
+-- no minutes past 10 h, as the cells that hold the current zone or session grow without
+-- being refreshed until the next rebuild.
 local function DurText(sec)
   sec = tonumber(sec)
   if not sec or sec <= 0 then return DASH end
@@ -535,7 +559,7 @@ local function BuildAccountLevels(mask)
     local row = NextRow()
     Put(row, "level", LevelSpan(r.level))
     Put(row, "chars", IntText(r.n))
-    Put(row, "avg", r.avg and Fmt.Duration(r.avg) or DASH)
+    Put(row, "avg", r.avg and Fmt.DurationFull(r.avg) or DASH)
     Put(row, "xph", r.xph and Fmt.Rate(r.xph) or DASH)
   end
   if n == 0 then ShowEmpty(L.NO_DATA) end
@@ -701,7 +725,7 @@ local function BuildSessions(char, mask)
     local r = out[i]
     local row = NextRow()
     Put(row, "date", r.t0 and Fmt.DateTime(r.t0) or DASH, r.current and COLORS.accent or label)
-    Put(row, "dur", Fmt.Duration(r.dur or 0))
+    Put(row, "dur", CellDur(r.dur or 0))
     local l1, p1 = r.l1, r.p1
     if r.current and isCur then
       -- the in-progress session ends "now": current level and XP fraction
@@ -720,7 +744,7 @@ local function BuildSessions(char, mask)
     Put(row, "prof", DurText(r.prof), label)
     if r.current and isCur and not liveSessionRow then
       liveSessionRow = row
-      liveSessionKey = Fmt.DurationKey(r.dur or 0)
+      liveSessionKey = CellDurKey(r.dur or 0)
     end
   end
   if n == 0 then ShowEmpty(L.NO_DATA) end
@@ -870,17 +894,18 @@ local function ApplyHeaders(layout)
   end
 end
 
--- Instance time of the viewed character (or of every character) under `mask`,
--- appended to the footer when there is any.
+-- Instance time of the viewed character (or of every character) under `mask`.
+local function FooterInstSecs(char, mask)
+  if char then return InstSecs(char.life, mask) end
+  return ns.Stats.AccountInstanceTime(ns.db, mask)
+end
+
+-- That time appended to the footer when there is any (its key kept for the live step).
 local function FooterInst(char, mask)
-  local total
-  if char then
-    total = InstSecs(char.life, mask)
-  else
-    total = ns.Stats.AccountInstanceTime(ns.db, mask)
-  end
+  local total = FooterInstSecs(char, mask)
+  liveInstKey = Fmt.DurationFullKey(total)
   if total <= 0 then return "" end
-  return L.SEP .. format(L.FOOTER_INST_FMT, Fmt.Duration(total))
+  return L.SEP .. format(L.FOOTER_INST_FMT, Fmt.DurationFull(total))
 end
 
 local function UpdateFooter(char, mask, now)
@@ -891,25 +916,25 @@ local function UpdateFooter(char, mask, now)
     footer2:SetText(L.FOOTER_ACCOUNT_NONE)
   else
     footer2:SetText(format(nChars == 1 and L.FOOTER_ACCOUNT_ONE_FMT or L.FOOTER_ACCOUNT_FMT,
-      Fmt.Duration(accAvg), nChars))
+      Fmt.DurationFull(accAvg), nChars))
   end
   if char then
     local sync = (char == ns.char) and ns.Tracker.GetSync() or nil
     local overall = Stats.AvgPerLevel(char, mask, sync, now)
     local recent, count = Stats.RecentAvg(char, mask, C.RECENT_LEVELS)
     local total = Stats.Played(char, mask, sync, now) or 0
-    liveTotalKey = Fmt.DurationKey(total)
+    liveTotalKey = Fmt.DurationFullKey(total)
     footer1:SetText(format(L.FOOTER_FMT,
-      overall and Fmt.Duration(overall) or L.DOTS,
+      overall and Fmt.DurationFull(overall) or L.DOTS,
       math_floor(recent and tonumber(count) or C.RECENT_LEVELS),
-      recent and Fmt.Duration(recent) or L.DOTS,
-      Fmt.Duration(total)) .. FooterInst(char, mask))
+      recent and Fmt.DurationFull(recent) or L.DOTS,
+      Fmt.DurationFull(total)) .. FooterInst(char, mask))
   else
     local filtered, _, n = Stats.Account(ns.db, mask)
     n = math_floor(tonumber(n) or 0)
-    liveTotalKey = -1
+    liveTotalKey = Fmt.DurationFullKey(filtered or 0)
     footer1:SetText(format(n == 1 and L.TT_ACCOUNT_ONE_FMT or L.TT_ACCOUNT_FMT, n) .. L.SEP
-      .. Fmt.Duration(filtered or 0) .. FooterInst(nil, mask))
+      .. Fmt.DurationFull(filtered or 0) .. FooterInst(nil, mask))
   end
 end
 
@@ -917,7 +942,27 @@ end
 -- Live cells (every C.WINDOW_ROW_REFRESH ticks; strings only when a key changed)
 ---------------------------------------------------------------------------
 
+-- The footer again when its total or its instance time changed minute: the current
+-- character's (`char`) or the account's (nil: every record's life, the current one growing).
+local function LiveFooter(char, mask, sync, now)
+  local Stats = ns.Stats
+  local total
+  if char then
+    total = Stats.Played(char, mask, sync, now) or 0
+  else
+    total = Stats.Account(ns.db, mask) or 0
+  end
+  if Fmt.DurationFullKey(total) ~= liveTotalKey
+      or Fmt.DurationFullKey(FooterInstSecs(char, mask)) ~= liveInstKey then
+    UpdateFooter(char, mask, now)
+  end
+end
+
 local function UpdateLiveCells()
+  if view == VIEW_ACCOUNT then
+    if ns.char then LiveFooter(nil, ns.GetMask(), nil, GetTime()) end
+    return
+  end
   if view ~= VIEW_CURRENT then return end
   local char = ns.char
   if not char then return end
@@ -930,18 +975,14 @@ local function UpdateLiveCells()
     local session = ns.Tracker.GetSession()
     if session then
       local d = Stats.SessionTime(session, mask) or 0
-      local key = Fmt.DurationKey(d)
+      local key = CellDurKey(d)
       if key ~= liveSessionKey then
         liveSessionKey = key
-        PutLive(liveSessionRow, "dur", Fmt.Duration(d))
+        PutLive(liveSessionRow, "dur", CellDur(d))
       end
     end
   end
-  local total = Stats.Played(char, mask, sync, now) or 0
-  local totalKey = Fmt.DurationKey(total)
-  if totalKey ~= liveTotalKey then
-    UpdateFooter(char, mask, now)
-  end
+  LiveFooter(char, mask, sync, now)
 end
 
 ---------------------------------------------------------------------------
@@ -1310,11 +1351,16 @@ function Window.Hide()
 end
 
 -- A theme switch while the window exists ("colors": the `ui` roles do not follow the user
--- colours, Themes warns at compile time when a theme makes them).
+-- colours, Themes warns at compile time when a theme makes them; only the detail sheet's
+-- Experience bar does, LevelDetail.Recolor).
 local function OnThemeChanged(_, _, _, kind)
   if not frame then return end
   if ns.LevelChart then ns.LevelChart.TipHide() end    -- any switch hides the chart's tooltip
-  if kind ~= "colors" then Window.ApplyTheme() end
+  if kind ~= "colors" then
+    Window.ApplyTheme()
+  elseif ns.LevelDetail then
+    ns.LevelDetail.Recolor()
+  end
 end
 
 if ns.RegisterMessage then

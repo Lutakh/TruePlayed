@@ -21,7 +21,9 @@ local L, C, Fmt = ns.L, ns.C, ns.Fmt
 --    the level took, from a minute, for a level neither partial nor rebuilt and an
 --    estimate taken under the current exclusions (row.etaM; nil, an older record: shown);
 --    the current level with a projection: "Level estimate" = its time + the time left, sub
---    "about X left" in ui.accent), Total since level 1 (row.cum), XP per hour (row.xph),
+--    "about X left" in ui.accent), Total since level 1 (row.cum, the time until the next
+--    level was reached; sub: "level 1 » 20", the title's arrow, and for the level in
+--    progress "level 1 » 20, in progress": up to now, live), XP per hour (row.xph),
 --    Deaths (count; sub: the dead time, "none", or nothing for deaths recorded before the
 --    dead time was); "Time breakdown": a 10 px stacked bar of the parts of
 --    Stats.LevelSegments under the mask in the chart's fixed order and colours (the
@@ -38,14 +40,15 @@ local L, C, Fmt = ns.L, ns.C, ns.Fmt
 --    <w0>", "measured only for part of this level", "not measured at this level" or "not
 --    measured on this client" (ns.Pvp unavailable); "Experience": "xp / max XP" (the XP
 --    reading of the level in progress, else the level's gain and size), a 3-part bar mobs
---    (xa, the theme's XP colour) / quests and other (xq, the gauge city colour) / rested
---    bonus (xr, the theme's rested colour) and their values and percents; "Zones and
---    instances": Stats.TopZones of the level (8 at most; named from char.zones, a capital
---    with L.CITY_MARK, an excluded zone with a dash and last; never an instance: every one
---    of the level, Stats.TopInstances under mask 0, is left out, however many) with a
---    small bar proportional to the longest row (gauge world, city), then
---    Stats.TopInstances under the mask, merged by name (the 5 longest, "name (kind)", gauge
---    dungeon / raid / pvp; a battleground first seen under its instance key is one row);
+--    (xa, the bar's XP colour: the user's, else the theme's) / quests and other (xq, the
+--    gauge city colour) / rested bonus (xr, the bar's rested colour) and their values and
+--    percents; "Zones and instances": Stats.TopZones of the level (8 at most; named from
+--    char.zones, a capital with L.CITY_MARK, an excluded zone with a dash and last; never
+--    an instance: every one of the level, Stats.TopInstances under mask 0, is left out,
+--    however many) with a small bar proportional to the longest row (gauge world, city),
+--    then Stats.TopInstances under the mask, merged by name (the 5 longest, "name (kind)",
+--    gauge dungeon / raid / pvp; a battleground first seen under its instance key is one
+--    row);
 --  * an upcoming level: "Estimated duration" (Fmt.ETA of its FutureLevels estimate), its
 --    basis (FutureLevels src: "recent", the pace over the last levels; "rate", the current
 --    XP per hour), "XP to earn" (Stats.XPOf) and "Reached in about <the play time until it
@@ -64,14 +67,26 @@ local L, C, Fmt = ns.L, ns.C, ns.Fmt
 -- every C.WINDOW_ROW_REFRESH ticks, while it is selected): the Played, Server, Total,
 -- estimate and Deaths cards and the time breakdown (its total, its bar's widths, its rows'
 -- values and percents, sorted again in their places) follow the time and the level's
--- parts with Fmt.DurationKey / ETAKey keys (a string only when a key changes, a width only
--- when a pixel changes, no anchor while the rows keep their order: nothing allocated
--- otherwise; a flight, a battleground, a death or AFK time shows without an XP gain); a
--- row more or less moves the sections below: the sheet is laid out again (Lay, rare). The
--- notes, the XP and the zones follow at the next rebuild (an XP gain rebuilds the window
--- within 30 s). Hide; ApplyTheme(ui) (fonts: the body role; colours: copies of the `ui`
--- roles, of the gauge colours and of the theme's XP / rested colours, P5); Owns(owner)
--- (the PvP row's hover frame: Window.Deactivate, LevelChart.Owns).
+-- parts with Fmt.DurationFullKey / DurationKey / ETAKey keys (a string only when a key
+-- changes, a width only when a pixel changes, no anchor while the rows keep their order:
+-- nothing allocated otherwise; a flight, a battleground, a death or AFK time shows
+-- without an XP gain); a row more or less moves the sections below: the sheet is laid out
+-- again (Lay, rare). The notes, the XP and the zones follow at the next rebuild (an XP
+-- gain rebuilds the window within 30 s). Hide; ApplyTheme(ui) (fonts: the body role;
+-- colours: copies of the `ui` roles, of the gauge colours and of the bar's XP / rested
+-- colours, P5); Recolor() (a change of the user's XP / rested colours: the copies read
+-- again and painted, Window's THEME_CHANGED "colors"); Owns(owner) (the PvP row's hover
+-- frame: Window.Deactivate, LevelChart.Owns).
+--
+-- Durations: every measured one (the Played, Server /played and Total cards, the dead
+-- time, the notes, the time breakdown, the zones, the PvP row's tooltip) keeps its
+-- minutes past 10 h (Fmt.DurationFull: "10h 23m", "1d 19h 05m"); in the value columns of
+-- the breakdown and the zones a time that does not fit with them (a language with long
+-- units: "2 d 23 h 59 min") drops them (Fmt.Duration, DurFit). The notes and the zones of
+-- the current character's level in progress keep Fmt.Duration (Grows: no live step
+-- refreshes them, their times grow until the next rebuild). The estimates (the
+-- "Estimated at start" card and how the level went against it, the time left, an
+-- upcoming level's figures) keep Fmt.Duration and Fmt.ETA.
 --
 -- Layout: every region has one TOPLEFT anchor on the content frame and an explicit size,
 -- anchored again only when its place changes (a rebuild of the same sheet anchors nothing:
@@ -203,14 +218,15 @@ local function Num(v)
   return v
 end
 
+-- A measured duration to the minute, a dash for nothing.
 local function DurOrDash(v)
-  if v and v > 0 then return Fmt.Duration(v) end
+  if v and v > 0 then return Fmt.DurationFull(v) end
   return DASH
 end
 
 -- Integer key: equal keys <=> equal DurOrDash strings (0: the dash).
 local function DashKey(v)
-  if v and v > 0 then return Fmt.DurationKey(v) + 1 end
+  if v and v > 0 then return Fmt.DurationFullKey(v) + 1 end
   return 0
 end
 
@@ -220,8 +236,19 @@ local function CopyColor(dst, src, fallback)
   dst[1], dst[2], dst[3] = Num(src[1]), Num(src[2]), Num(src[3])
 end
 
+-- The user's colour of the bar (widget.xpColor / widget.restedColor: `field`), nil when
+-- the built-in one applies.
+local function UserColor(field)
+  local s = ns.settings
+  local w = type(s) == "table" and s.widget or nil
+  local c = type(w) == "table" and w[field] or nil
+  if type(c) == "table" and c[1] then return c end
+  return nil
+end
+
 -- The colours of the active theme: `ui` roles (the window's UI table, else the theme's),
--- gauge colours (th.tt.gauge.colors, else Themes.CLASSIC_GAUGE), XP / rested (th.colors).
+-- gauge colours (th.tt.gauge.colors, else Themes.CLASSIC_GAUGE), XP / rested (the user's
+-- colours of the bar, else th.colors: the bar's and the tooltip's XP row's).
 local function ReadColors(ui)
   local Themes = ns.Themes
   local th = Themes and Themes.Active()
@@ -245,9 +272,9 @@ local function ReadColors(ui)
   local w = SEGC[P_WPVP]
   for j = 1, 3 do w[j] = w[j] + (1 - w[j]) * WPVP_MIX end
   local cols = th and type(th.colors) == "table" and th.colors or nil
-  CopyColor(XPC.xa, cols and cols.xp, K.accent)
+  CopyColor(XPC.xa, UserColor("xpColor") or (cols and cols.xp), K.accent)
   CopyColor(XPC.xq, gc and gc.city, UIC.title)
-  CopyColor(XPC.xr, cols and cols.rested, K.restedFill)
+  CopyColor(XPC.xr, UserColor("restedColor") or (cols and cols.rested), K.restedFill)
   local bg, v = UIC.bg, UIC.value
   for j = 1, 3 do BOX_BG[j] = bg[j] + (v[j] - bg[j]) * 0.06 end
   colored = true
@@ -299,6 +326,31 @@ local function Text(fs, s)
   local Themes = ns.Themes
   if s ~= "" and Themes and Themes.HasSubst and Themes.HasSubst("body") then s = Themes.Subst("body", s) end
   fs:SetText(s)
+end
+
+-- A measured duration in a value column (VAL_W px, right-aligned: the breakdown's rows,
+-- the zones): to the minute (DurOrDash), or without the minutes (Fmt.Duration) when that
+-- is wider than the column. Measured only from 10 h (below, both texts are the same) and
+-- only when the value's key changed: its unbounded width, the client bounding
+-- GetStringWidth by the width set (GetStringWidth on a client without
+-- GetUnboundedStringWidth).
+local function DurFit(fs, v)
+  Text(fs, DurOrDash(v))
+  if not v or v < 36000 then return end
+  local w = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or fs:GetStringWidth()
+  if Num(w) > VAL_W then Text(fs, Fmt.Duration(v)) end
+end
+
+-- The sheet shows the current character's level in progress: its notes and zones, which
+-- only follow at the next rebuild, keep Fmt.Duration (Rough), as minutes past 10 h would
+-- fall behind its growing times (the Zones tab's rule, Window.lua).
+local function Grows()
+  return S.kind == "cur" and S.isCur
+end
+
+local function Rough(v)
+  if v and v > 0 then return Fmt.Duration(v) end
+  return DASH
 end
 
 -- The colour role of a FontString (tinted when it changed).
@@ -635,9 +687,10 @@ local function FillNotes(row, y)
   if row then
     if row.partial then Add(L.ROW_PARTIAL_TIP) end
     if row.rec then Add(L.ROW_REC_TIP) end
-    if Num(row.estF) > 0 then Add(format(L.ROW_EST_TIP_FMT, Fmt.Duration(row.estF))) end
-    if Num(row.gap) > 0 then Add(format(L.ROW_GAP_TIP_FMT, Fmt.Duration(row.gap))) end
-    if Num(row.stall) > 0 then Add(format(L.LD_STALL_FMT, Fmt.Duration(row.stall))) end
+    local D = Grows() and Rough or Fmt.DurationFull
+    if Num(row.estF) > 0 then Add(format(L.ROW_EST_TIP_FMT, D(row.estF))) end
+    if Num(row.gap) > 0 then Add(format(L.ROW_GAP_TIP_FMT, D(row.gap))) end
+    if Num(row.stall) > 0 then Add(format(L.LD_STALL_FMT, D(row.stall))) end
   end
   for j = n + 1, #notes do Vis(notes[j], false) end
   tp.nNotes = n
@@ -688,7 +741,7 @@ local function DeathsCard(deaths, dead)
   S.kDeaths, S.kDead = deaths, DashKey(dead)
   local sub = ""
   if dead > 0 then
-    sub = format(L.LV_DEAD_SUB_FMT, Fmt.Duration(dead))
+    sub = format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(dead))
   elseif deaths == 0 then
     sub = L.LD_NONE
   end
@@ -704,27 +757,29 @@ local function FillCards(level, ctx, y)
   local t = S.time
   local Stats = ns.Stats
   -- Played
-  local d = Fmt.Duration(t)
+  local d = Fmt.DurationFull(t)
   local label = Stats.MaskLabel(S.mask)
   Card(1, L.LV_PLAYED, S.approx and (APPROX .. d) or d, label and format(L.TT_EXCL_FMT, label) or L.LV_SERVER_SUB)
-  S.kTime = Fmt.DurationKey(t)
+  S.kTime = Fmt.DurationFullKey(t)
   -- Server /played
   local server = row and tonumber(row.server)
   S.serverPfx = (row and row.serverEst) and APPROX or ""
   if server then
-    Card(2, L.TT_SERVER, S.serverPfx .. Fmt.Duration(server), L.LV_SERVER_SUB)
-    S.kServer = Fmt.DurationKey(server)
+    Card(2, L.TT_SERVER, S.serverPfx .. Fmt.DurationFull(server), L.LV_SERVER_SUB)
+    S.kServer = Fmt.DurationFullKey(server)
   else
     Card(2, L.TT_SERVER, L.DOTS, L.LV_SERVER_SUB)
     S.kServer = -1
   end
   S.serverLive = ctx.kind == "cur" and S.isCur and server ~= nil
   FillEta(row, ctx, t)
-  -- Total since level 1, XP per hour, deaths
+  -- Total since level 1 (until the next level was reached: "level 1 » 19", the title's
+  -- arrow; the level in progress: up to now, "level 1 » 19, in progress"), XP per hour,
+  -- deaths
   local cum = row and tonumber(row.cum)
-  Card(4, L.LD_CUM, cum and Fmt.Duration(cum) or L.DOTS,
-    (level == 1) and L.LV_PLAYED_SUB_ONE or format(L.LV_PLAYED_SUB_FMT, level))   -- never "levels 1 to 1"
-  S.kCum = cum and Fmt.DurationKey(cum) or -1
+  Card(4, L.LD_CUM, cum and Fmt.DurationFull(cum) or L.DOTS,
+    format(ctx.kind == "cur" and L.LD_CUM_SUB_CUR_FMT or L.LD_CUM_SUB_FMT, level + 1))
+  S.kCum = cum and Fmt.DurationFullKey(cum) or -1
   local xph = row and tonumber(row.xph)
   Card(5, L.TT_XPH, xph and Fmt.Rate(xph) or L.DOTS, "")
   DeathsCard(row and math_floor(Num(row.deaths)) or 0, row and Num(row.dead) or 0)
@@ -788,10 +843,10 @@ end
 -- a Show: always), the bar's parts only resized when a pixel changed. Live (no force)
 -- returns false, drawing no row, when the count of rows changed: the sections below move.
 local function DrawTime(total, force)
-  local key = Fmt.DurationKey(total)
+  local key = Fmt.DurationFullKey(total)
   if force or key ~= S.kTotal then
     S.kTotal = key
-    Text(TM.right, format(L.LD_TOTAL_FMT, Fmt.Duration(total)))
+    Text(TM.right, format(L.LD_TOTAL_FMT, Fmt.DurationFull(total)))
   end
   DrawBar(TM.segs, NSEG, val, total, PAD, S.barY, "barSig", TM.roles)
   local n = SortCats()
@@ -810,7 +865,7 @@ local function DrawTime(total, force)
     key = DashKey(v)
     if force or key ~= r.kv then
       r.kv = key
-      Text(r.value, DurOrDash(v))
+      DurFit(r.value, v)
     end
     Place(r.value, PAD + IW - PCT_W - VAL_W, ry + 1)
     -- percent of the total (memoized strings); a share that rounds to 0 reads "<1%"
@@ -957,7 +1012,7 @@ local function ZoneRow(j, name, secs, part, maxSecs, y)
   local z = ZN.rows[j] or NewZoneRow(j)
   Text(z.name, name)
   Role(z.name, secs > 0 and "value" or "dim")
-  Text(z.time, DurOrDash(secs))
+  if Grows() then Text(z.time, Rough(secs)) else DurFit(z.time, secs) end
   Place(z.name, PAD, y)
   Place(z.time, PAD + IW - VAL_W, y)
   Paint(z.bar, part, 1)
@@ -1151,10 +1206,10 @@ OnPvpEnter = function(self)
     if i > BG_ROWS then
       other = other + Num(r.secs)
     else
-      LC.TipRow("pair", "   " .. tostring(r.name), Fmt.Duration(Num(r.secs)), "label", "value")
+      LC.TipRow("pair", "   " .. tostring(r.name), Fmt.DurationFull(Num(r.secs)), "label", "value")
     end
   end
-  if other >= 60 then LC.TipRow("pair", "   " .. L.LV_BG_OTHER, Fmt.Duration(other), "label", "value") end
+  if other >= 60 then LC.TipRow("pair", "   " .. L.LV_BG_OTHER, Fmt.DurationFull(other), "label", "value") end
   LC.TipRow("pair", L.LV_WPVP_LONG, measured and DurOrDash(wp) or L.DOTS, SEGC[P_WPVP], "value")
   LC.TipSep("block")
   LC.TipRow("wrap", format(L.LV_WPVP_DEF_FMT, math_floor(Num(C.PVP_IDLE) / 60 + 0.5)), nil, "dim", nil, true)
@@ -1251,29 +1306,33 @@ function LevelDetail.Live(char, mask, sync, now)
   end
   local Stats = ns.Stats
   local level = S.level
-  local t, base, live = Stats.LevelTime(char, level, mask, sync, now)
-  t = Num(t)
+  local t = Num((Stats.LevelTime(char, level, mask, sync, now)))
   -- the breakdown first: a row more or less lays the sheet out again (its cards too)
   if not DrawTime(ReadParts(char, level, true, t), false) then Lay(char, level, S.ctx, t) end
-  local key = Fmt.DurationKey(t)
+  local key = Fmt.DurationFullKey(t)
   if key ~= S.kTime then
     S.kTime = key
-    local d = Fmt.Duration(t)
+    local d = Fmt.DurationFull(t)
     Text(cards[1].value, S.approx and (APPROX .. d) or d)
   end
-  if live and S.serverLive then
-    key = Fmt.DurationKey(base)
-    if key ~= S.kServer then
-      S.kServer = key
-      local d = Fmt.Duration(Num(base))
-      Text(cards[2].value, S.serverPfx ~= "" and (S.serverPfx .. d) or d)
+  if S.serverLive then
+    -- the card's rule (the level row's server, Stats.LevelServer): the sync's level part,
+    -- else its total less the level's server start, both growing
+    local srv = Stats.LevelServer(char, level, sync, now)
+    if srv then
+      key = Fmt.DurationFullKey(srv)
+      if key ~= S.kServer then
+        S.kServer = key
+        local d = Fmt.DurationFull(srv)
+        Text(cards[2].value, S.serverPfx ~= "" and (S.serverPfx .. d) or d)
+      end
     end
   end
   local played = Num((Stats.Played(char, mask, sync, now)))
-  key = Fmt.DurationKey(played)
+  key = Fmt.DurationFullKey(played)
   if S.kCum ~= -1 and key ~= S.kCum then
     S.kCum = key
-    Text(cards[4].value, Fmt.Duration(played))
+    Text(cards[4].value, Fmt.DurationFull(played))
   end
   local fut = S.fut
   if S.estOK and type(fut) == "table" and fut.cur ~= nil then
@@ -1311,6 +1370,13 @@ function LevelDetail.ApplyTheme(ui)
   end
   for fs in pairs(txt) do txt[fs] = nil end
   Repaint()
+end
+
+-- A recolour (the user's XP / rested colours: THEME_CHANGED "colors", Window.lua): the
+-- colours read again and painted, the texts kept (no rebuild).
+function LevelDetail.Recolor()
+  ReadColors(nil)
+  if panel then Repaint() end
 end
 
 function LevelDetail.Owns(owner)

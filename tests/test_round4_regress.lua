@@ -462,7 +462,18 @@ T.test("F1-fidelity: the widest XP rows fit every theme's widest tooltip with a 
       { L.TT_KILLS, L.TT_KILLS_NODATA },
       { L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(1234), Fmt.Number(12345), Fmt.Number(12345)) },
       { L.TT_NEXT_LEVEL, format(L.TT_WARMING_FMT, Fmt.Duration(ns.C.WARMUP_FULL)) },
+      -- the level's times to the minute (12d 23h 59m), the server's estimated
+      { L.TT_THIS_LEVEL, Fmt.DurationFull(12 * 86400 + 86399) },
+      { L.TT_THIS_LEVEL_SERVER, ns.Tokens.Approx(Fmt.DurationFull(12 * 86400 + 86399)) },
     }
+    -- the level's XP row: its parts two a line on continuation rows (a blank label), any
+    -- two of them (three parts: monsters and quests, then the rested bonus alone)
+    local xpParts = { format(L.BD_PART_FMT, L.LD_XP_MOBS, Fmt.Percent(0.33, 0)),
+      format(L.BD_PART_FMT, L.LD_XP_QUESTS, Fmt.Percent(0.33, 0)),
+      format(L.BD_PART_FMT, L.LD_XP_RESTED, Fmt.Percent(0.34, 0)) }
+    for a = 1, 2 do
+      for b = a + 1, 3 do rows[#rows + 1] = { " ", xpParts[a] .. L.SEP .. xpParts[b] } end
+    end
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
         Set(ns, "theme", key)

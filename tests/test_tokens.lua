@@ -579,11 +579,11 @@ T.test("tooltip: the rebuilt time is under the exclusions of the line above, nev
   lb.s = { w = 600, W = 3000 }
   lb.est, lb.es = 3000, { W = 3000 }
   local lines = Fill(ns, false)
-  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.Duration(3600))
+  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.DurationFull(3600))
   T.ok(HasText(lines, format(L.TT_EST_FMT, Fmt.Duration(3000))), "no exclusion: all of it")
   ns.Core.SetSetting("exclude.afk", true)
   lines = Fill(ns, false)
-  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.Duration(600), "This level, AFK excluded")
+  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.DurationFull(600), "This level, AFK excluded")
   for i = 1, #lines do
     T.no(MatchesFormat(lines[i][1], L.TT_EST_FMT), "the rebuilt part was AFK: no sub-line")
   end
@@ -771,7 +771,7 @@ T.test("tooltip: no average line without level history (the window footer has th
   end
   ns.Window.Show("levels")
   local footer = rawget(_G, "TruePlayedStatsFrame").tp.footer1:GetText()
-  T.ok(string.find(footer, Fmt.Duration(overall), 1, true), "the window footer has it: " .. footer)
+  T.ok(string.find(footer, Fmt.DurationFull(overall), 1, true), "the window footer has it: " .. footer)
 end)
 
 T.test("tooltip XP block and breakdowns over tracked time: the level, then (Shift) the character", function()
@@ -817,6 +817,116 @@ T.test("tooltip XP block and breakdowns over tracked time: the level, then (Shif
   T.eq(detailed[#detailed][1], L.TT_HINT, "hint last (Shift)")
 end)
 
+-- Under "This level" (filtered, to the minute), the level's /played without any filter
+-- while something is excluded: the detail sheet's Server card (Stats.LevelServer), "~"
+-- when a server mark of the level was estimated; nothing without a server value.
+T.test("tooltip: This level (server /played) under This level, only while something is excluded", function()
+  local ns = Start()
+  local L, Fmt, Stats, Tokens = ns.L, ns.Fmt, ns.Stats, ns.Tokens
+  local char = ns.char
+  local function Index(lines, left)
+    for i = 1, #lines do
+      if lines[i][1] == left then return i end
+    end
+  end
+  -- no sync yet: no server value, no line (an exclusion or not)
+  ns.Core.SetSetting("exclude.afk", true)
+  T.no(Find(Fill(ns, false), L.TT_THIS_LEVEL_SERVER), "no sync: no server line")
+  ns.Core.SetSetting("exclude.afk", false)
+  -- a level part over 10 h, as tracked (no gap to rebuild; the level begun long enough
+  -- ago for it): both lines to the minute
+  local lb = char.levels[char.level]
+  lb.t0, lb.s.w = time() - 86400, 40000
+  Stub.Fire("TIME_PLAYED_MSG", math.floor(Stats.SumAll(char.life)), math.floor(Stats.SumAll(lb)))
+  Stub.Advance(0)
+  local lines = Fill(ns, false)
+  T.no(Find(lines, L.TT_THIS_LEVEL_SERVER), "nothing excluded: no server line (This level is it)")
+  T.eq(Find(lines, L.TT_THIS_LEVEL)[2], Fmt.DurationFull(Tokens.ctx.levelTime))
+  ns.Core.SetSetting("exclude.afk", true)
+  for _, detailed in ipairs({ false, true }) do
+    lines = Fill(ns, detailed)
+    local ctx = Tokens.ctx
+    local srv, est = Stats.LevelServer(char, ctx.level, ns.Tracker.GetSync(), ctx.now)
+    T.ok(srv ~= nil and srv >= 36000 and not est, "the fixture: a live level part over 10 h")
+    local i = Index(lines, L.TT_THIS_LEVEL)
+    T.eq(lines[i][2], Fmt.DurationFull(ctx.levelTime), "This level: filtered, to the minute")
+    T.eq(lines[i + 1], { L.TT_THIS_LEVEL_SERVER, Fmt.DurationFull(srv) }, "right under it: the server's, unfiltered")
+    T.ok(lines[i + 1][2]:find("^%d+h %d%dm$") ~= nil, "with its minutes: " .. lines[i + 1][2])
+    T.ok(srv - ctx.levelTime >= 60, "the AFK time left out of This level only")
+    local n = 0
+    for j = 1, #lines do
+      if lines[j][1] == L.TT_THIS_LEVEL_SERVER then n = n + 1 end
+    end
+    T.eq(n, 1, "once (Shift: the level's section only)")
+  end
+  -- an estimated server mark: "~"
+  lb.srvStartEst = true
+  lines = Fill(ns, false)
+  local srv = Stats.LevelServer(char, Tokens.ctx.level, ns.Tracker.GetSync(), Tokens.ctx.now)
+  T.eq(Find(lines, L.TT_THIS_LEVEL_SERVER)[2], Tokens.Approx(Fmt.DurationFull(srv)), "estimated: '~'")
+  lb.srvStartEst = nil
+  -- under a crash note: the note stays with This level, the server line after it
+  lb.est, lb.es = 600, { w = 600 }
+  lines = Fill(ns, false)
+  local i = Index(lines, L.TT_THIS_LEVEL)
+  T.ok(MatchesFormat(lines[i + 1][1], L.TT_EST_FMT), "the rebuilt note right under This level")
+  T.eq(lines[i + 2][1], L.TT_THIS_LEVEL_SERVER, "then the server line")
+end)
+
+-- Right above the level's breakdown, the level's XP by source (as the detail sheet's
+-- Experience bar): monsters, quests and other, rested bonus, those of 1 % or more, in that
+-- order, two a line; on a plain GameTooltip (Broker) the label and the first two on one
+-- line, the third on a continuation line. Nothing without XP by source, nothing at the
+-- max level.
+T.test("tooltip: the level's XP by source right above its breakdown; none without XP or at max level", function()
+  local ns = Start()
+  local L, Fmt = ns.L, ns.Fmt
+  local function Part(key, x) return format(L.BD_PART_FMT, L[key], Fmt.Percent(x, 0)) end
+  local function Index(lines, left)
+    for i = 1, #lines do
+      if lines[i][1] == left then return i end
+    end
+  end
+  for _, detailed in ipairs({ false, true }) do
+    local lines = Fill(ns, detailed)
+    local i = Index(lines, L.TT_XP_LEVEL)
+    T.ok(i ~= nil, "the XP row")
+    T.eq(lines[i][2], Part("LD_XP_MOBS", 0.8) .. L.SEP .. Part("LD_XP_QUESTS", 0.1),
+      "monsters, quests and other, in that order, two a line")
+    T.eq(lines[i + 1], { " ", Part("LD_XP_RESTED", 0.1) }, "then the rested bonus on a continuation line")
+    T.eq(lines[i + 2][1], L.TT_BREAKDOWN_LEVEL, "right above the level's breakdown")
+    local n = 0
+    for j = 1, #lines do
+      if lines[j][1] == L.TT_XP_LEVEL then n = n + 1 end
+    end
+    T.eq(n, 1, "once (Shift: the level's section only)")
+  end
+  -- a source under 0.5 %: left out; the order kept (rested before monsters' would be by size)
+  local lb = ns.char.levels[ns.char.level]
+  lb.xa, lb.xq, lb.xr = 1000, 4, 3000
+  local lines = Fill(ns, false)
+  local i = Index(lines, L.TT_XP_LEVEL)
+  T.eq(lines[i][2], Part("LD_XP_MOBS", 1000 / 4004) .. L.SEP .. Part("LD_XP_RESTED", 3000 / 4004),
+    "the fixed order, the 0 % quest part left out: one line")
+  T.eq(lines[i + 1][1], L.TT_BREAKDOWN_LEVEL)
+  -- no XP by source: no row (the breakdown stays)
+  lb.xa, lb.xq, lb.xr = 0, 0, 0
+  lines = Fill(ns, false)
+  T.no(Find(lines, L.TT_XP_LEVEL), "all three at 0: no row")
+  T.ok(Find(lines, L.TT_BREAKDOWN_LEVEL), "the breakdown stays")
+  lb.xa, lb.xq, lb.xr = nil, nil, nil
+  T.no(Find(Fill(ns, false), L.TT_XP_LEVEL), "no fields: no row")
+  -- the max level: no row
+  Stub.Reset()
+  ns = Start({ level = 60 })
+  T.ok(ns.Tokens.ctx.isMax, "the fixture: max level")
+  local xp = ns.char.levels[60]
+  T.ok((xp.xa or 0) + (xp.xq or 0) + (xp.xr or 0) > 0, "the fixture: XP by source at that level")
+  for _, detailed in ipairs({ false, true }) do
+    T.no(Find(Fill(ns, detailed), ns.L.TT_XP_LEVEL), "max level: no XP row")
+  end
+end)
+
 T.test("tooltip zone line: the time at this level on hover, the character's in its Shift section", function()
   local ns = Start()
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
@@ -860,7 +970,7 @@ T.test("tooltip zone line: never above This level (a live server level time a li
   local short = Fill(ns, false)
   local ctx = ns.Tokens.ctx
   T.ok(ctx.levelTime < Stats.Sum(lb.z[1411], 0) - 60, "the fixture: This level well below the zone's tracked time")
-  T.eq(Find(short, L.TT_THIS_LEVEL)[2], Fmt.Duration(ctx.levelTime))
+  T.eq(Find(short, L.TT_THIS_LEVEL)[2], Fmt.DurationFull(ctx.levelTime))
   T.eq(Find(short, label)[2], Fmt.Duration(ctx.levelTime), "the zone line capped to This level")
   -- Shift: the same in block 1's section; the character's zone line is not capped by it
   local detailed = Fill(ns, true)

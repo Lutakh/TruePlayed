@@ -971,7 +971,7 @@ T.test("FONTS: the 23 bundled fonts with their files, Cyrillic flags and size ru
   T.eq(n, 23)
   T.eq({ F.PressStart2P.min, F.PressStart2P.snap, F.PressStart2P.max, F.PressStart2P.mono }, { 8, 8, 16, true })
   T.ok(F.EBGaramond.cyr and not F.Rajdhani.cyr and F.Spectral.cyr)
-  T.eq(#ns.Themes.DISPLAY_KEYS, 22)          -- + the reputation's and PvP's tooltip titles and split labels, the Levels tab's tooltip titles
+  T.eq(#ns.Themes.DISPLAY_KEYS, 24)          -- + the reputation's and PvP's tooltip titles and split labels, the Levels tab's tooltip titles (its range pickers' too)
   T.eq(ns.Themes.COMMON_MEDIA.glow, { 64, 32, grey = true })
   T.eq(ns.Themes.GAME_FONT_FALLBACK, GAME)
 end)

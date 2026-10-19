@@ -1013,6 +1013,25 @@ local function RepairRep(char)
   if r.t ~= nil and not IsNum(r.t) then r.t = nil end
 end
 
+-- char.lvRange = { a, b } (LevelChart.lua): the range of the Levels tab's progress strip
+-- chosen for this character, from level a (nil: 1) to level b (nil: the max level). A
+-- setting, small and optional: a field that is not a whole number >= 1 (b: >= 2) is
+-- dropped, and the whole record when a >= b or nothing is left (the default range). A
+-- level above the max level is kept (LevelChart clamps it when it reads it: the max level
+-- may rise).
+local function RepairLvRange(char)
+  local r = char.lvRange
+  if r == nil then return end
+  if type(r) ~= "table" then
+    char.lvRange = nil
+    return
+  end
+  if r.a ~= nil and not (IsNum(r.a) and r.a >= 1 and r.a % 1 == 0) then r.a = nil end
+  if r.b ~= nil and not (IsNum(r.b) and r.b >= 2 and r.b % 1 == 0) then r.b = nil end
+  if r.a == 1 then r.a = nil end
+  if (r.a ~= nil and r.b ~= nil and r.a >= r.b) or (r.a == nil and r.b == nil) then char.lvRange = nil end
+end
+
 -- char.pvp (Pvp.lua): h / k the last honor quantity and rank season total read (the bases
 -- of the gains), he / ke their EMAs (8 x { a, d }), g the time() of the last PvP gain, c
 -- the time() the honor reached its cap (a the cap alert shown for it), hk the last lifetime
@@ -1281,6 +1300,7 @@ function Core.RepairChar(char)
   RepairEma(char)
   RepairRep(char)
   RepairPvp(char)
+  RepairLvRange(char)
 
   for i = 1, #CHAR_TABLES do
     local f = CHAR_TABLES[i]
@@ -1813,7 +1833,8 @@ function Core.ResetChar(guid)
   else
     -- Rebuild the current record IN PLACE (the Tracker and the UI keep this table).
     -- The faction chosen in the options is a setting, not a statistic: it stays (its
-    -- rate, its base and its session gain go with the rest).
+    -- rate, its base and its session gain go with the rest); so does the Levels tab's
+    -- progress range (char.lvRange).
     local keep = {}
     for i = 1, #IDENTITY_FIELDS do
       local f = IDENTITY_FIELDS[i]
@@ -1821,6 +1842,7 @@ function Core.ResetChar(guid)
     end
     local repId = type(cur.rep) == "table" and cur.rep.id or nil
     if repId ~= nil then keep.rep = { id = repId } end
+    if type(cur.lvRange) == "table" then keep.lvRange = cur.lvRange end
     local fresh = Core.NewCharRecord(guid)
     for k in pairs(cur) do cur[k] = nil end
     for k, v in pairs(fresh) do cur[k] = v end

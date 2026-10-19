@@ -23,9 +23,10 @@ local L, C, Fmt = ns.L, ns.C, ns.Fmt
 -- above the footers (50 px from the bottom), 14 px from both sides. The chips span the
 -- whole root width (seven chips in the chart column alone would be too narrow for the
 -- long languages); a chip's sub line that does not fit its chip (PvP, dead, recent or
--- max-level times in a long language) shows its durations by their largest unit only
--- (SubFit: whole days or hours; measured with GetUnboundedStringWidth, as the client
--- bounds GetStringWidth by the width set), the chip's value and tooltip keep them in full;
+-- max-level times in a long language) shows its durations without their minutes past
+-- 10 h (Fmt.Duration), else by their largest unit only (SubFit: whole days or hours;
+-- measured with GetUnboundedStringWidth, as the client bounds GetStringWidth by the width
+-- set), the chip's value and tooltip keep them in full;
 -- below them, left, the chart column (root width - 400 - 14): the title line (filter title,
 -- summary), the filter pills (they wrap to a second row when the language needs it) and
 -- the "hide upcoming levels" toggle on the right, the plot (y labels
@@ -68,26 +69,67 @@ local L, C, Fmt = ns.L, ns.C, ns.Fmt
 -- level's time with
 -- "~" when partly estimated, the non-zero parts with duration and percent in their colours
 -- (a non-zero share under 0.5 % reads "<1%", as on the sheet),
--- deaths, XP per hour, reached date or in progress, the world PvP note under the PvP
--- filter; an upcoming level: its estimate and the XP to earn; no record: why), hovering
+-- deaths, XP per hour, reached date or in progress, the time from level 1 to the end of the
+-- level (L.LD_CUM: the sheet's "Total since level 1" card, row.cum; the level in progress:
+-- to now, S.played, which the card follows live), the world PvP note under the PvP
+-- filter; an upcoming level: its estimate, the XP to earn and the estimated time from level
+-- 1 to its end ("~": the played total, the time left in the current level and the estimates
+-- up to it, nothing when one is missing); no record: why), hovering
 -- the PvP chip the PvP split (each battleground without its AFK time, which is in the AFK
 -- part: the rows and "Other battlegrounds" make up the battlegrounds line; world PvP, its
 -- definition, since when it is measured or "not measured on this client" when ns.Pvp is not
 -- available: never shown as 0 then).
 --
+-- Durations: every measured one (chips, title summary, strip legend, average line,
+-- tooltips) keeps its minutes past 10 h (Fmt.DurationFull: "10h 23m", "1d 19h 05m"), but
+-- a chip's sub line (SubFit) and the strip's legend (FitLegend) drop them when they do
+-- not fit; the projections keep Fmt.ETA, the axis labels their whole units.
+--
 -- Performance: everything is created lazily at the first Build and pooled (columns up to
 -- top - 1, their segments, ghosts, stubs and labels); a second Build creates nothing. Live
 -- refreshes the current column, the estimates of the upcoming ones, every chip but the
 -- average (Played, server, PvP and its sub line, Flight and its share, Deaths and the dead
--- time, "level <top> in"), the strip and the summary with integer keys (Fmt.DurationKey /
+-- time, "level <top> in"), the strip and the summary with integer keys (Fmt.DurationFullKey /
 -- ETAKey / whole percents): strings are built only when a key changed, Set* calls only when
 -- a value changed, and nothing is allocated otherwise (Stats.LevelSegments, LevelTime,
 -- Played and FutureLevels with this module's reused tables do not allocate). A new scale
 -- redraws every column (SetHeight only). Tooltips allocate on mouse events only.
 --
+-- Progress strip and its range: "Progress: level [a] » [b]", two pickers in its title (from
+-- a = 1 .. top - 1, to b = a + 1 .. top; default 1 » top, the strip as before the range
+-- existed) saved per character in char.lvRange = { a, b } (nil fields: the default ones; b
+-- nil follows the max level; Core.RepairChar keeps whole numbers, a < b; RG.Read clamps
+-- them to the max level; read-only mode refuses a change, L.READONLY_ACTION). A click
+-- opens a MenuUtil context menu (radios, scrolling, "Default: level 1 » top" when the range
+-- is not the default; a "from" at or above "to" moves "to" to the max level); without
+-- MenuUtil the click steps to the next level, a right-click to the previous one (wrapping).
+-- The strip shows the time and XP inside [a, b): the complete levels a .. min(level, b) - 1
+-- (from level 1 the played total less the current level and the recorded levels above the
+-- range, as the sheet's "Total since level 1"; from a later level their own times), the
+-- level in progress when a <= level < b, the time left to reach b (FutureLevels: the
+-- current level's remainder and the estimates up to b - 1; the projection's own fut.total
+-- when b = top). The complete levels' time is exact only when the levels it adds up (from
+-- level 1: the ones it takes off) are all fully recorded: "~" before it when one of them
+-- is only partly recorded, rebuilt or below its server time (the bar tooltip's "~"), "..."
+-- when one has no record (reached before the install, or a gap: its whole time would be
+-- missing, or given to the levels below it); then the track and the share go by XP alone
+-- ("N% of the XP"). From level 1 to a level not reached yet (the default range among
+-- them) no level is taken off: always exact, as before the range. A range behind the
+-- character (or at the max level): its levels, a full track, "100 % · level b reached" (at
+-- the max level with b = top: "Max level reached", as before); a range ahead: an empty
+-- track, 0 % and "Upcoming: ~X estimated" (the range's estimates). The range's sums (RG.Sums: the levels' times and
+-- how well they are known, Stats.XPOf, the levels without an estimate) run at a Build or
+-- a pick only; Live reads them and adds the estimates to b - 1 (no allocation). A custom
+-- range also tints its columns' background (one texture behind the bars, placed again
+-- only when its place changes). The pickers' hover tooltip says what they do, below them
+-- (RG.TIP_GAP: clear of the themed frames' top ornaments; above them, their bottom
+-- ornaments hid the hovered picker).
+--
 -- Projection (Stats.FutureLevels): "Level <top> in ~X" (chip) and "~X left" (strip) are
--- the same Fmt.ETA text; "+" after it when some levels to play have no known XP size (its
--- `missing`: the time is a lower bound, and the strip shows no share then). A character
+-- the same Fmt.ETA text; "+" after it when a part of it has no estimate (its `missing`
+-- levels to play without a known XP size, or `cur` nil: the current level's remainder;
+-- the time is a lower bound, and the strip shows no share then; the strip of a range: the
+-- levels to play inside it), "..." when no part of it is known (never "<1m+"). A character
 -- whose XP is disabled below the top level (Util.IsMaxLevel, status "max") is not at the
 -- max level: "XP disabled" in the chip and the strip, its level in progress, no projection.
 -- Another character's server cap is its recorded char.capLevel while it equals its level
@@ -108,9 +150,10 @@ local L, C, Fmt = ns.L, ns.C, ns.Fmt
 -- previous compiled theme is kept (P5). The `ui` roles never follow the user colours.
 --
 -- Test handles: frame.tp.chart = { root, chips, filters, toggle, plot, cols, grid, avg,
--- strip, sel, marker, title, summary, xlabels (cols[k].xl), tip, state, geo, segKeys,
--- filterIds }; a column record holds seg[i] (textures by part index), segH[i], val[i],
--- total, sumAll, est, kind ("done", "cur", "future", "none"), ghost, gline, stub, hit, xl.
+-- strip (picks[1..2], pickFS[1..2], arrow), band, sel, marker, title, summary, xlabels
+-- (cols[k].xl), tip, state, geo, segKeys, filterIds }; a column record holds seg[i]
+-- (textures by part index), segH[i], val[i], total, sumAll, est, kind ("done", "cur",
+-- "future", "none"), ghost, gline, stub, hit, xl.
 -- frame.tp.detail = LevelDetail's own handles.
 
 local math_floor, math_ceil, math_max, math_min = math.floor, math.ceil, math.max, math.min
@@ -205,7 +248,11 @@ local S = {
   kPlayed = -1, kServer = -1, serverLive = false, kTop = -1, kSum = -1, kCur = -1, kLeft = -1, kShare = -1,
   kBg = -1, kWp = -1, kPv = -1, kTaxi = -1, kTaxiP = -1, kDead = -1, kDeaths = -1,
   wDone = -1, wCur = -1, selAt = nil, selVer = -1, mRel = nil, mVer = -1, mOn = false, colored = false,
-  legendAt = nil, curAt = nil,
+  legendAt = nil, curAt = nil, legD = nil, leftAt = nil,
+  -- the strip's range [ra, rb) and where the character stands in it (RG.Sums)
+  ra = 1, rb = 60, nDone = 0, rCur = false, rAhead = false, rBehind = false, rLeft = false, rPartial = false,
+  rDoneQ = 0,
+  pickOn = nil, bandX = -1, bandW = -1, bandH = -1, bandOn = false,
 }
 -- geometry: root size, font version (bumped by ApplyTheme) and the applied one, layout
 -- version (columns placed again when it changes)
@@ -215,6 +262,18 @@ local G = { W = -1, H = -1, fv = 0, afv = -1, ver = 0, colW = 0, plotW = 0, plot
 local cols = {}                    -- [level] = column record (lazy, pooled)
 local colOf = setmetatable({}, { __mode = "k" })     -- [hit button] = level
 local pillOf = setmetatable({}, { __mode = "k" })    -- [pill button] = filter index
+-- The strip's range (its pickers, sums and band): field functions and constants, as
+-- LevelChart.lua is near Lua 5.1's 200 main-chunk locals
+local RG = {
+  PICK_H = 16, PICK_PAD = 5,       -- a picker's height and text padding
+  MENU_H = 400,                    -- px of a picker's menu before it scrolls
+  TIP_GAP = 18,                    -- a picker's tooltip below it, clear of the ornaments a themed
+                                   -- tooltip frame draws above its top (up to 16 px: mage, priest)
+  BAND_A = 0.07,                   -- a custom range's columns: ui.accent behind the bars
+  ARROW = "\194\187",              -- "»" between the pickers (L.LEVEL_SPAN_FMT's)
+  of = setmetatable({}, { __mode = "k" }),   -- [picker] = 1 (from) or 2 (to)
+  band = nil,                      -- the texture behind a custom range's columns
+}
 local own = setmetatable({}, { __mode = "k" })       -- frames whose tooltip this module shows
 local txt = setmetatable({}, { __mode = "k" })       -- [FontString] = text set
 local styled, sizeOf = {}, {}      -- body-role FontStrings and their sizes
@@ -341,23 +400,25 @@ local function PaintBox(f, active)
   f:SetBackdropBorderColor(bd[1], bd[2], bd[3], active and 0.9 or 0.35)
 end
 
+-- A measured duration to the minute, a dash for nothing.
 local function DurOrDash(v)
-  if v and v > 0 then return Fmt.Duration(v) end
+  if v and v > 0 then return Fmt.DurationFull(v) end
   return DASH
 end
 
--- Key of DurOrDash(v) (and of Compact(v)): DurationKey + 1, 0 for the dash.
+-- Key of DurOrDash(v) (and of the sub lines of SubFit): DurationFullKey + 1, 0 for the dash.
 local function DashKey(v)
-  if v > 0 then return Fmt.DurationKey(v) + 1 end
+  if v > 0 then return Fmt.DurationFullKey(v) + 1 end
   return 0
 end
 
--- The projection's text (chip 7 and the strip's "left"): Fmt.ETA, PLUS after it when
--- levels to play have no estimate (S.partial: the time is a lower bound).
-local function TopETA(v)
-  local s = Fmt.ETA(v)
-  if S.partial then return s .. PLUS end
-  return s
+-- The projection's text (chip 7: S.partial; the strip's "left": S.rPartial): Fmt.ETA, PLUS
+-- after it when a level to play has no estimate (`partial`: the time is a lower bound),
+-- L.DOTS when none of it is known (a lower bound of nothing, never "<1m+").
+local function TopETA(v, partial)
+  if not partial then return Fmt.ETA(v) end
+  if Num(v) <= 0 then return L.DOTS end
+  return Fmt.ETA(v) .. PLUS
 end
 
 -- The window's minimum while the chart shows (LevelChart.MinSize, header).
@@ -370,25 +431,46 @@ local function MinSize()
 end
 
 -- Compact form of a duration for a chip's sub line: its largest unit only (whole days,
--- L.LV_DAYS_FMT, from one day; whole hours, L.DUR_H, from one hour; else Fmt.Duration);
--- a dash for nothing.
+-- L.LV_DAYS_FMT, from one day; whole hours, L.DUR_H, from one hour; else the minutes,
+-- DurOrDash); a dash for nothing.
 local function Compact(v)
   if v and v >= 86400 then return format(L.LV_DAYS_FMT, math_floor(v / 86400)) end
   if v and v >= 3600 then return format(L.DUR_H, math_floor(v / 3600)) end
   return DurOrDash(v)
 end
 
--- Sets a chip's sub line to `full`, or to `short` (the same line with Compact durations)
--- when `full` does not fit the chip (measured here only: a sub line is set on a rebuild or
--- when its key changes). Its unbounded width: the client bounds GetStringWidth by the
--- width set (Layout), so it never exceeds the chip (GetStringWidth on a client without
+-- The duration formats a sub line tries, in order (SubFit): to the minute, Fmt.Duration
+-- (no minutes past 10 h), the largest unit.
+local FIT = { Fmt.DurationFull, Fmt.Duration, Compact }
+
+-- Sets a chip's sub line to fn(D, a, b), its durations written by the first formatter D of
+-- FIT whose text fits the chip, the last one when none does (measured here only: a sub line
+-- is set on a rebuild or when its key changes; a text equal to the previous try is not
+-- measured again). Its unbounded width: the client bounds GetStringWidth by the width set
+-- (Layout), so it never exceeds the chip (GetStringWidth on a client without
 -- GetUnboundedStringWidth).
-local function SubFit(ch, full, short)
+local function SubFit(ch, fn, a, b)
   local fs = ch.sub
-  Text(fs, full)
-  if short == full then return end
-  local w = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or fs:GetStringWidth()
-  if Num(w) > G.chipW - 2 * CHIP_PAD then Text(fs, short) end
+  local prev
+  for k = 1, #FIT do
+    local s = fn(FIT[k], a, b)
+    if s ~= prev then
+      prev = s
+      Text(fs, s)
+      local w = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or fs:GetStringWidth()
+      if Num(w) <= G.chipW - 2 * CHIP_PAD then return end
+    end
+  end
+end
+
+-- The sub lines of SubFit (D: a formatter of FIT): the time at the max level, the dead
+-- time, the recent average (n levels), the battlegrounds and world PvP (wp false: not
+-- measured, L.DOTS; a dash for none).
+local function MaxSub(D, t) return format(L.LV_MAX_SUB_FMT, D(t)) end
+local function DeadSub(D, dead) return format(L.LV_DEAD_SUB_FMT, D(dead)) end
+local function RecentSub(D, recent, n) return format(L.LV_AVG_RECENT_FMT, n, D(recent)) end
+local function PvpSub(D, bg, wp)
+  return format(L.LV_PVP_SUB_FMT, (bg > 0) and D(bg) or DASH, wp and ((wp > 0) and D(wp) or DASH) or L.DOTS)
 end
 
 local function PvpAvailable()
@@ -561,6 +643,12 @@ local function PaintStrip()
   Tint(strip.fs1, UIC.label)
   Tint(strip.fs2, UIC.label)
   Tint(strip.fs3, UIC.label)
+  -- the range pickers: an accent border while the range is not the default one
+  for i = 1, 2 do
+    PaintBox(strip.picks[i], S.pickOn == true)
+    Tint(strip.pickFS[i], UIC.value)
+  end
+  Tint(strip.arrow, UIC.label)
 end
 
 local function Repaint()
@@ -580,6 +668,7 @@ local function Repaint()
   Paint(avg.bg, UIC.bg, 0.85)
   Tint(avg.label, UIC.accent)
   Paint(marker, UIC.accent, 1)
+  Paint(RG.band, UIC.accent, RG.BAND_A)
   for i = 1, 4 do Paint(selTex[i], UIC.title, 1) end
   for _, c in pairs(cols) do PaintCol(c) end
   PaintStrip()
@@ -1012,7 +1101,7 @@ local function ComputeAvg()
     end
   end
   S.avg = (n > 0) and sum / n or nil
-  if S.avg then Text(avg.label, format(L.LV_AVG_FMT, Fmt.Duration(S.avg))) end
+  if S.avg then Text(avg.label, format(L.LV_AVG_FMT, Fmt.DurationFull(S.avg))) end
 end
 
 ---------------------------------------------------------------------------
@@ -1120,8 +1209,8 @@ local function FillServer(char, base, live)
   Text(ch.label, L.TT_SERVER)
   S.serverLive = live and true or false
   if live then
-    S.kServer = Fmt.DurationKey(base)
-    Text(ch.value, Fmt.Duration(base))
+    S.kServer = Fmt.DurationFullKey(base)
+    Text(ch.value, Fmt.DurationFull(base))
     Text(ch.sub, L.LV_SERVER_SUB)
     ChipColor(ch, "value")
     return
@@ -1130,7 +1219,7 @@ local function FillServer(char, base, live)
   local srv = char.srv
   local total = type(srv) == "table" and tonumber(srv.total) or nil
   if total then
-    Text(ch.value, Fmt.Duration(total))
+    Text(ch.value, Fmt.DurationFull(total))
     local at = tonumber(srv.at)
     if at then
       local age = time() - at
@@ -1152,10 +1241,10 @@ local function FillTop()
   local ch = chips[7]
   ChipColor(ch, "accent")
   if S.atMax then
-    S.kTop = Fmt.DurationKey(S.curTime)
+    S.kTop = Fmt.DurationFullKey(S.curTime)
     Text(ch.label, L.MAX_LEVEL)
     Text(ch.value, XText(S.level))
-    SubFit(ch, format(L.LV_MAX_SUB_FMT, Fmt.Duration(S.curTime)), format(L.LV_MAX_SUB_FMT, Compact(S.curTime)))
+    SubFit(ch, MaxSub, S.curTime)
   elseif S.status == "cap" or S.xpOff then
     S.kTop = -1
     Text(ch.label, S.xpOff and L.LV_XP_OFF or L.CAP_SHORT)
@@ -1166,7 +1255,7 @@ local function FillTop()
     Text(ch.sub, L.LV_TOP_SUB)
     if S.estOK then
       S.kTop = Fmt.ETAKey(fut.total)
-      Text(ch.value, TopETA(fut.total))
+      Text(ch.value, TopETA(fut.total, S.partial))
     else
       S.kTop = -1
       Text(ch.value, L.DOTS)
@@ -1190,8 +1279,7 @@ local function FillActivity(char, filtered, force)
     ch = chips[4]
     Text(ch.label, L.BD_PVP)
     Text(ch.value, DurOrDash(bg + wp))
-    SubFit(ch, format(L.LV_PVP_SUB_FMT, DurOrDash(bg), measured and DurOrDash(wp) or L.DOTS),
-      format(L.LV_PVP_SUB_FMT, Compact(bg), measured and Compact(wp) or L.DOTS))
+    SubFit(ch, PvpSub, bg, measured and wp)
   end
   local taxi = Num(lifeSeg.taxi)
   local kt, kp = DashKey(taxi), -1
@@ -1213,14 +1301,14 @@ local function FillActivity(char, filtered, force)
     Text(ch.sub, share)
   end
   local dead = Num(lifeSeg.dead)
-  local kd, ks = math_floor(Num(life and life.d)), (dead >= 60) and Fmt.DurationKey(dead) or -1
+  local kd, ks = math_floor(Num(life and life.d)), (dead >= 60) and Fmt.DurationFullKey(dead) or -1
   if force or kd ~= S.kDeaths or ks ~= S.kDead then
     S.kDeaths, S.kDead = kd, ks
     ch = chips[6]
     Text(ch.label, L.TT_DEATHS)
     Text(ch.value, Fmt.Number(kd))
     if ks >= 0 then
-      SubFit(ch, format(L.LV_DEAD_SUB_FMT, Fmt.Duration(dead)), format(L.LV_DEAD_SUB_FMT, Compact(dead)))
+      SubFit(ch, DeadSub, dead)
     else
       Text(ch.sub, "")
     end
@@ -1234,18 +1322,17 @@ local function FillChips(char, mask, sync, now)
   S.played = filtered
   local ch = chips[1]
   Text(ch.label, L.LV_PLAYED)
-  Text(ch.value, Fmt.Duration(filtered))
+  Text(ch.value, Fmt.DurationFull(filtered))
   Text(ch.sub, (S.level == 1) and L.LV_PLAYED_SUB_ONE or format(L.LV_PLAYED_SUB_FMT, S.level))
-  S.kPlayed = Fmt.DurationKey(filtered)
+  S.kPlayed = Fmt.DurationFullKey(filtered)
   FillServer(char, Num(base), live)
   ch = chips[3]
   local a = Stats.AvgPerLevel(char, mask, sync, now)
   local recent, count = Stats.RecentAvg(char, mask, C.RECENT_LEVELS)
   Text(ch.label, L.LV_AVG)
-  Text(ch.value, a and Fmt.Duration(a) or L.DOTS)
+  Text(ch.value, a and Fmt.DurationFull(a) or L.DOTS)
   if recent then
-    local n = math_floor(Num(count))
-    SubFit(ch, format(L.LV_AVG_RECENT_FMT, n, Fmt.Duration(recent)), format(L.LV_AVG_RECENT_FMT, n, Compact(recent)))
+    SubFit(ch, RecentSub, recent, math_floor(Num(count)))
   else
     Text(ch.sub, "")
   end
@@ -1269,7 +1356,7 @@ local function DrawSummary(force)
   if key == S.kSum and not force then return end
   S.kSum = key
   if n == 0 then
-    Text(sumFS, (sum > 0) and format(L.LD_TOTAL_FMT, Fmt.Duration(sum)) or L.LV_SUM_NONE)
+    Text(sumFS, (sum > 0) and format(L.LD_TOTAL_FMT, Fmt.DurationFull(sum)) or L.LV_SUM_NONE)
     return
   end
   local fmt
@@ -1278,7 +1365,7 @@ local function DrawSummary(force)
   else
     fmt = (n == 1) and L.LV_SUM_FILTER_ONE_FMT or L.LV_SUM_FILTER_FMT
   end
-  Text(sumFS, format(fmt, Fmt.Duration(sum), n))
+  Text(sumFS, format(fmt, Fmt.DurationFull(sum), n))
 end
 
 local function FillHeader()
@@ -1293,36 +1380,184 @@ local function FillHeader()
   DrawSummary(true)
 end
 
--- The XP of the levels below the current one and of every level to top - 1 (Stats.XPOf).
-local function XPSums(char)
-  local Stats, db = ns.Stats, ns.db
-  local done, total = 0, 0
-  for l = 1, S.top - 1 do
-    local x = Num(Stats.XPOf(char, db, l))
-    total = total + x
-    if l < S.level then done = done + x end
+---------------------------------------------------------------------------
+-- The strip's range (its pickers: below)
+---------------------------------------------------------------------------
+
+-- The strip's range of `char` (char.lvRange; Core.RepairChar keeps whole numbers >= 1 and
+-- a < b): from a = 1 .. top - 1 (a missing a: 1; any other value: the default 1 » top), to
+-- b = a + 1 .. top (missing, not above a, or a saved level above the max level: the max
+-- level; a saved value is kept, the max level may rise).
+function RG.Read(char, top)
+  local r = char.lvRange
+  local a, b = 1, top
+  if type(r) == "table" then
+    local x, y = r.a, r.b
+    if type(x) ~= "number" then x = 1 end
+    if x >= 1 and x < top and x % 1 == 0 then
+      a = x
+      if type(y) == "number" and y > a and y < top and y % 1 == 0 then b = y end
+    end
   end
-  S.xpDone, S.xpTotal = done, total
+  return a, b
 end
 
--- Widths, share and legend of the strip (strings only when a key changed).
+-- The projection lacks a part (Stats.FutureLevels: a level to play without an XP size, or
+-- the current level's remainder unknown): its total is a lower bound (S.partial).
+function RG.Missing()
+  return Num(fut.missing) > 0 or fut.cur == nil
+end
+
+-- A recorded level's time is not exactly measured (the bar tooltip's and the sheet's "~"):
+-- recorded from mid-level (partial), rebuilt (rec, estF) or below its server time (gap).
+function RG.Approx(row)
+  return row ~= nil and (row.partial or row.rec or Num(row.estF) > 0 or Num(row.gap) > 0) and true or false
+end
+
+-- The range's sums, at a Build or a pick only (Live reads them): where the character
+-- stands (behind: b reached, or the max level; ahead: below a; else in it, its level in
+-- progress counted), the time of the range's complete levels a .. m - 1 (m = min(level,
+-- b); from level 1: the played total less the current level and the recorded levels m ..
+-- level - 1, the sheet's "Total since level 1" of level m - 1; from a later level: their
+-- own times) and how well it is known (S.rDoneQ, from the levels it adds up, or from level
+-- 1 the ones it takes off: 0 exact; 1 one of them only partly recorded, rebuilt or with a
+-- gap, "~"; 2 one of them without a record, whose whole time would be missing or given to
+-- the levels below it, "..."; 1 and 2 show the XP share alone), the XP of those levels and
+-- of the range (Stats.XPOf), and whether a part of the time left inside it has no estimate
+-- (S.rPartial: "+", no share; the projection's own flag when the range ends at the max
+-- level).
+function RG.Sums(char)
+  local a, b, lv = S.ra, S.rb, S.level
+  S.rBehind = S.atMax or lv >= b
+  S.rAhead = not S.rBehind and lv < a
+  S.rCur = not S.rBehind and not S.rAhead
+  S.rLeft = S.estOK and not S.rBehind
+  local m = math_min(lv, b)
+  local n = math_max(0, m - a)
+  S.nDone = n
+  local done, q = 0, 0
+  if n > 0 then
+    local lo, hi = a, m - 1
+    if a == 1 then
+      lo, hi = m, lv - 1
+      done = S.played - S.curTime
+      for k = m, lv - 1 do done = done - cols[k].sumAll end
+      if done < 0 then done = 0 end
+    else
+      for k = a, m - 1 do done = done + cols[k].sumAll end
+    end
+    for k = lo, hi do
+      if cols[k].kind == "none" then
+        q = 2
+        break
+      end
+      if RG.Approx(rowOf[k]) then q = 1 end
+    end
+  end
+  S.done, S.rDoneQ = done, q
+  local Stats, db = ns.Stats, ns.db
+  local xd, xt = 0, 0
+  for l = a, b - 1 do
+    local x = Num(Stats.XPOf(char, db, l))
+    xt = xt + x
+    if l < m then xd = xd + x end
+  end
+  S.xpDone, S.xpTotal = xd, xt
+  local partial = false
+  if S.rLeft then
+    if S.rCur and b == S.top then
+      partial = S.partial
+    elseif S.rCur and fut.cur == nil then
+      partial = true                 -- the level in progress: its remainder unknown
+    else
+      for l = S.rAhead and a or lv + 1, b - 1 do
+        if fut[l] == nil then
+          partial = true
+          break
+        end
+      end
+    end
+  end
+  S.rPartial = partial
+end
+
+-- The estimated time left to reach b (S.rLeft only): the current level's remainder and the
+-- estimates up to b - 1, the projection's own total when b is the max level; a range ahead:
+-- the estimates of its levels. Live too: nothing allocated.
+function RG.Left()
+  local b = S.rb
+  local s = 0
+  if S.rCur then
+    if b == S.top then return Num(fut.total) end
+    s = Num(fut.cur)
+    for l = S.level + 1, b - 1 do s = s + Num(fut[l]) end
+    return s
+  end
+  for l = S.ra, b - 1 do s = s + Num(fut[l]) end
+  return s
+end
+
+-- The strip's legend texts of the range's complete levels ("Level 1 » 10": from the range's
+-- first level until the level reached, as in the strip's title and the level sheets, so the
+-- last complete level, 9 » 10, reads as counted; "~" before a time not exactly known, "..."
+-- for an unknown one, S.rDoneQ) and of the current level, their durations written by S.legD
+-- (FitLegend).
+local function LegendDone()
+  local a, q = S.ra, S.rDoneQ
+  local d = (q == 2) and L.DOTS or S.legD(S.done)
+  if q == 1 then d = APPROX .. d end
+  Text(strip.fs1, format(L.LV_DONE_SPAN_FMT, a, a + S.nDone, d))
+end
+
+local function LegendCur()
+  Text(strip.fs2, format(L.LV_CUR_FMT, S.level, S.legD(S.curTime)))
+end
+
+-- The legend on one row: its measured durations to the minute (Fmt.DurationFull), else
+-- without their minutes past 10 h (Fmt.Duration) once the row (squares, texts and gaps, as
+-- FillStrip lays it out) is wider than the track: a long language at the 4:3 minimum width
+-- with days-long times. Measured only when a legend text changed; FillStrip tries the
+-- minutes again at the next Build.
+local function FitLegend()
+  if S.legD ~= Fmt.DurationFull then return end
+  local hasDone, hasCur = S.nDone > 0, S.rCur
+  local w = 0
+  if hasDone then w = 12 + Num(strip.fs1:GetStringWidth()) end
+  if hasCur then
+    if hasDone then w = w + 14 end
+    w = w + 12 + Num(strip.fs2:GetStringWidth())
+  end
+  if S.rLeft then
+    if w > 0 then w = w + 14 end
+    w = w + 12 + Num(strip.fs3:GetStringWidth())
+  end
+  if w <= G.trackW then return end
+  S.legD = Fmt.Duration
+  if hasDone then LegendDone() end
+  if hasCur then LegendCur() end
+end
+
+-- Widths, share and legend of the strip (strings only when a key changed). The range's
+-- complete levels not exactly known (S.rDoneQ > 0): the track and the share by XP alone.
 local function DrawStrip(force)
   local W = G.trackW
-  local cur, left = S.curTime, S.estOK and Num(fut.total) or 0
-  local xpCur = Num(info.xp)
+  local cur = S.rCur and S.curTime or 0
+  local left = S.rLeft and RG.Left() or 0
+  local xpCur = S.rCur and Num(info.xp) or 0
   local xpPart = (S.xpTotal > 0) and (S.xpDone + xpCur) / S.xpTotal or 0
   if xpPart > 1 then xpPart = 1 end
   local pX = math_floor(xpPart * 100)
   local wDone, wCur, pT = 0, 0, 0
+  local byTime = S.estOK and S.rDoneQ == 0
   local key
-  if S.atMax then
-    wDone, key = W, -2
-  elseif S.estOK then
+  if S.rBehind then
+    wDone, key = W, (S.atMax and S.rb == S.top) and -2 or -6
+  elseif byTime then
     local grand = S.done + cur + left
     if grand <= 0 then grand = 1 end
     wDone, wCur = Round(S.done / grand * W), Round(cur / grand * W)
     pT = math_floor((S.done + cur) / grand * 100)
-    key = S.partial and -5 or pT * 1000 + pX
+    key = S.rPartial and -5 or pT * 1000 + pX
   else
     if S.xpTotal > 0 then
       wDone, wCur = Round(S.xpDone / S.xpTotal * W), Round(xpCur / S.xpTotal * W)
@@ -1332,11 +1567,13 @@ local function DrawStrip(force)
   if force or key ~= S.kShare then
     S.kShare = key
     local s
-    if S.atMax then
+    if key == -2 then
       s = L.TT_MAX_LEVEL
-    elseif S.partial then
+    elseif key == -6 then
+      s = format(L.LV_RANGE_REACHED_FMT, Fmt.PercentInt(100), S.rb)
+    elseif S.rPartial then
       s = ""                         -- levels without an XP size: neither share is known
-    elseif S.estOK then
+    elseif byTime then
       s = format(L.LV_SHARE_FMT, pT, pX)
     elseif S.status == "cap" then
       s = format(L.LV_CAP_FMT, S.capLevel or S.level)
@@ -1359,20 +1596,24 @@ local function DrawStrip(force)
     S.wCur = wCur
     strip.cur:SetWidth(wCur)
   end
-  if not S.atMax then
-    local kc = Fmt.DurationKey(cur)
+  local changed = force
+  if S.rCur then
+    local kc = Fmt.DurationFullKey(cur)
     if force or kc ~= S.kCur then
       S.kCur = kc
-      Text(strip.fs2, format(L.LV_CUR_FMT, S.level, Fmt.Duration(cur)))
-    end
-    if S.estOK then
-      local kl = Fmt.ETAKey(left)      -- the chip's text and key ("Level <top> in")
-      if force or kl ~= S.kLeft then
-        S.kLeft = kl
-        Text(strip.fs3, format(L.LV_LEFT_FMT, TopETA(left)))
-      end
+      LegendCur()
+      changed = true
     end
   end
+  if S.rLeft then
+    local kl = Fmt.ETAKey(left)        -- the chip's text and key ("Level <top> in") at b = top
+    if force or kl ~= S.kLeft then
+      S.kLeft = kl
+      Text(strip.fs3, format(S.rAhead and L.LV_UPCOMING_FMT or L.LV_LEFT_FMT, TopETA(left, S.rPartial)))
+      changed = true
+    end
+  end
+  if changed then FitLegend() end
 end
 
 local function ShowIf(r, on)
@@ -1380,23 +1621,35 @@ local function ShowIf(r, on)
 end
 
 local function FillStrip(char)
-  XPSums(char)
-  S.done = math_max(0, S.played - S.curTime)
-  Text(strip.title, format(L.LV_PROGRESS_FMT, S.top))
-  local nDone = S.level - 1
-  local hasDone = nDone >= 1
-  if hasDone then
-    local d = Fmt.Duration(S.done)
-    Text(strip.fs1, nDone == 1 and format(L.LV_DONE_ONE_FMT, d) or format(L.LV_DONE_FMT, nDone, d))
+  RG.Sums(char)
+  Text(strip.title, L.LV_RANGE_TITLE)
+  Text(strip.arrow, RG.ARROW)
+  -- the pickers' numbers, and their widths when a number or the fonts changed
+  for i = 1, 2 do
+    local n = (i == 1) and S.ra or S.rb
+    if strip.pkN[i] ~= n or strip.pkV[i] ~= G.fv then
+      strip.pkN[i], strip.pkV[i] = n, G.fv
+      local fs = strip.pickFS[i]
+      Text(fs, XText(n))
+      strip.picks[i]:SetSize(math_max(RG.PICK_H, math_ceil(Num(fs:GetStringWidth())) + 2 * RG.PICK_PAD), RG.PICK_H)
+    end
   end
+  local custom = not (S.ra == 1 and S.rb == S.top)
+  if custom ~= S.pickOn then
+    S.pickOn = custom
+    for i = 1, 2 do PaintBox(strip.picks[i], custom) end
+  end
+  local hasDone = S.nDone > 0
+  S.legD = Fmt.DurationFull          -- the minutes tried again (FitLegend)
+  if hasDone then LegendDone() end
   ShowIf(strip.done, hasDone)
   ShowIf(strip.sq1, hasDone)
   ShowIf(strip.fs1, hasDone)
-  local hasCur = not S.atMax
+  local hasCur = S.rCur
   ShowIf(strip.cur, hasCur)
   ShowIf(strip.sq2, hasCur)
   ShowIf(strip.fs2, hasCur)
-  local hasLeft = hasCur and S.estOK
+  local hasLeft = S.rLeft
   ShowIf(strip.sq3, hasLeft)
   ShowIf(strip.fs3, hasLeft)
   -- the current part after the done one (or at the track's start), the legend likewise
@@ -1420,7 +1673,40 @@ local function FillStrip(char)
       strip.sq2:SetPoint("TOPLEFT", strip.frame, "TOPLEFT", 10, -42)
     end
   end
+  -- the time left after the level in progress, else (a range ahead) at the legend's start
+  rel = hasCur and strip.fs2 or strip.frame
+  if S.leftAt ~= rel then
+    S.leftAt = rel
+    strip.sq3:ClearAllPoints()
+    if hasCur then
+      strip.sq3:SetPoint("LEFT", strip.fs2, "RIGHT", 14, 0)
+    else
+      strip.sq3:SetPoint("TOPLEFT", strip.frame, "TOPLEFT", 10, -42)
+    end
+  end
   DrawStrip(true)
+end
+
+-- A custom range's columns (the shown ones): ui.accent behind their bars, placed again only
+-- when its place changes (a Build, a pick).
+function RG.DrawBand()
+  local a, last = S.ra, math_min(S.rb - 1, S.nCols)
+  local on = S.pickOn == true and a <= last
+  if on then
+    local x = 1 + (a - 1) * G.pitch          -- the column's x (PlaceCol) less 1 px
+    local w = (last - a) * G.pitch + G.barW + 2
+    if x ~= S.bandX or w ~= S.bandW or G.plotH ~= S.bandH then
+      S.bandX, S.bandW, S.bandH = x, w, G.plotH
+      local band = RG.band
+      band:ClearAllPoints()
+      band:SetPoint("BOTTOMLEFT", plot, "BOTTOMLEFT", x, 0)
+      band:SetSize(w, G.plotH)
+    end
+  end
+  if on ~= S.bandOn then
+    S.bandOn = on
+    ShowIf(RG.band, on)
+  end
 end
 
 ---------------------------------------------------------------------------
@@ -1489,6 +1775,21 @@ local function WorldNote(char, k)
   return nil
 end
 
+-- The estimated time from level 1 to the end of upcoming level k: the played total, the
+-- time left in the current level and the estimates of the levels up to k (the sheet's
+-- "Reached in about", plus the played total); nil when one of them is missing.
+function RG.UpcomingTotal(k)
+  local s = fut.cur
+  if not S.estOK or s == nil then return nil end
+  s = S.played + s
+  for l = S.level + 1, k do
+    local e = fut[l]
+    if e == nil then return nil end
+    s = s + e
+  end
+  return s
+end
+
 -- Share of the level's time as the sheet reads it: a non-zero share that rounds to 0 is "<1%".
 local function Share(v, sum)
   local p = (sum > 0) and math_floor(v / sum * 100 + 0.5) or 0
@@ -1533,15 +1834,14 @@ OnColEnter = function(self)
       -- the bar's own value (the filter's parts) and its share of the level, then the level
       local v = c.total
       LC.TipRow("pair", only and L[SEG_LABEL[only]] or L[FILTER_KEY[S.filter]],
-        (v >= 1) and format(L.LV_PART_FMT, Fmt.Duration(v), Share(v, sum)) or DASH,
+        (v >= 1) and format(L.LV_PART_FMT, Fmt.DurationFull(v), Share(v, sum)) or DASH,
         only and SEGC[only] or UIC.accent, UIC.accent)
     end
-    local approx = row ~= nil and (row.partial or row.rec or Num(row.estF) > 0 or Num(row.gap) > 0)
-    LC.TipRow("pair", L.LV_PLAYED, (approx and APPROX or "") .. Fmt.Duration(value))
+    LC.TipRow("pair", L.LV_PLAYED, (RG.Approx(row) and APPROX or "") .. Fmt.DurationFull(value))
     for i = 1, NSEG do
       local v = c.val[i]
       if v >= 1 and i ~= only then
-        LC.TipRow("pair", L[SEG_LABEL[i]], format(L.LV_PART_FMT, Fmt.Duration(v), Share(v, sum)),
+        LC.TipRow("pair", L[SEG_LABEL[i]], format(L.LV_PART_FMT, Fmt.DurationFull(v), Share(v, sum)),
           SEGC[i], "value")
       end
     end
@@ -1553,6 +1853,12 @@ OnColEnter = function(self)
     elseif row and row.endAt then
       LC.TipRow("pair", L.COL_REACHED, Fmt.DateTime(row.endAt))
     end
+    -- from level 1 to the end of this level: the sheet's "Total since level 1" card (the
+    -- level in progress: to now, the played total the card follows live; this tooltip, as
+    -- its other lines, keeps the value of the moment it was shown)
+    local cum = row and tonumber(row.cum)
+    if cum and kind == "cur" then cum = S.played end
+    if cum then LC.TipRow("pair", L.LD_CUM, Fmt.DurationFull(cum)) end
     if FILTER_ID[S.filter] == "pvp" then
       local note = WorldNote(char, k)
       if note then LC.TipRow("wrap", note, nil, "dim", nil, true) end
@@ -1561,6 +1867,10 @@ OnColEnter = function(self)
     LC.TipRow("line", format(L.LV_UPCOMING_FMT, c.est > 0 and Fmt.ETA(c.est) or L.DOTS), nil, "value")
     local xp = ns.Stats.XPOf(char, ns.db, k)
     if xp then LC.TipRow("line", format(L.LV_XP_EARN_FMT, Fmt.Number(xp)), nil, "label") end
+    -- estimated, like the line above: the played total, what is left of the current level and
+    -- the estimates up to this one (nothing when one is missing)
+    local cum = RG.UpcomingTotal(k)
+    if cum then LC.TipRow("pair", L.LD_CUM, Fmt.ETA(cum)) end
   else
     LC.TipRow("wrap", L.LV_NO_RECORD, nil, "dim", nil, true)
   end
@@ -1590,10 +1900,10 @@ local function OnPvpEnter(self)
     if i > BG_ROWS then
       other = other + Num(r.secs)
     else
-      LC.TipRow("pair", "   " .. tostring(r.name), Fmt.Duration(Num(r.secs)), "label", "value")
+      LC.TipRow("pair", "   " .. tostring(r.name), Fmt.DurationFull(Num(r.secs)), "label", "value")
     end
   end
-  if other >= 60 then LC.TipRow("pair", "   " .. L.LV_BG_OTHER, Fmt.Duration(other), "label", "value") end
+  if other >= 60 then LC.TipRow("pair", "   " .. L.LV_BG_OTHER, Fmt.DurationFull(other), "label", "value") end
   local measured = WorldMeasured(char)
   LC.TipRow("pair", L.LV_WPVP_LONG, measured and DurOrDash(wp) or L.DOTS, SEGC[2], "value")
   LC.TipSep("block")
@@ -1634,6 +1944,99 @@ OnColClick = function(self)
   S.sel = k
   PlaceSel()
   ShowDetail(S.isCur and ns.Tracker and ns.Tracker.GetSync() or nil, GetTime())
+end
+
+-- The strip's range a » b (a = 1 .. top - 1; b = a + 1 .. top, else the max level) for the
+-- shown character: saved in char.lvRange (nil fields: the default ones, b nil follows the
+-- max level; nil when both are), then the strip and the band again; the chart is not
+-- rebuilt. Nothing when it is the shown range; refused in read-only mode.
+function RG.Set(a, b)
+  local char, top = S.char, S.top
+  if not char or not S.root then return end
+  a = math_floor(Num(a))
+  if a < 1 then a = 1 elseif a > top - 1 then a = top - 1 end
+  b = math_floor(Num(b))
+  if b <= a or b > top then b = top end
+  if a == S.ra and b == S.rb then return end
+  if ns.readOnly then
+    ns.Util.Print(L.READONLY_ACTION)
+    return
+  end
+  if a == 1 and b == top then
+    char.lvRange = nil
+  else
+    local r = char.lvRange
+    if type(r) ~= "table" then
+      r = {}
+      char.lvRange = r
+    end
+    r.a = (a > 1) and a or nil
+    r.b = (b < top) and b or nil
+  end
+  S.ra, S.rb = a, b
+  FillStrip(char)
+  RG.DrawBand()
+end
+
+-- Menu callbacks, data: a level for "from", minus a level for "to". A "from" at or above
+-- "to" moves "to" to the max level.
+function RG.IsPicked(d)
+  if d > 0 then return d == S.ra end
+  return -d == S.rb
+end
+
+function RG.Pick(d)
+  if d > 0 then
+    RG.Set(d, (d < S.rb) and S.rb or S.top)
+  else
+    RG.Set(S.ra, -d)
+  end
+end
+
+function RG.PickDefault() RG.Set(1, S.top) end
+
+-- A picker's menu (MenuUtil's generator: owner = the picker): its title, the default range
+-- when it is not the shown one, then one radio a level (from: 1 .. top - 1; to: from + 1 ..
+-- top), scrolling past RG.MENU_H px.
+function RG.Menu(owner, root)
+  local i = RG.of[owner]
+  if root.CreateTitle then root:CreateTitle(i == 1 and L.LV_RANGE_FROM or L.LV_RANGE_TO) end
+  if S.pickOn then
+    root:CreateButton(format(L.LV_RANGE_RESET_FMT, S.top), RG.PickDefault)
+    if root.CreateDivider then root:CreateDivider() end
+  end
+  local lo, hi, sign = 1, S.top - 1, 1
+  if i == 2 then lo, hi, sign = S.ra + 1, S.top, -1 end
+  for l = lo, hi do root:CreateRadio(XText(l), RG.IsPicked, RG.Pick, sign * l) end
+  if type(root.SetScrollMode) == "function" then root:SetScrollMode(RG.MENU_H) end
+end
+
+-- A picker clicked: its menu (MenuUtil); without it, the next level, the previous one on a
+-- right-click (wrapping through the picker's choices).
+function RG.OnClick(self, button)
+  local i = RG.of[self]
+  if not i or not S.char then return end
+  LevelChart.TipHide(self)
+  if MenuUtil and MenuUtil.CreateContextMenu then
+    MenuUtil.CreateContextMenu(self, RG.Menu)
+    return
+  end
+  local lo, hi, v = 1, S.top - 1, S.ra
+  if i == 2 then lo, hi, v = S.ra + 1, S.top, S.rb end
+  v = v + ((button == "RightButton") and -1 or 1)
+  if v < lo then v = hi elseif v > hi then v = lo end
+  RG.Pick(i == 1 and v or -v)
+end
+
+function RG.OnEnter(self)
+  local i = RG.of[self]
+  if not i then return end
+  local LC = LevelChart
+  LC.TipBegin(self)
+  LC.TipRow("title", i == 1 and L.LV_RANGE_FROM or L.LV_RANGE_TO, nil, "title")
+  local menu = MenuUtil and MenuUtil.CreateContextMenu
+  LC.TipRow("hint", menu and L.LV_RANGE_HINT or L.LV_RANGE_CYCLE_HINT, nil, "hint")
+  LC.TipShow(self, "TOPLEFT", "BOTTOMLEFT", 0, -RG.TIP_GAP)
 end
 
 ---------------------------------------------------------------------------
@@ -1689,12 +2092,34 @@ local function CreateStrip(root)
     fs:SetPoint("LEFT", sq, "RIGHT", 4, 0)
     strip["sq" .. i], strip["fs" .. i] = sq, fs
   end
-  strip.sq1:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -42)
-  strip.sq3:SetPoint("LEFT", strip.fs2, "RIGHT", 14, 0)
+  strip.sq1:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -42)   -- sq2, sq3: FillStrip
+  -- the range pickers after the title: "Progress: level [a] » [b]"
+  strip.picks, strip.pickFS, strip.pkN, strip.pkV = {}, {}, { -1, -1 }, { -1, -1 }
+  for i = 1, 2 do
+    local b = NewBox("Button", f)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:SetSize(RG.PICK_H, RG.PICK_H)
+    local fs = NewText(b, 12, "CENTER")
+    fs:SetPoint("CENTER", b, "CENTER", 0, 0)
+    local hl = NewTex(b, "HIGHLIGHT")
+    hl:SetAllPoints(b)
+    hl:SetVertexColor(1, 1, 1, 0.08)
+    b:SetScript("OnClick", RG.OnClick)
+    b:SetScript("OnEnter", RG.OnEnter)
+    b:SetScript("OnLeave", OnTipLeave)
+    RG.of[b], own[b] = i, true
+    strip.picks[i], strip.pickFS[i] = b, fs
+  end
+  strip.arrow = NewText(f, 12, "LEFT")
+  strip.picks[1]:SetPoint("LEFT", strip.title, "RIGHT", 4, 0)
+  strip.arrow:SetPoint("LEFT", strip.picks[1], "RIGHT", 3, 0)
+  strip.picks[2]:SetPoint("LEFT", strip.arrow, "RIGHT", 3, 0)
 end
 
 local function CreatePlot(root)
   plot = CreateFrame("Frame", nil, root)
+  RG.band = NewTex(plot, "BACKGROUND", -1)   -- a custom range's columns (RG.DrawBand), under the gridlines
+  RG.band:Hide()
   axisL = NewTex(plot, "BORDER", 1)
   axisL:SetPoint("BOTTOMLEFT", plot, "BOTTOMLEFT", 0, 0)
   axisB = NewTex(plot, "BORDER", 1)
@@ -1756,7 +2181,7 @@ local function Create(frame)
   CreateStrip(root)
   Repaint()
   TP = { root = root, chips = chips, filters = pills, toggle = toggle, toggleText = toggleFS, plot = plot,
-         cols = cols, grid = grid, avg = avg, strip = strip, sel = selTex, marker = marker, title = titleFS,
+         cols = cols, grid = grid, avg = avg, strip = strip, band = RG.band, sel = selTex, marker = marker, title = titleFS,
          summary = sumFS, tip = tip, state = S, geo = G, segKeys = SEG_KEYS, filterIds = FILTER_ID,
          axis = { left = axisL, bottom = axisB } }
 end
@@ -1781,6 +2206,7 @@ function LevelChart.Build(frame, char, isCur, mask, now, sync, ui)
   local level = math_floor(Num(char.level))
   if level < 1 then level = 1 elseif level > top then level = top end
   S.top, S.level = top, level
+  S.ra, S.rb = RG.Read(char, top)
   FillInfo(char, sync, now)
   Stats.FutureLevels(char, ns.db, mask, info, fut)
   local st = fut.status or "nodata"
@@ -1788,7 +2214,7 @@ function LevelChart.Build(frame, char, isCur, mask, now, sync, ui)
   S.atMax = level >= top
   S.xpOff = st == "max" and not S.atMax      -- XP disabled below the top level (Util.IsMaxLevel)
   S.estOK = (st == "ok" or st == "estimate") and not S.atMax
-  S.partial = S.estOK and Num(fut.missing) > 0
+  S.partial = S.estOK and RG.Missing()
   S.showFut = S.filter == 1 and not S.hideUp and S.estOK
   local nCols = S.showFut and (top - 1) or math_min(level, top - 1)
   if nCols < 1 then nCols = 1 end
@@ -1818,6 +2244,7 @@ function LevelChart.Build(frame, char, isCur, mask, now, sync, ui)
   FillChips(char, mask, sync, now)
   FillHeader()
   FillStrip(char)
+  RG.DrawBand()
   local sel = S.sel
   if not sel or sel > nCols then
     sel = math_min(level, top - 1, nCols)
@@ -1839,22 +2266,22 @@ function LevelChart.Live(char, mask, sync, now)
   local filtered, base, _, live = Stats.Played(char, mask, sync, now)
   filtered = Num(filtered)
   S.played = filtered
-  local key = Fmt.DurationKey(filtered)
+  local key = Fmt.DurationFullKey(filtered)
   if key ~= S.kPlayed then
     S.kPlayed = key
-    Text(chips[1].value, Fmt.Duration(filtered))
+    Text(chips[1].value, Fmt.DurationFull(filtered))
   end
   if live then
-    key = Fmt.DurationKey(base)
+    key = Fmt.DurationFullKey(base)
     if key ~= S.kServer or not S.serverLive then FillServer(char, Num(base), true) end
   end
   FillActivity(char, filtered, false)
   S.curTime = Num((Stats.LevelTime(char, S.level, mask, sync, now)))
   if S.atMax then
-    key = Fmt.DurationKey(S.curTime)
+    key = Fmt.DurationFullKey(S.curTime)
     if key ~= S.kTop then
       S.kTop = key
-      SubFit(chips[7], format(L.LV_MAX_SUB_FMT, Fmt.Duration(S.curTime)), format(L.LV_MAX_SUB_FMT, Compact(S.curTime)))
+      SubFit(chips[7], MaxSub, S.curTime)
     end
     return
   end
@@ -1864,7 +2291,7 @@ function LevelChart.Live(char, mask, sync, now)
   local estOK = (st == "ok" or st == "estimate")
   -- another kind of projection (an estimate appears or goes, max / XP disabled, cap, levels
   -- without an estimate): rebuilt (rare); "ok" <-> "estimate" only changes the status
-  if estOK ~= S.estOK or (st ~= S.status and not estOK) or (estOK and (Num(fut.missing) > 0) ~= S.partial) then
+  if estOK ~= S.estOK or (st ~= S.status and not estOK) or (estOK and RG.Missing() ~= S.partial) then
     LevelChart.Build(S.frame, char, true, mask, now, sync, nil)
     return
   end
@@ -1887,7 +2314,7 @@ function LevelChart.Live(char, mask, sync, now)
     key = Fmt.ETAKey(fut.total)
     if key ~= S.kTop then
       S.kTop = key
-      Text(chips[7].value, TopETA(fut.total))
+      Text(chips[7].value, TopETA(fut.total, S.partial))
     end
   end
   DrawStrip(false)

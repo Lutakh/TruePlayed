@@ -3,6 +3,109 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## À vérifier en premier (nouveau) : les minutes au-delà de 10 h, le /played serveur du niveau, l'XP par source, le cumul depuis le niveau 1, la plage de progression
+
+Cette mise à jour n'ajoute aucun fichier : après l'avoir recopiée, un `/reload` suffit.
+
+### Le cumul depuis le niveau 1 et la plage de progression (demandes du 17/10)
+
+- [ ] **La fiche d'un niveau terminé** (`/tpl stats levels`, clic sur la barre du
+  niveau 18 par exemple, titre « Niveau 18 » 19 ») : l'encadré « Cumul depuis le
+  niveau 1 » porte en dessous « niveau 1 » 19 » (le temps jusqu'au passage au 19), et non
+  plus « niveaux 1 à 18 ». L'encadré « Temps joué » tout en haut garde « niveaux 1 à N »
+  (il compte le niveau en cours).
+- [ ] **La fiche du niveau en cours** : « niveau 1 » N+1, en cours » sous le cumul, dont la
+  valeur est celle de l'encadré « Temps joué » du haut et avance avec lui.
+- [ ] **L'infobulle d'une barre** : après « Atteint le », une ligne « Cumul depuis le
+  niveau 1 », à la minute, la même valeur que l'encadré de la fiche de ce niveau (cliquez
+  la barre pour comparer, aussi avec l'AFK exclu). Sur la barre du niveau en cours :
+  la même valeur que « Temps joué » en haut au moment du survol (l'infobulle ne bouge
+  pas tant que la souris reste dessus : survolez de nouveau pour la voir avancer). Sur
+  une barre estompée (niveau à venir) : une estimation avec « ~ » (« ~3 j 15 h »). Sur la
+  souche d'un niveau d'avant l'installation : pas de ligne.
+- [ ] **La bande du bas** se lit « Progression : niveau [1] » [60] » (deux petites cases
+  encadrées). Dessous : « Niveau 1 » C : ... », C étant votre niveau actuel, soit le
+  temps jusqu'à l'atteindre, le niveau C−1 » C compris (avant : « Niveaux 1 à C−1 »,
+  qui semblait laisser de côté ce dernier niveau), puis « Niveau C en cours : ... »,
+  « Reste ~... » et les deux pourcentages à droite comme avant.
+- [ ] **Choisir une plage** : clic sur la case [1] : un menu « Du niveau » avec les
+  niveaux 1 à 59 (il défile) ; choisissez 10. Clic sur [60] : « Jusqu'au niveau », de 11
+  à 60 ; choisissez 20 (prenez une plage qui contient votre niveau). La bande montre
+  « Niveau 10 » C : ... », le niveau en cours, « Reste ~... » pour atteindre le 20, les
+  pourcentages de la plage ; les deux cases prennent un cadre de couleur ; derrière les
+  barres 10 à 19, un fond légèrement teinté. Rien ne chevauche les pourcentages à droite.
+- [ ] **Une plage derrière vous** (par exemple 5 » 15 si vous avez dépassé le 15) : bande
+  pleine, « 100 % · niveau 15 atteint », ni « en cours » ni « Reste ». **Une plage
+  devant** (par exemple 30 » 40) : bande vide, « ~0 % du temps total estimé · 0 % de
+  l'XP », « À venir : ~... estimé ».
+- [ ] **Une plage sur des niveaux d'avant l'installation** (si TruePlayed a été installé
+  en cours de montée : par exemple 1 » 5 ou 2 » 10 quand les barres 1 à 9 montrent la
+  souche « Pas de données ») : la bande écrit « ... » à la place du temps de ces niveaux
+  (jamais « <1m » ni le temps d'avant l'installation donné au niveau 1), ou « ~ » devant
+  si un seul niveau n'a été que partiellement enregistré ; à droite, seulement « N % de
+  l'XP ». La plage par défaut 1 » 60 garde son temps exact.
+- [ ] **Survol d'une case, placement** : l'infobulle s'ouvre sous la case, un peu plus
+  bas (la barre de progression reste visible) ; aucun ornement du cadre (plume du thème
+  Chasseur, cristal du thème Mage...) ne cache la case survolée ni le titre.
+- [ ] **« Du niveau » au-dessus de « Jusqu'au »** (plage 10 » 20, puis « Du niveau » 25) :
+  la plage devient 25 » 60.
+- [ ] **Gardée par personnage** : `/reload`, rouvrez l'onglet : la même plage. Passez à un
+  autre personnage (flèches de l'en-tête) : il a la sienne (1 » 60 par défaut) ; changez
+  la sienne, revenez : la vôtre n'a pas bougé.
+- [ ] **Revenir par défaut** : en haut du menu (seulement quand la plage n'est pas 1 » 60),
+  « Par défaut : niveau 1 » 60 » : la bande redevient exactement celle d'avant, le fond
+  teinté disparaît.
+- [ ] **Survol d'une case** : une infobulle « Du niveau » (ou « Jusqu'au niveau ») et
+  « Clic : choisir un niveau ». Dans le thème Classique et dans un autre thème.
+- [ ] **Pas d'erreur ni de blocage** : après avoir choisi une plage, entrez en combat et
+  utilisez vos sorts et barres d'action : aucun message « action bloquée par un addon »,
+  aucune erreur Lua (`/console scriptErrors 1`).
+
+### Les minutes, le /played serveur du niveau, l'XP par source
+
+- [ ] **Les minutes au-delà de 10 h** (`/tpl stats levels`, un personnage qui a plus de
+  10 h sur un niveau ou au total) : « 10 h 23 » au lieu de « 10 h », « 1 j 19 h 05 » au
+  lieu de « 1 j 19 h » dans les encadrés du haut (Temps joué, /played serveur, Moyenne
+  par niveau), le résumé à droite du titre, la bande de progression, les infobulles des
+  barres, la fiche du niveau (encadrés, répartition du temps, zones d'un niveau terminé)
+  et le pied de la fenêtre. Les estimations avec « ~ » (Niveau 60 dans, Estimé au départ)
+  et les graduations de l'axe ne changent pas. Les zones et les notes du niveau en cours
+  gardent « 10 h » : elles ne se mettent à jour qu'au prochain gain d'XP, et des minutes
+  y prendraient du retard.
+- [ ] **Pied de la vue « Compte »** (flèches de l'en-tête jusqu'à « Compte (tous les
+  personnages) ») : laissez la fenêtre ouverte deux ou trois minutes sans gagner d'XP. Le
+  total du compte avance à la minute, comme celui du personnage.
+- [ ] **Sessions** : la colonne Durée est à la minute jusqu'à un jour (« 23 h 59 »), puis
+  en jours et heures comme avant (« 2 j 03 h ») ; celle de la session en cours avance à
+  la minute. Les autres colonnes (AFK, Inst., Mort, Métiers) et l'onglet **Zones** restent
+  comme avant (« 10 h » sans les minutes au-delà de 10 h) : ces cellules ne se mettent
+  pas à jour en direct.
+- [ ] **Dans une langue longue** (`/tpl lang de`, puis `es` et `pt`, `/reload` à chaque
+  fois) : rien ne déborde ; un texte qui ne tient pas (deuxième ligne d'un encadré,
+  colonne des valeurs de la fiche) perd ses minutes au-delà de 10 h au lieu de déborder.
+  Revenez ensuite au français (`/tpl lang fr`). Le russe n'est pas proposé sur un client
+  français : ses largeurs sont vérifiées par les tests.
+- [ ] **Infobulle de la barre, /played serveur du niveau** : choisissez « Exclure le temps
+  AFK » (clic droit sur la barre), tapez `/afk`, attendez deux minutes, retapez `/afk`,
+  puis survolez la barre. Sous « Ce niveau » (le temps filtré, à la minute), la ligne
+  « Ce niveau (/played serveur) » donne le temps du niveau sans aucun filtre : plus grand
+  que « Ce niveau » de vos minutes AFK (à une minute près : les deux temps sont arrondis à
+  la minute inférieure), et le même que l'encadré « /played serveur » de la fiche du
+  niveau en cours. Sans exclusion, la ligne n'apparaît pas. Juste après la connexion,
+  elle attend la réponse du /played (quelques secondes).
+- [ ] **Infobulle de la barre, XP du niveau** : juste au-dessus de « Répartition du
+  niveau », la ligne « XP du niveau » avec une petite jauge, et dessous, sur une ligne, la
+  part des monstres, des quêtes et autres et du bonus de repos (« Monstres 80 % · Quêtes
+  et autres 10 % · Bonus de repos 10 % » ; sur deux lignes dans le thème Classique et
+  dans les langues où une ligne ne tiendrait pas), dans les couleurs de la barre
+  « Expérience » de la fiche. Dans plusieurs thèmes, Classique compris : dans Classique,
+  la jauge de l'XP et celle de la répartition commencent et finissent au même endroit ;
+  avec Maj, les deux répartitions restent face à face. Rien au niveau maximum.
+- [ ] **Vos couleurs** (options, « Couleurs de la barre ») : choisissez une autre
+  « Couleur de la barre d'XP » et « Couleur de l'XP de repos » : la jauge « XP du niveau »
+  de l'infobulle et la barre « Expérience » de la fiche (fenêtre ouverte) prennent les
+  mêmes couleurs que la barre. « Couleurs du thème » les remet.
+
 ## À vérifier en premier (nouveau) : l'onglet Niveaux en histogramme
 
 **Quittez complètement le jeu et relancez-le d'abord** : cette version ajoute deux
@@ -18,7 +121,7 @@ cette version : les niveaux déjà terminés l'indiquent comme non mesuré, c'es
 - [ ] **`/tpl stats levels`** (ou clic gauche sur la barre, onglet **Niveaux**) : la
   fenêtre montre, sous les onglets, une rangée de sept encadrés, le titre « Temps joué
   par niveau » avec à droite un résumé (« 1 j 04 h sur 17 niveaux »), les filtres, le
-  graphique en barres, la bande « Progression vers le niveau 60 » en bas, et à droite la
+  graphique en barres, la bande « Progression : niveau 1 » 60 » en bas, et à droite la
   **fiche** du niveau en cours. Plus de tableau de niveaux, plus d'en-têtes de colonnes.
 - [ ] **L'aide de l'en-tête** dit « Cliquez sur une barre pour voir le détail du niveau. »
   (entière, rien de coupé).
@@ -55,8 +158,7 @@ cette version : les niveaux déjà terminés l'indiquent comme non mesuré, c'es
   regardez un **autre personnage** resté au plafond (flèches de l'en-tête).
 - [ ] **XP désactivée** (si vous avez un personnage à l'XP bloquée chez le PNJ, sous le
   niveau max) : l'encadré dit « XP désactivée » / « niveau N » et la bande du bas « XP
-  désactivée au niveau N », jamais « Niveau max » ni « Progression vers le niveau 60 »
-  à côté d'un niveau maximum atteint.
+  désactivée au niveau N », jamais « Niveau max » ni « Niveau maximum atteint ».
 - [ ] **Dans une langue longue** (`/tpl lang de`, puis `es`, `pt` ; `/reload` à chaque
   fois, puis `/tpl lang auto`) : rien ne déborde des encadrés ; un sous-titre trop long
   passe en jours ou en heures entières (en allemand « BG 12 T · Welt 3 T »), c'est
@@ -106,9 +208,9 @@ cette version : les niveaux déjà terminés l'indiquent comme non mesuré, c'es
   par heure, « Atteint le » avec la date (ou « en cours »), et « Clic : détail du
   niveau ». Sur une barre à venir : « À venir : ~… estimé » et l'XP à gagner. Sur un
   niveau sans données : la phrase qui l'explique.
-- [ ] **La bande du bas** « Progression vers le niveau 60 » : la partie terminée, la
+- [ ] **La bande du bas** « Progression : niveau 1 » 60 » : la partie terminée, la
   partie du niveau en cours, le reste estimé ; à droite « ~P % du temps total estimé ·
-  Q % de l'XP » ; dessous « Niveaux 1 à N : … · Niveau C en cours : … · Reste ~… », ce
+  Q % de l'XP » ; dessous « Niveau 1 » C : … · Niveau C en cours : … · Reste ~… », ce
   dernier temps écrit exactement comme dans l'encadré « Niveau 60 dans ». Un « + » après
   ce temps (« ~6 j 22 h+ ») dit qu'une partie des niveaux à venir n'a pas de taille d'XP
   connue : le temps est alors un minimum.

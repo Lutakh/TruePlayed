@@ -268,14 +268,19 @@ function Stats.Played(char, mask, sync, now)
   return filtered, base, excluded, live
 end
 
+-- The sync carries a valid level part (the server's level /played) for `level`.
+local function LevelLive(sync, level)
+  return sync ~= nil and sync.valid == true and sync.levelValid == true
+    and sync.level == level and sync.levelPlayed ~= nil
+end
+
 -- Time spent at `level`. Live only when the sync carries a valid level part for it.
 -- Returns filtered, base, live.
 function Stats.LevelTime(char, level, mask, sync, now)
   local levels = char and char.levels
   local lb = levels and level and levels[level]
   local all = SumAll(lb)
-  local live = sync ~= nil and sync.valid == true and sync.levelValid == true
-    and sync.level == level and sync.levelPlayed ~= nil
+  local live = LevelLive(sync, level)
   local base
   if live then
     now = now or GetTime()
@@ -286,6 +291,29 @@ function Stats.LevelTime(char, level, mask, sync, now)
   local filtered = base - (all - Sum(lb, mask))
   if filtered < 0 then filtered = 0 end
   return filtered, base, live
+end
+
+-- Server /played of `level`, the level in progress (everything included, no exclusion):
+-- the sync's level part projected to `now` while it is for this level, else the server
+-- total projected to `now` less the level's server start (lb.srvStart) once a sync is
+-- valid; nil when neither is known or below 0. Second value: true when a server mark of
+-- the level was estimated (lb.srvStartEst / srvEndEst: shown with "~"). The rule of the
+-- level in progress's row (the detail sheet's "Server /played" card) and of the tooltip's
+-- "This level (server /played)" line. No allocation.
+function Stats.LevelServer(char, level, sync, now)
+  local levels = char and char.levels
+  local lb = levels and level and levels[level]
+  if type(lb) ~= "table" then return nil, false end
+  local server
+  if LevelLive(sync, level) then
+    now = now or GetTime()
+    server = sync.levelPlayed + (now - (sync.g or now))
+  elseif sync ~= nil and sync.valid == true and sync.total and lb.srvStart then
+    now = now or GetTime()
+    server = sync.total + (now - (sync.g or now)) - lb.srvStart
+  end
+  if server and server < 0 then server = nil end
+  return server, (lb.srvStartEst or lb.srvEndEst) and true or false
 end
 
 function Stats.SessionTime(session, mask)
@@ -1031,14 +1059,9 @@ local function FillLevelRow(row, char, l, mask, sync, now, isCurrent)
   local raw = SumAll(lb)
   local filtered, server
   if isCurrent then
-    local base, live
-    filtered, base, live = Stats.LevelTime(char, l, mask, sync, now)
-    if live then
-      server = base
-    elseif sync ~= nil and sync.valid == true and sync.total and lb.srvStart then
-      -- level part not usable, but the server total and the level start are known
-      server = sync.total + (now - (sync.g or now)) - lb.srvStart
-    end
+    -- the server's level part, else its total less the level's start (Stats.LevelServer)
+    filtered = (Stats.LevelTime(char, l, mask, sync, now))
+    server = Stats.LevelServer(char, l, sync, now)
   else
     filtered = Sum(lb, mask)
     if lb.srvStart and lb.srvEnd then server = lb.srvEnd - lb.srvStart end

@@ -237,18 +237,18 @@ T.test("window: level bars read 'Level L » L+1', Reached = the next level, Tota
   T.eq(Right(t11, L.COL_REACHED), Fmt.DateTime(levels[12].t0), "11 » 12: when 12 was reached")
   T.eq(Right(t10, L.COL_REACHED), Fmt.DateTime(levels[11].t0))
   T.ok(levels[11].t0 ~= levels[10].t0, "not the date level 10 began")
-  T.eq(Right(t11, L.LV_PLAYED), Fmt.Duration(Stats.Sum(levels[11], 0)), "the bar: the level's own time")
+  T.eq(Right(t11, L.LV_PLAYED), Fmt.DurationFull(Stats.Sum(levels[11], 0)), "the bar: the level's own time")
   -- Total: from level 1 to the end of the last complete level; the Played chip runs to now
   local sync = ns.Tracker.GetSync()
   local now = GetTime()
-  T.eq(ch.strip.fs1:GetText(), format(L.LV_DONE_FMT, 11, Fmt.Duration(Stats.CumulativeTime(ns.char, 11, 0, sync, now))))
+  T.eq(ch.strip.fs1:GetText(), format(L.LV_DONE_SPAN_FMT, 1, 12, Fmt.DurationFull(Stats.CumulativeTime(ns.char, 11, 0, sync, now))))
   local played = Stats.Played(ns.char, 0, sync, now)
-  T.eq(ch.chips[1].value:GetText(), Fmt.Duration(played))
+  T.eq(ch.chips[1].value:GetText(), Fmt.DurationFull(played))
   T.eq(Stats.CumulativeTime(ns.char, 11, 0, sync, now) - Stats.CumulativeTime(ns.char, 10, 0, sync, now),
     Stats.Sum(levels[11], 0), "consecutive totals differ by the level's time")
   -- live: the Played chip follows the played time
   Stub.Advance(240)
-  T.eq(ch.chips[1].value:GetText(), Fmt.Duration(Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())))
+  T.eq(ch.chips[1].value:GetText(), Fmt.DurationFull(Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())))
   -- the account view uses the same labels
   ns.Window.SetView("account")
   T.ok(RowWith(tp, Span(11)) ~= nil, "account rows: 11 » 12 (complete levels)")
@@ -282,7 +282,7 @@ T.test("window: the Est. card sits next to the time it took", function()
   T.eq(cards.eta.label:GetText(), L.LD_ETA)
   T.ok(ns.char.levels[11].eta ~= nil)
   T.eq(tp.detail.eta:GetText(), Fmt.Duration(ns.char.levels[11].eta))
-  T.eq(cards.played.value:GetText(), Fmt.Duration(ns.Stats.Sum(ns.char.levels[11], 0)), "the time it took")
+  T.eq(cards.played.value:GetText(), Fmt.DurationFull(ns.Stats.Sum(ns.char.levels[11], 0)), "the time it took")
 end)
 
 ---------------------------------------------------------------------------
@@ -430,6 +430,103 @@ end)
 ---------------------------------------------------------------------------
 -- Column help: a "?" icon after every header, its tooltip on hover
 ---------------------------------------------------------------------------
+
+-- Zones and Sessions cells: the Sessions' Duration column (CellDur) keeps a duration's
+-- minutes up to a day ("10h 23m"), from a day up without them (Fmt.Duration: "2d 03h"),
+-- as "12 d 23 h 59 min" would not fit it in the languages with long units; the session in
+-- progress is a live cell. The other cells (the Zones tab, the Sessions' AFK / Inst. /
+-- Dead / Prof.) keep Fmt.Duration: no live step refreshes them, so minutes past 10 h would
+-- fall behind the current zone's or session's growing times (review of 17/10/2026).
+T.test("zones and sessions: the Duration column keeps the minutes up to a day, the other cells Fmt.Duration", function()
+  local ns = Login()
+  local Fmt = ns.Fmt
+  local char = ns.char
+  local long = 2 * 86400 + 3 * 3600 + 5 * 60
+  char.zones[1413] = { name = "The Barrens", s = { w = 37380 }, xp = 0 }
+  char.zones[1446] = { name = "Tanaris", s = { w = long }, xp = 0 }
+  local t = 1789000000
+  char.sessions = {
+    { t0 = t, t1 = t + 37380, l0 = 5, l1 = 6, s = { w = 37380, W = 37380 }, xp = 1000, d = 0 },
+    { t0 = t + 86400, t1 = t + 86400 + long, l0 = 6, l1 = 7, s = { w = long }, xp = 1000, d = 0 },
+  }
+  ns.Window.Show("zones")
+  local tp = TP()
+  local barrens, tanaris = RowWith(tp, "The Barrens"), RowWith(tp, "Tanaris")
+  T.ok(barrens and tanaris, "the zone rows")
+  T.eq(Cell(tp, barrens, "time"), Fmt.Duration(37380), "a zone past 10 h: without the minutes")
+  T.eq(Cell(tp, barrens, "time"), "10h")
+  T.eq(Cell(tp, tanaris, "time"), "2d 03h", "a day and more: days and hours")
+  ns.Window.Show("sessions")
+  local s1, s2 = RowWith(tp, Fmt.DateTime(t)), RowWith(tp, Fmt.DateTime(t + 86400))
+  T.ok(s1 and s2, "the session rows")
+  T.eq(Cell(tp, s1, "dur"), "20h 46m", "a session under a day (AFK included): to the minute")
+  T.eq(Cell(tp, s2, "dur"), "2d 03h", "a day and more: without the minutes")
+  T.eq(Cell(tp, s1, "afk"), "10h", "its AFK column: Fmt.Duration")
+  ns.Window.Hide()
+end)
+
+-- The cells that grow while the window shows them, without an XP gain (no rebuild): the
+-- session in progress's Duration is live to the minute; the current zone's cell keeps
+-- Fmt.Duration, so it never shows a minute that is behind.
+T.test("zones and sessions: the session in progress live to the minute; the current zone never behind", function()
+  local ns = Login()
+  local Fmt, Stats = ns.Fmt, ns.Stats
+  local char = ns.char
+  local cur = char.cur
+  T.ok(type(cur) == "table" and cur == ns.session, "the fixture: the session in progress")
+  cur.s.w = (cur.s.w or 0) + 37380
+  local zk = ns.Tokens.ctx.zoneKey
+  local z = char.zones[zk]
+  T.ok(type(z) == "table", "the fixture: the current zone")
+  z.s.w = (z.s.w or 0) + 37380
+  ns.Window.Show("sessions")
+  local tp = TP()
+  local row = RowWith(tp, Fmt.DateTime(cur.t0))
+  T.ok(row ~= nil, "the session in progress's row")
+  local function Now() return Stats.SessionTime(cur, ns.GetMask()) end
+  T.eq(Cell(tp, row, "dur"), Fmt.DurationFull(Now()), "at Show")
+  Stub.Advance(600)
+  T.eq(Cell(tp, row, "dur"), Fmt.DurationFull(Now()), "600 s later, without an XP gain")
+  T.ok(Now() >= 36000, "the fixture: past 10 h (" .. Now() .. ")")
+  ns.Window.Show("zones")
+  local name = z.name or Stats.ZoneName(zk, z)
+  local zr = RowWith(tp, name)
+  T.ok(zr ~= nil, "the current zone's row")
+  local before = Cell(tp, zr, "time")
+  T.eq(before, Fmt.Duration(Stats.Sum(z, ns.GetMask())), "at Show: Fmt.Duration")
+  T.ok(not before:find("m", 1, true), "past 10 h: no minute shown (" .. before .. ")")
+  Stub.Advance(600)
+  T.eq(Cell(tp, zr, "time"), before, "600 s later: not rebuilt, and still true to the hour")
+  T.eq(before, Fmt.Duration(Stats.Sum(z, ns.GetMask())))
+  ns.Window.Hide()
+end)
+
+-- The footer of the account view follows the current character's growing time to the
+-- minute (Stats.Account: every record's life), as the character view's does: a live
+-- step, without an XP gain; its text set only when a minute changed.
+T.test("window: the account view's footer is live to the minute (no XP gain), set only on a change", function()
+  local ns = Login()
+  local Fmt, Stats = ns.Fmt, ns.Stats
+  ns.char.life.s.w = (ns.char.life.s.w or 0) + 40000
+  ns.Window.Show("levels", "account")
+  local tp = TP()
+  local f1 = tp.footer1
+  local function Expect(what)
+    local total = Stats.Account(ns.db, ns.GetMask())
+    local text = f1:GetText()
+    T.ok(text:find(ns.L.SEP .. Fmt.DurationFull(total), 1, true) ~= nil, what .. ": " .. text .. " for "
+      .. Fmt.DurationFull(total))
+  end
+  Expect("at Show")
+  local sets = 0
+  local orig = f1.SetText
+  rawset(f1, "SetText", function(self, text) sets = sets + 1 return orig(self, text) end)
+  Stub.Advance(600)
+  Expect("600 s later")
+  T.ok(sets >= 9 and sets <= 11, "set once a minute (" .. sets .. " in 600 s)")
+  rawset(f1, "SetText", nil)
+  ns.Window.Hide()
+end)
 
 local function VColor(t) local r, g, b = t:GetVertexColor() return { r, g, b } end
 local function C3(c) return { c[1], c[2], c[3] } end

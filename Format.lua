@@ -67,6 +67,28 @@ function Fmt.DurationKey(sec)
   return 2000000 + math_floor(s / 3600)
 end
 
+-- Minute precision at any length (the measured durations of the statistics window and of
+-- the tooltip's level times): Duration's text below 10 h, then 10h 23m / 10 h 23 and
+-- 1d 19h 05m / 1 j 19 h 05 where Duration drops the minutes. <60 s -> DUR_LT_1M.
+function Fmt.DurationFull(sec)
+  local s = math_floor(Seconds(sec))
+  if s < 60 then return L.DUR_LT_1M end
+  if s < 3600 then return string_format(L.DUR_M, math_floor(s / 60)) end
+  if s < 86400 then
+    local h = math_floor(s / 3600)
+    return string_format(L.DUR_H_M, h, math_floor((s - h * 3600) / 60))
+  end
+  local d = math_floor(s / 86400)
+  local rem = s - d * 86400
+  local h = math_floor(rem / 3600)
+  return string_format(L.DUR_D_H_M, d, h, math_floor((rem - h * 3600) / 60))
+end
+
+-- Integer key: equal keys <=> equal DurationFull strings (the whole minutes).
+function Fmt.DurationFullKey(sec)
+  return math_floor(math_floor(Seconds(sec)) / 60)
+end
+
 -- 3d 4h 12m / 3 j 4 h 12 min.
 function Fmt.DurationLong(sec)
   local s = math_floor(Seconds(sec))

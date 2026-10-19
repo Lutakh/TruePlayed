@@ -746,9 +746,9 @@ T.test("window: live cells update while shown, nothing while hidden", function()
   local c0 = SetTextCount(cur)
   Stub.Advance(180)
   T.ok(SetTextCount(cur) > c0, "in-progress level time refreshed")
-  T.eq(cur:GetText(), format(ns.L.LV_CUR_FMT, 10, ns.Fmt.Duration(ch.state.curTime)))
+  T.eq(cur:GetText(), format(ns.L.LV_CUR_FMT, 10, ns.Fmt.DurationFull(ch.state.curTime)))
   local Stats = ns.Stats
-  T.eq(played:GetText(), ns.Fmt.Duration(Stats.Played(ns.char, ns.GetMask(), ns.Tracker.GetSync(), GetTime())),
+  T.eq(played:GetText(), ns.Fmt.DurationFull(Stats.Played(ns.char, ns.GetMask(), ns.Tracker.GetSync(), GetTime())),
     "Played chip up to date (its text set only when it changes)")
   ns.Window.Hide()
   local p1, c1 = SetTextCount(played), SetTextCount(cur)
@@ -1178,7 +1178,7 @@ for _, locale in ipairs({ "enUS", "frFR" }) do
     -- one other character with a complete level: singular, with the average
     ns.db.chars[OTHER_GUID] = OtherRecord()
     ns.Window.Refresh()
-    T.eq(tp.footer2:GetText(), format(L.FOOTER_ACCOUNT_ONE_FMT, Fmt.Duration(8000), 1))
+    T.eq(tp.footer2:GetText(), format(L.FOOTER_ACCOUNT_ONE_FMT, Fmt.DurationFull(8000), 1))
   end)
 end
 
@@ -1829,7 +1829,7 @@ T.test("tooltip: instance time and each kind with its AFK part in the character 
   for i = 1, #det do T.no(det[i][2] == Fmt.Duration(11800 + 9600), "no account line: " .. tostring(det[i][1])) end
   ns.Window.Show("levels", "account")
   local foot = StatsTP().footer1:GetText()
-  T.ok(find(foot, format(L.FOOTER_INST_FMT, Fmt.Duration(11800 + 9600)), 1, true) ~= nil, "account footer: " .. foot)
+  T.ok(find(foot, format(L.FOOTER_INST_FMT, Fmt.DurationFull(11800 + 9600)), 1, true) ~= nil, "account footer: " .. foot)
   T.ok(find(foot, format(L.TT_ACCOUNT_FMT, 2), 1, true) == 1, "account footer: the characters")
   ns.Window.Hide()
   -- only the kinds played get a line

@@ -5,10 +5,14 @@
 -- view); both are unregistered as soon as it is hidden or taken by another owner.
 -- Fill() reads only the current character (ns.char + the Tracker sync). Refreshes allocate strings only: row tables
 -- are reused. Two sections, each under its own title: the short view is the level in
--- progress alone (XP block, session, time at this level, time in the current zone at
--- this level, the level's breakdown); the detailed view (Shift) adds the whole character
--- (played time, instances, time in the current zone, server /played, recent average,
--- the character's breakdown, then its zones, continents, capitals and state totals).
+-- progress alone (XP block, session, time at this level and, while something is
+-- excluded, the level's server /played under it, time in the current zone at this level,
+-- the level's XP by source, the level's breakdown); the detailed view (Shift) adds the
+-- whole character (played time, instances, time in the current zone, server /played,
+-- recent average, the character's breakdown, then its zones, continents, capitals and
+-- state totals). The two level times ("This level", filtered, and "This level (server
+-- /played)", everything included) keep their minutes past 10 h (Fmt.DurationFull), so that
+-- their difference shows.
 -- ShowFor shows them as two tooltips (see "The pair" below): block 1, the level, on
 -- hover; block 2, the character, beside it while Shift is held, their breakdown rows face
 -- to face (stacked under it when the two do not fit the screen's width). Broker's
@@ -22,7 +26,10 @@
 -- flight, professions, dead, AFK, inn, city) largest first, gauge segments and legend
 -- alike, leaving out the parts that round to 0 %, BD_PER_LINE parts per line: the
 -- level's in its section (L.TT_BREAKDOWN_LEVEL), the character's in the detailed one
--- (L.TT_BREAKDOWN_TOTAL), in every tooltip (Broker's too). Instance time (dungeons,
+-- (L.TT_BREAKDOWN_TOTAL), in every tooltip (Broker's too). Right above the level's
+-- breakdown, its XP by source (L.TT_XP_LEVEL: monsters, quests and other, rested bonus, as
+-- the statistics' detail sheet splits it) is laid out the same way, XP_PER_LINE parts per
+-- line, never at the max level nor without XP by source (FillXPRow). Instance time (dungeons,
 -- raids, PvP) also has its own lines in the character section: the filtered total, then
 -- each kind with its AFK part. The averages per level, the level history and the
 -- account figures are in the statistics window.
@@ -37,7 +44,7 @@
 -- one (Themes.CLASSIC_TT) unless the caller passes another. ShowFor picks the targets:
 -- the shared GameTooltip (block 1) and the addon's own second GameTooltip (block 2) for a
 -- native theme (Classic: the lines and colours of before themes, but each breakdown's
--- label alone on its line, with a breakdown bar beside it: PlaceBars), else the two
+-- label, and the XP row's, alone on its line, with a bar beside it: PlaceBars), else the two
 -- private frames of TooltipFrame.lua, whose TP_Row / TP_Sep / TP_Gauge extensions receive
 -- each row with its kind. Any THEME_CHANGED hides the tooltip.
 --
@@ -69,6 +76,9 @@ local CONT_ROWS = 5
 local BD_PER_LINE = 5           -- breakdown parts per tooltip line
 local BD_PER_LINE_ACT = 4       -- at most, once a professions or dead part shows (lot 8):
                                 -- lines balanced, so that the longer labels still fit
+local XP_PER_LINE = 2           -- parts of the level's XP row per line, unless the three fit
+                                -- a private frame at its widest: their labels are long
+                                -- ("Bonus de descanso 34 %"), and a GameTooltip would grow
 
 local shownFor = nil            -- owner of our tooltip while it is shown
 local shownAt = nil             -- the frame it hangs off (ShowFor's anchor; else its owner)
@@ -80,6 +90,7 @@ local shownKind = nil           -- nil: the general tooltip; "rep": the reputati
 local rowsZones, rowsCities, rowsCont, rowsContRaw = {}, {}, {}, {}   -- reused Stats row tables
 local breakdown = {}            -- reused Stats.Breakdown output (the character)
 local levelBreakdown = {}       -- reused Stats.Breakdown output (the level in progress)
+local xpParts, xpFracs, xpKeys = {}, {}, {}   -- reused XP row part texts, fractions, colour keys
 local bdParts = {}              -- reused breakdown part texts (tooltip build only)
 local bdFracs, bdKeys = {}, {}  -- reused breakdown fractions and gauge keys
 
@@ -495,6 +506,10 @@ local fillRow = 0
 -- Bar of the Fill in progress (a native block of ShowFor: TooltipFrame.Bar), until its
 -- first breakdown takes it; nil otherwise (Broker, /tpl, the private frames).
 local fillBar = nil
+-- The same for the level's XP row (FillXPRow): its bar (block 1 of the native theme:
+-- TooltipFrame.Bar(3)) and the line number of its label's line, 0 while there is none.
+local fillXBar = nil
+local fillXRow = 0
 
 local function MarkRow(tt)
   if fillRow == 0 and tt.NumLines then fillRow = tt:NumLines() end
@@ -551,6 +566,82 @@ local function FillBreakdown(tt, bucket, out, label)
     end
   end
   return bd
+end
+
+-- The level's XP by source (lb.xa / xq / xr), as the detail sheet's Experience bar
+-- (LevelDetail.lua): the fields in their order, the segment colour keys (the theme's XP
+-- colour, the gauge's city colour, the theme's rested colour: TooltipFrame's SegColor)
+-- and the part labels.
+local XP_FIELDS = { "xa", "xq", "xr" }
+local XP_KEYS = { "xp", "city", "rested" }
+local XP_LABELS = { "LD_XP_MOBS", "LD_XP_QUESTS", "LD_XP_RESTED" }
+
+local function XPPart(lb, i)
+  local v = lb[XP_FIELDS[i]]
+  if type(v) ~= "number" or v ~= v or v < 0 then return 0 end
+  return v
+end
+
+-- The level's XP row, right above its breakdown: under L.TT_XP_LEVEL the shares of the
+-- level's XP from monsters, quests and other and the rested bonus ("Monsters 80%"), in that
+-- order, those that round to 0 % left out: all on one line on a TP target whose widest
+-- row that line fits (TP_Fits: the theme's maximum width, which a frame never passes),
+-- else XP_PER_LINE a line (a GameTooltip has no maximum: it would grow some 80 px for a
+-- row less). Laid out as a breakdown (FillBreakdown): on a TP target a gauge row (the
+-- label alone without a gauge or past MAX_GAUGES) then continuation rows; on a
+-- GameTooltip given an XP bar (fillXBar) the label alone on its line (fillXRow), the
+-- parts into the bar (PlaceBars) and on continuation rows; on any other GameTooltip the
+-- label and the first parts on one line (Broker). Never the fill's breakdown row (no
+-- MarkRow): the blocks of the pair still face on their breakdowns. Nothing without XP by
+-- source (a level whose gains were not split).
+local function FillXPRow(tt, lb)
+  if type(lb) ~= "table" then return end
+  local total = XPPart(lb, 1) + XPPart(lb, 2) + XPPart(lb, 3)
+  if total <= 0 then return end
+  local n = 0
+  for i = 1, #XP_FIELDS do
+    local x = XPPart(lb, i) / total
+    if floor(x * 100 + 0.5) >= 1 then
+      n = n + 1
+      xpFracs[n], xpKeys[n] = x, XP_KEYS[i]
+      xpParts[n] = format(L.BD_PART_FMT, L[XP_LABELS[i]], Fmt.Percent(x, 0))
+    end
+  end
+  for i = #xpParts, n + 1, -1 do xpParts[i], xpFracs[i], xpKeys[i] = nil, nil, nil end
+  local label = L.TT_XP_LEVEL
+  local labelled = true
+  if isTP then
+    if not tt:TP_Gauge(label, xpFracs, xpKeys, n) then Line(tt, "line", label, P.label) end
+    labelled = false
+  elseif fillXBar ~= nil then
+    local bar = fillXBar
+    fillXBar = nil
+    local fr, key = bar.fr, bar.key
+    for i = 1, n do fr[i], key[i] = xpFracs[i], xpKeys[i] end
+    for i = #fr, n + 1, -1 do fr[i] = nil end
+    for i = #key, n + 1, -1 do key[i] = nil end
+    bar.n = n
+    Double(tt, "pair", label, " ", P.label, P.value)
+    if tt.NumLines then fillXRow = tt:NumLines() end
+    labelled = false
+  end
+  -- all on one line (`one`) when they are few or fit the private frame, else XP_PER_LINE
+  local one, perLine = nil, XP_PER_LINE
+  if n <= XP_PER_LINE or isTP then
+    one = table_concat(xpParts, L.SEP, 1, n)
+    if n <= XP_PER_LINE or tt:TP_Fits(one) then perLine = n end
+  end
+  for first = 1, n, perLine do
+    local last = first + perLine - 1
+    if last > n then last = n end
+    local text = (perLine == n) and one or table_concat(xpParts, L.SEP, first, last)
+    if labelled then
+      Pair(tt, label, text)
+      labelled = false
+    else
+      Cont(tt, text)
+    end
+  end
 end
 
 -- Under a breakdown (bd, from FillBreakdown): a note when more than C.EST_MOST of its
@@ -727,9 +818,10 @@ local function FillBody(tt, detailed, hint, part)
 
   -- 4. the level in progress: its title, the XP block or the max-level line (the server
   -- level cap lines when detected), the watched reputation (while the bar shows its
-  -- strip), the session, this level (+ its estimated part), the
-  -- time in the current zone at this level and the level's breakdown (+ a note when it
-  -- is mostly rebuilt)
+  -- strip), the session, this level (+ its estimated part; + its server /played while
+  -- something is excluded), the time in the current zone at this level, the level's XP by
+  -- source (not at the max level) and the level's breakdown (+ a note when it is mostly
+  -- rebuilt)
   if part ~= 2 then
     local Tracker = ns.Tracker
     local session = Tracker and Tracker.GetSession() or nil
@@ -746,7 +838,7 @@ local function FillBody(tt, detailed, hint, part)
     end
     FillRepRow(tt)
     Pair(tt, L.TT_SESSION, Dur(ctx.sessionTime))
-    Pair(tt, L.TT_THIS_LEVEL, Dur(ctx.levelTime))
+    Pair(tt, L.TT_THIS_LEVEL, Fmt.DurationFull(ctx.levelTime))
     local levels = char.levels
     local lb = type(levels) == "table" and levels[ctx.level] or nil
     -- rebuilt after a crash, under the exclusions (never above the line it is noted under)
@@ -754,6 +846,16 @@ local function FillBody(tt, detailed, hint, part)
     local levelEst, levelGross = Stats.EstTime(lb, mask)
     if levelEst > ctx.levelTime then levelEst = ctx.levelTime end
     if levelEst > 0 then Note(tt, format(L.TT_EST_FMT, Dur(levelEst))) end
+    -- while something is excluded, the level's /played without any filter under "This
+    -- level": what the exclusions left out at a glance. The detail sheet's Server card
+    -- (Stats.LevelServer: "~" when a server mark was estimated); nothing without a sync.
+    if excl then
+      local srv, srvEst = Stats.LevelServer(char, ctx.level, Tracker and Tracker.GetSync() or nil, ctx.now)
+      if srv then
+        local d = Fmt.DurationFull(srv)
+        Pair(tt, L.TT_THIS_LEVEL_SERVER, srvEst and ns.Tokens.Approx(d) or d)
+      end
+    end
     -- the zone's tracked time at this level, never above "This level" (the server's level
     -- time once synced, which may be a little behind)
     local lz = lb and zoneKey ~= nil and type(lb.z) == "table" and lb.z[zoneKey] or nil
@@ -761,6 +863,7 @@ local function FillBody(tt, detailed, hint, part)
     if zoneLevel > ctx.levelTime then zoneLevel = ctx.levelTime end
     Pair(tt, format(L.TT_ZONE_FMT, zoneName), Dur(zoneLevel))
     Sep(tt, "block")
+    if not ctx.isMax then FillXPRow(tt, lb) end
     FillEstMost(tt, FillBreakdown(tt, lb, levelBreakdown, L.TT_BREAKDOWN_LEVEL), levelGross)
   end
 
@@ -809,18 +912,21 @@ end
 -- blocks of ShowFor's pair, block 2 right after block 1 (it reuses the token context
 -- block 1 updated). `bar` (optional, ShowFor's native blocks: TooltipFrame.Bar): the
 -- fill's first breakdown on a GameTooltip puts its label alone on its line and its parts
--- into the bar (FillBreakdown). Returns false when there is no character data (no block
--- 2), then the line number of the fill's first breakdown row (0: none; see MarkRow).
-function Tooltip.Fill(tt, detailed, hint, pal, part, bar)
+-- into the bar (FillBreakdown); `xbar` (optional, block 1 of the native theme:
+-- TooltipFrame.Bar(3)) likewise for the level's XP row (FillXPRow). Returns false when
+-- there is no character data (no block 2), then the line number of the fill's first
+-- breakdown row (0: none; see MarkRow), then that of the XP row's label line when it took
+-- `xbar` (0: none).
+function Tooltip.Fill(tt, detailed, hint, pal, part, bar, xbar)
   if not tt then return false end
   P = pal or Classic()
   isTP = rawget(tt, "TP_Row") ~= nil       -- rawget: a frame's method table may answer anything
   if part ~= 2 then ns.Tokens.UpdateContext(GetTime()) end
-  fillRow = 0
-  fillBar = bar
+  fillRow, fillXRow = 0, 0
+  fillBar, fillXBar = bar, xbar
   local more = FillBody(tt, detailed, hint, part or 0)
-  P, isTP, fillBar = nil, false, nil
-  return more, fillRow
+  P, isTP, fillBar, fillXBar = nil, false, nil, nil
+  return more, fillRow, fillXRow
 end
 
 ---------------------------------------------------------------------------
@@ -1169,13 +1275,14 @@ end
 -- block 2. Native themes: block 1 is the shared GameTooltip, block 2 the addon's own
 -- GameTooltip (NATIVE2_NAME, created once); other themes: the two frames of
 -- TooltipFrame.lua. Broker tooltips stay one tooltip (Tooltip.Fill).
--- The native blocks' breakdown bars (PlaceBars): each block's breakdown line carries the
--- label alone (Fill with a bar), and a bar of TooltipFrame.lua (TooltipFrame.Bar, the
--- classic gauge) goes from BAR_GAP px right of the label to the line's right text edge.
--- Block 1's bar is a frame of UIParent anchored to the label's FontString: nothing is
--- added to the shared GameTooltip, whose only hook stays the OnHide one (OnBlock1Hide,
--- which hides that bar); block 2's is its child. A block too narrow for a bar of the
--- gauge's minimum width is widened (SetMinimumWidth, dropped like the stack's).
+-- The native blocks' breakdown bars (PlaceBars): each block's breakdown line, and block
+-- 1's XP row, carries the label alone (Fill with a bar), and a bar of TooltipFrame.lua
+-- (TooltipFrame.Bar, the classic gauge) goes from BAR_GAP px right of the label to the
+-- line's right text edge. Block 1's two bars are frames of UIParent anchored to their
+-- label's FontString: nothing is added to the shared GameTooltip, whose only hook stays
+-- the OnHide one (OnBlock1Hide, which hides those bars); block 2's is its child. A block
+-- too narrow for a bar of the gauge's minimum width is widened (SetMinimumWidth, dropped
+-- like the stack's).
 ---------------------------------------------------------------------------
 
 local OWNER_GAP = 4             -- px between the owner and the pair
@@ -1190,7 +1297,9 @@ local placed = nil              -- anchors in place: 1 = block 1 alone, 2 = stac
                                 -- 3 = side by side, nil = none
 local placedW1, placedH, placedH2, placedD = nil, nil, nil, nil   -- what they were set for
 local bdRow1, bdRow2 = 0, 0     -- the blocks' breakdown rows (from Fill), 0 = none
+local xpRow1 = 0                -- block 1's XP row on a native block (from Fill), 0 = none
 local bar1, bar2 = nil, nil     -- the shown native blocks' bars (TooltipFrame.Bar), else nil
+local barX = nil                -- the shown native block 1's XP row bar (TooltipFrame.Bar(3))
 local minTT = nil               -- the GameTooltip (block 1) ShowPair gave a minimum width
 local hookedTT = nil            -- the GameTooltip (block 1) whose OnHide runs OnBlock1Hide
 local nativeTT2 = nil           -- block 2 of the native themes, once created
@@ -1391,16 +1500,19 @@ local function ResetMin()
   t:SetMinimumWidth(0)
 end
 
--- Block 1's bar (the frame of UIParent over the shared GameTooltip) hidden, whoever shows
--- that GameTooltip now.
+-- Block 1's bars (the frames of UIParent over the shared GameTooltip: its breakdown's and
+-- its XP row's) hidden, whoever shows that GameTooltip now.
 local function HideBar1()
   local TF = ns.TooltipFrame
-  local b = TF and TF.bar
+  if TF == nil then return end
+  local b = TF.bar
+  if b ~= nil then TF.HideBar(b) end
+  b = TF.bar3
   if b ~= nil then TF.HideBar(b) end
 end
 
 -- The OnHide hook of block 1's GameTooltip (the only script of it the addon touches): its
--- minimum width and its bar go with it.
+-- minimum width and its bars go with it.
 local function OnBlock1Hide()
   ResetMin()
   HideBar1()
@@ -1457,6 +1569,12 @@ local function Need(b, row)
   return b.need
 end
 
+-- What block 1 needs for its bars: the larger of its breakdown's and its XP row's.
+local function Need1()
+  local a, x = Need(bar1, bdRow1), Need(barX, xpRow1)
+  return a > x and a or x
+end
+
 -- Widens shown GameTooltip `t` to `need` px when narrower (by more than half a px);
 -- block 1 (`first`) through MinSet, so that this minimum goes like the stack's
 -- (ReleaseMin, OnBlock1Hide).
@@ -1484,7 +1602,7 @@ local function ShowPair(tt, tt2)
     else
       ResetMin()
       tt:Show()
-      if tt.SetMinimumWidth and tt:IsShown() then Grow(tt, Need(bar1, bdRow1), true) end
+      if tt.SetMinimumWidth and tt:IsShown() then Grow(tt, Need1(), true) end
     end
     return false
   end
@@ -1512,7 +1630,7 @@ local function ShowPair(tt, tt2)
   if not tt:IsShown() then return false end
   tt2:Show()
   if canMin then
-    Grow(tt, Need(bar1, bdRow1), true)
+    Grow(tt, Need1(), true)
     Grow(tt2, Need(bar2, bdRow2), false)
   end
   local w, w2 = Width(tt), Width(tt2)
@@ -1548,7 +1666,7 @@ end
 local function Detach()
   HideSecond()
   HideBar1()
-  bar1, bar2 = nil, nil
+  bar1, bar2, barX = nil, nil, nil
   ReleaseMin(nil)
   shownFor = nil
   shownAt = nil
@@ -1596,17 +1714,24 @@ local function Arrange(tt, tt2, side)
   end
 end
 
+-- Right edge of the label of line `row` of shown native block `t`, nil when unreadable.
+local function LabelRight(t, row)
+  local lf = LineText(t, row)
+  return lf ~= nil and Size(lf:GetRight()) or nil
+end
+
 -- Bar `b` of shown native block `t` (a GameTooltip placed by Arrange) on its breakdown
 -- line `row` (0: none, the bar hidden): from BAR_GAP px right of the label's text (the
--- frame anchored to that FontString) to the line's right text edge, read from the two
--- texts' positions (known once the block has anchors), at a frame level above the
--- block's and at its scale (`scale`: block 1's, for the frame of UIParent). b.need, the
--- block's width for a bar of the gauge's minimum (b.min), is learned here; returns true
--- (the bar left as it was) when the bar would be narrower than that minimum by more than
--- half a px (the client's sizes are fractional: no second pass for float noise), unless
--- `force` (a block that could not be widened: the bar as wide as the line leaves, hidden
--- under 1 px). Hidden when a position is unreadable.
-local function PlaceBar(b, t, row, scale, force)
+-- frame anchored to that FontString), or of `left` when given (block 1's two bars: the
+-- right edge of the longer of their labels, PlaceBars), to the line's right text edge,
+-- read from the texts' positions (known once the block has anchors), at a frame level
+-- above the block's and at its scale (`scale`: block 1's, for the frames of UIParent).
+-- b.need, the block's width for a bar of the gauge's minimum (b.min), is learned here;
+-- returns true (the bar left as it was) when the bar would be narrower than that minimum
+-- by more than half a px (the client's sizes are fractional: no second pass for float
+-- noise), unless `force` (a block that could not be widened: the bar as wide as the line
+-- leaves, hidden under 1 px). Hidden when a position is unreadable.
+local function PlaceBar(b, t, row, scale, force, left)
   local TF = ns.TooltipFrame
   if row <= 0 or b.n <= 0 then
     TF.HideBar(b)
@@ -1620,26 +1745,35 @@ local function PlaceBar(b, t, row, scale, force)
     TF.HideBar(b)
     return false
   end
-  local bw = rr - lr - BAR_GAP
+  if left == nil or left < lr then left = lr end
+  local bw = rr - left - BAR_GAP
   b.need = w - bw + b.min
   if bw < b.min - 0.5 and not force then return true end
   if bw < 1 then
     TF.HideBar(b)
     return false
   end
-  TF.PlaceBar(b, lf, BAR_GAP, bw, (t:GetFrameLevel() or 0) + 2, scale)
+  TF.PlaceBar(b, lf, BAR_GAP + (left - lr), bw, (t:GetFrameLevel() or 0) + 2, scale)
   return false
 end
 
--- The bars of the shown native blocks (bar1, bar2: nil for the private frames). Returns
--- true when a block must be widened first (PlaceBar).
+-- The bars of the shown native blocks (bar1, barX on block 1's XP row, bar2: nil for the
+-- private frames). Block 1's two bars start at one edge, BAR_GAP px right of the longer of
+-- their labels, and end at the same right text edge: they read as a pair, as the frames'
+-- gauges do. Returns true when a block must be widened first (PlaceBar).
 local function PlaceBars(tt, tt2, force)
   local grow = false
-  local b = bar1
-  if b ~= nil then
-    local sc = tt.GetScale and tt:GetScale()
-    grow = PlaceBar(b, tt, bdRow1, type(sc) == "number" and sc or 1, force)
+  local sc = tt.GetScale and tt:GetScale()
+  if type(sc) ~= "number" then sc = 1 end
+  local left = nil
+  if bar1 ~= nil and barX ~= nil and bdRow1 > 0 and xpRow1 > 0 and bar1.n > 0 and barX.n > 0 then
+    local a, x = LabelRight(tt, bdRow1), LabelRight(tt, xpRow1)
+    if a ~= nil and x ~= nil then left = a > x and a or x end
   end
+  local b = bar1
+  if b ~= nil then grow = PlaceBar(b, tt, bdRow1, sc, force, left) end
+  b = barX
+  if b ~= nil and PlaceBar(b, tt, xpRow1, sc, force, left) then grow = true end
   b = bar2
   if b ~= nil and tt2 ~= nil and PlaceBar(b, tt2, bdRow2, 1, force) then grow = true end
   return grow
@@ -1654,8 +1788,8 @@ local function Redraw()
     if tt.ClearLines then tt:ClearLines() end
     if shownKind == "pvp" then Tooltip.FillPvp(tt, shownPal) else Tooltip.FillRep(tt, shownPal) end
     HideSecond()
-    if bar1 ~= nil then HideBar1() end
-    bar1, bar2, bdRow1 = nil, nil, 0
+    if bar1 ~= nil or barX ~= nil then HideBar1() end
+    bar1, bar2, barX, bdRow1, xpRow1 = nil, nil, nil, 0, 0
     Arrange(tt, nil, ShowPair(tt, nil))
     return
   end
@@ -1664,10 +1798,11 @@ local function Redraw()
   local TF = ns.TooltipFrame
   local native = TF ~= nil and rawget(tt, "TP_Row") == nil
   local b1 = native and TF.Bar(1) or nil
+  local x1 = native and TF.Bar(3) or nil
   if tt.ClearLines then tt:ClearLines() end
-  local more, row = Tooltip.Fill(tt, detailed, shownHint, shownPal, tt2 and 1 or 0, b1)
+  local more, row, xrow = Tooltip.Fill(tt, detailed, shownHint, shownPal, tt2 and 1 or 0, b1, x1)
   if not more then tt2 = nil end
-  bdRow1 = row
+  bdRow1, xpRow1 = row, xrow or 0
   local b2 = nil
   if tt2 ~= nil then
     if tt2:GetOwner() ~= owner then
@@ -1684,15 +1819,15 @@ local function Redraw()
     HideSecond()
     shownTT2 = tt2
   end
-  bar1, bar2 = b1, b2
-  if b1 ~= nil and bdRow1 > 0 then HookHide(tt) end
+  bar1, bar2, barX = b1, b2, x1
+  if (b1 ~= nil and bdRow1 > 0) or (x1 ~= nil and xpRow1 > 0) then HookHide(tt) end
   Arrange(tt, tt2, ShowPair(tt, tt2))
   -- block 1 hidden by its own OnShow (the client's GameTooltip_OnShow in gamepad mode, a
   -- tooltip addon hiding it in combat): no bar placed, as block 1's (a frame of UIParent)
   -- would stay alone on the screen; the next refresh lets go (Detach). Shown, block 1
   -- stays so on the second pass (Show on a shown frame runs no OnShow).
   if not StillOurs() then return end
-  if (b1 ~= nil or b2 ~= nil) and PlaceBars(tt, tt2, false) then
+  if (b1 ~= nil or b2 ~= nil or x1 ~= nil) and PlaceBars(tt, tt2, false) then
     Arrange(tt, tt2, ShowPair(tt, tt2))
     PlaceBars(tt, tt2, true)
   end

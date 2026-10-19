@@ -8,11 +8,14 @@
 -- frame answers the GameTooltip calls Tooltip.lua makes (SetOwner, GetOwner, ClearLines,
 -- AddLine, AddDoubleLine, NumLines, Show, Hide, ...) plus the extensions that carry the
 -- kind of each row (TP_Row, TP_Sep, TP_Gauge), the two that size the blocks (TP_Measure,
--- and TP_MinWidth: one width when stacked) and the one that lines up their breakdown
--- rows side by side (TP_RowY). It never writes anything on GameTooltip.
+-- and TP_MinWidth: one width when stacked), the one that lines up their breakdown rows
+-- side by side (TP_RowY) and the one that tells whether a row fits the frame at its
+-- widest (TP_Fits: the level's XP parts on one row). It never writes anything on
+-- GameTooltip.
 -- It also draws the breakdown bars of the native theme's two GameTooltip blocks (Bar,
--- PlaceBar, HideBar: a frame of their own beside each breakdown label, see "Breakdown
--- bars of the native blocks" below), with the same segment layout as its gauges.
+-- PlaceBar, HideBar: a frame of their own beside each breakdown label, and beside block
+-- 1's XP row, see "Breakdown bars of the native blocks" below), with the same segment
+-- layout as its gauges.
 --
 -- Performance contract (SPEC-themes D5, 4.5), for each frame:
 --   * rows ({ left, right, leader }), separators and the 8 segments of each of the
@@ -42,8 +45,9 @@ TF.frame2 = nil                 -- frame 2 (block 2), once created
 
 local WHITE = C.TEX_WHITE
 local MAX_SEGS = 8              -- gauge segments: the 8 breakdown parts
-local MAX_GAUGES = 2            -- gauge rows of one fill: the level's breakdown, the character's
-                                -- (both in one frame for a fill of the whole tooltip)
+local MAX_GAUGES = 3            -- gauge rows of one fill: the level's XP row and breakdown, the
+                                -- character's breakdown (all in one frame for a fill of the
+                                -- whole tooltip)
 local DEFAULT_TEXT = { 1, 1, 1, 1 }
 local SEP_BLANK = 4             -- a separator kind the theme lacks: lineGap + this, blank
 -- 9-slice anchors: each slice has a TOPLEFT and a BOTTOMRIGHT point on a corner of its
@@ -262,6 +266,34 @@ end
 -- Gauge segments (the gauges of the frames and the bars of the native blocks)
 ---------------------------------------------------------------------------
 
+-- Colour of segment key `key` in gauge spec `g`: its own (g.colors: the breakdown parts),
+-- else, for the level's XP row (Tooltip.lua: "xp", "city", "rested"), the XP or rested
+-- colour of the bar: the user's (widget.xpColor / widget.restedColor), else the active
+-- theme's (th.colors), else the classic ones, as the detail sheet's Experience bar; white
+-- for an unknown key. Read only when a segment's key changes (PlaceSegs; a recolour bumps
+-- th.gen: the frames' keys are reset, and the bars' by OnThemeChanged): nothing of it is
+-- kept (P5).
+local USER_COLOR = { xp = "xpColor", rested = "restedColor" }
+
+local function SegColor(g, key)
+  local c = g.colors[key]
+  if c then return c end
+  local field = USER_COLOR[key]
+  if field then
+    local s = ns.settings
+    local w = type(s) == "table" and s.widget or nil
+    c = type(w) == "table" and w[field] or nil
+    if type(c) == "table" and c[1] then return c end
+    local Themes = ns.Themes
+    local th = Themes and Themes.Active()
+    local cols = th and th.colors
+    c = type(cols) == "table" and cols[key] or nil
+    if type(c) == "table" then return c end
+    return key == "xp" and C.COLORS.accent or C.COLORS.restedFill
+  end
+  return DEFAULT_TEXT
+end
+
 -- Segments of gauge `ga` (its parts: fr, key, n, largest first; its pooled segments and
 -- their caches: segs, segX, segW, segY, segK, segOn) in a box `w` x g.h px whose top left
 -- corner is (x0, y) px from `parent`'s (y down), coloured from g.colors: the width minus
@@ -300,7 +332,7 @@ local function PlaceSegs(ga, parent, g, x0, y, w)
         local key = keys[i]
         if key ~= segK[i] then
           segK[i] = key
-          local c = g.colors[key] or DEFAULT_TEXT
+          local c = SegColor(g, key)
           t:SetVertexColor(c[1], c[2], c[3], c[4] or 1)
         end
         if not segOn[i] then
@@ -1138,6 +1170,47 @@ local function NewFrame()
     return row.y + row.ah / 2
   end
 
+  -- Whether a continuation row of right text `text` (a "cont" row: a blank label, the
+  -- text in the value font) fits the frame at its widest (the theme's maximum width):
+  -- Tooltip.lua puts the level's XP parts on one row when they do. Measured in a hidden
+  -- FontString of the frame (created at the first call) only when the text or the theme
+  -- changed: a steady refresh does no FontString work.
+  local fitFS, fitText, fitGen, fitRoom, fitW = nil, nil, -1, 0, 0
+  local function Unbounded(fs)
+    local w = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or fs:GetStringWidth()
+    return type(w) == "number" and w or 0
+  end
+  local function FitFont(slot)
+    local Themes = ns.Themes
+    if Themes and Themes.SetFont then
+      Themes.SetFont(fitFS, slot[1], slot[2], "none")
+    else
+      fitFS:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", slot[2], "")
+    end
+  end
+
+  function M.TP_Fits(self, text)
+    if not sk then EnsureSkin() end
+    if not fitFS then
+      fitFS = frame:CreateFontString(nil, "ARTWORK")
+      fitFS:Hide()
+    end
+    if fitGen ~= skinGen then
+      fitGen, fitText = skinGen, nil
+      -- the room of the text: the widest frame less its padding, the blank label and the gap
+      FitFont(sk.fBody)
+      fitFS:SetText(" ")
+      fitRoom = sk.wmax - sk.padL - sk.padR - Unbounded(fitFS) - sk.gap
+      FitFont(sk.fValue)
+    end
+    if text ~= fitText then
+      fitText = text
+      fitFS:SetText(Shown(sk.fValue, text or ""))
+      fitW = Unbounded(fitFS)
+    end
+    return fitW <= fitRoom
+  end
+
   -- A theme switch or recolour (Tooltip.lua hides the tooltip): the next show builds the
   -- theme parts again (th.gen differs anyway), so the references to the previous compiled
   -- theme are dropped now rather than at that show (only the active one is kept, P5).
@@ -1168,17 +1241,19 @@ end
 ---------------------------------------------------------------------------
 -- Breakdown bars of the native blocks. In the native theme the two blocks are
 -- GameTooltips (block 1 the shared one, block 2 the addon's own), whose breakdown line
--- carries the label alone; Tooltip.lua draws the bar to its right with one of these:
--- bar 1 an anonymous frame of UIParent (nothing is ever added to the shared GameTooltip),
--- bar 2 a child of block 2 (it hides with it); both strata TOOLTIP, no mouse, created at
--- their first Bar(i) and never released. The look is Themes.CLASSIC_GAUGE: the frame is
+-- (and block 1's XP row) carries the label alone; Tooltip.lua draws the bar to its right
+-- with one of these: bar 1 (the level's breakdown) and bar 3 (the level's XP row)
+-- anonymous frames of UIParent (nothing is ever added to the shared GameTooltip), bar 2 a
+-- child of block 2 (it hides with it); all strata TOOLTIP, no mouse, created at their
+-- first Bar(i) and never released. The look is Themes.CLASSIC_GAUGE: the frame is
 -- the bar, a dark outline filling it and up to MAX_SEGS segments 1 px inside, pooled and
 -- placed change-only like a frame's gauge (PlaceSegs). Tooltip.Fill writes the parts
 -- into the bar (fr, key, n); `need` is Tooltip.lua's (the block's width for a bar of the
 -- minimum width).
 ---------------------------------------------------------------------------
 
-local bars = {}                 -- [1] over block 1, [2] on block 2 (created at their first Bar)
+local bars = {}                 -- [1] over block 1, [2] on block 2, [3] over block 1's XP row
+                                -- (created at their first Bar)
 
 local function BarSpec()
   local Themes = ns.Themes
@@ -1203,17 +1278,18 @@ local function NewBar(parent, g)
            on = false, rel = nil, x = 0, w = -1, lvl = -1, sc = -1 }
 end
 
--- Bar `i` (1: over block 1, a frame of UIParent; 2: on block 2, a child of `parent`, the
--- addon's own GameTooltip), created at the first call; nil without Themes.CLASSIC_GAUGE.
+-- Bar `i` (1: over block 1's breakdown, a frame of UIParent; 2: on block 2, a child of
+-- `parent`, the addon's own GameTooltip; 3: over block 1's XP row, a frame of UIParent),
+-- created at the first call; nil without Themes.CLASSIC_GAUGE.
 function TF.Bar(i, parent)
-  i = (i == 2) and 2 or 1
+  if i ~= 2 and i ~= 3 then i = 1 end
   local b = bars[i]
   if b then return b end
   local g = BarSpec()
   if not g then return nil end
   b = NewBar(i == 2 and parent or UIParent, g)
   bars[i] = b
-  if i == 1 then TF.bar = b else TF.bar2 = b end
+  if i == 1 then TF.bar = b elseif i == 2 then TF.bar2 = b else TF.bar3 = b end
   return b
 end
 
@@ -1265,10 +1341,18 @@ local frames = {}               -- [1] block 1, [2] block 2 (created at their fi
 local resets = {}               -- their THEME_CHANGED handlers
 
 -- A theme switch or recolour: every frame drops its theme parts, and the shared
--- normalized section goes with them.
+-- normalized section goes with them; the bars' segments take their colours again at their
+-- next placing (an XP row's "xp" / "rested" are the theme's).
 local function OnThemeChanged()
   for i = 1, #resets do resets[i]() end
   normSk, normTh, normGen = nil, nil, -1
+  for i = 1, 3 do
+    local b = bars[i]
+    if b then
+      local segK = b.segK
+      for k = 1, #segK do segK[k] = false end
+    end
+  end
 end
 
 if ns.RegisterMessage then

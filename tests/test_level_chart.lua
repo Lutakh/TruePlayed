@@ -13,8 +13,14 @@
 -- beyond 10 days, the PvP / Flight / Deaths chips live, "<1%", the filter's own line in the
 -- bar tooltip, one flight label, an empty summary, a level-1 character, XP disabled, another
 -- character at a server cap, a partial projection ("+"), another character without w0, the
--- selection on a character switch, the current level's untracked excess. GetStringWidth is
--- bounded by the width set, as in the client (stub_ui boundedText).
+-- selection on a character switch, the current level's untracked excess. Part Z (request
+-- 2026-10-17): the total since level 1 in the bar tooltips (the sheet's card), the progress
+-- strip's range (its pickers and menus, around / behind / ahead of the current level,
+-- saved per character, the default, invalid saved values, live and pick costs, without
+-- MenuUtil, themed); its review: a range over levels without a record ("...") or partly
+-- recorded ("~", the share by XP), a time left none of which is known ("..."), the pickers'
+-- tooltip below them. GetStringWidth is bounded by the width set, as in the client
+-- (stub_ui boundedText).
 local Stub, T = ...
 
 local format, floor = string.format, math.floor
@@ -80,10 +86,11 @@ local function Seed(ns, level)
 end
 
 -- A level-20 character (40000 s at level 20 on the server, 400000 s in all) after login;
--- GetStringWidth bounded by an explicit width, as in the client (stub_ui boundedText).
+-- GetStringWidth bounded by an explicit width, as in the client (stub_ui boundedText);
+-- opts.menu = false: a client without MenuUtil.
 local function Start(opts)
   opts = opts or {}
-  Stub.InstallUI({ ldb = false, boundedText = true })
+  Stub.InstallUI({ ldb = false, boundedText = true, menu = opts.menu ~= false })
   Stub.theme = opts.theme or "actuel"
   if opts.locale then Stub.locale = opts.locale end
   local p = Stub.player
@@ -338,7 +345,7 @@ T.test("chart: the average line is the mean of the complete levels (partial, reb
   end
   T.near(ch.state.avg, sum / n, 1e-6, "mean of 5 .. 19")
   T.ok(Shown(ch.avg.line) and Shown(ch.avg.label))
-  T.eq(Text(ch.avg.label), format(ns.L.LV_AVG_FMT, ns.Fmt.Duration(sum / n)))
+  T.eq(Text(ch.avg.label), format(ns.L.LV_AVG_FMT, ns.Fmt.DurationFull(sum / n)))
   T.eq(Height(ch.avg.stalk), floor(sum / n / ch.state.scaleTop * ch.geo.plotH + 0.5) + 1, "on its stalk")
   -- under a filter: the mean of the filtered values
   ch.filters[2].btn:Click("LeftButton")
@@ -441,11 +448,11 @@ T.test("chart: bar tooltip of a played, the current, an upcoming and a no-record
   local lines = TipLines()
   T.eq(lines[1][1], format(L.LEVEL_SPAN_FMT, 15, 16), "title")
   local total = ns.Stats.Sum(ns.char.levels[15], 0)
-  T.eq(Line(lines, L.LV_PLAYED)[2], Fmt.Duration(total))
-  T.eq(Line(lines, L.BD_WORLD)[2], format(L.LV_PART_FMT, Fmt.Duration(3000), Fmt.Percent(3000 / total)))
-  T.eq(Line(lines, L.LV_SEG_BG)[2], format(L.LV_PART_FMT, Fmt.Duration(600), Fmt.Percent(600 / total)))
-  T.eq(Line(lines, L.BD_DUNGEON)[2], format(L.LV_PART_FMT, Fmt.Duration(1200), Fmt.Percent(1200 / total)))
-  T.eq(Line(lines, L.BD_DEAD)[2], format(L.LV_PART_FMT, Fmt.Duration(240), Fmt.Percent(240 / total)))
+  T.eq(Line(lines, L.LV_PLAYED)[2], Fmt.DurationFull(total))
+  T.eq(Line(lines, L.BD_WORLD)[2], format(L.LV_PART_FMT, Fmt.DurationFull(3000), Fmt.Percent(3000 / total)))
+  T.eq(Line(lines, L.LV_SEG_BG)[2], format(L.LV_PART_FMT, Fmt.DurationFull(600), Fmt.Percent(600 / total)))
+  T.eq(Line(lines, L.BD_DUNGEON)[2], format(L.LV_PART_FMT, Fmt.DurationFull(1200), Fmt.Percent(1200 / total)))
+  T.eq(Line(lines, L.BD_DEAD)[2], format(L.LV_PART_FMT, Fmt.DurationFull(240), Fmt.Percent(240 / total)))
   T.eq(Line(lines, L.LV_SEG_WPVP), nil, "no world PvP at 15")
   T.eq(Line(lines, L.TT_DEATHS)[2], "2")
   T.eq(Line(lines, L.COL_REACHED)[2], Fmt.DateTime(T0 + 16 * 3600 - 1))
@@ -459,7 +466,7 @@ T.test("chart: bar tooltip of a played, the current, an upcoming and a no-record
   T.no(GameTooltip:IsShown(), "hidden on leave")
   -- world PvP at 17
   Stub.RunScript(ch.cols[17].hit, "OnEnter")
-  T.eq(Line(TipLines(), L.LV_SEG_WPVP)[2], format(L.LV_PART_FMT, Fmt.Duration(120),
+  T.eq(Line(TipLines(), L.LV_SEG_WPVP)[2], format(L.LV_PART_FMT, Fmt.DurationFull(120),
     Fmt.Percent(120 / ns.Stats.Sum(ns.char.levels[17], 0))))
   Stub.RunScript(ch.cols[17].hit, "OnLeave")
   -- partly estimated: "~"
@@ -534,43 +541,44 @@ T.test("chart: the chips (played, server, average, PvP, flight, deaths, level 60
   local chips = ch.chips
   local played, base = Stats.Played(char, 0, sync, now)
   T.eq({ Text(chips[1].label), Text(chips[1].value), Text(chips[1].sub) },
-    { L.LV_PLAYED, Fmt.Duration(played), format(L.LV_PLAYED_SUB_FMT, 20) })
+    { L.LV_PLAYED, Fmt.DurationFull(played), format(L.LV_PLAYED_SUB_FMT, 20) })
   T.eq({ Text(chips[2].label), Text(chips[2].value), Text(chips[2].sub) },
-    { L.TT_SERVER, Fmt.Duration(base), L.LV_SERVER_SUB })
+    { L.TT_SERVER, Fmt.DurationFull(base), L.LV_SERVER_SUB })
   local avg = Stats.AvgPerLevel(char, 0, sync, now)
   local recent, n = Stats.RecentAvg(char, 0, 5)
   T.eq({ Text(chips[3].value), Text(chips[3].sub) },
-    { Fmt.Duration(avg), format(L.LV_AVG_RECENT_FMT, n, Fmt.Duration(recent)) })
+    { Fmt.DurationFull(avg), format(L.LV_AVG_RECENT_FMT, n, Fmt.DurationFull(recent)) })
   local life = {}
   Stats.LevelSegments(char.life, 0, life)
   T.eq(life.bg, 3300)
   T.eq(life.wpvp, 480)
   T.eq({ Text(chips[4].label), Text(chips[4].value), Text(chips[4].sub) },
-    { L.BD_PVP, Fmt.Duration(3780), format(L.LV_PVP_SUB_FMT, Fmt.Duration(3300), Fmt.Duration(480)) })
+    { L.BD_PVP, Fmt.DurationFull(3780), format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(3300), Fmt.DurationFull(480)) })
   T.eq({ Text(chips[5].label), Text(chips[5].value), Text(chips[5].sub) },
-    { L.LV_FLIGHT, Fmt.Duration(life.taxi), format(L.LV_FLIGHT_SUB_FMT, Fmt.Percent(life.taxi / played)) })
+    { L.LV_FLIGHT, Fmt.DurationFull(life.taxi), format(L.LV_FLIGHT_SUB_FMT, Fmt.Percent(life.taxi / played)) })
   T.eq({ Text(chips[6].label), Text(chips[6].value), Text(chips[6].sub) },
-    { L.TT_DEATHS, "6", format(L.LV_DEAD_SUB_FMT, Fmt.Duration(life.dead)) })
+    { L.TT_DEATHS, "6", format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(life.dead)) })
   T.eq({ Text(chips[7].label), Text(chips[7].sub) }, { format(L.LV_TOP_IN_FMT, 60), L.LV_TOP_SUB })
   T.match(Text(chips[7].value), "^~")
   -- the PvP chip's tooltip: each battleground, the other ones, world PvP, its definition
   Stub.RunScript(chips[4].frame, "OnEnter")
   local lines = TipLines()
-  T.eq(lines[1][1], format(L.LV_PVP_TIP_FMT, Fmt.Duration(3780)))
-  T.eq(Line(lines, L.LV_SEG_BG)[2], Fmt.Duration(3300))
-  T.eq(Line(lines, "   Warsong Gulch")[2], Fmt.Duration(2000))
-  T.eq(Line(lines, "   Arathi Basin")[2], Fmt.Duration(1000))
-  T.eq(Line(lines, "   " .. L.LV_BG_OTHER)[2], Fmt.Duration(300))
-  T.eq(Line(lines, L.LV_WPVP_LONG)[2], Fmt.Duration(480))
+  T.eq(lines[1][1], format(L.LV_PVP_TIP_FMT, Fmt.DurationFull(3780)))
+  T.eq(Line(lines, L.LV_SEG_BG)[2], Fmt.DurationFull(3300))
+  T.eq(Line(lines, "   Warsong Gulch")[2], Fmt.DurationFull(2000))
+  T.eq(Line(lines, "   Arathi Basin")[2], Fmt.DurationFull(1000))
+  T.eq(Line(lines, "   " .. L.LV_BG_OTHER)[2], Fmt.DurationFull(300))
+  T.eq(Line(lines, L.LV_WPVP_LONG)[2], Fmt.DurationFull(480))
   T.ok(HasText(lines, format(L.LV_WPVP_DEF_FMT, 15)), "definition")
   T.ok(HasText(lines, format(L.LV_WPVP_SINCE_FMT, Fmt.DateTime(T0 + floor(15.5 * 3600)))), "since")
   Stub.RunScript(chips[4].frame, "OnLeave")
   T.no(GameTooltip:IsShown())
 end)
 
--- A chip's sub line wider than its chip (the stub draws 6 px a character) shows its
--- durations by their largest unit (LevelChart SubFit: here whole days, L.LV_DAYS_FMT); the
--- value and the tooltip keep them in full, and a line that fits keeps them in full even
+-- A chip's sub line wider than its chip (the stub draws 6 px a character) drops the
+-- minutes of its durations past 10 h (Fmt.Duration), then, still too wide, shows them by
+-- their largest unit (LevelChart SubFit: here whole days, L.LV_DAYS_FMT); the value and
+-- the tooltip keep them to the minute, and a line that fits keeps them to the minute even
 -- from a day up. GetStringWidth is bounded by the width set, as in the client (Start:
 -- stub_ui boundedText): SubFit measures the unbounded width (review chartrt-1: with
 -- GetStringWidth the compact form never showed in game).
@@ -588,28 +596,45 @@ T.test("chart: a chip's sub line too wide for its chip shows its durations by th
   Stats.LevelSegments(life, 0, seg)
   local inner = ch.geo.chipW - 16
   local function Days(v) return format(L.LV_DAYS_FMT, floor(v / 86400)) end
-  local full = format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), Fmt.Duration(seg.wpvp))
+  local function W(text)                                -- the stub's width: 6 px a character
+    local _, n = text:gsub("[^\128-\191]", "")
+    return 6 * n
+  end
+  local full = format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(seg.bg), Fmt.DurationFull(seg.wpvp))
+  local hours = format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), Fmt.Duration(seg.wpvp))
   local sub = ch.chips[4].sub
   T.ok(sub:GetUnboundedStringWidth() <= inner, "the shown line fits")
   T.eq(Text(sub), format(L.LV_PVP_SUB_FMT, Days(seg.bg), Days(seg.wpvp)), "PvP: whole days")
-  T.ok(6 * #full > inner, "the full line would not fit: " .. full)
+  T.ok(W(full) > inner, "the line to the minute would not fit: " .. full)
+  T.ok(W(hours) > inner, "nor the line without its minutes: " .. hours)
   -- the stub is the client's: the full line's GetStringWidth is the chip's width
   local shown = Text(sub)
   sub:SetText(full)
   T.eq({ sub:GetStringWidth(), sub:GetUnboundedStringWidth() > inner }, { inner, true }, "bounded by the width set")
   sub:SetText(shown)
-  T.eq(Text(ch.chips[4].value), Fmt.Duration(seg.bg + seg.wpvp), "the value in full")
+  T.eq(Text(ch.chips[4].value), Fmt.DurationFull(seg.bg + seg.wpvp), "the value to the minute")
   T.eq(Text(ch.chips[6].sub), format(L.LV_DEAD_SUB_FMT, Days(seg.dead)), "dead: whole days")
   Stub.RunScript(ch.chips[4].frame, "OnEnter")
-  T.eq(Line(TipLines(), L.LV_SEG_BG)[2], Fmt.Duration(seg.bg), "the tooltip in full")
+  T.eq(Line(TipLines(), L.LV_SEG_BG)[2], Fmt.DurationFull(seg.bg), "the tooltip to the minute")
   Stub.RunScript(ch.chips[4].frame, "OnLeave")
-  -- shorter: the full line fits again, its durations in full (a day or more included)
-  life.s.p, life.pw = 2 * 86400, 0
+  -- shorter: the line without its minutes fits (a day or more: "1d 02h"), not the one to
+  -- the minute
+  life.s.p, life.pw = 86400 + 2 * 3600 + 5 * 60, 0
   ns.Window.Refresh()
   Stats.LevelSegments(life, 0, seg)
-  T.ok(seg.bg >= 86400)
+  T.ok(seg.bg >= 86400 and seg.bg % 3600 >= 60, "(a day or more, and minutes: " .. seg.bg .. ")")
   T.eq(seg.wpvp, 0)
-  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), "-"), "in full")
+  full = format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(seg.bg), "-")
+  T.ok(W(full) > inner, "the line to the minute would not fit: " .. full)
+  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), "-"), "without its minutes")
+  T.eq(Text(ch.chips[4].value), Fmt.DurationFull(seg.bg), "the value still to the minute")
+  -- shorter still: the line to the minute fits (past 10 h: "12h 05m")
+  life.s.p = 12 * 3600 + 5 * 60
+  ns.Window.Refresh()
+  Stats.LevelSegments(life, 0, seg)
+  T.ok(seg.bg >= 36000 and seg.bg % 3600 >= 60, "(past 10 h, and minutes: " .. seg.bg .. ")")
+  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(seg.bg), "-"), "to the minute")
+  T.ok(Text(ch.chips[4].sub) ~= format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), "-"), "(the minutes shown)")
 end)
 
 T.test("chart: Classic Era (no PvP API): world PvP is 'not measured', never 0", function()
@@ -618,7 +643,7 @@ T.test("chart: Classic Era (no PvP API): world PvP is 'not measured', never 0", 
   ns.Window.Show("levels")
   local ch = Chart()
   local L, Fmt = ns.L, ns.Fmt
-  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.Duration(3300), L.DOTS))
+  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(3300), L.DOTS))
   Stub.RunScript(ch.chips[4].frame, "OnEnter")
   local lines = TipLines()
   T.eq(Line(lines, L.LV_WPVP_LONG)[2], L.DOTS)
@@ -635,12 +660,14 @@ T.test("chart: the progress strip (done, current, estimate left, shares of time 
   local ch = Chart()
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
   local st, sp = ch.state, ch.strip
-  T.eq(Text(sp.title), format(L.LV_PROGRESS_FMT, 60))
+  -- the title: "Progress: level [1] » [60]" (its range pickers, the default range)
+  T.eq({ Text(sp.title), Text(sp.pickFS[1]), Text(sp.arrow), Text(sp.pickFS[2]) },
+    { L.LV_RANGE_TITLE, "1", "\194\187", "60" })
   local played = Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())
   local cur = st.curTime
   T.near(st.done, played - cur, 1e-6)
-  T.eq(Text(sp.fs1), format(L.LV_DONE_FMT, 19, Fmt.Duration(played - cur)))
-  T.eq(Text(sp.fs2), format(L.LV_CUR_FMT, 20, Fmt.Duration(cur)))
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 20, Fmt.DurationFull(played - cur)))
+  T.eq(Text(sp.fs2), format(L.LV_CUR_FMT, 20, Fmt.DurationFull(cur)))
   local fut = {}
   local _, xp, max, rest, valid = ns.Tracker.GetXPInfo()
   Stats.FutureLevels(ns.char, ns.db, 0, { level = 20, xp = xp, max = max, rest = rest, valid = valid, top = 60,
@@ -669,6 +696,47 @@ end)
 -- Live, allocation, regions
 ---------------------------------------------------------------------------
 
+-- The strip's legend keeps its durations to the minute while its row (squares, texts and
+-- gaps) fits the track; on a narrower window (here a screen 900 px wide: the window at
+-- its 880 px) it drops their minutes past 10 h (Fmt.Duration, LevelChart FitLegend), live
+-- too, and tries them again at the next build.
+T.test("chart: the strip's legend drops its minutes past 10 h when it does not fit the track", function()
+  local ns = Start()
+  local L, Fmt = ns.L, ns.Fmt
+  local function Legend(D)
+    local st = Chart().state
+    return { format(L.LV_DONE_SPAN_FMT, 1, 20, D(st.done)), format(L.LV_CUR_FMT, 20, D(st.curTime)) }
+  end
+  local function LegendShown() return { Text(Chart().strip.fs1), Text(Chart().strip.fs2) } end
+  local function Row()
+    local sp = Chart().strip
+    return 12 + sp.fs1:GetStringWidth() + 14 + 12 + sp.fs2:GetStringWidth() + 14 + 12 + sp.fs3:GetStringWidth()
+  end
+  ns.Window.Show("levels")
+  T.ok(Chart().state.curTime >= 36000 and Chart().state.estOK, "the fixture: a current level over 10 h, an estimate")
+  T.eq(LegendShown(), Legend(Fmt.DurationFull), "a wide window: to the minute")
+  T.ok(Row() <= Chart().geo.trackW, "(it fits: " .. Row() .. " <= " .. Chart().geo.trackW .. ")")
+  ns.Window.Hide()
+  rawset(UIParent, "_width", 900)
+  ns.Window.Show("levels")
+  local trackW = Chart().geo.trackW
+  T.eq(LegendShown(), Legend(Fmt.Duration), "a narrow window: without the minutes past 10 h")
+  T.ok(Row() <= trackW, "it fits (" .. Row() .. " <= " .. trackW .. ")")
+  local function W(text)              -- the stub's width: 6 px a character
+    local _, n = text:gsub("[^\128-\191]", "")
+    return 6 * n
+  end
+  local full = Legend(Fmt.DurationFull)
+  local fs3 = Chart().strip.fs3:GetStringWidth()
+  T.ok(12 + W(full[1]) + 14 + 12 + W(full[2]) + 14 + 12 + fs3 > trackW, "(to the minute it would not fit)")
+  Stub.Advance(180)                  -- live steps: minute changes
+  T.eq(LegendShown(), Legend(Fmt.Duration), "live: the same form")
+  ns.Window.Hide()
+  rawset(UIParent, "_width", 1920)
+  ns.Window.Show("levels")
+  T.eq(LegendShown(), Legend(Fmt.DurationFull), "wide again: to the minute at the next build")
+end)
+
 T.test("chart: live growth of the current level is SetHeight only (no SetPoint), chips and strip follow", function()
   local ns = Start()
   ns.Window.Show("levels")
@@ -685,8 +753,8 @@ T.test("chart: live growth of the current level is SetHeight only (no SetPoint),
   T.eq(n, 0, "no SetPoint while it grows")
   T.ok(ch.state.kPlayed ~= kPlayed, "the Played chip followed")
   local played = ns.Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())
-  T.eq(Text(ch.chips[1].value), Fmt.Duration(played))
-  T.eq(Text(ch.strip.fs2), format(ns.L.LV_CUR_FMT, 20, Fmt.Duration(ch.state.curTime)))
+  T.eq(Text(ch.chips[1].value), Fmt.DurationFull(played))
+  T.eq(Text(ch.strip.fs2), format(ns.L.LV_CUR_FMT, 20, Fmt.DurationFull(ch.state.curTime)))
   local sum = 0
   for _, e in ipairs(Stack(c)) do sum = sum + e[2] end
   T.eq(sum, c.H, "stack = height after growing")
@@ -694,9 +762,12 @@ end)
 
 T.test("chart: 600 ticks open on the chart allocate nothing; a second Build or Show creates nothing", function()
   -- the same timeline twice (the stub is deterministic): the window hidden, then open on
-  -- the chart; every live key here changes at most hourly (times over 10 h: the current
-  -- level's world part too, a row of the detail sheet's live breakdown)
-  local function Step() Stub.Advance(1) end
+  -- the chart, each tick's allocation taken apart. The live times are written to the
+  -- minute (Fmt.DurationFull): their keys change once a minute each (the played time, the
+  -- server's, the current level's and its world part, a row of the detail sheet's live
+  -- breakdown: times over 10 h), and only those ticks build strings; every other tick
+  -- allocates nothing more than with the window hidden.
+  local LIVE = 4                     -- live times whose minute changes (keys at their own second)
   local function Run(show)
     Stub.Reset()
     local n = Start({ levelPlayed = 50000, total = 500000 })
@@ -704,11 +775,29 @@ T.test("chart: 600 ticks open on the chart allocate nothing; a second Build or S
     s20.w = (s20.w or 0) + 40000
     if show then n.Window.Show("levels") end
     Stub.Advance(700)                -- warm: the first live steps (memoized strings, first key changes)
-    return n, T.alloc(Step, 600)
+    local per = {}
+    for i = 1, 600 do per[i] = 0 end
+    local count = collectgarbage
+    local kb = T.alloc(function(i)
+      local a = count("count")
+      Stub.Advance(1)
+      per[i] = count("count") - a
+    end, 600)
+    return n, kb, per
   end
-  local _, hidden = Run(false)
-  local ns, kb = Run(true)
-  T.ok(kb - hidden <= 0.3, format("chart shown: %.2f KB over 600 ticks (window hidden: %.2f KB)", kb, hidden))
+  local _, hidden, perH = Run(false)
+  local ns, kb, perS = Run(true)
+  local ticks, most = 0, 0
+  for i = 1, 600 do
+    local d = perS[i] - perH[i]
+    if d > 0.001 then ticks = ticks + 1 end
+    if d > most then most = d end
+  end
+  T.ok(ticks <= LIVE * 10, format("chart shown: %d of 600 ticks allocate (at most %d: a minute change each)",
+    ticks, LIVE * 10))
+  T.ok(most <= 1, format("chart shown: a minute change builds its strings only (%.2f KB at most)", most))
+  T.ok(kb - hidden <= 0.3 + LIVE * 10 * 0.25,
+    format("chart shown: %.2f KB over 600 ticks (window hidden: %.2f KB)", kb, hidden))
   -- the live step itself, at a moment where no key changes: nothing at all
   local LC, char, sync, now = ns.LevelChart, ns.char, ns.Tracker.GetSync(), GetTime()
   LC.Live(char, 0, sync, now)
@@ -750,7 +839,7 @@ T.test("chart: another character (no live, no sync), the account view keeps its 
   local st = ch.state
   T.eq({ st.char, st.isCur, st.level }, { rec, false, 12 })
   T.ok(Shown(ch.root))
-  T.eq(Text(ch.chips[2].value), ns.Fmt.Duration(123456), "server: the snapshot")
+  T.eq(Text(ch.chips[2].value), ns.Fmt.DurationFull(123456), "server: the snapshot")
   T.eq(Text(ch.chips[2].sub), ns.Fmt.Ago(7200))
   T.eq(st.sel, 12)
   local before = { Text(ch.chips[1].value), ch.cols[12].H }
@@ -774,13 +863,13 @@ T.test("chart: max level (time at max) and a detected server cap", function()
   T.eq(st.nCols, 59)
   T.eq(st.sel, 59, "the last bar")
   T.eq({ Text(ch.chips[7].label), Text(ch.chips[7].value) }, { L.MAX_LEVEL, "60" })
-  T.eq(Text(ch.chips[7].sub), format(L.LV_MAX_SUB_FMT, Fmt.Duration(st.curTime)))
+  T.eq(Text(ch.chips[7].sub), format(L.LV_MAX_SUB_FMT, Fmt.DurationFull(st.curTime)))
   T.eq(Text(ch.strip.share), L.TT_MAX_LEVEL)
   T.no(Shown(ch.strip.fs2))
   T.no(Shown(ch.marker))
   for k = 1, 59 do T.no(ch.cols[k].gOn) end
   Stub.Advance(3600)
-  T.eq(Text(ch.chips[7].sub), format(L.LV_MAX_SUB_FMT, Fmt.Duration(st.curTime)), "time at max is live")
+  T.eq(Text(ch.chips[7].sub), format(L.LV_MAX_SUB_FMT, Fmt.DurationFull(st.curTime)), "time at max is live")
   -- a server cap
   Stub.Reset()
   ns = Start()
@@ -938,21 +1027,21 @@ T.test("chart: the PvP, Flight and Deaths chips follow live; nothing allocated w
     Stub.SetTaxi(true); Stub.Advance(1800); Stub.SetTaxi(false)
     Stub.Advance(10)
     Stats.LevelSegments(life, 0, seg)
-    T.eq(Text(chips[5].value), Fmt.Duration(seg.taxi), "Flight chip, live")
+    T.eq(Text(chips[5].value), Fmt.DurationFull(seg.taxi), "Flight chip, live")
     T.eq(Text(chips[5].sub), format(L.LV_FLIGHT_SUB_FMT, Fmt.Percent(seg.taxi / Played())))
     Stub.Die(); Stub.Advance(65); Stub.ReleaseSpirit(); Stub.Advance(260); Stub.Resurrect(true)
     Stub.Advance(10)
     Stats.LevelSegments(life, 0, seg)
     T.eq(life.d, d0 + 1)
     T.eq(Text(chips[6].value), Fmt.Number(d0 + 1), "Deaths chip, live")
-    T.eq(Text(chips[6].sub), format(L.LV_DEAD_SUB_FMT, Fmt.Duration(seg.dead)))
+    T.eq(Text(chips[6].sub), format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(seg.dead)))
     local bg0 = seg.bg
     Stub.EnterBG(); Stub.Advance(1800); Stub.LeaveBG()
     Stub.Advance(10)
     Stats.LevelSegments(life, 0, seg)
     T.ok(seg.bg >= bg0 + 1790, "battleground time")
-    T.eq(Text(chips[4].value), Fmt.Duration(seg.bg + seg.wpvp), "PvP chip, live")
-    T.eq(Text(chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), Fmt.Duration(seg.wpvp)), "its sub line")
+    T.eq(Text(chips[4].value), Fmt.DurationFull(seg.bg + seg.wpvp), "PvP chip, live")
+    T.eq(Text(chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(seg.bg), Fmt.DurationFull(seg.wpvp)), "its sub line")
   end)
   T.eq(builds, 0, "followed live, not by a rebuild")
   -- no key changes: the live step allocates nothing
@@ -969,7 +1058,7 @@ T.test("chart: a flight share under 1 % reads '<1%', never '0%'", function()
   ns.Window.Show("levels")
   local ch = Chart()
   local L, Fmt = ns.L, ns.Fmt
-  T.eq(Text(ch.chips[5].value), Fmt.Duration(600))
+  T.eq(Text(ch.chips[5].value), Fmt.DurationFull(600))
   T.eq(Text(ch.chips[5].sub), format(L.LV_FLIGHT_SUB_FMT, format(L.LV_LT_FMT, Fmt.Percent(0.01))))
   life.s.t = 5000                       -- 1.25 %: 1 %
   ns.Window.Refresh()
@@ -991,12 +1080,12 @@ T.test("chart: under a filter the bar tooltip first gives the bar's value and it
   Stub.RunScript(c.hit, "OnEnter")
   local lines = TipLines()
   T.eq(lines[1][1], format(L.LEVEL_SPAN_FMT, 17, 18))
-  T.eq(lines[2], { L.BD_PVP, format(L.LV_PART_FMT, Fmt.Duration(720), Fmt.Percent(720 / c.sumAll)) },
+  T.eq(lines[2], { L.BD_PVP, format(L.LV_PART_FMT, Fmt.DurationFull(720), Fmt.Percent(720 / c.sumAll)) },
     "the bar's value right after the title")
   T.eq(c.total, 720)
   local accent = ns.Themes.Active().ui and ns.Themes.Active().ui.accent or ns.C.COLORS.accent
   T.near(GameTooltip._colors[2][1], accent[1], 1e-6, "in accent")
-  T.eq(Line(lines, L.LV_PLAYED)[2], Fmt.Duration(c.sumAll), "the whole level below")
+  T.eq(Line(lines, L.LV_PLAYED)[2], Fmt.DurationFull(c.sumAll), "the whole level below")
   T.ok(Line(lines, L.LV_SEG_BG) ~= nil and Line(lines, L.BD_WORLD) ~= nil, "every part below")
   Stub.RunScript(c.hit, "OnLeave")
   -- a level without the activity
@@ -1036,9 +1125,9 @@ T.test("chart: an empty summary reads 'No time recorded'; a few seconds alone th
   T.eq(Text(ch.summary), L.LV_SUM_NONE)
   ch.filters[2].btn:Click("LeftButton")              -- World: the seconds since the login
   T.ok(c.total > 0 and c.total < 60, "a few seconds: " .. c.total)
-  T.eq(Text(ch.summary), format(L.LD_TOTAL_FMT, Fmt.Duration(c.total)))
+  T.eq(Text(ch.summary), format(L.LD_TOTAL_FMT, Fmt.DurationFull(c.total)))
   Stub.Advance(120)
-  T.eq(Text(ch.summary), format(L.LV_SUM_FILTER_ONE_FMT, Fmt.Duration(c.total), 1), "live: one level")
+  T.eq(Text(ch.summary), format(L.LV_SUM_FILTER_ONE_FMT, Fmt.DurationFull(c.total), 1), "live: one level")
   -- a character installed at the max level: no level recorded under "all"
   Stub.Reset()
   ns = Start({ level = 60, top = 60, seed = false })
@@ -1056,7 +1145,8 @@ T.test("chart: a level-1 character reads 'level 1', never 'levels 1 to 1'", func
   T.eq(ch.state.level, 1)
   T.eq(Text(ch.chips[1].sub), L.LV_PLAYED_SUB_ONE)
   T.eq(Detail().level, 1)
-  T.eq(Text(Detail().cards.cum.sub), L.LV_PLAYED_SUB_ONE)
+  -- the sheet's cumulative card: the title's notation, up to now (request 2026-10-17)
+  T.eq(Text(Detail().cards.cum.sub), format(L.LD_CUM_SUB_CUR_FMT, 2))
   T.ok(L.LV_PLAYED_SUB_ONE ~= format(L.LV_PLAYED_SUB_FMT, 1))
   -- level 2: the range again
   Stub.Reset()
@@ -1079,7 +1169,7 @@ T.test("chart: XP disabled below the top level reads 'XP disabled', never 'max l
     { L.LV_XP_OFF, format(L.LV_CAP_LEVEL_FMT, 25), "" })
   T.eq(Text(ch.strip.share), format(L.LV_XP_OFF_FMT, 25))
   T.ok(Shown(ch.strip.fs2), "the level in progress")
-  T.eq(Text(ch.strip.fs2), format(L.LV_CUR_FMT, 25, ns.Fmt.Duration(st.curTime)))
+  T.eq(Text(ch.strip.fs2), format(L.LV_CUR_FMT, 25, ns.Fmt.DurationFull(st.curTime)))
   T.no(Shown(ch.strip.fs3), "no time left")
   T.ok(Shown(ch.marker), "the current level's top line")
   T.eq({ st.sel, st.nCols }, { 25, 25 })
@@ -1146,7 +1236,7 @@ T.test("chart: another character without w0 (world PvP not measured yet): '...' 
   local L, Fmt = ns.L, ns.Fmt
   local seg = {}
   ns.Stats.LevelSegments(rec.life, 0, seg)
-  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.Duration(seg.bg), L.DOTS))
+  T.eq(Text(ch.chips[4].sub), format(L.LV_PVP_SUB_FMT, Fmt.DurationFull(seg.bg), L.DOTS))
   Stub.RunScript(ch.chips[4].frame, "OnEnter")
   local lines = TipLines()
   T.eq(Line(lines, L.LV_WPVP_LONG)[2], L.DOTS)
@@ -1422,14 +1512,14 @@ T.test("chart: a one-part filter's row moves under the title instead of coming t
   ch.filters[7].btn:Click("LeftButton")              -- dead or a ghost
   Stub.RunScript(c.hit, "OnEnter")
   local lines = TipLines()
-  T.eq(lines[2], { L.BD_DEAD, format(L.LV_PART_FMT, Fmt.Duration(240), Fmt.Percent(240 / c.sumAll)) },
+  T.eq(lines[2], { L.BD_DEAD, format(L.LV_PART_FMT, Fmt.DurationFull(240), Fmt.Percent(240 / c.sumAll)) },
     "the dead row right under the title")
   T.eq(Count(lines, L.BD_DEAD), 1, "once")
   local col = GameTooltip._colors[2]
   T.near(col[1], deadColor[1], 1e-6, "label in the part's colour")
   T.near(col[2], deadColor[2], 1e-6)
   T.near(col[4], accent[1], 1e-6, "value in accent")
-  T.eq(Line(lines, L.LV_PLAYED)[2], Fmt.Duration(c.sumAll), "the whole level below")
+  T.eq(Line(lines, L.LV_PLAYED)[2], Fmt.DurationFull(c.sumAll), "the whole level below")
   T.ok(Line(lines, L.BD_WORLD) ~= nil and Line(lines, L.LV_SEG_BG) ~= nil, "the other parts below")
   Stub.RunScript(c.hit, "OnLeave")
   -- world: the same
@@ -1458,7 +1548,7 @@ T.test("chart: a one-part filter's row moves under the title instead of coming t
   ch.filters[3].btn:Click("LeftButton")
   Stub.RunScript(c.hit, "OnEnter")
   lines = TipLines()
-  T.eq(lines[2], { L.BD_DUNGEON, format(L.LV_PART_FMT, Fmt.Duration(1200), Fmt.Percent(1200 / c.sumAll)) },
+  T.eq(lines[2], { L.BD_DUNGEON, format(L.LV_PART_FMT, Fmt.DurationFull(1200), Fmt.Percent(1200 / c.sumAll)) },
     "instances, dungeons only: the dungeon row under the title")
   T.near(GameTooltip._colors[2][1], dungeonColor[1], 1e-6, "in the dungeon colour")
   T.near(GameTooltip._colors[2][4], accent[1], 1e-6, "value in accent")
@@ -1500,7 +1590,7 @@ T.test("chart: a share under half a percent reads <1%, never 0%", function()
   local L, Fmt = ns.L, ns.Fmt
   local c = ch.cols[15]
   local lt = format(L.LV_LT_FMT, Fmt.PercentInt(1))
-  local want = format(L.LV_PART_FMT, Fmt.Duration(120), lt)
+  local want = format(L.LV_PART_FMT, Fmt.DurationFull(120), lt)
   T.ok(120 / c.sumAll < 0.005, "under half a percent")
   Stub.RunScript(c.hit, "OnEnter")
   T.eq(Line(TipLines(), L.BD_DEAD)[2], want, "unfiltered: the dead row")
@@ -1515,4 +1605,564 @@ T.test("chart: a share under half a percent reads <1%, never 0%", function()
     T.no(r:sub(-#zero) == zero, "never 0%: " .. r)
   end
   Stub.RunScript(c.hit, "OnLeave")
+end)
+
+---------------------------------------------------------------------------
+-- Request 2026-10-17: the total since level 1 in the bar tooltip, the strip's range
+---------------------------------------------------------------------------
+
+-- Stats.FutureLevels of the current character (the chart's own input), top 60 unless given.
+local function Fut(ns, mask, top)
+  local fut = {}
+  local _, xp, max, rest, valid = ns.Tracker.GetXPInfo()
+  ns.Stats.FutureLevels(ns.char, ns.db, mask or 0, { level = ns.char.level, xp = xp, max = max, rest = rest,
+    valid = valid, top = top or 60, sync = ns.Tracker.GetSync(), now = GetTime() }, fut)
+  return fut, xp
+end
+
+-- The bar tooltip of level k (the GameTooltip's lines: the native theme).
+local function Hover(k)
+  local hit = Chart().cols[k].hit
+  Stub.RunScript(hit, "OnEnter")
+  local lines = TipLines()
+  Stub.RunScript(hit, "OnLeave")
+  return lines
+end
+
+T.test("chart: the bar tooltip gives the total since level 1, the sheet's card (completed, in progress, upcoming)", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
+  local function Card(k)
+    ch.cols[k].hit:Click("LeftButton")
+    return Text(Detail().cards.cum.value)
+  end
+  -- a completed level: row.cum, to the minute (over 10 h), the sheet's card
+  local rows = Stats.LevelHistory(ns.char, 0, ns.Tracker.GetSync(), GetTime(), {})
+  local cum18
+  for _, r in ipairs(rows) do
+    if r.level == 18 then cum18 = r.cum end
+  end
+  T.ok(cum18 ~= nil and cum18 >= 36000, "the fixture: over 10 h")
+  local line = Line(Hover(18), L.LD_CUM)
+  T.ok(line ~= nil, "the line")
+  T.eq(line[2], Fmt.DurationFull(cum18))
+  T.eq(line[2], Card(18), "the sheet's card")
+  -- the level in progress: up to now (the Played chip), live as the card
+  T.eq(Line(Hover(20), L.LD_CUM)[2], Text(ch.chips[1].value))
+  T.eq(Line(Hover(20), L.LD_CUM)[2], Card(20))
+  Stub.Advance(3600)
+  local played = Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime())
+  T.eq(Line(Hover(20), L.LD_CUM)[2], Fmt.DurationFull(played), "an hour later")
+  T.eq(Line(Hover(20), L.LD_CUM)[2], Text(Detail().cards.cum.value), "the live card")
+  -- after Reached, before the hint
+  local lines = Hover(18)
+  local at, reached = nil, nil
+  for i, l in ipairs(lines) do
+    if l[1] == L.LD_CUM then at = i end
+    if l[1] == L.COL_REACHED then reached = i end
+  end
+  T.eq(at, reached + 1, "right after Reached")
+  -- an upcoming level: the estimate ("~"): the played total, the rest of level 20, the
+  -- estimates of 21 .. 25
+  local fut = Fut(ns)
+  local est = Stats.Played(ns.char, 0, ns.Tracker.GetSync(), GetTime()) + fut.cur
+  for l = 21, 25 do est = est + fut[l] end
+  line = Line(Hover(25), L.LD_CUM)
+  T.eq(line[2], Fmt.ETA(est))
+  T.match(line[2], "^~")
+  -- no record: no total (the sheet has no card either)
+  T.eq(Line(Hover(1), L.LD_CUM), nil)
+  -- under exclusions: the same as the sheet's card
+  ns.Core.SetSetting("exclude.afk", true)
+  ns.Core.SetSetting("exclude.city", true)
+  ns.Window.Refresh()
+  T.eq(Line(Hover(15), L.LD_CUM)[2], Card(15), "mask 5: the card")
+  T.eq(Line(Hover(20), L.LD_CUM)[2], Card(20), "mask 5: the level in progress")
+end)
+
+T.test("chart: an upcoming level after a level without an estimate has no total in its tooltip", function()
+  local ns = Start({ top = 70 })
+  ns.Window.Show("levels")
+  local L = ns.L
+  T.ok(Line(Hover(59), L.LD_CUM) ~= nil, "59: known")
+  T.eq(Line(Hover(62), L.LD_CUM), nil, "62: 60 has no XP size, no estimate")
+end)
+
+-- The range's expected figures from the data: the complete levels' time and XP, the XP of
+-- the range, the time left to reach b (level 20 in progress, top 60 unless given).
+local function RangeWant(ns, a, b, top)
+  local Stats, char = ns.Stats, ns.char
+  local lv = char.level
+  local fut, xp = Fut(ns, 0, top)
+  local m = math.min(lv, b)
+  local done = 0
+  if a == 1 then
+    done = Stats.Played(char, 0, ns.Tracker.GetSync(), GetTime()) - Chart().state.curTime
+    for k = m, lv - 1 do done = done - Stats.Sum(char.levels[k], 0) end
+  else
+    for k = a, m - 1 do
+      if char.levels[k] then done = done + Stats.Sum(char.levels[k], 0) end
+    end
+  end
+  local xd, xt = 0, 0
+  for l = a, b - 1 do
+    local x = Stats.XPOf(char, ns.db, l) or 0
+    xt = xt + x
+    if l < m then xd = xd + x end
+  end
+  local left = 0
+  if lv >= a and lv < b then
+    left = fut.cur
+    for l = lv + 1, b - 1 do left = left + (fut[l] or 0) end
+  elseif lv < a then
+    for l = a, b - 1 do left = left + (fut[l] or 0) end
+  end
+  return { done = done, xpDone = xd, xpAll = xt, left = left, xp = xp }
+end
+
+-- Picks level n in picker i's menu (MenuUtil).
+local function PickMenu(i, n)
+  local ch = Chart()
+  ch.strip.picks[i]:Click("LeftButton")
+  local root = Stub.ui.lastMenu
+  local item = Stub.ui.FindMenuItem(root, tostring(n))
+  T.ok(item ~= nil, "menu item " .. tostring(n))
+  Stub.ui.ClickMenuItem(item)
+  return root
+end
+
+T.test("chart: the progress range: default 1 » 60 is the strip as before, its pickers and their menus", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local L, st, sp = ns.L, Chart().state, Chart().strip
+  T.eq({ st.ra, st.rb, ns.char.lvRange }, { 1, 60, nil })
+  T.eq({ Text(sp.title), Text(sp.pickFS[1]), Text(sp.arrow), Text(sp.pickFS[2]) }, { L.LV_RANGE_TITLE, "1", "\194\187", "60" })
+  T.no(Shown(ch.band), "no band for the default range")
+  -- the same texts as the strip without a range (its legend from level 1, the chip's left)
+  local fut = Fut(ns)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 20, ns.Fmt.DurationFull(st.done)))
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, ns.Fmt.ETA(fut.total)))
+  T.eq(st.kLeft, st.kTop)
+  -- the pickers sit after the title, the arrow between them, on the title's row
+  T.eq(select(2, sp.picks[1]:GetPoint(1)), sp.title)
+  T.eq(select(2, sp.arrow:GetPoint(1)), sp.picks[1])
+  T.eq(select(2, sp.picks[2]:GetPoint(1)), sp.arrow)
+  T.eq(sp.picks[1]:GetHeight(), 16)
+  T.ok(sp.picks[2]:GetWidth() >= 16 and sp.picks[2]:GetWidth() >= sp.pickFS[2]:GetStringWidth() + 10)
+  -- "from": its title, 1 .. 59 (the current one checked), scrolling, no default entry
+  sp.picks[1]:Click("LeftButton")
+  local root = Stub.ui.lastMenu
+  T.eq(Stub.ui.lastMenuOwner, sp.picks[1])
+  T.eq({ root.children[1].kind, root.children[1].text }, { "title", L.LV_RANGE_FROM })
+  local radios = {}
+  for _, c in ipairs(root.children) do
+    if c.kind == "radio" then radios[#radios + 1] = c end
+  end
+  T.eq({ #radios, radios[1].text, radios[#radios].text }, { 59, "1", "59" })
+  T.ok(Stub.ui.IsChecked(radios[1]) and not Stub.ui.IsChecked(radios[2]))
+  T.eq(root.scroll, 400)
+  T.eq(Stub.ui.FindMenuItem(root, format(L.LV_RANGE_RESET_FMT, 60)), nil, "no default entry")
+  -- "to": 2 .. 60
+  sp.picks[2]:Click("LeftButton")
+  root = Stub.ui.lastMenu
+  radios = {}
+  for _, c in ipairs(root.children) do
+    if c.kind == "radio" then radios[#radios + 1] = c end
+  end
+  T.eq({ root.children[1].text, #radios, radios[1].text, radios[#radios].text }, { L.LV_RANGE_TO, 59, "2", "60" })
+  -- the hover tooltip: what it is, how to use it; below the picker, 18 px down (review
+  -- 17/10: above it, a themed frame's bottom ornaments covered the hovered picker; 18 px
+  -- clears the top ones, up to 16 px)
+  Stub.RunScript(sp.picks[1], "OnEnter")
+  local lines = TipLines()
+  T.eq({ lines[1][1], lines[2][1] }, { L.LV_RANGE_FROM, L.LV_RANGE_HINT })
+  T.eq(GameTooltip:GetOwner(), sp.picks[1])
+  T.eq({ GameTooltip:GetPoint(1) }, { "TOPLEFT", sp.picks[1], "BOTTOMLEFT", 0, -18 })
+  Stub.RunScript(sp.picks[1], "OnLeave")
+  T.no(GameTooltip:IsShown())
+end)
+
+T.test("chart: the progress range around the current level (10 » 30): its levels, the level in progress, the time left", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local L, Fmt = ns.L, ns.Fmt
+  local st, sp = ch.state, ch.strip
+  local builds = CountBuilds(ns, function()
+    PickMenu(1, 10)
+    PickMenu(2, 30)
+  end)
+  T.eq(builds, 0, "a pick redraws the strip, not the chart")
+  T.eq({ st.ra, st.rb }, { 10, 30 })
+  T.eq(ns.char.lvRange, { a = 10, b = 30 }, "saved for this character")
+  T.eq({ Text(sp.pickFS[1]), Text(sp.pickFS[2]) }, { "10", "30" })
+  local w = RangeWant(ns, 10, 30)
+  T.eq(st.done, w.done)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 10, 20, Fmt.DurationFull(w.done)))
+  T.eq(Text(sp.fs2), format(L.LV_CUR_FMT, 20, Fmt.DurationFull(st.curTime)))
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, Fmt.ETA(w.left)))
+  local grand = w.done + st.curTime + w.left
+  T.eq(Text(sp.share), format(L.LV_SHARE_FMT, floor((w.done + st.curTime) / grand * 100),
+    floor((w.xpDone + w.xp) / w.xpAll * 100)))
+  local W = ch.geo.trackW
+  T.eq(sp.done:GetWidth(), floor(w.done / grand * W + 0.5))
+  T.eq(sp.cur:GetWidth(), floor(st.curTime / grand * W + 0.5))
+  T.ok(Shown(sp.fs1) and Shown(sp.fs2) and Shown(sp.fs3))
+  -- the band behind the range's columns 10 .. 29
+  local band, geo = ch.band, ch.geo
+  T.ok(Shown(band))
+  local _, rel, _, x, y = band:GetPoint(1)
+  T.eq({ rel, x, y }, { ch.plot, 1 + 9 * geo.pitch, 0 })
+  T.eq({ band:GetWidth(), band:GetHeight() }, { 19 * geo.pitch + geo.barW + 2, geo.plotH })
+  -- the default entry now in the menus
+  sp.picks[2]:Click("LeftButton")
+  T.ok(Stub.ui.FindMenuItem(Stub.ui.lastMenu, format(L.LV_RANGE_RESET_FMT, 60)) ~= nil)
+  -- live: the level in progress and the time left follow, nothing summed again
+  local XPOf, n = ns.Stats.XPOf, 0
+  ns.Stats.XPOf = function(...) n = n + 1 return XPOf(...) end
+  Stub.Advance(1800)
+  ns.Stats.XPOf = XPOf
+  T.eq(n, 0, "live: the range's XP is not summed again")
+  T.eq(Text(sp.fs2), format(L.LV_CUR_FMT, 20, Fmt.DurationFull(st.curTime)))
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, Fmt.ETA(RangeWant(ns, 10, 30).left)))
+  local LC, char, sync, now = ns.LevelChart, ns.char, ns.Tracker.GetSync(), GetTime()
+  LC.Live(char, 0, sync, now)
+  local kb = T.alloc(function() LC.Live(char, 0, sync, now) end, 600)
+  T.ok(kb < 0.05, format("LevelChart.Live x600 with a range: %.3f KB", kb))
+  -- a "from" at or above "to": "to" goes to the max level (saved as "the max level")
+  PickMenu(1, 30)
+  T.eq({ st.ra, st.rb, ns.char.lvRange }, { 30, 60, { a = 30 } })
+end)
+
+T.test("chart: the progress range behind the character: its levels, a full track, 'level 15 reached'", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local L, Fmt = ns.L, ns.Fmt
+  local st, sp = ch.state, ch.strip
+  PickMenu(1, 5)
+  PickMenu(2, 15)
+  local w = RangeWant(ns, 5, 15)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 5, 15, Fmt.DurationFull(w.done)))
+  T.no(Shown(sp.fs2) or Shown(sp.sq2) or Shown(sp.cur), "no level in progress")
+  T.no(Shown(sp.fs3) or Shown(sp.sq3), "no time left")
+  T.eq(Text(sp.share), format(L.LV_RANGE_REACHED_FMT, Fmt.PercentInt(100), 15))
+  T.eq(sp.done:GetWidth(), ch.geo.trackW, "a full track")
+  -- from level 1: the sheet's "Total since level 1" of level 14
+  PickMenu(1, 1)
+  T.eq({ st.ra, st.rb }, { 1, 15 })
+  w = RangeWant(ns, 1, 15)
+  T.eq(st.done, w.done)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 15, Fmt.DurationFull(w.done)))
+  -- the level reached, as in the title: "Levels 1 to 14" read as leaving 14 » 15 out
+  T.eq(Text(sp.fs1), "Level 1 » 15: " .. Fmt.DurationFull(w.done))
+  ch.cols[14].hit:Click("LeftButton")
+  T.eq(Text(Detail().cards.cum.value), Fmt.DurationFull(w.done), "= the card of level 14 » 15")
+  -- one level
+  PickMenu(1, 19)
+  PickMenu(2, 20)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 19, 20, Fmt.DurationFull(ns.Stats.Sum(ns.char.levels[19], 0))))
+  T.eq(Text(sp.share), format(L.LV_RANGE_REACHED_FMT, Fmt.PercentInt(100), 20))
+  -- the level in progress alone (20 » 21): its time, its time left
+  PickMenu(1, 20)
+  PickMenu(2, 21)
+  T.no(Shown(sp.fs1), "no complete level")
+  T.ok(Shown(sp.fs2) and Shown(sp.fs3))
+  T.eq(select(2, sp.cur:GetPoint(1)), sp.track, "the level in progress at the track's start")
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, Fmt.ETA(Fut(ns).cur)))
+  -- at the max level: the default range says so, a range its level
+  Stub.Reset()
+  ns = Start({ level = 60, top = 60 })
+  ns.Window.Show("levels")
+  ch = Chart()
+  T.eq(Text(ch.strip.share), ns.L.TT_MAX_LEVEL)
+  ns.char.lvRange = { a = 10, b = 20 }
+  ns.Window.Refresh()
+  T.eq(Text(ch.strip.share), format(ns.L.LV_RANGE_REACHED_FMT, ns.Fmt.PercentInt(100), 20))
+  T.eq(Text(ch.strip.fs1), format(ns.L.LV_DONE_SPAN_FMT, 10, 20, ns.Fmt.DurationFull(RangeWant(ns, 10, 20).done)))
+end)
+
+T.test("chart: the progress range ahead of the character: an empty track, 0 %, its estimated time", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local L, Fmt = ns.L, ns.Fmt
+  local sp = ch.strip
+  PickMenu(1, 30)
+  PickMenu(2, 40)
+  local w = RangeWant(ns, 30, 40)
+  T.no(Shown(sp.fs1) or Shown(sp.done) or Shown(sp.fs2) or Shown(sp.cur), "nothing done, nothing in progress")
+  T.ok(Shown(sp.fs3))
+  T.eq(Text(sp.fs3), format(L.LV_UPCOMING_FMT, Fmt.ETA(w.left)))
+  T.eq({ sp.sq3:GetPoint(1) }, { "TOPLEFT", sp.frame, "TOPLEFT", 10, -42 }, "at the legend's start")
+  T.eq(Text(sp.share), format(L.LV_SHARE_FMT, 0, 0))
+  -- back around the current level: the time left after the level in progress again
+  PickMenu(1, 10)
+  T.eq(select(2, sp.sq3:GetPoint(1)), sp.fs2)
+  -- levels without an XP size inside the range: "+", no share (as the projection)
+  Stub.Reset()
+  ns = Start({ top = 70 })
+  ns.Window.Show("levels")
+  sp = Chart().strip
+  PickMenu(1, 30)
+  PickMenu(2, 40)
+  T.eq(Text(sp.share), format(ns.L.LV_SHARE_FMT, 0, 0), "30 .. 39: every size known")
+  PickMenu(1, 50)
+  PickMenu(2, 65)
+  T.eq(Text(sp.fs3), format(ns.L.LV_UPCOMING_FMT, ns.Fmt.ETA(RangeWant(ns, 50, 65, 70).left) .. "+"))
+  T.eq(Text(sp.share), "")
+end)
+
+T.test("chart: the progress range is saved per character, kept by a reset of the character, back to the default", function()
+  local ns = Start()
+  local alt = Alt(ns, 12)
+  ns.Window.Show("levels")
+  local L = ns.L
+  PickMenu(1, 10)
+  PickMenu(2, 30)
+  -- another character: its own range (the default), its pick saved on its record
+  ns.Window.Show("levels", alt.guid)
+  local st = Chart().state
+  T.eq({ st.char, st.ra, st.rb }, { alt, 1, 60 })
+  PickMenu(1, 5)
+  PickMenu(2, 8)
+  T.eq(alt.lvRange, { a = 5, b = 8 })
+  T.eq(ns.char.lvRange, { a = 10, b = 30 }, "the current character's is untouched")
+  T.eq(Text(Chart().strip.share), format(L.LV_RANGE_REACHED_FMT, ns.Fmt.PercentInt(100), 8))
+  -- back: each its own
+  ns.Window.Hide()
+  ns.Window.Show("levels")
+  T.eq({ st.char, st.ra, st.rb }, { ns.char, 10, 30 })
+  ns.Window.Show("levels", alt.guid)
+  T.eq({ st.ra, st.rb }, { 5, 8 })
+  -- a reload: the saved variables keep it (Core.RepairChar too)
+  ns.Core.RepairChar(ns.char)
+  T.eq(ns.char.lvRange, { a = 10, b = 30 })
+  -- a reset of the character keeps it (a setting, like the followed faction)
+  ns.Window.Hide()
+  ns.Core.ResetChar()
+  T.eq(ns.char.lvRange, { a = 10, b = 30 })
+  -- the menu's default entry: nothing saved, the default strip and no band
+  ns.Window.Show("levels")
+  local ch = Chart()
+  ch.strip.picks[1]:Click("LeftButton")
+  local item = Stub.ui.FindMenuItem(Stub.ui.lastMenu, format(L.LV_RANGE_RESET_FMT, 60))
+  T.ok(item ~= nil, "the default entry")
+  T.eq(CountBuilds(ns, function() Stub.ui.ClickMenuItem(item) end), 0)
+  T.eq({ ch.state.ra, ch.state.rb, ns.char.lvRange }, { 1, 60, nil })
+  T.no(Shown(ch.band))
+  T.eq({ Text(ch.strip.pickFS[1]), Text(ch.strip.pickFS[2]) }, { "1", "60" })
+  -- read-only mode refuses a pick
+  ns.readOnly = true
+  local n = #Stub.printed
+  PickMenu(1, 10)
+  T.eq({ ch.state.ra, ns.char.lvRange }, { 1, nil }, "read-only: nothing changed")
+  T.ok(#Stub.printed > n and Stub.printed[#Stub.printed]:find(L.READONLY_ACTION, 1, true) ~= nil, "said so")
+  ns.readOnly = false
+end)
+
+T.test("chart: a saved progress range that does not fit the max level or is not valid is read as the default", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local st = Chart().state
+  local function Read(r)
+    ns.char.lvRange = r
+    ns.Window.Refresh()
+    return { st.ra, st.rb }
+  end
+  T.eq(Read({ a = 10, b = 30 }), { 10, 30 })
+  T.eq(Read({ a = 10 }), { 10, 60 }, "no b: the max level")
+  T.eq(Read({ b = 30 }), { 1, 30 }, "no a: level 1")
+  T.eq(Read({ a = 10, b = 99 }), { 10, 60 }, "b above the max level: the max level (kept saved)")
+  T.eq(ns.char.lvRange, { a = 10, b = 99 })
+  T.eq(Read({ a = 70, b = 80 }), { 1, 60 }, "a above the max level: the default")
+  T.eq(Read({ a = 60 }), { 1, 60 }, "a at the max level: the default")
+  T.eq(Read({ a = 30, b = 20 }), { 30, 60 }, "b not above a: the max level")
+  T.eq(Read({ a = 0, b = 20 }), { 1, 60 })
+  T.eq(Read({ a = 2.5, b = 20 }), { 1, 60 })
+  T.eq(Read({ a = 0 / 0, b = 20 }), { 1, 60 })
+  T.eq(Read({ a = "10", b = 20 }), { 1, 20 }, "not a number: missing")
+  T.eq(Read({ a = 10, b = 20.5 }), { 10, 60 })
+  T.eq(Read({ a = 10, b = math.huge }), { 10, 60 })
+  T.eq(Read("x"), { 1, 60 })
+  T.no(Shown(Chart().band), "the default: no band")
+  -- a lower max level (a beta capped at 20: top 20): 10 » 30 reads 10 » 20, still saved
+  Stub.Reset()
+  ns = Start({ top = 20, level = 15 })
+  ns.char.lvRange = { a = 10, b = 30 }
+  ns.Window.Show("levels")
+  T.eq({ Chart().state.ra, Chart().state.rb, Text(Chart().strip.pickFS[2]) }, { 10, 20, "20" })
+  T.eq(ns.char.lvRange, { a = 10, b = 30 })
+end)
+
+T.test("chart: without MenuUtil a range picker steps through its levels (right-click: back, wrapping)", function()
+  local ns = Start({ menu = false })
+  T.eq(rawget(_G, "MenuUtil"), nil)
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local st, sp = ch.state, ch.strip
+  sp.picks[1]:Click("LeftButton")
+  T.eq({ st.ra, st.rb }, { 2, 60 })
+  sp.picks[1]:Click("RightButton")
+  sp.picks[1]:Click("RightButton")
+  T.eq({ st.ra, st.rb }, { 59, 60 }, "wrapped to the last level a range can start at")
+  sp.picks[1]:Click("LeftButton")
+  T.eq({ st.ra, st.rb, ns.char.lvRange }, { 1, 60, nil }, "wrapped back to the default")
+  sp.picks[2]:Click("RightButton")
+  T.eq({ st.ra, st.rb, ns.char.lvRange }, { 1, 59, { b = 59 } })
+  sp.picks[2]:Click("LeftButton")
+  sp.picks[2]:Click("LeftButton")
+  T.eq({ st.ra, st.rb }, { 1, 2 }, "wrapped to the first level after 'from'")
+  Stub.RunScript(sp.picks[2], "OnEnter")
+  T.eq(TipLines()[2][1], ns.L.LV_RANGE_CYCLE_HINT)
+  Stub.RunScript(sp.picks[2], "OnLeave")
+end)
+
+T.test("chart: the range pickers in a themed window: the theme's colours and tooltip frame", function()
+  local ns = Start({ theme = "futuriste" })
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local sp = ch.strip
+  local ui = ns.Themes.Active().ui
+  local function Near(c, want, what)
+    for j = 1, 3 do T.near(c[j], want[j], 1e-6, what) end
+  end
+  local function Border(b) return { rawget(b, "_bdR"), rawget(b, "_bdG"), rawget(b, "_bdB") } end
+  Near({ sp.pickFS[1]:GetTextColor() }, ui.value, "the number in ui.value")
+  Near(Border(sp.picks[1]), ui.border, "the default range: the border colour")
+  PickMenu(1, 10)
+  Near(Border(sp.picks[1]), ui.accent, "a custom range: the accent border")
+  Near({ ch.band:GetVertexColor() }, ui.accent, "the band in ui.accent")
+  local tf = ns.TooltipFrame.Get(1)
+  Stub.RunScript(sp.picks[2], "OnEnter")
+  T.eq(tf:GetOwner(), sp.picks[2], "the themed tooltip frame")
+  T.ok(tf:IsShown())
+  T.eq({ tf:GetPoint(1) }, { "TOPLEFT", sp.picks[2], "BOTTOMLEFT", 0, -18 }, "below the picker")
+  Stub.RunScript(sp.picks[2], "OnLeave")
+  T.no(tf:IsShown())
+  -- a theme switch keeps the range and repaints the pickers
+  ns.Core.SetSetting("theme", "pixel")
+  ns.Window.Refresh()
+  local ui2 = ns.Themes.Active().ui
+  T.eq({ ch.state.ra, ch.state.rb }, { 10, 60 })
+  Near(Border(sp.picks[1]), ui2.accent, "pixel: its accent")
+  Near({ sp.pickFS[1]:GetTextColor() }, ui2.value)
+end)
+
+-- review 17/10 (F1): the fixture has no record of levels 1 and 2 (reached before the
+-- install), a partly recorded level 3 and a rebuilt level 4. The time of a range's complete
+-- levels is "..." when one of the levels it adds up (from level 1: the ones it takes off)
+-- has no record, "~" when one is partly recorded or rebuilt; the track and the share then
+-- go by XP alone. The levels from 5 on: exact, both shares.
+T.test("chart: the progress range over levels without a record or partly recorded: '...' or '~', the share by XP", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local ch = Chart()
+  local L, Fmt = ns.L, ns.Fmt
+  local st, sp = ch.state, ch.strip
+  local W = ch.geo.trackW
+  T.eq({ ch.cols[1].kind, ch.cols[2].kind, ch.cols[3].partial, ch.cols[4].rec }, { "none", "none", true, true },
+    "the fixture")
+  local function XPShare(w) return format(L.LV_XP_SHARE_FMT, floor((w.xpDone + w.xp) / w.xpAll * 100)) end
+  -- a level without a record alone (2 » 3): unknown, as its bar's "No data"
+  PickMenu(1, 2)
+  PickMenu(2, 3)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 2, 3, L.DOTS))
+  T.eq(Text(sp.share), format(L.LV_RANGE_REACHED_FMT, Fmt.PercentInt(100), 3))
+  T.eq(Hover(2)[2][1], L.LV_NO_RECORD)
+  -- from level 1 to level 2: the time before the install is not level 1's alone
+  PickMenu(1, 1)
+  PickMenu(2, 2)
+  T.eq({ st.ra, st.rb }, { 1, 2 })
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 2, L.DOTS))
+  -- to level 3: level 3 only partly recorded, 4 rebuilt: "~"
+  PickMenu(2, 3)
+  local w = RangeWant(ns, 1, 3)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 3, "~" .. Fmt.DurationFull(w.done)))
+  -- to level 5: the levels taken off (5 .. 19) all fully recorded: exact, the sheet's card
+  PickMenu(2, 5)
+  w = RangeWant(ns, 1, 5)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 5, Fmt.DurationFull(w.done)))
+  ch.cols[4].hit:Click("LeftButton")
+  T.eq(Text(Detail().cards.cum.value), Fmt.DurationFull(w.done), "= the card of level 4 » 5")
+  -- around the level in progress from level 2 (2 » 30): unknown; the track and the share by
+  -- XP, the time left as before
+  PickMenu(1, 2)
+  PickMenu(2, 30)
+  w = RangeWant(ns, 2, 30)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 2, 20, L.DOTS))
+  T.eq(Text(sp.share), XPShare(w))
+  T.eq(sp.done:GetWidth(), math.max(1, floor(w.xpDone / w.xpAll * W + 0.5)))
+  T.eq(sp.cur:GetWidth(), math.max(1, floor(w.xp / w.xpAll * W + 0.5)))
+  T.eq(Text(sp.fs2), format(L.LV_CUR_FMT, 20, Fmt.DurationFull(st.curTime)))
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, Fmt.ETA(w.left)))
+  -- from level 3: partly recorded, rebuilt: "~", the XP share
+  PickMenu(1, 3)
+  w = RangeWant(ns, 3, 30)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 3, 20, "~" .. Fmt.DurationFull(w.done)))
+  T.eq(Text(sp.share), XPShare(w))
+  -- from level 5: every level recorded, both shares and the track by time
+  PickMenu(1, 5)
+  w = RangeWant(ns, 5, 30)
+  local grand = w.done + st.curTime + w.left
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 5, 20, Fmt.DurationFull(w.done)))
+  T.eq(Text(sp.share), format(L.LV_SHARE_FMT, floor((w.done + st.curTime) / grand * 100),
+    floor((w.xpDone + w.xp) / w.xpAll * 100)))
+  T.eq(sp.done:GetWidth(), floor(w.done / grand * W + 0.5))
+  -- live with an unknown range: nothing allocated, nothing summed again, its texts kept
+  PickMenu(1, 2)
+  local LC, char, sync, now = ns.LevelChart, ns.char, ns.Tracker.GetSync(), GetTime()
+  LC.Live(char, 0, sync, now)
+  local kb = T.alloc(function() LC.Live(char, 0, sync, now) end, 600)
+  T.ok(kb < 0.05, format("LevelChart.Live x600 with an unknown range: %.3f KB", kb))
+  Stub.Advance(1800)
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 2, 20, L.DOTS))
+  T.eq(Text(sp.share), XPShare(RangeWant(ns, 2, 30)))
+  -- the default range: exact, as before
+  ns.char.lvRange = nil
+  ns.Window.Refresh()
+  T.eq(Text(sp.fs1), format(L.LV_DONE_SPAN_FMT, 1, 20, Fmt.DurationFull(st.done)))
+  T.match(Text(sp.share), "^~%d+%%")
+end)
+
+-- review 17/10 (F2): a time left none of which is known (a range ahead whose levels all
+-- lack an XP size; another character above the known XP sizes, its level's remainder
+-- unknown) reads "...", as the bars of those levels, never "<1m" or "<1m+"; the chip too.
+T.test("chart: a time left with no known part reads '...', never '<1m' or '<1m+'", function()
+  local ns = Start({ top = 70 })
+  ns.Window.Show("levels")
+  local L = ns.L
+  local sp = Chart().strip
+  PickMenu(1, 61)
+  PickMenu(2, 65)
+  T.eq(Text(sp.fs3), format(L.LV_UPCOMING_FMT, L.DOTS))
+  T.eq(Hover(62)[2][1], format(L.LV_UPCOMING_FMT, L.DOTS), "as its bars")
+  T.eq(Text(sp.share), "")
+  -- another character at 62 (top 70: no XP size from 60 on): its default range, a range
+  local alt = Alt(ns, 62)
+  alt.lvRange = nil
+  ns.Window.Show("levels", alt.guid)
+  local ch = Chart()
+  local st = ch.state
+  T.ok(st.estOK and st.partial, "a projection, a lower bound")
+  T.eq(Text(ch.chips[7].value), L.DOTS, "the chip")
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, L.DOTS), "the strip: the chip's text")
+  T.eq(Text(sp.share), "")
+  PickMenu(1, 62)
+  PickMenu(2, 63)
+  T.eq(Text(sp.fs3), format(L.LV_LEFT_FMT, L.DOTS), "62 » 63: its remainder unknown")
+  T.eq(Text(sp.share), "", "no share")
+  -- at 69: no level to play after its own, whose remainder is unknown: a lower bound too
+  alt = Alt(ns, 69)
+  alt.lvRange = nil
+  ns.Window.Show("levels", alt.guid)
+  ch = Chart()
+  T.ok(ch.state.estOK, "a projection")
+  T.ok(ch.state.partial, "its remainder unknown: a lower bound")
+  T.eq(Text(ch.chips[7].value), L.DOTS)
+  T.eq(Text(ch.strip.fs3), format(L.LV_LEFT_FMT, L.DOTS))
+  T.eq(Text(ch.strip.share), "")
 end)

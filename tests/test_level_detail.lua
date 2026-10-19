@@ -297,13 +297,15 @@ T.test("detail: a completed level: header, cards, time breakdown, XP split, zone
   -- cards: Played, Server, Estimated at start (it took 1050 s more), Total, XP/h, Deaths
   T.eq(Stats.Sum(ns.char.levels[12], 0), 6050)
   local c = dt.cards
-  T.eq(Card(c.played), { L.LV_PLAYED, Fmt.Duration(6050), L.LV_SERVER_SUB })
+  T.eq(Card(c.played), { L.LV_PLAYED, Fmt.DurationFull(6050), L.LV_SERVER_SUB })
   T.eq(Card(c.server), { L.TT_SERVER, L.DOTS, L.LV_SERVER_SUB }, "no server split for this level")
   T.eq(Card(c.eta), { L.LD_ETA, Fmt.Duration(5000), format(L.LD_MORE_FMT, Fmt.Duration(1050)) })
   NearColor(c.eta.sub, C.COLORS.warn, "more than expected: warn")
   T.eq(dt.eta, c.eta.value, "tp.detail.eta: the estimate's value")
   T.ok(row.cum ~= nil)
-  T.eq(Card(c.cum), { L.LD_CUM, Fmt.Duration(row.cum), format(L.LV_PLAYED_SUB_FMT, 12) })
+  -- the time until level 13 was reached, in the title's notation ("level 1 » 13"; the
+  -- Played chip's "levels 1 to 20" counts the level in progress)
+  T.eq(Card(c.cum), { L.LD_CUM, Fmt.DurationFull(row.cum), format(L.LD_CUM_SUB_FMT, 13) })
   T.eq(Card(c.xph), { L.TT_XPH, row.xph and Fmt.Rate(row.xph) or L.DOTS, "" })
   T.eq(Card(c.deaths), { L.TT_DEATHS, "0", L.LD_NONE })
   -- 2 x 3 grid: Played | Server, Estimate | Total, XP/h | Deaths
@@ -318,7 +320,7 @@ T.test("detail: a completed level: header, cards, time breakdown, XP split, zone
   -- the breakdown: the bar fills the inner width, its parts in the chart's order and colours
   local tm = dt.time
   T.eq(Text(tm.title), L.LD_TIME)
-  T.eq(Text(tm.right), format(L.LD_TOTAL_FMT, Fmt.Duration(6050)))
+  T.eq(Text(tm.right), format(L.LD_TOTAL_FMT, Fmt.DurationFull(6050)))
   T.eq(tm.total, 6050)
   local parts = Bar(tm.segs, 12, dt.content)
   T.eq(Width(parts), IW, "the parts fill the bar")
@@ -330,7 +332,7 @@ T.test("detail: a completed level: header, cards, time breakdown, XP split, zone
   NearColor(tm.segs[3], gc.dungeon, "dungeon part")
   NearColor(tm.segs[6], gc.taxi, "flight part")
   -- the rows: longest first (ties in the fixed order), the Flight row, no PvP row
-  local function R(key, v) return { L[key], "", Fmt.Duration(v), Fmt.Percent(v / 6050) } end
+  local function R(key, v) return { L[key], "", Fmt.DurationFull(v), Fmt.Percent(v / 6050) } end
   T.eq(Rows(dt), { R("BD_WORLD", 2700), R("BD_DUNGEON", 1200), R("BD_RAID", 900), R("TT_PROF", 400),
     R("LV_FLIGHT", 300), R("BD_CITY", 200), R("BD_AFK", 200), R("BD_INN", 150) })
   NearColor(tm.rows[2].sq, gc.dungeon, "the row's square: its part's colour")
@@ -357,10 +359,10 @@ T.test("detail: a completed level: header, cards, time breakdown, XP split, zone
   -- zones (the instances aside, the capital marked), then the instances with their kind
   T.eq(Text(dt.zonesTitle), L.LD_ZONES)
   T.eq(Zones(dt), {
-    { "Durotar", Fmt.Duration(3000) },
-    { "Orgrimmar " .. L.CITY_MARK, Fmt.Duration(200) },
-    { format(L.INST_ROW_FMT, "Ragefire Chasm", L.KIND_DUNGEON), Fmt.Duration(1200) },
-    { format(L.INST_ROW_FMT, "Molten Core", L.KIND_RAID), Fmt.Duration(900) },
+    { "Durotar", Fmt.DurationFull(3000) },
+    { "Orgrimmar " .. L.CITY_MARK, Fmt.DurationFull(200) },
+    { format(L.INST_ROW_FMT, "Ragefire Chasm", L.KIND_DUNGEON), Fmt.DurationFull(1200) },
+    { format(L.INST_ROW_FMT, "Molten Core", L.KIND_RAID), Fmt.DurationFull(900) },
   })
   T.no(Shown(dt.zonesEmpty))
   local zr = dt.zones
@@ -393,7 +395,7 @@ T.test("detail: the estimate card: less than expected (good), near it (no sub), 
   T.eq(Card(dt.cards.eta), { L.LD_ETA, Fmt.Duration(100), "" }, "a partial level: no comparison")
   -- the deaths card: 2 deaths and their dead time
   dt = Click(15)
-  T.eq(Card(dt.cards.deaths), { L.TT_DEATHS, "2", format(L.LV_DEAD_SUB_FMT, Fmt.Duration(240)) })
+  T.eq(Card(dt.cards.deaths), { L.TT_DEATHS, "2", format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(240)) })
 end)
 
 T.test("detail: the Flight row is always listed (a dash without flight); a level without zones", function()
@@ -425,20 +427,20 @@ T.test("detail: approximation notes and '~' (partial, rebuilt, rebuilt part, ser
   local L, Fmt, Stats = ns.L, ns.Fmt, ns.Stats
   local dt = Click(3)
   T.eq(Notes(dt), { L.ROW_PARTIAL_TIP })
-  T.eq(Text(dt.cards.played.value), "~" .. Fmt.Duration(1800))
+  T.eq(Text(dt.cards.played.value), "~" .. Fmt.DurationFull(1800))
   dt = Click(4)
   T.eq(Notes(dt), { L.ROW_REC_TIP })
-  T.eq(Text(dt.cards.played.value), "~" .. Fmt.Duration(2400))
+  T.eq(Text(dt.cards.played.value), "~" .. Fmt.DurationFull(2400))
   dt = Click(13)
-  T.eq(Notes(dt), { format(L.ROW_EST_TIP_FMT, Fmt.Duration(600)) })
-  T.eq(Text(dt.cards.played.value), "~" .. Fmt.Duration(3650))
+  T.eq(Notes(dt), { format(L.ROW_EST_TIP_FMT, Fmt.DurationFull(600)) })
+  T.eq(Text(dt.cards.played.value), "~" .. Fmt.DurationFull(3650))
   dt = Click(14)
-  T.eq(Notes(dt), { format(L.ROW_GAP_TIP_FMT, Fmt.Duration(500)) })
-  T.eq(Text(dt.cards.played.value), "~" .. Fmt.Duration(3750))
-  T.eq(Text(dt.cards.server.value), "~" .. Fmt.Duration(3750 + 500), "server start extrapolated: '~'")
+  T.eq(Notes(dt), { format(L.ROW_GAP_TIP_FMT, Fmt.DurationFull(500)) })
+  T.eq(Text(dt.cards.played.value), "~" .. Fmt.DurationFull(3750))
+  T.eq(Text(dt.cards.server.value), "~" .. Fmt.DurationFull(3750 + 500), "server start extrapolated: '~'")
   dt = Click(16)
-  T.eq(Notes(dt), { format(L.LD_STALL_FMT, Fmt.Duration(600)) })
-  T.eq(Text(dt.cards.played.value), Fmt.Duration(Stats.Sum(ns.char.levels[16], 0)), "a stall is no approximation")
+  T.eq(Notes(dt), { format(L.LD_STALL_FMT, Fmt.DurationFull(600)) })
+  T.eq(Text(dt.cards.played.value), Fmt.DurationFull(Stats.Sum(ns.char.levels[16], 0)), "a stall is no approximation")
   dt = Click(12)
   T.eq(Notes(dt), {}, "none")
   -- several notes stack below the status line, the cards below them
@@ -446,7 +448,7 @@ T.test("detail: approximation notes and '~' (partial, rebuilt, rebuilt part, ser
   lb.xs = { w = 300 }
   ns.Window.Refresh()
   dt = Click(14)
-  T.eq(Notes(dt), { format(L.ROW_GAP_TIP_FMT, Fmt.Duration(500)), format(L.LD_STALL_FMT, Fmt.Duration(300)) })
+  T.eq(Notes(dt), { format(L.ROW_GAP_TIP_FMT, Fmt.DurationFull(500)), format(L.LD_STALL_FMT, Fmt.DurationFull(300)) })
   T.ok(Y(dt.notes[1]) > Y(dt.status), "below the status")
   T.ok(Y(dt.notes[2]) > Y(dt.notes[1]), "stacked")
   T.ok(Y(dt.cards.played.frame) > Y(dt.notes[2]), "the cards below the notes")
@@ -463,17 +465,17 @@ T.test("detail: the exclusions: Played sub, figures and breakdown under the mask
   T.eq(mask, 5)
   local sum = Stats.Sum(ns.char.levels[12], mask)
   T.eq(sum, 6050 - 200 - 200, "without the AFK and city time")
-  T.eq(Card(dt.cards.played), { L.LV_PLAYED, Fmt.Duration(sum), format(L.TT_EXCL_FMT, Stats.MaskLabel(mask)) })
+  T.eq(Card(dt.cards.played), { L.LV_PLAYED, Fmt.DurationFull(sum), format(L.TT_EXCL_FMT, Stats.MaskLabel(mask)) })
   T.eq(dt.time.total, sum)
   for _, r in ipairs(Rows(dt)) do
     T.no(r[1] == L.BD_AFK or r[1] == L.BD_CITY, "no row for an excluded part: " .. r[1])
   end
   -- the capital: its time excluded, a dash and last of the zones (the instances follow)
   T.eq(Zones(dt), {
-    { "Durotar", Fmt.Duration(2800) },
+    { "Durotar", Fmt.DurationFull(2800) },
     { "Orgrimmar " .. L.CITY_MARK, "-" },
-    { format(L.INST_ROW_FMT, "Ragefire Chasm", L.KIND_DUNGEON), Fmt.Duration(1200) },
-    { format(L.INST_ROW_FMT, "Molten Core", L.KIND_RAID), Fmt.Duration(900) },
+    { format(L.INST_ROW_FMT, "Ragefire Chasm", L.KIND_DUNGEON), Fmt.DurationFull(1200) },
+    { format(L.INST_ROW_FMT, "Molten Core", L.KIND_RAID), Fmt.DurationFull(900) },
   })
   NearColor(dt.zones[2].name, ns.Themes.Active().ui.dim, "the excluded zone dimmed")
   T.no(Shown(dt.zones[2].bar), "and without a bar")
@@ -492,7 +494,7 @@ T.test("detail: the level in progress: projection card, untracked excess, live c
   T.eq(ch.state.sel, 20)
   local row = RowOf(ns, 20)
   local approx = row.partial or row.rec or row.estF > 0 or (row.gap or 0) > 0
-  local function Played() return (approx and "~" or "") .. Fmt.Duration(ch.state.curTime) end
+  local function Played() return (approx and "~" or "") .. Fmt.DurationFull(ch.state.curTime) end
   T.eq(Text(dt.cards.played.value), Played())
   local fut = {}
   local _, xp, max, rest, valid = ns.Tracker.GetXPInfo()
@@ -503,7 +505,7 @@ T.test("detail: the level in progress: projection card, untracked excess, live c
     format(L.LD_LEFT_FMT, Fmt.Duration(fut.cur)) })
   NearColor(dt.cards.eta.sub, ns.Themes.Active().ui.accent, "time left: accent")
   local pfx = row.serverEst and "~" or ""
-  T.eq(Text(dt.cards.server.value), pfx .. Fmt.Duration(row.server), "the server's level time")
+  T.eq(Text(dt.cards.server.value), pfx .. Fmt.DurationFull(row.server), "the server's level time")
   T.eq(Text(dt.cards.cum.value), Text(ch.chips[1].value), "total since level 1 = the Played chip")
   -- the breakdown: the shown time, its excess over the parts as untracked
   T.near(dt.time.total, ch.state.curTime, 1e-6)
@@ -517,13 +519,13 @@ T.test("detail: the level in progress: projection card, untracked excess, live c
   T.eq(n, 0, "no SetPoint in the sheet while the level grows")
   T.ok(Text(dt.cards.played.value) ~= k0, "Played followed")
   T.eq(Text(dt.cards.played.value), Played())
-  T.eq(Text(dt.time.right), format(L.LD_TOTAL_FMT, Fmt.Duration(ch.state.curTime)))
+  T.eq(Text(dt.time.right), format(L.LD_TOTAL_FMT, Fmt.DurationFull(ch.state.curTime)))
   T.eq(Text(dt.cards.cum.value), Text(ch.chips[1].value), "Total followed")
-  T.eq(Text(dt.cards.server.value), pfx .. Fmt.Duration(ch.state.curTime), "Server followed (mask 0: the same time)")
+  T.eq(Text(dt.cards.server.value), pfx .. Fmt.DurationFull(ch.state.curTime), "Server followed (mask 0: the same time)")
   -- a rebuild of the same sheet anchors nothing either (the first one after the hour may:
   -- an hour without XP adds the stall note, the sections move down)
   ns.Window.Refresh()
-  T.eq(Notes(dt)[dt.nNotes], format(L.LD_STALL_FMT, Fmt.Duration(ns.Stats.StallTime(ns.char.levels[20], 0))),
+  T.eq(Notes(dt)[dt.nNotes], format(L.LD_STALL_FMT, Fmt.DurationFull(ns.Stats.StallTime(ns.char.levels[20], 0))),
     "an hour without XP: the stall note (at the rebuild)")
   n = CountSetPoint(dt.panel, function() ns.Window.Refresh() end)
   T.eq(n, 0, "a rebuild of the same sheet: no SetPoint")
@@ -538,6 +540,42 @@ T.test("detail: the level in progress: projection card, untracked excess, live c
   Stub.Advance(3600)
   T.eq(Text(dt.cards.played.value), before, "a completed level does not move")
   T.eq(Stub.onUpdateCount, 0)
+end)
+
+-- Request 2026-10-17: the sheet of "Level 18 » 19" read "Total since level 1 - levels 1 to
+-- 18" under the summary's "Time played - levels 1 to 19" (which counts level 19 in
+-- progress). The card now says what it counts in the title's notation: until level 19 was
+-- reached, or for the level in progress up to now.
+T.test("detail: 'Total since level 1' reads 'level 1 » 19' for level 18, ', in progress' for the current level", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local L, Fmt = ns.L, ns.Fmt
+  T.eq(format(L.LD_CUM_SUB_FMT, 19), "level 1 \194\187 19")
+  T.eq(format(L.LD_CUM_SUB_CUR_FMT, 21), "level 1 \194\187 21, in progress")
+  local dt = Click(18)
+  T.eq(Text(dt.title), format(L.LEVEL_SPAN_FMT, 18, 19))
+  T.eq(Card(dt.cards.cum), { L.LD_CUM, Fmt.DurationFull(RowOf(ns, 18).cum), format(L.LD_CUM_SUB_FMT, 19) })
+  dt = Click(20)
+  T.eq(dt.kind, "cur")
+  T.eq(Card(dt.cards.cum), { L.LD_CUM, Text(Chart().chips[1].value), format(L.LD_CUM_SUB_CUR_FMT, 21) })
+  -- the summary chip keeps its own label (it counts the level in progress)
+  T.eq(Text(Chart().chips[1].sub), format(L.LV_PLAYED_SUB_FMT, 20))
+  -- another character's level in progress: up to its last save, the same label
+  local rec = Stub.DeepCopy(ns.char)
+  rec.guid, rec.name, rec.level = "Player-4619-0BADF00D", "Other", 12
+  for l = 13, 20 do rec.levels[l] = nil end
+  ns.db.chars[rec.guid] = rec
+  ns.Window.Show("levels", rec.guid)
+  T.eq(Text(Detail().cards.cum.sub), format(L.LD_CUM_SUB_CUR_FMT, 13))
+  Chart().cols[11].hit:Click("LeftButton")
+  T.eq(Text(Detail().cards.cum.sub), format(L.LD_CUM_SUB_FMT, 12))
+  -- in French
+  Stub.Reset()
+  Stub.locale = "frFR"
+  ns = Start()
+  ns.Window.Show("levels")
+  T.eq(Text(Click(18).cards.cum.sub), "niveau 1 \194\187 19")
+  T.eq(Text(Click(20).cards.cum.sub), "niveau 1 \194\187 21, en cours")
 end)
 
 T.test("detail: another character's level in progress is not live", function()
@@ -618,8 +656,8 @@ T.test("detail: the PvP row's tooltip: battlegrounds without their AFK time, oth
   ns.Window.Show("levels")
   local dt = Click(17)
   local rows = Rows(dt)
-  T.eq(rows[2], { L.BD_PVP, L.LD_HOVER, Fmt.Duration(720), Fmt.Percent(720 / 4750) }, "PvP = battlegrounds + world")
-  T.eq(rows[1][3], Fmt.Duration(3080), "World = open world less world PvP")
+  T.eq(rows[2], { L.BD_PVP, L.LD_HOVER, Fmt.DurationFull(720), Fmt.Percent(720 / 4750) }, "PvP = battlegrounds + world")
+  T.eq(rows[1][3], Fmt.DurationFull(3080), "World = open world less world PvP")
   T.eq(dt.time.pvp, 2)
   T.ok(Shown(dt.pvpHit))
   T.eq(Y(dt.pvpHit), Y(dt.time.rows[2].label) - 1, "the hover area on the PvP row")
@@ -628,12 +666,12 @@ T.test("detail: the PvP row's tooltip: battlegrounds without their AFK time, oth
   T.eq(GameTooltip:GetOwner(), dt.pvpHit)
   T.ok(GameTooltip:IsShown())
   local lines = TipLines()
-  T.eq(lines[1][1], format(L.LD_PVP_TIP_FMT, Fmt.Duration(720)))
-  T.eq(Line(lines, L.LV_SEG_BG)[2], Fmt.Duration(600))
-  T.eq(Line(lines, "   Warsong Gulch")[2], Fmt.Duration(400), "its AFK time left out")
-  T.eq(Line(lines, "   Arathi Basin")[2], Fmt.Duration(200))
+  T.eq(lines[1][1], format(L.LD_PVP_TIP_FMT, Fmt.DurationFull(720)))
+  T.eq(Line(lines, L.LV_SEG_BG)[2], Fmt.DurationFull(600))
+  T.eq(Line(lines, "   Warsong Gulch")[2], Fmt.DurationFull(400), "its AFK time left out")
+  T.eq(Line(lines, "   Arathi Basin")[2], Fmt.DurationFull(200))
   T.eq(Line(lines, "   " .. L.LV_BG_OTHER), nil, "nothing else")
-  T.eq(Line(lines, L.LV_WPVP_LONG)[2], Fmt.Duration(120))
+  T.eq(Line(lines, L.LV_WPVP_LONG)[2], Fmt.DurationFull(120))
   T.ok(HasText(lines, format(L.LV_WPVP_DEF_FMT, 15)), "definition")
   T.ok(HasText(lines, format(L.LV_WPVP_SINCE_FMT, Fmt.DateTime(T0 + floor(15.5 * 3600)))), "since")
   local gc = Gauge(ns)
@@ -648,8 +686,8 @@ T.test("detail: the PvP row's tooltip: battlegrounds without their AFK time, oth
   dt = Detail()
   Stub.RunScript(dt.pvpHit, "OnEnter")
   lines = TipLines()
-  T.eq(lines[1][1], format(L.LD_PVP_TIP_FMT, Fmt.Duration(820)))
-  T.eq(Line(lines, "   " .. L.LV_BG_OTHER)[2], Fmt.Duration(100))
+  T.eq(lines[1][1], format(L.LD_PVP_TIP_FMT, Fmt.DurationFull(820)))
+  T.eq(Line(lines, "   " .. L.LV_BG_OTHER)[2], Fmt.DurationFull(100))
   Stub.RunScript(dt.pvpHit, "OnLeave")
   -- 15 began before world PvP was measured, 16 after; measured later than 17: before
   dt = Click(15)
@@ -694,7 +732,7 @@ T.test("detail: the PvP row on Classic Era (no PvP API), and under a non-native 
   local found = false
   for i = 1, tf.tp.n do
     local r = tf.tp.rows[i]
-    if r.lt == "   Warsong Gulch" then found = r.rt == ns.Fmt.Duration(400) end
+    if r.lt == "   Warsong Gulch" then found = r.rt == ns.Fmt.DurationFull(400) end
   end
   T.ok(found, "the battleground rows")
   ns.Core.SetSetting("theme", "pixel")
@@ -710,9 +748,9 @@ T.test("detail: the chart's PvP chip lists the battlegrounds without their AFK t
   local chip = Chart().chips[4].frame
   Stub.RunScript(chip, "OnEnter")
   local lines = TipLines()
-  T.eq(Line(lines, L.LV_SEG_BG)[2], Fmt.Duration(3300), "battlegrounds: p only (P is AFK)")
-  T.eq(Line(lines, "   Warsong Gulch")[2], Fmt.Duration(2000), "the row without its AFK time")
-  T.eq(Line(lines, "   " .. L.LV_BG_OTHER)[2], Fmt.Duration(300))
+  T.eq(Line(lines, L.LV_SEG_BG)[2], Fmt.DurationFull(3300), "battlegrounds: p only (P is AFK)")
+  T.eq(Line(lines, "   Warsong Gulch")[2], Fmt.DurationFull(2000), "the row without its AFK time")
+  T.eq(Line(lines, "   " .. L.LV_BG_OTHER)[2], Fmt.DurationFull(300))
   Stub.RunScript(chip, "OnLeave")
 end)
 
@@ -881,12 +919,12 @@ T.test("detail: seven instances in a level: none listed as an open-world zone; t
   ns.Window.Show("levels")
   local dt = Click(18)
   local function Name(k) return Stats.ZoneName(k, ns.char.zones[k] or z[k]) end
-  local want = { { "Durotar", Fmt.Duration(3800) } }
-  for i = 8, 2, -1 do want[#want + 1] = { "Zone " .. i, Fmt.Duration(50 + 10 * i) } end
+  local want = { { "Durotar", Fmt.DurationFull(3800) } }
+  for i = 8, 2, -1 do want[#want + 1] = { "Zone " .. i, Fmt.DurationFull(50 + 10 * i) } end
   for _, e in ipairs({ { "i230", 900 }, { "i229", 800 }, { "i329", 700 }, { "i289", 500 } }) do
-    want[#want + 1] = { format(L.INST_ROW_FMT, Name(e[1]), L.KIND_DUNGEON), Fmt.Duration(e[2]) }
+    want[#want + 1] = { format(L.INST_ROW_FMT, Name(e[1]), L.KIND_DUNGEON), Fmt.DurationFull(e[2]) }
   end
-  want[#want + 1] = { format(L.INST_ROW_FMT, Name(BG1), L.KIND_PVP), Fmt.Duration(400) }
+  want[#want + 1] = { format(L.INST_ROW_FMT, Name(BG1), L.KIND_PVP), Fmt.DurationFull(400) }
   T.eq(Zones(dt), want, "8 zones (the 8th small one left out), then the 5 longest instances")
   local gc = Gauge(ns)
   for j = 1, 8 do NearColor(dt.zones[j].bar, gc.world, "zone " .. j .. ": world") end
@@ -915,7 +953,7 @@ T.test("detail: a battleground under two keys (instance key, then its map) is on
   for _, r in ipairs(Zones(dt)) do
     if r[1] == wsg or r[1] == wsgName then found[#found + 1] = r end
   end
-  T.eq(found, { { wsg, Fmt.Duration(430) } }, "one row, the sum of both keys")
+  T.eq(found, { { wsg, Fmt.DurationFull(430) } }, "one row, the sum of both keys")
 end)
 
 -- A share of the level that rounds to 0 % reads "<1%" (as the chart's Flight chip).
@@ -925,7 +963,7 @@ T.test("detail: a breakdown row under 0.5 % of the level reads '<1%', never '0%'
   ns.char.levels[12].s.x = 20                  -- 20 s dead of 6070
   ns.Window.Show("levels")
   local dt = Click(12)
-  T.eq(RowNamed(Rows(dt), L.BD_DEAD), { L.BD_DEAD, "", Fmt.Duration(20), format(L.LV_LT_FMT, Fmt.PercentInt(1)) })
+  T.eq(RowNamed(Rows(dt), L.BD_DEAD), { L.BD_DEAD, "", Fmt.DurationFull(20), format(L.LV_LT_FMT, Fmt.PercentInt(1)) })
   T.eq(RowNamed(Rows(dt), L.BD_INN)[4], Fmt.Percent(150 / 6070), "2 %: the percent")
 end)
 
@@ -1002,7 +1040,7 @@ T.test("detail: the level in progress follows a flight, a battleground and a dea
   Live()
   Stats.LevelSegments(lb, 0, seg)
   T.ok(seg.taxi >= 1800, "flight time: " .. seg.taxi)
-  T.eq(RowNamed(Rows(dt), L.LV_FLIGHT), { L.LV_FLIGHT, "", Fmt.Duration(seg.taxi),
+  T.eq(RowNamed(Rows(dt), L.LV_FLIGHT), { L.LV_FLIGHT, "", Fmt.DurationFull(seg.taxi),
     Fmt.Percent(seg.taxi / dt.time.total) }, "Flight row, live")
   T.eq(Text(dt.time.rows[2].label), L.LV_FLIGHT, "above World now")
   T.eq({ dt.time.n, Y(dt.xp.title) }, { n0, y0 }, "no row more, nothing moved")
@@ -1016,7 +1054,7 @@ T.test("detail: the level in progress follows a flight, a battleground and a dea
   Live()
   Stats.LevelSegments(lb, 0, seg)
   T.ok(seg.bg >= 1200, "battleground time: " .. seg.bg)
-  T.eq(RowNamed(Rows(dt), L.BD_PVP), { L.BD_PVP, L.LD_HOVER, Fmt.Duration(seg.bg + seg.wpvp),
+  T.eq(RowNamed(Rows(dt), L.BD_PVP), { L.BD_PVP, L.LD_HOVER, Fmt.DurationFull(seg.bg + seg.wpvp),
     Fmt.Percent((seg.bg + seg.wpvp) / dt.time.total) }, "PvP row, live")
   T.eq(dt.time.n, n0 + 1)
   T.eq(Y(dt.pvpHit), Y(dt.time.rows[dt.time.pvp].label) - 1, "the hover area on the PvP row")
@@ -1033,8 +1071,8 @@ T.test("detail: the level in progress follows a flight, a battleground and a dea
   Live()
   Stats.LevelSegments(lb, 0, seg)
   T.eq(deaths0, "0")
-  T.eq(Card(dt.cards.deaths), { L.TT_DEATHS, "1", format(L.LV_DEAD_SUB_FMT, Fmt.Duration(seg.dead)) }, "Deaths, live")
-  T.eq(RowNamed(Rows(dt), L.BD_DEAD)[3], Fmt.Duration(seg.dead))
+  T.eq(Card(dt.cards.deaths), { L.TT_DEATHS, "1", format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(seg.dead)) }, "Deaths, live")
+  T.eq(RowNamed(Rows(dt), L.BD_DEAD)[3], Fmt.DurationFull(seg.dead))
   T.eq(dt.time.n, n0 + 2)
   AsRebuilt("death")
   -- steady state: the live step allocates nothing at a moment without a key change
@@ -1071,13 +1109,13 @@ T.test("detail: live under exclusions (mask 7): filtered and server times; the p
   local pf, pb = Stats.Played(char, mask, sync, now)
   local lf, lt = Stats.LevelTime(char, 20, mask, sync, now)
   T.ok(lt - lf >= 900 and pb - pf >= 900, format("the exclusions matter: %d, %d", lt - lf, pb - pf))
-  T.eq(Text(ch.chips[1].value), Fmt.Duration(pf), "Played chip: filtered")
-  T.eq(Text(ch.chips[2].value), Fmt.Duration(pb), "Server chip: everything")
+  T.eq(Text(ch.chips[1].value), Fmt.DurationFull(pf), "Played chip: filtered")
+  T.eq(Text(ch.chips[2].value), Fmt.DurationFull(pb), "Server chip: everything")
   T.near(ch.state.curTime, lf, 1e-6, "the current level's time: filtered")
   local row = RowOf(ns, 20, mask)
   local approx = (row.partial or row.rec or row.estF > 0 or (row.gap or 0) > 0) and "~" or ""
-  T.eq(Text(dt.cards.played.value), approx .. Fmt.Duration(lf), "sheet Played: filtered")
-  T.eq(Text(dt.cards.server.value), (row.serverEst and "~" or "") .. Fmt.Duration(lt), "sheet Server: everything")
+  T.eq(Text(dt.cards.played.value), approx .. Fmt.DurationFull(lf), "sheet Played: filtered")
+  T.eq(Text(dt.cards.server.value), (row.serverEst and "~" or "") .. Fmt.DurationFull(lt), "sheet Server: everything")
   T.near(dt.time.total, lf, 1e-6, "the breakdown: the filtered time")
   for _, r in ipairs(Rows(dt)) do
     T.no(r[1] == L.BD_AFK or r[1] == L.BD_INN or r[1] == L.BD_CITY, "no row for an excluded part: " .. r[1])
@@ -1133,9 +1171,9 @@ T.test("detail: the current level's server time above its parts goes to the untr
   local sum = Stats.LevelSegments(lb, 0, seg)
   T.ok(t - sum >= 599, "an excess: " .. (t - sum))
   T.near(dt.time.total, t, 1e-6, "the total: the shown time")
-  T.eq(Text(dt.time.right), format(L.LD_TOTAL_FMT, Fmt.Duration(t)))
+  T.eq(Text(dt.time.right), format(L.LD_TOTAL_FMT, Fmt.DurationFull(t)))
   local u = seg.untracked + (t - sum)
-  T.eq(RowNamed(Rows(dt), L.TT_UNTRACKED), { L.TT_UNTRACKED, "", Fmt.Duration(u), Fmt.Percent(u / t) },
+  T.eq(RowNamed(Rows(dt), L.TT_UNTRACKED), { L.TT_UNTRACKED, "", Fmt.DurationFull(u), Fmt.Percent(u / t) },
     "untracked: its own part and the excess")
   T.eq(Width(Bar(dt.time.segs, 12, dt.content)), IW)
 end)
@@ -1155,4 +1193,126 @@ T.test("detail: an upcoming level's basis: the recent levels' pace, else the cur
   dt = Click(25)
   T.eq(dt.kind, "future")
   T.eq(Text(dt.up.sub), L.LD_EST_SUB_RATE, "src rate")
+end)
+
+-- The value columns (VAL_W, the breakdown's rows and the zones) keep a duration's minutes
+-- past 10 h when the text fits the column (the stub draws 6 px a character), else drop
+-- them (Fmt.Duration: "12d 19h", "10 h"): DurFit. The cards keep them (wider).
+T.test("detail: a value column keeps the minutes past 10 h when they fit, else drops them (DurFit)", function()
+  for _, locale in ipairs({ "enUS", "esES" }) do
+    Stub.Reset()
+    Stub.locale = locale
+    local ns = Start()
+    local Fmt, L = ns.Fmt, ns.L
+    local lb = ns.char.levels[12]
+    local long = 12 * 86400 + 19 * 3600 + 5 * 60        -- 12d 19h 05m
+    lb.s.w, lb.s.W = 37380, long                        -- world 10h 23m, AFK 12 days
+    lb.z[1411].s.w = 37380 - 500                        -- Durotar: 10h 23m with its AFK and flight
+    ns.Window.Show("levels")
+    local dt = Click(12)
+    local function Value(label)
+      for j = 1, dt.time.n do
+        local r = dt.time.rows[j]
+        if Text(r.label) == label then return Text(r.value), r.value:GetUnboundedStringWidth() end
+      end
+    end
+    local function Zone(name)
+      for j = 1, dt.nZones do
+        if Text(dt.zones[j].name) == name then return Text(dt.zones[j].time) end
+      end
+    end
+    local function Fits(text) return 6 * #text <= 64 end
+    for _, e in ipairs({ { L.BD_WORLD, 37380 }, { L.BD_AFK, long } }) do
+      local full = Fmt.DurationFull(e[2])
+      local want = Fits(full) and full or Fmt.Duration(e[2])
+      local text, w = Value(e[1])
+      T.eq(text, want, locale .. ": " .. e[1])
+      T.ok(w <= 64, locale .. ": " .. e[1] .. " fits its column (" .. w .. ")")
+    end
+    T.eq(Zone("Durotar"), Fits(Fmt.DurationFull(37380)) and Fmt.DurationFull(37380) or Fmt.Duration(37380),
+      locale .. ": the zone's time")
+    T.eq(Text(dt.cards.played.value), Fmt.DurationFull(ns.Stats.Sum(lb, 0)), locale .. ": the Played card to the minute")
+    if locale == "enUS" then
+      T.eq(Value(L.BD_WORLD), "10h 23m", "enUS: the minutes past 10 h fit")
+      T.eq(Value(L.BD_AFK), "12d 19h", "enUS: 12 days and the minutes do not")
+      T.eq(Zone("Durotar"), "10h 23m")
+    else
+      T.eq(Value(L.BD_WORLD), "10 h", "esES: '10 h 23 min' does not fit")
+      T.eq(Value(L.BD_AFK), "12 d 19 h")
+      T.eq(Zone("Durotar"), "10 h")
+    end
+  end
+end)
+
+-- The current character's level in progress: its zones and notes follow at the next
+-- rebuild only (an XP gain), so they keep Fmt.Duration (no minutes past 10 h to fall
+-- behind its growing times), as the Zones tab; a level done keeps its minutes (DurFit).
+-- Its Server /played card is live on either rule of Stats.LevelServer (the sync's level
+-- part, else the server total less the level's server start).
+T.test("detail: the level in progress's zones keep Fmt.Duration, its Server card live on either rule", function()
+  local ns = Start()
+  local Fmt, Stats = ns.Fmt, ns.Stats
+  local lb = ns.char.levels[20]
+  lb.z = lb.z or {}
+  lb.z[1411] = lb.z[1411] or { s = {} }
+  lb.z[1411].s.w = (lb.z[1411].s.w or 0) + 37380
+  lb.s.w = (lb.s.w or 0) + 37380
+  ns.char.levels[12].z[1411].s.w = 37380 - 500        -- a level done: Durotar 10h 23m
+  ns.Window.Show("levels")
+  local dt = Detail()
+  T.eq(dt.level, 20, "the level in progress")
+  local function Zone(name)
+    for j = 1, dt.nZones do
+      if Text(dt.zones[j].name) == name then return Text(dt.zones[j].time) end
+    end
+  end
+  local secs = Stats.Sum(lb.z[1411], 0)
+  T.ok(secs >= 36000, "the fixture: past 10 h")
+  T.eq(Zone("Durotar"), Fmt.Duration(secs), "the level in progress: Fmt.Duration")
+  T.ok(not Zone("Durotar"):find("m", 1, true), "no minute that would fall behind: " .. Zone("Durotar"))
+  dt = Click(12)
+  T.eq(Zone("Durotar"), "10h 23m", "a level done: to the minute")
+  -- the Server card without the sync's level part: the total less the level's start, live
+  dt = Click(20)
+  local sync = ns.Tracker.GetSync()
+  sync.levelValid, sync.levelPlayed = false, nil
+  lb.srvStart = sync.total + (GetTime() - sync.g) - 50000
+  lb.srvStartEst = nil
+  ns.Window.Refresh()
+  dt = Detail()
+  local function Server() return Stats.LevelServer(ns.char, 20, sync, GetTime()) end
+  T.near(Server(), 50000, 1, "the fixture: 13h 53m by the server's start of the level")
+  T.eq(Text(dt.cards.server.value), Fmt.DurationFull(Server()), "at the rebuild")
+  Stub.Advance(600)
+  T.eq(Text(dt.cards.server.value), Fmt.DurationFull(Server()), "600 s later, without a rebuild")
+  T.ok(Server() >= 50590, "it grew")
+end)
+
+-- The Experience bar in the bar's colours: the theme's, the user's once chosen
+-- (widget.xpColor / restedColor), as the tooltip's XP row; a recolour repaints the shown
+-- sheet without a rebuild (LevelDetail.Recolor, Window's THEME_CHANGED "colors").
+T.test("detail: the Experience bar in the user's XP / rested colours, repainted at a recolour (no rebuild)", function()
+  local ns = Start({ theme = "futuriste" })
+  ns.Window.Show("levels")
+  local dt = Click(17)
+  local th = ns.Themes.Active()
+  NearColor(dt.xp.segs[1], th.colors.xp, "mobs: the theme's XP colour")
+  NearColor(dt.xp.segs[3], th.colors.rested, "rested: the theme's rested colour")
+  local n = 0
+  local build = ns.LevelChart.Build
+  ns.LevelChart.Build = function(...) n = n + 1 return build(...) end
+  ns.Core.SetSetting("widget.xpColor", { 0.1, 0.9, 0.1 })
+  ns.Core.SetSetting("widget.restedColor", { 0.9, 0.5, 0.1 })
+  NearColor(dt.xp.segs[1], { 0.1, 0.9, 0.1 }, "mobs: the user's XP colour")
+  NearColor(dt.xp.segs[2], Gauge(ns).city, "quests: the gauge city colour")
+  NearColor(dt.xp.segs[3], { 0.9, 0.5, 0.1 }, "rested: the user's rested colour")
+  T.eq(n, 0, "no rebuild")
+  ns.LevelChart.Build = build
+  dt = Click(16)
+  NearColor(dt.xp.segs[1], { 0.1, 0.9, 0.1 }, "another sheet: the user's colour")
+  ns.Core.SetSetting("widget.xpColor", false)
+  ns.Core.SetSetting("widget.restedColor", false)
+  NearColor(dt.xp.segs[1], th.colors.xp, "back to the theme's")
+  NearColor(dt.xp.segs[3], th.colors.rested, "rested: back to the theme's")
+  T.eq(#Stub.errors, 0)
 end)

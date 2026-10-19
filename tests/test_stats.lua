@@ -687,6 +687,45 @@ T.test("LevelHistory: order, flags, server time and gaps", function()
   T.eq(#out, 2)
 end)
 
+-- The level's server /played of the tooltip's "This level (server /played)" line: the
+-- rule of the level in progress's row (LevelHistory: the detail sheet's "Server /played").
+T.test("LevelServer: the sync's level part, else the server total less the level's start; nil without", function()
+  local _, Stats = Load()
+  local char = HistoryChar()
+  local sync = { valid = true, total = 50500, g = 0, level = 10, levelValid = true, levelPlayed = 500 }
+  local out = {}
+  local function Row(now)
+    Stats.LevelHistory(char, 0, sync, now, out)
+    return out[1].server, out[1].serverEst and true or false
+  end
+  -- live: the level part projected to now, never filtered (every mask: the same time)
+  T.eq({ Stats.LevelServer(char, 10, sync, 10) }, { 510, false })
+  T.eq({ Stats.LevelServer(char, 10, sync, 10) }, { Row(10) }, "the row's server time")
+  T.eq(select(2, Stats.LevelTime(char, 10, 7, sync, 10)), 510, "(LevelTime's base: the same)")
+  -- the level part not valid (a level-up race): the server total less srvStart
+  sync.levelValid = false
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { 540, false })
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { Row(40) }, "the row's again")
+  -- an estimated server mark: shown with "~"
+  char.levels[10].srvStartEst = true
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { 540, true })
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { Row(40) }, "the row's mark too")
+  char.levels[10].srvStartEst = nil
+  -- below 0 (a server start after the total): nothing
+  char.levels[10].srvStart = 60000
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { nil, false })
+  char.levels[10].srvStart = nil
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { nil, false }, "no server start: nothing")
+  -- no sync, or one not valid: nothing
+  char.levels[10].srvStart = 50000
+  T.eq({ Stats.LevelServer(char, 10, nil, 40) }, { nil, false })
+  sync.valid = false
+  T.eq({ Stats.LevelServer(char, 10, sync, 40) }, { nil, false })
+  -- no record of that level
+  T.eq({ Stats.LevelServer(char, 42, sync, 40) }, { nil, false })
+  T.eq({ Stats.LevelServer(nil, 10, sync, 40) }, { nil, false })
+end)
+
 T.test("LevelHistory: estF is the rebuilt part of the time shown (mask, at most filtered)", function()
   local _, Stats = Load()
   local char = { level = 10, zones = {}, levels = {
@@ -884,6 +923,7 @@ T.test("non-alloc Stats functions allocate nothing", function()
     Stats.Breakdown(char.life, out)
     Stats.Played(char, m, sync, i)
     Stats.LevelTime(char, 10, m, sync, i)
+    Stats.LevelServer(char, 10, sync, i)
     Stats.SessionTime(session, m)
     Stats.AvgPerLevel(char, m, sync, i)
     Stats.RecentAvg(char, m, 5)

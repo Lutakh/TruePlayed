@@ -945,6 +945,17 @@ targets:
     (`OnBlock1Hide`: resets the minimum width and hides bar 1), set once;
   - bar 2 (block 2, `TruePlayedCharTooltip`): the same kind of frame, child of block 2
     (it hides with it), frame level block 2's + 2, scale 1 (its parent's);
+  - bar 3 (block 1's XP row, request of 17/10/2026): the same kind of frame as bar 1 (of
+    `UIParent`, block 1's level and scale), passed to block 1's fill as `xbar` (4.4) and
+    placed on the line `Fill` returns as `xrow`, like bar 1 on its breakdown line; hidden
+    with bar 1 (`OnBlock1Hide`, `Detach`, `THEME_CHANGED`) and when a fill has no XP row
+    (`xrow` 0). While both show, bars 1 and 3 start at one edge, `BAR_GAP` right of the
+    longer of their two labels (the anchor offset of the shorter label's bar grows by the
+    difference), and end at the same right text edge: one width, as the frames' gauges
+    (review of 17/10/2026: each from its own label, "Level XP" being shorter than "Level
+    breakdown", the XP bar started 24 to 54 px further left). Its minimum width widens
+    block 1 like bar 1's (the larger need of the two). It is never the row the pair lines
+    up: the breakdown bars still face each other;
   - the minimum width: a bar narrower than `CLASSIC_GAUGE.min` (80 px) by more than half
     a pixel (the client's sizes are fractional: no second pass for float noise) widens
     its block to `b.need` (the block's width less the bar's plus the minimum, learned at
@@ -1032,7 +1043,7 @@ configuration) and `.b` (right).
   (Futuriste, written out as rgba; `test_tooltip_theme` checks they match): the native
   themes defined none. To be confirmed by the author (colours, `min`, `h`, outline).
 
-### 4.4 `Tooltip.Fill(tt, detailed, hint, pal, part, bar) -> more, row`
+### 4.4 `Tooltip.Fill(tt, detailed, hint, pal, part, bar, xbar) -> more, row, xrow`
 - `pal` defaults to `Themes.CLASSIC_TT`.
 - `ShowFor` passes `Themes.Active().tt.colors`. For native this is `CLASSIC_TT` itself.
 - `part` (optional) picks what is filled:
@@ -1051,6 +1062,9 @@ configuration) and `.b` (right).
   2's); Broker, `/tpl`, the offline tools and the private frames never do. One bar a
   fill: the fill's first breakdown on a GameTooltip takes it (see "Breakdown rows and
   gauge" below), and the bar is dropped at the end of the fill (no reference kept).
+- `xbar` (optional): the bar of the level's XP row (`TF.Bar(3)`), passed by `Redraw` to
+  block 1's native fill only; taken by the XP row (see "The level's XP row" below) and
+  dropped at the end of the fill like `bar`.
 - Returns false when the character has no data (the `NO_DATA` note in parts 0 and 1; then
   no block 2 is shown), else true; then `row`, the line number (`NumLines()` right after
   it was added) of the fill's first breakdown row, 0 when it has none. On a TP target
@@ -1058,7 +1072,8 @@ configuration) and `.b` (right).
   given a `bar`, the label's own line; on another GameTooltip, the line of the label and
   the first parts. The dimmed line of a breakdown without any part (no tracked time) is
   not one. `ShowFor` lines up the two blocks' breakdown rows with it (4.1); Broker
-  ignores it.
+  ignores it. Third value, `xrow`: the line number of the XP row's label line when the
+  fill gave its `xbar` to it, else 0 (`PlaceBars` places bar 3 there).
 - The two breakdown labels: `L.TT_BREAKDOWN_LEVEL` ("Level breakdown", FR "Répartition du
   niveau") for the level in progress, `L.TT_BREAKDOWN_TOTAL` ("Total breakdown", FR
   "Répartition totale") for the whole character, in every fill (both blocks, part 0,
@@ -1163,8 +1178,29 @@ configuration) and `.b` (right).
     `cont` rows, as before.
   - Two breakdowns at most: the level in progress (both views), then the whole character
     (Shift, in its section): one per block of the pair, both in a part 0 fill.
-    `TP_Gauge` returns false past `MAX_GAUGES` (2) in one frame, and the label gets a
-    text row of its own.
+    `TP_Gauge` returns false past `MAX_GAUGES` (3: block 1's XP row and breakdown, and
+    the character's breakdown of a part 0 fill) in one frame, and the label gets a text
+    row of its own.
+- The level's XP row (`FillXPRow`, request of 17/10/2026): in the "current level"
+  section, after the zone line and its `"block"` separator, right above the level's
+  breakdown, never at the max level: under `L.TT_XP_LEVEL` ("Level XP") the shares of the
+  level's XP from monsters, quests and other and the rested bonus (`lb.xa`, `xq`, `xr`,
+  the detail sheet's Experience split, `L.LD_XP_*` part labels, `BD_PART_FMT`), in that
+  fixed order, those that round to 0 % left out: all on one line on a TP target when
+  that `cont` row fits the frame at its widest (`TP_Fits`, 4.5: the theme's maximum
+  width, which the frame never passes; review of 17/10/2026: a row less), else
+  `XP_PER_LINE` (2) a line: three parts do not fit es, pt, ru with the real fonts, and a
+  GameTooltip, which has no maximum, would grow some 80 px for them (Classic, Broker:
+  always two a line). Nothing when the three are 0. Laid out as a breakdown: on a TP
+  target a gauge row (`TP_Gauge`, segment keys `xp`, `city`, `rested`) then `cont` rows;
+  on a GameTooltip given `xbar` the label alone on a `pair` line (right text a space) and
+  the parts on `cont` rows; on any other GameTooltip (Broker) the label and the first
+  parts, then `cont` rows. It never sets `row` (the pair still lines up the breakdowns). Colours
+  (`SegColor`, 4.5): `xp` and `rested` the bar's, i.e. the user's (`widget.xpColor` /
+  `widget.restedColor`) once chosen, else the active theme's `th.colors` (else
+  `C.COLORS.accent` / `restedFill`), `city` the gauge's own (the theme's
+  `tt.gauge.colors`, `CLASSIC_GAUGE` for the native bars), as the detail sheet's
+  Experience bar (whose copies follow a recolour: `LevelDetail.Recolor`).
   - The width tests (`test_locales`, `test_round4_regress`) check in every locale and
     theme that no breakdown row is cut and that a label does not touch its gauge.
   - `Tooltip.BreakdownFracs(bd, fracs, keys) -> n` (new, reused output tables) follows the
@@ -1194,21 +1230,31 @@ configuration) and `.b` (right).
   - `TP_RowY(i)`: the offset (px, down from the frame's top) of the centre of row `i` as
     the last `Show` laid it out (its y plus half its height), nil when that row is not
     shown. Tooltip.lua lines up the breakdown rows of the two blocks side by side with
-    it. It reads the row's layout cache: no layout, no region, no table.
+    it. It reads the row's layout cache: no layout, no region, no table;
+  - `TP_Fits(text)`: whether a `cont` row of right text `text` (a blank label, the text
+    in the value font) fits the frame at its widest (`width[2]` less the padding, the
+    blank label and the gap); Tooltip.lua puts the level's XP parts on one row when it
+    does. Measured in a hidden FontString of the frame, created at the first call (its
+    fonts set at the first call after a theme change), only when the text changed: a
+    steady refresh does no FontString work, no table.
 - Rows are pooled, per frame: `{ left = FS, right = FS, leader = Texture }`. Pools only grow. Separators
-  and gauge segments (8 maximum per gauge, 2 gauges) are pooled too. No region is ever created by a show whose
+  and gauge segments (8 maximum per gauge, `MAX_GAUGES` 3 gauges) are pooled too. No region is ever created by a show whose
   rows and separators fit the pools.
 - Gauge segments: one local pair, `PlaceSegs(ga, parent, g, x0, y, w)` and
   `HideSegs(ga)`, places the segments of the frames' gauges and of the native bars
   alike: the parts largest first, 0 % parts absent, `MAX_SEGS` (8) at most, in a box
   `w` x `g.h` px at (`x0`, `y`) from `parent`'s top left; the width less the `g.gap`
   gaps split by cumulative rounding (the widths add up exactly); colours from
-  `g.colors`; a segment created at its first need, anchored or recoloured only when its
-  place or colour key changed.
+  `g.colors`, else (`SegColor`) the XP row's `xp` / `rested` keys: the user's colours of
+  the bar (`widget.xpColor` / `widget.restedColor`), else the active theme's
+  `th.colors`; a segment created at its first need, anchored or recoloured only when its
+  place or colour key changed (a theme change or recolour resets the keys of the bars;
+  the frames' are reset by the skin rebuild that `th.gen` triggers).
 - Breakdown bars of the native blocks (4.1; Tooltip.lua places them): module-level, not
   per frame (they belong to the GameTooltip blocks, not to frames 1 and 2):
-  - `TF.Bar(i, parent) -> b`: bar 1 (`i` 1, an anonymous frame of `UIParent`) or bar 2
-    (`i` 2, a child of `parent`, block 2's GameTooltip), created at the first call and
+  - `TF.Bar(i, parent) -> b`: bar 1 (`i` 1, an anonymous frame of `UIParent`), bar 2
+    (`i` 2, a child of `parent`, block 2's GameTooltip) or bar 3 (`i` 3, block 1's XP
+    row: a frame of `UIParent` like bar 1), created at the first call and
     never released; nil without `Themes.CLASSIC_GAUGE`. The frame is the bar: strata
     `TOOLTIP`, mouse off, hidden; a dark outline texture filling it (ARTWORK, sublevel
     1, `CLASSIC_GAUGE.outline`) and up to 8 pooled segments 1 px inside (sublevel 2).
@@ -1220,7 +1266,8 @@ configuration) and `.b` (right).
     segments placed by `PlaceSegs` in the `w - 2` px inside the outline. Change-only:
     no anchor, size, level, scale or segment call when nothing changed, no table;
   - `TF.HideBar(b)`: hides it (the segments stay placed, shown again as they were);
-  - test handles: `TF.bar` (bar 1) and `TF.bar2` (bar 2), nil until created; each
+  - test handles: `TF.bar` (bar 1), `TF.bar2` (bar 2) and `TF.bar3` (bar 3), nil until
+    created; each
     `{ fr, key, n, need, min, frame, outline, segs, segX, segW, segY, segK, segOn, on,
     rel, x, w, lvl, sc }` (`on`, `rel`, `x`, `w`, `lvl`, `sc`: what the frame was last
     shown, anchored, sized, levelled and scaled with).
@@ -1261,7 +1308,8 @@ configuration) and `.b` (right).
   (compare `th.gen`).
 - Test handles (on `TooltipFrame.frame` and `TooltipFrame.frame2`):
   - `tf.tp = { rows = <pool>, n = <rows used>, seps = <pool>, nSeps = <used>,
-    gauge = <segments of the first gauge>, gauges = { <segments of each gauge> },
+    gauge = <segments of the first gauge>, gauges = { <segments of each gauge, in row
+    order: block 1's XP row first when it shows> },
     icon = <texture>, panel = <id to texture or 9-array> }`;
   - each row is `{ kind = , left = , right = , leader = }`.
 
@@ -1294,6 +1342,16 @@ configuration) and `.b` (right).
     colour mixed 45 % toward white, "untracked" is `ui.dim`), and, for the sheet's XP
     split, of the theme's own `colors.xp` / `colors.rested` (never the user's overrides)
     and `C.COLORS.good` / `warn`. No table of a previous compiled theme is kept (P5);
+  - (part Z) the progress strip's two range pickers are backdrop buttons like the filter
+    pills: `ui.bg` 6 % toward `ui.value` with a `ui.border` edge (α 0.35), the edge in
+    `ui.accent` (α 0.9) while the range is not the default one, the number in `ui.value`,
+    the "»" between them in `ui.label`; a custom range's columns have a `ui.accent`
+    background (α 0.07) behind the bars and gridlines. Their menus are the game's
+    (MenuUtil, unthemed, as the bar's right-click menu); their hover tooltip (the themed
+    tooltip frame, its title row in the display font: `LV_RANGE_FROM` / `LV_RANGE_TO` are
+    `DISPLAY_KEYS`) sits 18 px below the picker, clear of the ornaments the themes draw
+    above and below their tooltip frame (up to 16 px above it: mage, priest; above the
+    picker, hunter's feather or heroic's shadow covered it);
   - `THEME_CHANGED "colors"` changes nothing there (the window does no work for it), and
     any `THEME_CHANGED` hides their one-shot tooltip: the themed `TooltipFrame` frame 1
     under a non-native theme, the `GameTooltip` under a native one (`LevelChart.TipBegin`);
@@ -1733,11 +1791,12 @@ the test.
       "WIN_TITLE", "GRAPH_TITLE_FMT", "GRAPH_WINDOW_30", "GRAPH_WINDOW_60",
       "GRAPH_WINDOW_300", "TT_SECTION_LEVEL", "TT_SECTION_CHAR", "TT_SECTION_REP",
       "REP_LABEL", "TT_SECTION_PVP", "PVP_LABEL", "LEVEL_SPAN_FMT", "LV_PVP_TIP_FMT",
-      "LD_PVP_TIP_FMT" }` (`TT_SECTION_*`: the titles of the tooltip's sections, drawn in the
-      title font; `REP_LABEL`, `PVP_LABEL`: the label before the points in the main mode;
-      `LEVEL_SPAN_FMT`, `LV_PVP_TIP_FMT`, `LD_PVP_TIP_FMT`: the titles of the Levels tab's
-      tooltips, drawn by the themed tooltip frame in the title font, which applies the
-      font's `subst` to every row).
+      "LD_PVP_TIP_FMT", "LV_RANGE_FROM", "LV_RANGE_TO" }` (`TT_SECTION_*`: the titles of the
+      tooltip's sections, drawn in the title font; `REP_LABEL`, `PVP_LABEL`: the label before
+      the points in the main mode; `LEVEL_SPAN_FMT`, `LV_PVP_TIP_FMT`, `LD_PVP_TIP_FMT`,
+      `LV_RANGE_FROM`, `LV_RANGE_TO`: the titles of the Levels tab's tooltips (a bar, the
+      PvP chip and row, the progress range's two pickers), drawn by the themed tooltip frame
+      in the title font, which applies the font's `subst` to every row).
   - FONTS `cyr` flags equal the real coverage.
   - Every font file and its `LICENSES/<Family>-OFL.txt` exist.
   - TGA rules of 6.2.

@@ -73,6 +73,59 @@ T.test("DurationKey equal iff Duration strings equal (0..200000 step 7)", functi
   end
 end)
 
+-- DurationFull: the minutes kept past 10 h (the measured durations of the statistics
+-- window and of the tooltip's level times); Duration's text below 10 h.
+local DURATIONS_FULL = {
+  { 0, "<1m", "< 1 min" },
+  { 59, "<1m", "< 1 min" },
+  { 60, "1m", "1 min" },
+  { 3599, "59m", "59 min" },
+  { 3600, "1h 00m", "1 h 00" },
+  { 35999, "9h 59m", "9 h 59" },
+  { 36000, "10h 00m", "10 h 00" },
+  { 37380, "10h 23m", "10 h 23" },
+  { 43199, "11h 59m", "11 h 59" },
+  { 86399, "23h 59m", "23 h 59" },
+  { 86400, "1d 00h 00m", "1 j 00 h 00" },
+  { 155100, "1d 19h 05m", "1 j 19 h 05" },
+  { 125 * 86400 + 86399, "125d 23h 59m", "125 j 23 h 59" },
+  { -5, "<1m", "< 1 min" },
+}
+
+T.test("DurationFull enUS / frFR: the minutes past 10 h and from a day up", function()
+  for _, loc in ipairs({ { "enUS", 2 }, { "frFR", 3 } }) do
+    local Fmt = Load(loc[1]).Fmt
+    for _, c in ipairs(DURATIONS_FULL) do
+      T.eq(Fmt.DurationFull(c[1]), c[loc[2]], loc[1] .. " DurationFull(" .. c[1] .. ")")
+    end
+    for s = 0, 35999, 61 do
+      T.eq(Fmt.DurationFull(s), Fmt.Duration(s), loc[1] .. ": Duration's text below 10 h (" .. s .. ")")
+    end
+    T.eq(Fmt.DurationFull(nil), Fmt.DurationFull(0), "nil")
+    T.eq(Fmt.DurationFull(0 / 0), Fmt.DurationFull(0), "NaN")
+  end
+end)
+
+T.test("DurationFullKey equal iff DurationFull strings equal (0..400000 step 7)", function()
+  local Fmt = Load("enUS").Fmt
+  local byKey, byText = {}, {}
+  for s = 0, 400000, 7 do
+    local key, text = Fmt.DurationFullKey(s), Fmt.DurationFull(s)
+    T.eq(type(key), "number")
+    if byKey[key] ~= nil and byKey[key] ~= text then
+      error("key " .. key .. " maps to '" .. byKey[key] .. "' and '" .. text .. "'")
+    end
+    if byText[text] ~= nil and byText[text] ~= key then
+      error("text '" .. text .. "' has keys " .. byText[text] .. " and " .. key)
+    end
+    byKey[key], byText[text] = text, key
+  end
+  -- the key changes each minute, at any length (Duration's: each hour past 10 h)
+  T.ok(Fmt.DurationFullKey(37380) ~= Fmt.DurationFullKey(37320), "10h 23m / 10h 22m")
+  T.eq(Fmt.DurationKey(37380), Fmt.DurationKey(37320), "(Duration: both 10h)")
+  T.eq(Fmt.DurationFullKey(37380), Fmt.DurationFullKey(37439), "same minute")
+end)
+
 T.test("DurationLong", function()
   local Fmt = Load("enUS").Fmt
   T.eq(Fmt.DurationLong(3 * 86400 + 4 * 3600 + 12 * 60), "3d 4h 12m")
@@ -317,6 +370,7 @@ local function everyOutput(Fmt)
   local out = {}
   for _, x in ipairs(ODD) do
     out[#out + 1] = Fmt.Duration(x)
+    out[#out + 1] = Fmt.DurationFull(x)
     out[#out + 1] = Fmt.DurationLong(x)
     out[#out + 1] = Fmt.ETA(x)
     out[#out + 1] = Fmt.Number(x)
@@ -333,6 +387,7 @@ local function everyOutput(Fmt)
     out[#out + 1] = Fmt.Ago(x)
     out[#out + 1] = Fmt.LevelProgress(x, x / 1000)
     T.eq(type(Fmt.DurationKey(x)), "number")
+    T.eq(type(Fmt.DurationFullKey(x)), "number")
     T.eq(type(Fmt.ETAKey(x)), "number")
     T.eq(type(Fmt.ShortKey(x)), "number")
   end

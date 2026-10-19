@@ -516,6 +516,22 @@ local function Exercise(ns)
       Stub.RunScript(ch.filters[1].btn, "OnClick", "LeftButton")
       Stub.RunScript(ch.toggle, "OnClick", "LeftButton")
       Stub.RunScript(ch.toggle, "OnClick", "LeftButton")
+      -- the progress strip's range pickers: hovered, clicked (their menu's every entry, or
+      -- without MenuUtil a step each way), then back to the default range
+      for i = 1, 2 do
+        local pk = ch.strip.picks[i]
+        Stub.RunScript(pk, "OnEnter")
+        Stub.RunScript(pk, "OnLeave")
+        local menus = Stub.ui and Stub.ui.menus or 0
+        Stub.RunScript(pk, "OnClick", "LeftButton")
+        if Stub.ui and Stub.ui.menus > menus then
+          ClickAll(Stub.ui.lastMenu)
+        else
+          Stub.RunScript(pk, "OnClick", "RightButton")
+        end
+      end
+      ch.state.char.lvRange = nil
+      ns.Window.Refresh()
       Stub.RunScript(ch.chips[4].frame, "OnEnter")
       Stub.RunScript(ch.chips[4].frame, "OnLeave")
       local k = math.min(ch.state.level, ch.state.nCols)     -- at max level: the last bar

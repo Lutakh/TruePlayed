@@ -144,18 +144,20 @@ records every played second, knows what you were doing, and lets you decide what
   refreshes latency only about every 30 seconds, so the graph draws it as steps.
 - **Tooltip** on the bar, in two tooltips with their own titles. On hover, **Current
   level** alone: level progress, rested XP, time to level, mobs to kill, XP per hour,
-  the followed reputation (when a faction is followed), session, time at this level, time
-  in the current zone at this level and the breakdown of this level's time ("Level
-  breakdown"), largest part first (world, dungeons, raids, PvP, flight, professions,
-  dead, AFK, inn, city; only what you did). Hold **Shift** for
+  the followed reputation (when a faction is followed), session, time at this level (and,
+  while you exclude something, the level's server /played with nothing left out), time
+  in the current zone at this level, the level's XP by source ("Level XP": monsters,
+  quests and other, rested bonus, with its bar) and the breakdown of this level's time
+  ("Level breakdown"), largest part first (world, dungeons, raids, PvP, flight,
+  professions, dead, AFK, inn, city; only what you did). Hold **Shift** for
   the rate details and a **second tooltip, Character total**, **beside the first, on its
   right**: played, instance time, your whole time in the current zone, server /played,
   the average of your last 5 levels, the character's breakdown ("Total breakdown"), then
   your top 3 zones, continents, top capitals, inn / city / dungeon / raid / PvP times
   with their AFK part, professions, deaths with the time spent dead, FPS and latency.
-  Each breakdown has its label with a coloured bar of its parts beside it, and the parts
-  written out under it, right-aligned (in every theme but Heroic fantasy, which has no
-  bar). The two breakdowns face each other at the same height, so you can compare the
+  Each breakdown, and the level's XP, has its label with a coloured bar of its parts
+  beside it, and the parts written out under it, right-aligned (in every theme but Heroic
+  fantasy, which has no bar). The two breakdowns face each other at the same height, so you can compare the
   level with the whole character at a glance; each tooltip keeps its own width, and the
   hint line is at the bottom of Character total. Current level stays centred on the bar
   (under it, or above it for a bar at the bottom of the screen); the two move together
@@ -164,7 +166,8 @@ records every played second, knows what you were doing, and lets you decide what
   Current level instead, both as wide as the wider one, Current level on top. In the
   Classic theme both are game tooltips (a tooltip addon that restyles only the game's own
   tooltip may leave the second one in the default look); each breakdown bar goes from its
-  label to the tooltip's right edge, and a tooltip too narrow for an 80 px bar is widened
+  label to the tooltip's right edge (the level's XP bar starts and ends with the level
+  breakdown's), and a tooltip too narrow for an 80 px bar is widened
   a little (the game's tooltip gets its own width back for whatever you hover next). The
   level history, the overall averages and the account totals are in the statistics
   window.
@@ -538,12 +541,20 @@ it should still take; the faint bars after it are the levels still to play, esti
 from your pace over your last 5 levels and the XP of each level ("Hide upcoming levels"
 removes them). A small stub marks a level reached before TruePlayed was installed, and
 the line across the chart is your average over the completed levels. Hover a bar for a
-summary; click it for the level's detail sheet on the right: "Completed on" is the date
-you reached 20, "Total since level 1" the time from level 1 to that moment (your whole
-/played up to that level-up, the time before TruePlayed included), then its time
-breakdown, its XP and its zones and instances. The strip under the chart adds up the
-levels completed, the one in progress and the estimate of what is left to the max level.
-The figures with a `~` are estimates. The account view of the tab is a table: for each
+summary (it ends with the time from level 1 to the end of that level; for an upcoming
+level, its estimate with a `~`); click it for the level's detail sheet on the right:
+"Completed on" is the date you reached 20, "Total since level 1" the time from level 1
+to that moment ("level 1 » 20": your whole /played up to that level-up, the time before
+TruePlayed included; for the level in progress, "level 1 » 20, in progress": up to
+now), then its time breakdown, its XP and its zones and instances. The strip under the
+chart adds up the levels completed, the one in progress and the estimate of what is left
+to the max level. The two level boxes in its title ("Progress: level 1 » 60") choose
+another range, saved for each character, e.g. 10 » 20: the strip then counts the levels
+from 10 until you reach 20 (a range already behind you shows complete, "level 20
+reached"; a range still ahead shows its estimated time), and the chart's background
+marks those levels; "Default: level 1 » 60" at the top of their menu brings the strip
+back. A range over levels reached before you installed TruePlayed has no time for them
+(`...`, its share of the XP only). The figures with a `~` are estimates. The account view of the tab is a table: for each
 level, the characters that completed it, their average time and XP per hour.
 
 **What is "Estimated at start" in a level's detail sheet?**
@@ -964,12 +975,20 @@ actuel. Les filtres (Tout, Monde, Instances, JcJ, Vol, Métiers,
 Mort) ne gardent qu'une activité, pour voir à quels niveaux elle a compté. Les niveaux à
 venir apparaissent en barres estompées de leur durée estimée d'après votre rythme sur
 vos derniers niveaux (« Masquer les niveaux à venir » les retire), une ligne marque
-votre moyenne, et la bande « Progression vers le niveau 60 » en bas additionne les
-niveaux terminés, celui en cours et ce qu'il reste. Survolez une barre pour son résumé ;
+votre moyenne, et la bande « Progression : niveau 1 » 60 » en bas additionne les
+niveaux terminés, celui en cours et ce qu'il reste. Ses deux cases de niveau choisissent
+une autre plage, gardée pour chaque personnage, par exemple 10 » 20 : la bande compte
+alors les niveaux de 10 jusqu'à atteindre le 20 (une plage déjà derrière vous est
+complète, « niveau 20 atteint » ; une plage encore devant, son temps estimé), et le fond
+du graphique marque ces niveaux ; « Par défaut : niveau 1 » 60 », en haut de leur menu,
+remet la bande d'origine. Une plage sur des niveaux atteints avant l'installation de
+TruePlayed n'a pas de temps pour eux (`...`, seulement sa part de l'XP). Survolez une barre pour son résumé (jusqu'au cumul depuis le
+niveau 1 à la fin de ce niveau ; pour un niveau à venir, son estimation avec un `~`) ;
 **cliquez dessus** pour la fiche du niveau, à droite : la date où il a été terminé, le
 temps joué, le /played serveur, le temps estimé à son début (et l'écart réel, sous les
 exclusions de l'estimation), le cumul
-depuis le niveau 1, l'XP par heure, les morts, la répartition du temps (survolez la
+depuis le niveau 1 (« niveau 1 » 20 » : jusqu'au passage au 20 ; « niveau 1 » 20, en
+cours » pour le niveau en cours : jusqu'à maintenant), l'XP par heure, les morts, la répartition du temps (survolez la
 ligne JcJ pour chaque champ de bataille et le JcJ sauvage ; le vol est toujours
 indiqué), l'XP gagnée sur les monstres, les quêtes et le bonus de repos, et ses zones et
 instances. La barre du niveau en cours, les chiffres et la répartition de sa fiche
@@ -980,14 +999,17 @@ temps moyen et leur XP par heure.
 
 **Infobulle** : survolez la barre (ou le bouton de la minicarte, le mini-affichage) pour
 l'infobulle « Niveau en cours » : XP, repos, temps avant le niveau, monstres à tuer, XP
-par heure, réputation suivie (quand une faction est suivie), session, temps à ce niveau,
-temps dans la zone à ce niveau et répartition de ce niveau (« Répartition du niveau »).
+par heure, réputation suivie (quand une faction est suivie), session, temps à ce niveau
+(et, quand vous excluez quelque chose, le /played serveur du niveau, sans rien d'exclu),
+temps dans la zone à ce niveau, l'XP du niveau par source (« XP du niveau » : monstres,
+quêtes et autres, bonus de repos, avec sa barre) et répartition de ce niveau
+(« Répartition du niveau »).
 Maintenez **Maj** : le détail du rythme s'y
 ajoute, et une **deuxième infobulle, « Total du personnage »**, s'ouvre **à côté, à
 droite** : temps de jeu, temps en instance, tout votre temps dans la zone, /played du
 serveur, moyenne des 5 derniers niveaux, répartition du personnage (« Répartition
-totale »), puis zones, continents, capitales, temps et morts. Chaque répartition a son
-libellé, avec à sa droite une barre colorée de ses parts, et les parts écrites en
+totale »), puis zones, continents, capitales, temps et morts. Chaque répartition, et l'XP
+du niveau, a son libellé, avec à sa droite une barre colorée de ses parts, et les parts écrites en
 dessous, alignées à droite (dans tous les thèmes sauf Heroic fantasy, qui n'a pas de
 barre). Les deux répartitions sont face à face, à la même hauteur, pour comparer d'un
 coup d'œil le niveau et tout le personnage ; chaque infobulle garde sa largeur, et la
@@ -999,7 +1021,8 @@ déplacent ensemble pour rester dans l'écran, sans jamais se chevaucher. Sur un
 large, « Niveau en cours » en haut. Avec le thème Classique, ce sont deux infobulles du
 jeu (un addon qui ne retouche que l'infobulle du jeu peut laisser la deuxième à l'aspect
 d'origine) ; chaque barre de répartition va de son libellé jusqu'au bord droit de
-l'infobulle, et une infobulle trop étroite pour une barre de 80 pixels s'élargit un peu
+l'infobulle (la barre de l'XP du niveau commence et finit avec celle de la répartition du
+niveau), et une infobulle trop étroite pour une barre de 80 pixels s'élargit un peu
 (l'infobulle du jeu reprend sa largeur pour ce que vous survolez ensuite). L'infobulle
 d'un affichage Data Broker reste une seule infobulle, avec les mêmes libellés, en texte
 seul (chaque libellé et ses premières parts sur une ligne, sans barre).
