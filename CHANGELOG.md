@@ -7,6 +7,19 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-19
+
+No new file in this version: a `/reload` after updating is enough.
+
+### In short
+
+- **Minutes past 10 hours** in the statistics window: "10h 23m", "1d 19h 05m".
+- **The level's server /played** in the bar's tooltip, right under "This level", while you
+  leave out AFK, inn or city time.
+- **The level's XP by source** in the bar's tooltip: monsters, quests, rested bonus.
+- **Total since level 1** when you hover a level in the Levels tab.
+- **Your own progress range** in the Levels tab: "Progress: level 1 » 10", 10 » 20...
+
 ### Added
 
 - **Choose the range of the Levels tab's progress strip**: the strip under the chart now
