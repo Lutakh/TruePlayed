@@ -7,6 +7,8 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-13
+
 No new file in this version: a `/reload` after updating is enough.
 
 ### In short
