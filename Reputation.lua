@@ -237,7 +237,7 @@ end
 
 local function NewEma()
   local e = {}
-  for m = 1, 8 do e[m] = { a = 0, d = 0 } end
+  for m = 1, C.MASK_COUNT do e[m] = { a = 0, d = 0 } end
   return e
 end
 
@@ -273,13 +273,13 @@ local function Gain(r, d)
   local e = r.e
   local n = r.n
   if type(n) == "number" and n > STALL then
-    for m = 1, 8 do
+    for m = 1, C.MASK_COUNT do
       local x = e[m]
       if x.a < d then x.a, x.d = 0, 0 end
     end
   end
   r.n = 0
-  for m = 1, 8 do
+  for m = 1, C.MASK_COUNT do
     local x = e[m]
     x.a = x.a + d
   end
@@ -297,7 +297,7 @@ local function Measure(fid, abs)
   if r.f ~= fid then
     -- another faction (or the first one): a new base, the rate starts over
     r.f, r.v, r.n = fid, abs, 0
-    for m = 1, 8 do
+    for m = 1, C.MASK_COUNT do
       local x = r.e[m]
       x.a, x.d = 0, 0
     end
@@ -321,7 +321,7 @@ local function Decay(e, dt, k)
   if type(tau) ~= "number" or tau < 60 then tau = 3600 end
   local f = math_exp(-dt / tau)
   local g = tau * (1 - f)
-  for m = 0, 7 do
+  for m = 0, C.MASK_COUNT - 1 do
     if INCLUDED[m][k] then
       local x = e[m + 1]
       x.a = x.a * f

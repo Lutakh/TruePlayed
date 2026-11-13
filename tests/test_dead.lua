@@ -77,7 +77,7 @@ T.test("dead: found on the tick without any event; a resurrection without event 
   T.ok(ns.char.life.s.x >= 20 and ns.char.life.s.x <= 21, "20 s (+ the tick boundary): " .. ns.char.life.s.x)
 end)
 
-T.test("dead: wins over AFK, city, inn, instances and professions; never excluded", function()
+T.test("dead: wins over AFK, city, inn, instances and professions; never excluded by AFK, inn or city", function()
   local ns = Login()
   Stub.SetAFK(true)
   Stub.Die()
@@ -95,7 +95,7 @@ T.test("dead: wins over AFK, city, inn, instances and professions; never exclude
   ns.Core.SetSetting("exclude.afk", true)
   ns.Core.SetSetting("exclude.inn", true)
   ns.Core.SetSetting("exclude.city", true)
-  T.no((ns.Tracker.IsPaused()), "dead time is never paused")
+  T.no((ns.Tracker.IsPaused()), "dead time is not paused by AFK, inn or city (its own option: test_exclusions)")
   Stub.Advance(40)
   Stub.SetInstance(false)
   Stub.SetMap(1454)
@@ -103,7 +103,7 @@ T.test("dead: wins over AFK, city, inn, instances and professions; never exclude
   T.eq(State(ns), "C", "alive: the AFK key of the capital")
   local ch = ns.char
   T.eq(ch.life.s.x, 40)
-  T.eq(ns.Stats.Sum(ch.life, 7) - (ch.life.s.u or 0), 40, "counted under every exclusion")
+  T.eq(ns.Stats.Sum(ch.life, 7) - (ch.life.s.u or 0), 40, "counted under the AFK, inn and city exclusions")
   T.eq(ch.levels[10].z[90001].s.x, 40, "the dungeon's bucket keeps its dead time")
   T.eq(ns.Stats.InstanceTime(ch.life, 0), 0, "dead time is not dungeon time")
 end)

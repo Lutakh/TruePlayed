@@ -264,7 +264,8 @@ T.test("rep rate: persisted in char.rep, a new base after a reload, repaired, re
   Core.RepairChar(rec)
   T.eq(rec.rep.id, 529)
   T.eq(rec.rep.e.junk, nil, "stray keys of e dropped")
-  T.eq(#rec.rep.e, 8)
+  T.eq(#rec.rep.e, ns2.C.MASK_COUNT, "an older list of 8 widened")
+  T.eq(rec.rep.e[ns2.C.MASK_COUNT], { a = 1, d = 2 }, "a new mask seeded from its mask without professions and dead")
   rec = { rep = 5 }
   Core.RepairChar(rec)
   T.eq(rec.rep, nil)

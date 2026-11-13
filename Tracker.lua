@@ -326,7 +326,7 @@ local function DecayEma(dt, k)
   local tau = GetTau()
   local f = math_exp(-dt / tau)
   local g = tau * (1 - f)
-  for m = 0, 7 do
+  for m = 0, C.MASK_COUNT - 1 do
     if INCLUDED[m][k] then
       local e = ema[m + 1]
       if e then
@@ -497,7 +497,7 @@ end
 local function RestartEmptyEma(char, gain)
   local ema = char.ema
   if type(ema) ~= "table" then return end
-  for m = 1, 8 do
+  for m = 1, C.MASK_COUNT do
     local e = ema[m]
     if e and e.a + e.r + e.q < gain then e.a, e.r, e.q, e.d = 0, 0, 0, 0 end
   end
@@ -1085,7 +1085,7 @@ end
 -- Level-start estimate (lot 8, A3): levels[L].eta = the time to the next level shown
 -- when the level began (seconds: the rest-aware Stats.ETA under the exclusions of that
 -- moment, status "ok" or "estimate"), levels[L].etaP = the XP fraction at that moment,
--- levels[L].etaM = the exclusion mask it was taken under (0..7: the sheet's "more / less
+-- levels[L].etaM = the exclusion mask it was taken under (0 .. C.MASK_COUNT - 1: the sheet's "more / less
 -- than estimated" compares it only under that mask).
 -- Taken once, at the first tick with a rate while the level is at most
 -- C.ETA_START_FRAC done (right after a level-up; a level whose rate came later); the
@@ -1127,12 +1127,12 @@ end
 ---------------------------------------------------------------------------
 
 -- Feeds a chunk of time (seconds per state key) carrying a, r, q XP into the
--- 8 EMAs of char (crash gaps, replay after a late SV swap).
+-- C.MASK_COUNT EMAs of char (crash gaps, replay after a late SV swap).
 function Tracker.FeedChunk(char, secondsByKey, a, r, q)
   if ns.readOnly or type(char) ~= "table" or type(char.ema) ~= "table" then return end
   a, r, q = a or 0, r or 0, q or 0
   local tau = GetTau()
-  for m = 0, 7 do
+  for m = 0, C.MASK_COUNT - 1 do
     local e = char.ema[m + 1]
     if e then
       local inc = INCLUDED[m]
@@ -1918,7 +1918,7 @@ local function WriteXP(lOld, lNew, gOld, gain, a, r, q, withMid)
   -- all XP goes to the numerator of every mask (5.9 step 6)
   local ema = char.ema
   if ema then
-    for m = 1, 8 do
+    for m = 1, C.MASK_COUNT do
       local e = ema[m]
       if e then
         e.a = e.a + a
@@ -2806,12 +2806,15 @@ function Tracker.GetState()
   return seg.key, seg.zone, seg.level
 end
 
--- paused, reason: the current state is excluded by mask
+-- paused, reason: the current state is excluded by mask; reason "dead", "prof", "afk",
+-- "inn" or "city" (a state key belongs to one exclusion only: x dead, f professions)
 function Tracker.IsPaused(mask)
   if mask == nil then mask = ns.GetMask and ns.GetMask() or 0 end
   local row = INCLUDED[mask]
   local k = seg.key
   if not row or row[k] ~= false then return false, nil end
+  if C.IS_DEAD[k] then return true, "dead" end
+  if C.IS_PROF[k] then return true, "prof" end
   if mask % 2 == 1 and C.IS_AFK[k] then return true, "afk" end
   if math_floor(mask / 2) % 2 == 1 and C.IS_INN[k] then return true, "inn" end
   return true, "city"

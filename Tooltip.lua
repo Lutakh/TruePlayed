@@ -228,6 +228,8 @@ end
 local function PauseLabel(reason)
   if reason == "inn" then return L.PAUSE_INN end
   if reason == "city" then return L.PAUSE_CITY end
+  if reason == "prof" then return L.PAUSE_PROF end
+  if reason == "dead" then return L.PAUSE_DEAD end
   return L.PAUSE_AFK
 end
 
@@ -791,7 +793,7 @@ local function FillBody(tt, detailed, hint, part)
   local Stats = ns.Stats
   local ctx = ns.Tokens.ctx
   local mask = ctx.mask
-  local excl = Stats.MaskLabel(mask)
+  local excl = Stats.MaskLabel(mask, C.MASK_LABEL_TT)
   local char = ns.char
 
   if part ~= 2 then
@@ -1032,7 +1034,7 @@ function Tooltip.FillRep(tt, pal)
   Tokens.UpdateContext(GetTime())
   local ctx = Tokens.ctx
   local mask = ctx.mask
-  local excl = ns.Stats.MaskLabel(mask)
+  local excl = ns.Stats.MaskLabel(mask, C.MASK_LABEL_TT)
   if excl then
     Double(tt, "title", L.ADDON_TITLE, format(L.TT_EXCL_FMT, excl), P.title, P.mode)
   else
@@ -1233,7 +1235,7 @@ function Tooltip.FillPvp(tt, pal)
   Tokens.UpdateContext(GetTime())
   local ctx = Tokens.ctx
   local mask = ctx.mask
-  local excl = ns.Stats.MaskLabel(mask)
+  local excl = ns.Stats.MaskLabel(mask, C.MASK_LABEL_TT)
   if excl then
     Double(tt, "title", L.ADDON_TITLE, format(L.TT_EXCL_FMT, excl), P.title, P.mode)
   else

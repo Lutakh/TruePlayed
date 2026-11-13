@@ -651,9 +651,10 @@ T.test("pvp record: kept across a reload (new bases), repaired, reset with every
   for i = 1, 8 do rec.pvp.ke[i] = { a = 1, d = 2 } end
   rec.pvp.ke.junk = 1
   Core.RepairChar(rec)
-  T.eq(rec.pvp, { g = 12, hk = 4, ke = { { a = 1, d = 2 }, { a = 1, d = 2 }, { a = 1, d = 2 }, { a = 1, d = 2 },
-                                         { a = 1, d = 2 }, { a = 1, d = 2 }, { a = 1, d = 2 }, { a = 1, d = 2 } },
-                  s = { t = 5, r = 3 }, wp = {} }, "every bad field dropped; the world PvP pending map recreated")
+  local ke = {}                           -- the list of 8 widened to every mask (Core.WidenEma)
+  for i = 1, ns2.C.MASK_COUNT do ke[i] = { a = 1, d = 2 } end
+  T.eq(rec.pvp, { g = 12, hk = 4, ke = ke, s = { t = 5, r = 3 }, wp = {} },
+    "every bad field dropped; the world PvP pending map recreated")
   rec = { pvp = { s = { h = 1 }, b = { at = 5, h = 2, r = 1, d = 300, i = 30 } } }
   Core.RepairChar(rec)
   T.eq(rec.pvp, { b = { at = 5, h = 2, r = 1, d = 300, i = 30 }, wp = {} }, "a session without its t dropped")

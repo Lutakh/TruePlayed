@@ -758,7 +758,7 @@ local function FillCards(level, ctx, y)
   local Stats = ns.Stats
   -- Played
   local d = Fmt.DurationFull(t)
-  local label = Stats.MaskLabel(S.mask)
+  local label = Stats.MaskLabel(S.mask, C.MASK_LABEL_CARD)
   Card(1, L.LV_PLAYED, S.approx and (APPROX .. d) or d, label and format(L.TT_EXCL_FMT, label) or L.LV_SERVER_SUB)
   S.kTime = Fmt.DurationFullKey(t)
   -- Server /played
@@ -1348,11 +1348,12 @@ function LevelDetail.Live(char, mask, sync, now)
       Text(cards[3].sub, format(L.LD_LEFT_FMT, Fmt.Duration(left)))
     end
   end
-  -- a death and the dead time (segOut: the level's parts just read)
+  -- a death and the dead time (all of it, excluded or not: row.dead of the full build)
   local levels = char.levels
   local lb = type(levels) == "table" and levels[level] or nil
   local deaths = type(lb) == "table" and math_floor(Num(lb.d)) or 0
-  local dead = Num(segOut.dead)
+  local ls = type(lb) == "table" and lb.s or nil
+  local dead = Num(type(ls) == "table" and ls.x or 0)
   if deaths ~= S.kDeaths or DashKey(dead) ~= S.kDead then DeathsCard(deaths, dead) end
 end
 

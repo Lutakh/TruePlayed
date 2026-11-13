@@ -7,7 +7,8 @@ local ADDON, ns = ...
 -- Precedence: dead > AFK > professions > flight > instance > city > inn > world.
 --  * Dead: from PLAYER_DEAD (UnitIsDeadOrGhost("player")) until the resurrection, the
 --    ghost run included (not world time). AFK while dead is dead; a hunter's Feign
---    Death is not. Dead time is never excluded (no option).
+--    Death is not. Dead time is excluded by its own option only (exclude.dead), never
+--    as AFK time.
 --  * Professions (a heuristic, see README), when the player is not AFK:
 --    1. casting or channelling a profession spell: Herb Gathering, Mining, Skinning,
 --       Fishing (channel), First Aid (bandage channel), Disenchant, Pick Lock. Spells are

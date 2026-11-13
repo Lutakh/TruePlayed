@@ -208,11 +208,23 @@ C.LANGUAGES_NATIVE_ONLY = { ruRU = true, koKR = true, zhCN = true, zhTW = true }
 -- state keys. Lowercase = active, uppercase = AFK. d / r / p (dungeon or scenario,
 -- raid, battleground or arena) apply only inside an instance, where inn and city
 -- never apply; w is the open world (and instances of an unknown type).
--- Activity keys (Activity.lua), one key each, never excluded by a mask: x = dead or a
--- ghost, f = professions (gathering, crafting, fishing, first aid...). Precedence of the
--- state of a second: dead > AFK > professions > flight > instance > city > inn > world
--- (AFK while dead is dead; AFK while crafting is the AFK key of the place).
+-- Activity keys (Activity.lua), one key each: x = dead or a ghost, f = professions
+-- (gathering, crafting, fishing, first aid...); excluded by their own mask bits only
+-- (MASK_DEAD, MASK_PROF), never by the AFK, inn or city ones. Precedence of the state of
+-- a second: dead > AFK > professions > flight > instance > city > inn > world (AFK while
+-- dead is dead; AFK while crafting is the AFK key of the place).
+-- Exclusion mask (ns.GetMask, settings exclude.*): one bit per exclusion. The masks of
+-- the versions before 1.4.0 (AFK, inn, city: 0..7) keep their values; every mask has its
+-- own rate EMA (C.MASK_COUNT of them, index = mask + 1: char.ema, char.rep.e,
+-- char.pvp.he / ke), the older lists of C.MASK_OLD_COUNT are widened by Core.RepairChar.
 C.MASK_AFK, C.MASK_INN, C.MASK_CITY = 1, 2, 4
+C.MASK_PROF, C.MASK_DEAD = 8, 16
+C.MASK_COUNT     = 32                       -- masks 0 .. MASK_COUNT - 1
+C.MASK_OLD_COUNT = 8                        -- AFK, inn and city only (before 1.4.0)
+-- Most exclusions named in a mask label (Stats.MaskLabel) where room is short, the others
+-- counted ("AFK · inn +2", Stats.MaskLabel): the tooltips' title and Played rows, the statistics window's
+-- header, the Played card of a level's detail sheet.
+C.MASK_LABEL_TT, C.MASK_LABEL_WIN, C.MASK_LABEL_CARD = 3, 4, 2
 C.STATE_KEYS   = { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "x", "f", "u" }
 C.TRACKED_KEYS = { "w", "W", "d", "D", "r", "R", "p", "P", "i", "I", "c", "C", "t", "T", "x", "f" }   -- fixed order, used for largest-remainder splits
 C.DEAD_KEYS    = { "x" }
@@ -230,6 +242,8 @@ C.INSTANCE_KEYS = { "d", "D", "r", "R", "p", "P" }
 C.IS_AFK  = { W = true, D = true, R = true, P = true, I = true, C = true, T = true }
 C.IS_INN  = { i = true, I = true }
 C.IS_CITY = { c = true, C = true }
+C.IS_PROF = { f = true }
+C.IS_DEAD = { x = true }
 C.IS_INSTANCE = { d = "d", D = "d", r = "r", R = "r", p = "p", P = "p" }   -- key -> instance kind
 C.INSTANCE_KIND = {                         -- IsInInstance() instanceType -> place
   party = "d", scenario = "d", raid = "r", pvp = "p", arena = "p",
@@ -243,11 +257,13 @@ C.KEY = {                                   -- C.KEY[place][isAfk] -> state key 
   c = { [false] = "c", [true] = "C" },
   t = { [false] = "t", [true] = "T" },
 }
-C.INCLUDED = {}                             -- C.INCLUDED[m][k] for m = 0..7, built at file load:
-for m = 0, 7 do
+C.INCLUDED = {}                             -- C.INCLUDED[m][k] for every mask m, built at file load:
+for m = 0, C.MASK_COUNT - 1 do
   local afk  = m % 2 == 1
   local inn  = math.floor(m / 2) % 2 == 1
   local city = math.floor(m / 4) % 2 == 1
+  local prof = math.floor(m / 8) % 2 == 1
+  local dead = math.floor(m / 16) % 2 == 1
   local row = {}
   for _, k in ipairs(C.STATE_KEYS) do
     local inc = true
@@ -255,6 +271,8 @@ for m = 0, 7 do
       if afk and C.IS_AFK[k] then inc = false end
       if inn and C.IS_INN[k] then inc = false end
       if city and C.IS_CITY[k] then inc = false end
+      if prof and C.IS_PROF[k] then inc = false end
+      if dead and C.IS_DEAD[k] then inc = false end
     end
     row[k] = inc
   end
@@ -315,7 +333,7 @@ C.CC = {                                    -- chat/FontString colour prefixes (
 C.LEGACY_BG_ALPHA = 0.85
 
 C.DEFAULTS = {                              -- account-wide settings (requirement B)
-  exclude = { afk = false, inn = false, city = false },
+  exclude = { afk = false, inn = false, city = false, prof = false, dead = false },
   widget = {
     shown = true,
     locked = false,                         -- unlocked on first run to place the bar
@@ -733,6 +751,7 @@ local function RecomputeMask()
     return
   end
   mask = (ex.afk == true and C.MASK_AFK or 0) + (ex.inn == true and C.MASK_INN or 0) + (ex.city == true and C.MASK_CITY or 0)
+    + (ex.prof == true and C.MASK_PROF or 0) + (ex.dead == true and C.MASK_DEAD or 0)
 end
 
 function ns.GetMask()
@@ -764,11 +783,33 @@ function Core.NewZone()
   return { s = {}, xp = 0 }
 end
 
--- 8 entries, index = mask + 1.
+-- C.MASK_COUNT entries, index = mask + 1.
 function Core.NewEma()
   local e = {}
-  for i = 1, 8 do e[i] = { a = 0, r = 0, q = 0, d = 0 } end
+  for i = 1, C.MASK_COUNT do e[i] = { a = 0, r = 0, q = 0, d = 0 } end
   return e
+end
+
+-- An EMA list saved before the professions and dead exclusions (1.4.0: C.MASK_OLD_COUNT
+-- entries) gets each missing mask seeded with a copy of `fields` of the mask without
+-- those bits (index (i - 1) % C.MASK_OLD_COUNT + 1): the same rate, dead and professions
+-- time still in it, which time then makes up. A source that is not a table seeds nothing
+-- (the caller's checks then apply). Load only (allocates).
+function Core.WidenEma(e, fields)
+  if type(e) ~= "table" then return end
+  for i = C.MASK_OLD_COUNT + 1, C.MASK_COUNT do
+    if e[i] == nil then
+      local src = e[(i - 1) % C.MASK_OLD_COUNT + 1]
+      if type(src) == "table" then
+        local x = {}
+        for j = 1, #fields do
+          local f = fields[j]
+          x[f] = src[f]
+        end
+        e[i] = x
+      end
+    end
+  end
 end
 
 function Core.NewSession()
@@ -840,6 +881,7 @@ local ZONE_FIELDS    = { "xp" }
 local SESSION_FIELDS = { "xp", "d" }
 local LEVEL_OPTIONAL = { "est", "max", "t0", "t1", "srvStart", "srvEnd", "eta", "etaP", "etaM" }
 local EMA_FIELDS     = { "a", "r", "q", "d" }
+local REP_EMA_FIELDS = { "a", "d" }          -- char.rep.e, char.pvp.he / ke
 local CHAR_TABLES    = { "base", "srv", "xpSnap", "cur", "last" }
 
 -- Seconds maps: drop every value that is not a number (NaN included), and a negative
@@ -975,8 +1017,9 @@ local function RepairKillRing(char)
 end
 
 -- char.rep = { id, f, v, e, n, s, t } (Reputation.lua): the faction chosen in the options,
--- the faction measured, its last absolute standing, the rate's EMAs (8 x { a, d }), the
--- counted seconds without a gain, the gain of the session t0 = t. Optional, small.
+-- the faction measured, its last absolute standing, the rate's EMAs (C.MASK_COUNT x
+-- { a, d }; an older list of 8 is widened, Core.WidenEma), the counted seconds without a
+-- gain, the gain of the session t0 = t. Optional, small.
 local function RepairRep(char)
   local r = char.rep
   if r == nil then return end
@@ -992,7 +1035,8 @@ local function RepairRep(char)
   if e ~= nil then
     local ok = type(e) == "table"
     if ok then
-      for i = 1, 8 do
+      Core.WidenEma(e, REP_EMA_FIELDS)
+      for i = 1, C.MASK_COUNT do
         local x = e[i]
         if type(x) ~= "table" or not IsNum(x.a) or x.a < 0 or not IsNum(x.d) or x.d < 0 then
           ok = false
@@ -1004,7 +1048,7 @@ local function RepairRep(char)
       r.e = nil                                 -- recreated at the next read, rate from zero
     else
       for k in pairs(e) do
-        if type(k) ~= "number" or k < 1 or k > 8 or k % 1 ~= 0 then e[k] = nil end
+        if type(k) ~= "number" or k < 1 or k > C.MASK_COUNT or k % 1 ~= 0 then e[k] = nil end
       end
     end
   end
@@ -1033,7 +1077,8 @@ local function RepairLvRange(char)
 end
 
 -- char.pvp (Pvp.lua): h / k the last honor quantity and rank season total read (the bases
--- of the gains), he / ke their EMAs (8 x { a, d }), g the time() of the last PvP gain, c
+-- of the gains), he / ke their EMAs (C.MASK_COUNT x { a, d }; an older list of 8 is
+-- widened, Core.WidenEma), g the time() of the last PvP gain, c
 -- the time() the honor reached its cap (a the cap alert shown for it), hk the last lifetime
 -- honorable kills read, s the session's counters (t its t0, h honor and r rank points
 -- gained, k the lifetime kills at its start, d today's kills at its start, w / l wins and
@@ -1071,7 +1116,8 @@ local function RepairPvp(char)
     if e ~= nil then
       local ok = type(e) == "table"
       if ok then
-        for i = 1, 8 do
+        Core.WidenEma(e, REP_EMA_FIELDS)
+        for i = 1, C.MASK_COUNT do
           local x = e[i]
           if type(x) ~= "table" or not Num0(x.a) or not Num0(x.d) then
             ok = false
@@ -1083,7 +1129,7 @@ local function RepairPvp(char)
         p[f] = nil
       else
         for k in pairs(e) do
-          if type(k) ~= "number" or k < 1 or k > 8 or k % 1 ~= 0 then e[k] = nil end
+          if type(k) ~= "number" or k < 1 or k > C.MASK_COUNT or k % 1 ~= 0 then e[k] = nil end
         end
       end
     end
@@ -1108,6 +1154,8 @@ local function RepairPvp(char)
   end
 end
 
+-- char.ema: C.MASK_COUNT x { a, r, q, d }; an older list of 8 is widened (Core.WidenEma),
+-- a missing or bad entry restarts from zero.
 local function RepairEma(char)
   local ema = char.ema
   if type(ema) ~= "table" then
@@ -1115,9 +1163,10 @@ local function RepairEma(char)
     return
   end
   for k in pairs(ema) do
-    if type(k) ~= "number" or k < 1 or k > 8 or k % 1 ~= 0 then ema[k] = nil end
+    if type(k) ~= "number" or k < 1 or k > C.MASK_COUNT or k % 1 ~= 0 then ema[k] = nil end
   end
-  for i = 1, 8 do
+  Core.WidenEma(ema, EMA_FIELDS)
+  for i = 1, C.MASK_COUNT do
     local e = ema[i]
     if type(e) ~= "table" then
       ema[i] = { a = 0, r = 0, q = 0, d = 0 }
@@ -1287,10 +1336,10 @@ function Core.RepairChar(char)
         end
         -- eta: estimated time to the next level when the level began (s, > 0); etaP: the
         -- XP fraction at that moment (0..1); etaM: the exclusion mask it was taken under
-        -- (a whole 0..7). All optional (Tracker.CaptureLevelEta).
+        -- (a whole 0 .. C.MASK_COUNT - 1). All optional (Tracker.CaptureLevelEta).
         if lb.eta ~= nil and lb.eta <= 0 then lb.eta = nil end
         if lb.etaP ~= nil and (lb.etaP < 0 or lb.etaP > 1) then lb.etaP = nil end
-        if lb.etaM ~= nil and (lb.etaM < 0 or lb.etaM > 7 or lb.etaM % 1 ~= 0) then lb.etaM = nil end
+        if lb.etaM ~= nil and (lb.etaM < 0 or lb.etaM >= C.MASK_COUNT or lb.etaM % 1 ~= 0) then lb.etaM = nil end
       end
     end
   end
@@ -1397,6 +1446,8 @@ end
 DefineSetting("exclude.afk", "bool", { mask = true })
 DefineSetting("exclude.inn", "bool", { mask = true })
 DefineSetting("exclude.city", "bool", { mask = true })
+DefineSetting("exclude.prof", "bool", { mask = true })
+DefineSetting("exclude.dead", "bool", { mask = true })
 DefineSetting("widget.shown", "bool")
 DefineSetting("widget.locked", "bool")
 DefineSetting("widget.combatHide", "bool")

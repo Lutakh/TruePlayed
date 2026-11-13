@@ -2166,3 +2166,50 @@ T.test("chart: a time left with no known part reads '...', never '<1m' or '<1m+'
   T.eq(Text(ch.strip.fs3), format(L.LV_LEFT_FMT, L.DOTS))
   T.eq(Text(ch.strip.share), "")
 end)
+
+-- 1.4.0: the professions and dead exclusions. The bars follow the exclusions (no dead or
+-- professions part once excluded); the Dead and Professions filters then read "excluded in
+-- the options"; the Deaths chip and the sheet's deaths card keep the whole dead time.
+T.test("chart: dead / professions excluded: bars without them, their filters say so, the dead time kept", function()
+  local ns = Start()
+  ns.Window.Show("levels")
+  local L, Fmt, C = ns.L, ns.Fmt, ns.C
+  local ch = Chart()
+  T.eq({ ch.cols[10].val[8], ch.cols[12].val[7] }, { 240, 400 }, "dead at 10, professions at 12")
+  local h10 = ch.cols[10].sumAll
+  ns.Core.SetSetting("exclude.dead", true)
+  ch = Chart()
+  local st = ch.state
+  T.eq(st.mask, C.MASK_DEAD, "built again under the new mask")
+  for k = 1, st.nCols do T.eq(ch.cols[k].val[8], 0, "no dead part, level " .. k) end
+  T.eq(ch.cols[10].sumAll, h10 - 240, "level 10 lower by its dead time")
+  T.eq(ch.cols[12].val[7], 400, "professions still counted")
+  local x = ns.char.life.s.x
+  T.ok(x and x > 0)
+  T.eq({ Text(ch.chips[6].value), Text(ch.chips[6].sub) },
+    { "6", format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(x)) }, "the Deaths chip: the whole dead time")
+  -- the Dead filter: nothing to draw, the summary says why
+  ch.filters[7].btn:Click("LeftButton")
+  T.eq(st.filter, 7)
+  T.eq(Text(ch.title), L.LV_T_DEAD)
+  T.eq(Text(ch.summary), L.LV_SUM_EXCLUDED)
+  -- the Professions filter while professions count, then excluded (the filter is kept)
+  ch.filters[6].btn:Click("LeftButton")
+  T.eq(Text(ch.summary), format(L.LV_SUM_FILTER_FMT, Fmt.DurationFull(400 * 3), 3))
+  ns.Core.SetSetting("exclude.prof", true)
+  ch = Chart()
+  T.eq(ch.state.filter, 6)
+  T.eq(Text(ch.summary), L.LV_SUM_EXCLUDED)
+  ch.filters[1].btn:Click("LeftButton")
+  T.ok(Text(ch.summary) ~= L.LV_SUM_EXCLUDED, "All: the usual summary")
+  -- the sheet of level 10: its Deaths card keeps the dead time (built and live)
+  ch.cols[10].hit:Click("LeftButton")
+  local dt = Detail()
+  T.eq(dt.level, 10)
+  T.eq(Text(dt.cards.deaths.sub), format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(240)))
+  ch.cols[20].hit:Click("LeftButton")
+  Stub.Die(); Stub.Advance(70); Stub.Resurrect(false); Stub.Advance(30)
+  local lx = ns.char.levels[20].s.x
+  T.ok(lx and lx >= 70, "dead at the current level: " .. tostring(lx))
+  T.eq(Text(Detail().cards.deaths.sub), format(L.LV_DEAD_SUB_FMT, Fmt.DurationFull(lx)), "live")
+end)

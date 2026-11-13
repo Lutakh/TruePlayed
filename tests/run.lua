@@ -219,6 +219,8 @@ local FILES = {
   "test_world_pvp", "test_levels_data",
   -- the Levels tab rework: the histogram and the detail sheet (LevelChart, LevelDetail)
   "test_level_chart", "test_level_detail",
+  -- the professions and dead exclusions (1.4.0)
+  "test_exclusions",
 }
 
 local passed, failed, skipped = 0, 0, 0

@@ -205,7 +205,7 @@ T.test("prof: precedence (dead > AFK > professions > flight > city > inn > world
   Stub.CloseTradeSkill()
   Stub.Advance(1)
   T.eq(State(ns), "c")
-  for m = 0, 7 do T.eq(ns.C.INCLUDED[m].f, true, "never excluded, mask " .. m) end
+  for m = 0, 7 do T.eq(ns.C.INCLUDED[m].f, true, "never excluded by AFK, inn or city, mask " .. m) end
   -- 20 s, plus the second of take-off (the speed is read on the tick)
   T.eq(ns.char.zones[1454].s.f, 21, "the capital's bucket holds its professions time")
   T.eq(ns.char.zones[1454].s.c, 1, "city time only once the window is closed (the last second)")

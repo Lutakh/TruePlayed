@@ -3,9 +3,41 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
-## À vérifier en premier (nouveau) : les minutes au-delà de 10 h, le /played serveur du niveau, l'XP par source, le cumul depuis le niveau 1, la plage de progression
+## Vérifié le 13/11/2026 (1.4.0) : exclure le temps aux métiers et le temps passé mort
 
 Cette mise à jour n'ajoute aucun fichier : après l'avoir recopiée, un `/reload` suffit.
+
+- [ ] **Les vitesses gardées** : juste après le `/reload`, notez l'XP/h et le temps avant
+  le niveau suivant de la barre. Ils sont les mêmes qu'avant la mise à jour.
+- [ ] **Les deux nouvelles cases** : options (Échap > Options > AddOns > TruePlayed),
+  section Exclusions, sous « Exclure le temps en ville » : « Exclure le temps aux
+  métiers » et « Exclure le temps passé mort (fantôme compris) ». Les mêmes dans le menu du clic
+  droit sur la barre.
+- [ ] **Le chat** : `/tpl prof` coche ou décoche la première (« Exclure le temps aux
+  métiers : ON / OFF »), `/tpl dead on` et `/tpl dead off` la seconde ; `/tpl help`
+  montre « /tpl afk | inn | city | prof | dead ».
+- [ ] **Temps passé mort exclu** : cochez-la, mourez (un saut d'une falaise suffit), restez mort
+  une minute puis revenez au corps. Pendant ce temps, l'infobulle de la barre dit
+  « Chrono en pause : temps passé mort exclu » et les temps (session, ce niveau, total) ne
+  bougent pas ; ils repartent une fois en vie. Décochez : la minute revient dans les
+  totaux.
+- [ ] **Temps de métiers exclu** : cochez-la, ouvrez une fenêtre de métier sans bouger
+  (ou récoltez une plante) : « Chrono en pause : temps aux métiers exclu ». Mettez-vous
+  AFK (`/afk`) fenêtre ouverte : la pause dit « temps AFK » seulement si l'AFK est exclu.
+- [ ] **Le titre de l'infobulle** dit ce qui est exclu (« hors mort »). Cochez les 5
+  exclusions : « hors AFK · auberge +3 » dans l'infobulle, « Temps affichés hors AFK ·
+  auberge · ville +2 » en haut de la fenêtre de statistiques, « hors AFK +4 » sous
+  « Temps joué » dans la fiche d'un niveau : rien ne dépasse ni ne se chevauche.
+- [ ] **Onglet Niveaux, temps passé mort exclu** : les barres n'ont plus de part « Mort » ;
+  l'encadré « Morts » en haut garde le nombre de morts et tout le temps mort ; le filtre
+  « Mort » affiche « Exclu dans les options » à droite du titre, sans barre ; la fiche
+  d'un niveau garde son encadré « Morts » avec son temps mort. Même chose pour le filtre
+  « Métiers » avec le temps de métiers exclu.
+- [ ] **Fenêtre de statistiques, onglet Sessions** : la colonne Mort et la colonne Métiers
+  gardent leur temps quand il est exclu (leur bulle d'aide le dit), la colonne Durée ne
+  le compte plus.
+
+## Vérifié le 19/10/2026 (1.3.0) : les minutes au-delà de 10 h, le /played serveur du niveau, l'XP par source, le cumul depuis le niveau 1, la plage de progression
 
 ### Le cumul depuis le niveau 1 et la plage de progression (demandes du 17/10)
 

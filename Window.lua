@@ -135,7 +135,8 @@ local WIN_BACKDROP = {
 }
 local BTN_BACKDROP = { bgFile = C.TEX_WHITE, edgeFile = C.TEX_WHITE, edgeSize = 1 }
 
-local EXCLUDE_PATHS = { ["exclude.afk"] = true, ["exclude.inn"] = true, ["exclude.city"] = true }
+local EXCLUDE_PATHS = { ["exclude.afk"] = true, ["exclude.inn"] = true, ["exclude.city"] = true,
+                        ["exclude.prof"] = true, ["exclude.dead"] = true }
 local WINDOW_PATHS = { ["window.width"] = true, ["window.height"] = true, ["window.dateFmt"] = true,
                        ["window.clock"] = true }
 local BORDER_ALPHA = C.COLORS.border[4]
@@ -837,7 +838,7 @@ end
 local function UpdateHeader(char, mask)
   BuildViewList()
   viewFS:SetText(ViewLabel(char))
-  local excl = ns.Stats.MaskLabel(mask)
+  local excl = ns.Stats.MaskLabel(mask, C.MASK_LABEL_WIN)
   filterFS:SetText(excl and format(L.WIN_FILTER_FMT, excl) or "")
   if curTab == "levels" and char then hintFS:Show() else hintFS:Hide() end
   local multi = #viewList > 1

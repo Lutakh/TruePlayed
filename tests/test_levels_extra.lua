@@ -98,19 +98,19 @@ T.test("eta: the mask it was taken under is stored (etaM), in the history row; r
   local rows = Stats.LevelHistory(ch, ns.GetMask(), ns.Tracker.GetSync(), Stub.Now(), {})
   T.eq({ rows[1].level, rows[1].eta, rows[1].etaM }, { 11, lb.eta, 1 }, "LevelHistory row")
   T.eq({ rows[2].level, rows[2].etaM }, { 10, 0 }, "the install level's, taken under mask 0")
-  -- repair: a whole 0..7 kept, anything else dropped (eta itself kept)
+  -- repair: a whole 0 .. C.MASK_COUNT - 1 kept, anything else dropped (eta itself kept)
   Stub.Reset()
   local guid = Stub.player.guid
   local function Lb(etaM) return { s = { w = 10 }, z = {}, xp = 0, d = 0, eta = 3600, etaP = 0, etaM = etaM } end
   ns = Login({ schema = 1, chars = { [guid] = {
     guid = guid, level = 12, life = { s = { w = 50 } },
-    levels = { [1] = Lb(0), [2] = Lb(7), [3] = Lb(3), [4] = Lb(-1), [5] = Lb(8), [6] = Lb(2.5), [7] = Lb("1"),
+    levels = { [1] = Lb(0), [2] = Lb(7), [3] = Lb(31), [4] = Lb(-1), [5] = Lb(32), [6] = Lb(2.5), [7] = Lb("1"),
                [8] = Lb(0 / 0), [9] = Lb(1 / 0), [10] = Lb(nil) },
     zones = {}, sessions = {},
   } } })
   local lv, got = ns.char.levels, {}
   for l = 1, 10 do got[l] = lv[l].etaM == nil and "-" or lv[l].etaM end
-  T.eq(got, { 0, 7, 3, "-", "-", "-", "-", "-", "-", "-" }, "etaM repaired")
+  T.eq(got, { 0, 7, 31, "-", "-", "-", "-", "-", "-", "-" }, "etaM repaired")
   T.eq(lv[5].eta, 3600, "the estimate kept without its mask")
   -- a late SavedVariables swap: this load's estimate keeps its mask
   Stub.Reset()

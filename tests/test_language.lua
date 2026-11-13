@@ -733,7 +733,7 @@ T.test("options: the language dropdown, its note and the reload button (modern c
   T.eq(rec.label:GetText(), "Language (Langue)")
   -- in Display, after "Hide at max level"; the theme constraints hold
   T.eq(rec.index, controls["widget.hideAtMax"].index + 1, "right after Hide at max level")
-  T.eq(controls.theme.index, controls["exclude.city"].index + 1, "theme still first in Display")
+  T.eq(controls.theme.index, controls["exclude.dead"].index + 1, "theme still first in Display")
   T.eq(controls["widget.shown"].index, controls.theme.index + 1)
   T.ok(rec.index < controls["widget.textColor"].index, "before the Texts section")
   -- one radio per C.LANGUAGES value, each in its own language

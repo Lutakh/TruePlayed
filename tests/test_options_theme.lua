@@ -92,7 +92,9 @@ T.test("options: the theme dropdown is the first Display control, in C.THEME_CHO
   T.eq(rec.label:GetText(), L.OPT_THEME)
   -- first control after the Display header: right after the exclusion checkboxes,
   -- right before "Show the bar"
-  T.eq(rec.index, controls["exclude.city"].index + 1, "first control after the exclusions")
+  T.eq(controls["exclude.prof"].index, controls["exclude.city"].index + 1, "professions after city")
+  T.eq(controls["exclude.dead"].index, controls["exclude.prof"].index + 1, "then dead")
+  T.eq(rec.index, controls["exclude.dead"].index + 1, "first control after the exclusions")
   T.eq(controls["widget.shown"].index, rec.index + 1, "then the existing Display controls")
   -- the two notes sit between the dropdown and "Show the bar"
   local yTheme, yShown = TopY(rec.widget), TopY(controls["widget.shown"].widget)

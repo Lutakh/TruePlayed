@@ -319,7 +319,7 @@ end
 
 local function NewEma()
   local e = {}
-  for m = 1, 8 do e[m] = { a = 0, d = 0 } end
+  for m = 1, C.MASK_COUNT do e[m] = { a = 0, d = 0 } end
   return e
 end
 
@@ -380,7 +380,7 @@ end
 
 local function Gain(p, which, d)
   local e = (which == "h") and p.he or p.ke
-  for m = 1, 8 do
+  for m = 1, C.MASK_COUNT do
     local x = e[m]
     x.a = x.a + d
   end
@@ -419,7 +419,7 @@ end
 
 -- Decays the EMA of every mask that includes state k by factor f (and g counted seconds).
 local function Decay(e, k, f, g)
-  for m = 0, 7 do
+  for m = 0, C.MASK_COUNT - 1 do
     if INCLUDED[m][k] then
       local x = e[m + 1]
       if type(x) == "table" then

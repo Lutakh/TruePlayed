@@ -113,10 +113,11 @@ records every played second, knows what you were doing, and lets you decide what
   included) and **professions time** (gathering, fishing, first aid, crafting,
   disenchanting, lockpicking), recorded apart from the places, per level, session, zone,
   character and account. See [Dead and professions time](#dead-and-professions-time).
-- **Exclude AFK, inn or city time** in one click. Exclusions are only a display filter:
-  nothing is deleted, every number is recalculated instantly, and switching an exclusion
-  off gives you the original numbers back. While your current state is excluded, the
-  timers show pause marks and the tooltip says so.
+- **Exclude AFK, inn, city, professions or dead time** in one click. Exclusions are only
+  a display filter: nothing is deleted, every number is recalculated instantly, and
+  switching an exclusion off gives you the original numbers back. While your current state
+  is excluded, the timers show pause marks and the tooltip says so ("Timer paused: time
+  dead excluded").
 - **Customisable XP bar**: pick three infos among 28 (time to level, time to level + mobs
   to kill, mobs to kill, XP per hour, % of level per hour, XP to go, rested XP, time this
   level, session, total, server /played, AFK this session, average per level, time in
@@ -320,7 +321,8 @@ battleground or a dungeon stays AFK.
 
 - **Dead**: from the moment you die until you are alive again, the ghost run included
   (it is not world time). AFK while dead is dead; a hunter's Feign Death is not. Dead time
-  is never excluded. Each level keeps its deaths and its time dead.
+  is excluded only by its own option ("Exclude time dead or as a ghost", `/tpl dead`),
+  never as AFK time. Each level keeps its deaths and its time dead.
 - **Professions**: TruePlayed has no way to ask the game "is the player doing a
   profession?", so it uses a heuristic:
   - casting or channelling a profession spell: Herb Gathering, Mining, Skinning, Fishing,
@@ -335,7 +337,14 @@ battleground or a dungeon stays AFK.
     window was closed ("Create all").
 
   Crafting in a capital counts as professions, not city. AFK wins: crafting while flagged
-  AFK is AFK time. Professions time is never excluded.
+  AFK is AFK time. Professions time is excluded only by its own option ("Exclude
+  profession time", `/tpl prof`).
+
+  Once excluded, dead or professions time leaves the totals, the level times, the rates
+  per hour, the estimates and the Levels tab's bars (its Dead or Professions filter then
+  reads "Excluded in the options"). The Deaths figure and the sheet's Deaths card, the
+  Dead and Professions columns and the tooltip's breakdown keep showing it, like the AFK
+  column.
 
   Limits: crafting done by an addon without the game's windows, a gathering spell that
   is not in the list above (opening a chest is not a profession), and a fishing cast that
@@ -468,6 +477,8 @@ choose **Lock**.
 | `/tpl afk [on\|off]` | Exclude AFK time (no argument: toggle) |
 | `/tpl inn [on\|off]` | Exclude inn / rest area time (no argument: toggle) |
 | `/tpl city [on\|off]` | Exclude city time (no argument: toggle) |
+| `/tpl prof [on\|off]` | Exclude profession time (no argument: toggle) |
+| `/tpl dead [on\|off]` | Exclude time dead or as a ghost (no argument: toggle) |
 | `/tpl citytoggle` | Count the current zone as a city, or stop counting it |
 | `/tpl played` | Summary in the chat (no server request) |
 | `/tpl sync` | Ask the server for a fresh /played |
@@ -481,7 +492,7 @@ choose **Lock**.
 
 **Why is my filtered time different from `/played`?**
 Without exclusion, TruePlayed shows exactly the server `/played`. With exclusions it shows
-the server `/played` minus the AFK, inn or city time it recorded.
+the server `/played` minus the AFK, inn, city, professions or dead time it recorded.
 
 **What about the time I played before installing TruePlayed?**
 It cannot be split: TruePlayed only knows the total. It is shown as "Before install /
@@ -561,8 +572,8 @@ level, the characters that completed it, their average time and XP per hour.
 The time to the next level TruePlayed showed when the level began (right after the
 level-up, or at the first XP per hour of the level while it was at most 5 % done; for
 the level you installed TruePlayed at, the first measured estimate). The line under it
-says how much more or less the level really took, when your exclusions (AFK, inn, city)
-are the ones the estimate was taken under (an estimate recorded by 1.1.0 is always
+says how much more or less the level really took, when your exclusions (AFK, inn, city,
+professions, dead) are the ones the estimate was taken under (an estimate recorded by 1.1.0 is always
 compared). Levels reached before 1.1.0, or begun
 without any XP per hour yet, have none. For the level in progress, once TruePlayed can
 estimate it, the sheet shows instead the level's estimate (its time so far plus what is
@@ -763,9 +774,9 @@ repos), le temps par
 niveau, par zone et en instance (« Instances les plus jouées » dans l'onglet Zones), les
 moyennes par niveau, le temps de session et le /played du serveur.
 
-Vous pouvez exclure le temps AFK, en auberge ou en ville à tout moment (clic droit sur
-la barre, options, ou `/tpl afk`, `/tpl inn`, `/tpl city`) : rien n'est effacé et tout
-est recalculé immédiatement. Après un plantage, le temps manquant est repris du /played
+Vous pouvez exclure le temps AFK, en auberge, en ville, aux métiers ou mort à tout
+moment (clic droit sur la barre, options, ou `/tpl afk`, `/tpl inn`, `/tpl city`,
+`/tpl prof`, `/tpl dead`) : rien n'est effacé et tout est recalculé immédiatement. Après un plantage, le temps manquant est repris du /played
 du serveur et réparti d'après vos habitudes récentes (vos derniers niveaux) ; la ligne
 « dont reconstitué après un plantage » suit vos exclusions, et une ligne grisée prévient
 quand plus de la moitié d'une répartition est reconstituée (« 62 % reconstitué après un
@@ -955,7 +966,13 @@ que le serveur redonne de l'XP.
 Le temps passé mort (de la mort jusqu'au retour à la vie, course du fantôme comprise)
 et le temps de métiers (cueillette, minage, dépeçage, pêche, secourisme, artisanat dans
 une fenêtre de métier, désenchantement, crochetage) sont comptés à part, par niveau,
-session, zone, personnage et compte, et ne sont jamais exclus. Ordre de priorité :
+session, zone, personnage et compte ; chacun ne s'exclut que par sa propre option
+(« Exclure le temps aux métiers », « Exclure le temps passé mort (fantôme compris) »), jamais
+comme du temps AFK. Une fois exclus, ils sortent des totaux, des temps par niveau, des
+vitesses, des estimations et des barres de l'onglet Niveaux (son filtre Mort ou Métiers
+affiche alors « Exclu dans les options ») ; le nombre de morts et le temps mort de la
+fiche, les colonnes Mort et Métiers et la répartition de l'infobulle les montrent
+toujours, comme la colonne AFK. Ordre de priorité :
 mort > AFK > métiers > vol > instance > ville > auberge > monde. L'AFK pendant un vol
 est enregistré comme AFK, mais un long vol passe souvent AFK tout seul et reste un vol :
 la ligne « En vol » de l'infobulle le compte, et le vol de l'onglet Niveaux (chiffre,

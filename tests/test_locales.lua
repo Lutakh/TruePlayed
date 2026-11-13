@@ -49,7 +49,7 @@ local SAME_OK = {
   TOKEN_FPS = true, PFX_SERVER_FMT = true, PFX_AFK_FMT = true, PFX_ZONE_FMT = true, PFX_INST_SESSION_FMT = true,
   PFX_PLAYED_FMT = true, PFX_INST_TOTAL_FMT = true, PFX_SESSION_FMT = true, XP_BARE_FMT = true, STALL_MARK = true,
   TT_XP = true, TT_RESTED_FMT = true, TT_SERVER_AGE_FMT = true, BD_PART_FMT = true, BD_PVP = true, BD_AFK = true,
-  MASK_AFK = true, TT_AFK = true, TT_NET_FMT = true, INST_ROW_FMT = true, KIND_PVP = true, COL_AFK = true,
+  MASK_AFK = true, MASK_MORE_FMT = true, TT_AFK = true, TT_NET_FMT = true, INST_ROW_FMT = true, KIND_PVP = true, COL_AFK = true,
   COL_XP = true, COL_XPH = true, COL_INST = true, COL_ZONE = true, COL_CHARS = true,
   GRAPH_WINDOW_30 = true, GRAPH_WINDOW_60 = true, GRAPH_WINDOW_300 = true, GRAPH_AGE_S_FMT = true,
   GRAPH_AGE_MS_FMT = true, SLIDER_PX_FMT = true, SLIDER_PCT_FMT = true, OPT_SLOT2 = true, OPT_SLOT3 = true,
@@ -870,7 +870,6 @@ T.test("widths: the widest XP rows fit every theme's widest tooltip with a margi
       { L.TT_KILLS, format(L.TT_KILLS_FMT, Fmt.Number(1234), Fmt.Number(12345), Fmt.Number(12345)) },
       { L.TT_NEXT_LEVEL, format(L.TT_WARMING_FMT, Fmt.Duration(ns.C.WARMUP_FULL)) },
       { L.TT_RESTED, format(L.TT_RESTED_FMT, Fmt.Number(123456), Fmt.Percent(1.5, 1)) },
-      { L.TT_PLAYED_EXCL_FMT:format(ns.Stats.MaskLabel(7)), Fmt.Duration(123 * 86400) },
       -- the level's times to the minute (12d 23h 59m), the server's estimated
       { L.TT_THIS_LEVEL, Fmt.DurationFull(12 * 86400 + 86399) },
       { L.TT_THIS_LEVEL_SERVER, ns.Tokens.Approx(Fmt.DurationFull(12 * 86400 + 86399)) },
@@ -882,6 +881,13 @@ T.test("widths: the widest XP rows fit every theme's widest tooltip with a margi
       format(L.BD_PART_FMT, L.LD_XP_RESTED, Fmt.Percent(0.34, 0)) }
     for a = 1, 2 do
       for b = a + 1, 3 do rows[#rows + 1] = { " ", xpParts[a] .. L.SEP .. xpParts[b] } end
+    end
+    -- the played total under every set of exclusions (their label within its budget)
+    local titles = {}
+    for m = 1, ns.C.MASK_COUNT - 1 do
+      local excl = ns.Stats.MaskLabel(m, ns.C.MASK_LABEL_TT)
+      rows[#rows + 1] = { L.TT_PLAYED_EXCL_FMT:format(excl), Fmt.Duration(123 * 86400) }
+      titles[#titles + 1] = format(L.TT_EXCL_FMT, excl)
     end
     for _, key in ipairs(KEYS) do
       if key ~= "actuel" then
@@ -895,6 +901,17 @@ T.test("widths: the widest XP rows fit every theme's widest tooltip with a margi
           if need + MARGIN > tt.width[2] then
             bad[#bad + 1] = format("%s %s: %q + %q needs %.0f + %d > %d", key, code, r[1], r[2], need, MARGIN,
               tt.width[2])
+          end
+        end
+        -- the title row with the exclusions (title font, the label in the body font, the icon)
+        local tf = tt.fonts.title or tt.fonts.body
+        local tp_, ts = ns.Themes.Font(tf[1], tf[2])
+        local icon = tt.icon
+        local iw = type(icon) == "table" and ((icon.w or 12) + (icon.gap or 6)) or 0
+        for _, t in ipairs(titles) do
+          local need = iw + Width(tp_, ts, L.ADDON_TITLE) + tt.gap + Width(bp, bs, t) + tt.pad[1] + tt.pad[2]
+          if need + MARGIN > tt.width[2] then
+            bad[#bad + 1] = format("%s %s: title + %q needs %.0f + %d > %d", key, code, t, need, MARGIN, tt.width[2])
           end
         end
       end
@@ -1127,6 +1144,8 @@ T.test("widths: the statistics window in every language and theme", function()
         ns.Core.SetSetting("exclude.afk", true)
         ns.Core.SetSetting("exclude.inn", true)
         ns.Core.SetSetting("exclude.city", true)
+        ns.Core.SetSetting("exclude.prof", true)
+        ns.Core.SetSetting("exclude.dead", true)
         local function Check(what, fs, limit, text)
           text = text or rawget(fs, "_text")
           if type(text) ~= "string" or text == "" then return end
@@ -1150,10 +1169,14 @@ T.test("widths: the statistics window in every language and theme", function()
             Check("footer 1", tp.footer1, 700 - 32)
             Check("footer 2", tp.footer2, 700 - 32)
             local title = FSWidth(Width, tp.title)
-            local filter = FSWidth(Width, tp.filter)
-            if title + 12 + filter > 700 - 14 - 32 then
-              bad[#bad + 1] = format("%s %s: title %q + filter %q %.0f > %d", key, code, tostring(rawget(tp.title, "_text")),
-                tostring(rawget(tp.filter, "_text")), title + 12 + filter, 700 - 46)
+            -- the filter under every set of exclusions (its label within its budget)
+            for m = 1, ns.C.MASK_COUNT - 1 do
+              local text = format(ns.L.WIN_FILTER_FMT, ns.Stats.MaskLabel(m, ns.C.MASK_LABEL_WIN))
+              local filter = FSWidth(Width, tp.filter, text)
+              if title + 12 + filter > 700 - 14 - 32 then
+                bad[#bad + 1] = format("%s %s: title %q + filter %q %.0f > %d", key, code,
+                  tostring(rawget(tp.title, "_text")), text, title + 12 + filter, 700 - 46)
+              end
             end
           end
         end
@@ -1361,8 +1384,10 @@ T.test("widths: the Levels chart (chips, filters, titles, axis, strip, detail, t
         for _, d in ipairs(D) do values[#values + 1] = d end          -- Estimated at start
         for _, d in ipairs(F) do values[#values + 1] = "~" .. d end   -- Played, Server /played, Total
         Fits("detail card value", cards.played.value, CARD_IN, values)
-        local subs = { format(L.TT_EXCL_FMT, ns.Stats.MaskLabel(7)), L.LV_SERVER_SUB, format(L.LD_CUM_SUB_FMT, 60),
-                       format(L.LD_CUM_SUB_CUR_FMT, 60), L.LD_NONE }
+        local subs = { L.LV_SERVER_SUB, format(L.LD_CUM_SUB_FMT, 60), format(L.LD_CUM_SUB_CUR_FMT, 60), L.LD_NONE }
+        for m = 1, ns.C.MASK_COUNT - 1 do   -- every set of exclusions, within the card's budget
+          subs[#subs + 1] = format(L.TT_EXCL_FMT, ns.Stats.MaskLabel(m, ns.C.MASK_LABEL_CARD))
+        end
         for _, f in ipairs({ L.LD_MORE_FMT, L.LD_LESS_FMT, L.LD_LEFT_FMT }) do
           for _, t in ipairs(WithL(f)) do subs[#subs + 1] = t end
         end

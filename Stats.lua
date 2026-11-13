@@ -13,6 +13,7 @@ local L, C = ns.L, ns.C
 local type, pairs, next, tonumber, pcall, select = type, pairs, next, tonumber, pcall, select
 local floor = math.floor
 local table_sort, table_concat = table.sort, table.concat
+local format = string.format
 local string_sub, string_byte = string.sub, string.byte
 local GetTime = GetTime
 local C_Map = C_Map
@@ -50,7 +51,7 @@ local EMPTY_EMA = { a = 0, r = 0, q = 0, d = 0 }   -- read-only stand-in for a m
 local nameOf = {}        -- zoneKey -> localized name, or false when the map has no name
 local contOf = {}        -- numeric zoneKey -> continent uiMapID, or false (none found)
 local dungeonOf = {}     -- numeric zoneKey -> true when its map is Dungeon-typed, else false
-local maskLabels = {}    -- mask -> "AFK · city" (built once per mask)
+local maskLabels = {}    -- mask + C.MASK_COUNT * budget -> "AFK · city" (Stats.MaskLabel)
 local levelList = {}     -- scratch list of level numbers (alloc functions only)
 local accN, accT, accX, accD = {}, {}, {}, {}  -- scratch accumulators (AccountLevelAverages)
 local contSecs = {}      -- scratch: continent row key -> seconds (Continents)
@@ -115,8 +116,9 @@ end
 -- Seconds of a bucket rebuilt after a crash (EstimateGap), under the mask: its per-key
 -- map es exactly, plus the part saved without keys (est - sum(es): before es existed, or
 -- by an older version) valued with the bucket's own place proportions (s without u, x
--- and f, which a rebuilt gap never gets). Never more than the bucket's tracked seconds
--- under the mask, never negative. Returns filtered, gross (max(est, sum(es)), no mask).
+-- and f, which a rebuilt gap never gets: the places the mask includes over all of them).
+-- Never more than the bucket's tracked seconds under the mask, never negative. Returns
+-- filtered, gross (max(est, sum(es)), no mask).
 local function EstOf(bucket, mask)
   if type(bucket) ~= "table" then return 0, 0 end
   local est = tonumber(bucket.est) or 0
@@ -127,9 +129,13 @@ local function EstOf(bucket, mask)
   local masked = SumMap(s, mask)
   local legacy = est - all
   if legacy > 0 and s then
-    local act = (s.u or 0) + (s.x or 0) + (s.f or 0)
+    local inc = INCLUDED[mask or 0] or INCLUDED[0]
+    local x, f = s.x or 0, s.f or 0
+    local act = (s.u or 0) + x + f
+    -- the activity seconds the mask includes (u always; x and f unless excluded)
+    local actIn = (s.u or 0) + (inc.x and x or 0) + (inc.f and f or 0)
     local places = SumMap(s, 0) - act
-    if places > 0 then v = v + legacy * (masked - act) / places end
+    if places > 0 then v = v + legacy * (masked - actIn) / places end
   end
   local cap = masked - UntrackedOf(bucket)
   if v > cap then v = cap end
@@ -1096,8 +1102,8 @@ local function FillLevelRow(row, char, l, mask, sync, now, isCurrent)
   row.partial = lb.partial == true
   row.rec = lb.rec == true
   row.deaths = lb.d or 0
-  row.dead = s and s.x or 0              -- seconds dead or a ghost (never excluded)
-  row.prof = s and s.f or 0              -- seconds of professions (never excluded)
+  row.dead = s and s.x or 0              -- seconds dead or a ghost (all of it, excluded or not)
+  row.prof = s and s.f or 0              -- seconds of professions (all of it, excluded or not)
   row.eta, row.etaP = lb.eta, lb.etaP    -- estimate when the level began (nil: none)
   row.etaM = lb.etaM                     -- its exclusion mask (nil: taken by an older version)
   row.pw = PvpWorldOf(lb)                -- open-world PvP seconds (a part of s.w, capped)
@@ -1327,7 +1333,9 @@ end
 -- Activity of one level of char: deaths (count), dead (seconds dead or a ghost), prof
 -- (seconds of professions), eta (estimated time to the next level when the level began,
 -- seconds, or nil), etaP (the XP fraction at that moment, or nil). All 0 / nil for a
--- level without a record. Neither dead nor prof is ever excluded by a mask.
+-- level without a record. dead and prof are the whole activity, excluded or not (the
+-- deaths card and the columns show it like the AFK column: the exclusions apply to the
+-- other times).
 function Stats.LevelActivity(char, level)
   local levels = char and char.levels
   local lb = type(levels) == "table" and level and levels[level]
@@ -1368,7 +1376,7 @@ function Stats.CumulativeTime(char, level, mask, sync, now)
 end
 
 -- Dead seconds, professions seconds and deaths summed over every record's life (the
--- account figures; never excluded by a mask).
+-- account figures: the whole activity, excluded or not).
 function Stats.AccountActivity(db)
   local dead, prof, deaths = 0, 0, 0
   local chars = db and db.chars
@@ -1404,17 +1412,19 @@ local HUGE = math.huge
 -- is still a flight: the tooltip's flight line, Breakdown's t + T), prof = f, dead = x,
 -- city = c and inn = i when the mask includes them (else 0), afk = the other AFK keys (W D
 -- R P I C) the mask includes (a battleground's or a dungeon's AFK stays there), untracked
--- = u, total. Returns total. The parts always sum to Stats.Sum(bucket, mask) (u, x and f
--- are never excluded, w is split in two): a stacked bar drawn from them is exactly the
--- bar's height. A nil bucket gives zeros. Nothing allocated (tick path: the current
--- level's bar).
+-- = u, total. Returns total. The parts always sum to Stats.Sum(bucket, mask) (u is never
+-- excluded, w is split in two): a stacked bar drawn from them is exactly the bar's
+-- height. A nil bucket gives zeros. Nothing allocated (tick path: the current level's
+-- bar).
 function Stats.LevelSegments(bucket, mask, out)
   local inc = INCLUDED[mask or 0] or INCLUDED[0]
   local s = bucket and bucket.s
   if type(s) ~= "table" then s = EMPTY_S end
   local w = s.w or 0
   local pw = PvpWorldOf(bucket)
-  local d, r, p, t, f, x, u = s.d or 0, s.r or 0, s.p or 0, s.t or 0, s.f or 0, s.x or 0, s.u or 0
+  local d, r, p, t, u = s.d or 0, s.r or 0, s.p or 0, s.t or 0, s.u or 0
+  local f = inc.f and (s.f or 0) or 0
+  local x = inc.x and (s.x or 0) or 0
   if inc.T then t = t + (s.T or 0) end
   local c = inc.c and (s.c or 0) or 0
   local i = inc.i and (s.i or 0) or 0
@@ -1713,17 +1723,40 @@ end
 -- Labels and caches
 ---------------------------------------------------------------------------
 
--- "AFK · inn · city" style label of a mask (nil for mask 0), built once per mask.
-function Stats.MaskLabel(mask)
+-- The parts of a mask label, in this order: bit, locale key.
+local MASK_PARTS = {
+  { C.MASK_AFK, "MASK_AFK" }, { C.MASK_INN, "MASK_INN" }, { C.MASK_CITY, "MASK_CITY" },
+  { C.MASK_PROF, "MASK_PROF" }, { C.MASK_DEAD, "MASK_DEAD" },
+}
+
+-- "AFK · inn · city · professions · dead" style label of a mask (nil for mask 0). With a
+-- budget maxParts (the places a long list would not fit, C.MASK_LABEL_*): a mask of more
+-- exclusions names its first maxParts - 1 (at least one) and counts the others after them
+-- (L.MASK_MORE_FMT, "AFK · inn +3": the count is an item too, so never more items than a
+-- budget of 2 or more; a budget of 1 gives one name and its count); nil: all named.
+-- Built once per mask and budget.
+function Stats.MaskLabel(mask, maxParts)
   if not mask or mask == 0 then return nil end
-  local label = maskLabels[mask]
+  local key = mask + C.MASK_COUNT * (maxParts or 0)
+  local label = maskLabels[key]
   if label == nil then
+    local n = 0
+    for i = 1, #MASK_PARTS do
+      if floor(mask / MASK_PARTS[i][1]) % 2 == 1 then n = n + 1 end
+    end
+    local named = n
+    if maxParts and n > maxParts then
+      named = maxParts - 1
+      if named < 1 then named = 1 end
+    end
     local parts = {}
-    if mask % 2 == 1 then parts[#parts + 1] = L.MASK_AFK end
-    if floor(mask / 2) % 2 == 1 then parts[#parts + 1] = L.MASK_INN end
-    if floor(mask / 4) % 2 == 1 then parts[#parts + 1] = L.MASK_CITY end
+    for i = 1, #MASK_PARTS do
+      local part = MASK_PARTS[i]
+      if #parts < named and floor(mask / part[1]) % 2 == 1 then parts[#parts + 1] = L[part[2]] end
+    end
     label = table_concat(parts, L.SEP)
-    maskLabels[mask] = label
+    if n > named then label = format(L.MASK_MORE_FMT, label, n - named) end
+    maskLabels[key] = label
   end
   return label
 end

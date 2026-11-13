@@ -189,7 +189,8 @@ Goal: as much choice and customisation as possible for players who do not want t
 
 ## Outcome of lot 8 part A (data: dead, professions, per-level additions)
 - **State keys** (`C.STATE_KEYS`, `C.TRACKED_KEYS`): `x` = dead or a ghost, `f` = professions,
-  one key each (no AFK variant), never excluded by a mask (`C.INCLUDED[m].x/f` always true),
+  one key each (no AFK variant), never excluded by the AFK, inn or city bits (since 1.4.0
+  each has its own: `C.MASK_DEAD`, `C.MASK_PROF`, settings `exclude.dead` / `exclude.prof`),
   not part of `Breakdown.active`. Precedence (Tracker `Compute` + `Activity.Override`):
   dead > AFK > professions > flight > instance > city > inn > world. New file `Activity.lua`
   (`ns.Activity`: `Override(afk, now)`, `IsDead()`, `IsProf(now)`, `Start()`); the heuristic

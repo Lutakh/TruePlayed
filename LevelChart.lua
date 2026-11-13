@@ -211,6 +211,7 @@ local FILTER_KEY   = { "LV_F_ALL", "BD_WORLD", "LV_F_INST", "BD_PVP", "LV_FLIGHT
 local FILTER_TITLE = { "LV_T_ALL", "LV_T_WORLD", "LV_T_INST", "LV_T_PVP", "LV_T_FLIGHT", "LV_T_PROF", "LV_T_DEAD" }
 local FILTER_SQ    = { 0, 1, 3, 5, 6, 7, 8 }
 local FILTER_SEGS  = { false, { 1 }, { 3, 4 }, { 2, 5 }, { 6 }, { 7 }, { 8 } }
+local FILTER_MASK  = { prof = C.MASK_PROF, dead = C.MASK_DEAD }   -- a filter's exclusion bit
 local NFILTERS = #FILTER_ID
 local FILTER_ON = {}               -- [f][i] = part i counts under filter f
 for f = 1, NFILTERS do
@@ -1264,8 +1265,9 @@ local function FillTop()
 end
 
 -- The PvP (and its battlegrounds / world sub line), Flight (and its share of the played
--- time, "< 1 %" for a non-zero share under 1 %) and Deaths (and the dead time) chips from
--- the character's life totals under the mask: Build (force) and every live step, their
+-- time, "< 1 %" for a non-zero share under 1 %) and Deaths (and the dead time, all of it:
+-- excluded or not) chips from the character's life totals under the mask: Build (force)
+-- and every live step, their
 -- texts set again only when one of their keys changed (nothing allocated otherwise).
 local function FillActivity(char, filtered, force)
   local life = type(char.life) == "table" and char.life or nil
@@ -1300,7 +1302,9 @@ local function FillActivity(char, filtered, force)
     end
     Text(ch.sub, share)
   end
-  local dead = Num(lifeSeg.dead)
+  -- the dead time: all of it, excluded or not (the sheet's deaths card, the AFK column)
+  local ls = life and life.s
+  local dead = Num(type(ls) == "table" and ls.x or 0)
   local kd, ks = math_floor(Num(life and life.d)), (dead >= 60) and Fmt.DurationFullKey(dead) or -1
   if force or kd ~= S.kDeaths or ks ~= S.kDead then
     S.kDeaths, S.kDead = kd, ks
@@ -1340,9 +1344,17 @@ local function FillChips(char, mask, sync, now)
   FillTop()
 end
 
+-- The filter shown is an activity the exclusions leave out (Professions, Dead): its bars
+-- are empty, as the bars follow the exclusions.
+local function FilterExcluded()
+  local bit = FILTER_MASK[FILTER_ID[S.filter]]
+  return bit ~= nil and math_floor(Num(S.mask) / bit) % 2 == 1
+end
+
 -- Shown time and count of the played levels (under a filter: the levels with at least a
--- minute of the activity); no level to count: "no time recorded", or the few seconds
--- alone (L.LD_TOTAL_FMT), never "0 levels".
+-- minute of the activity); no level to count: "no time recorded" ("excluded in the
+-- options" for a filter whose activity is excluded), or the few seconds alone
+-- (L.LD_TOTAL_FMT), never "0 levels".
 local function DrawSummary(force)
   local f, sum, n = S.filter, 0, 0
   for k = 1, math_min(S.level, S.top - 1, S.nCols) do
@@ -1356,7 +1368,11 @@ local function DrawSummary(force)
   if key == S.kSum and not force then return end
   S.kSum = key
   if n == 0 then
-    Text(sumFS, (sum > 0) and format(L.LD_TOTAL_FMT, Fmt.DurationFull(sum)) or L.LV_SUM_NONE)
+    if sum <= 0 and FilterExcluded() then
+      Text(sumFS, L.LV_SUM_EXCLUDED)
+    else
+      Text(sumFS, (sum > 0) and format(L.LD_TOTAL_FMT, Fmt.DurationFull(sum)) or L.LV_SUM_NONE)
+    end
     return
   end
   local fmt

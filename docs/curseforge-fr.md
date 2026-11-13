@@ -118,7 +118,7 @@ English, Français, Deutsch, Español, Italiano, Português, Русский, 한
 | `/tpl theme` | Thèmes |
 | `/tpl minimap` | Bouton de la minicarte oui / non |
 | `/tpl mini` | Mini affichage oui / non |
-| `/tpl afk` `inn` `city` | Retirer ce temps, ou le compter à nouveau |
+| `/tpl afk` `inn` `city` `prof` `dead` | Retirer ce temps, ou le compter à nouveau |
 | `/tpl help` | Toutes les commandes |
 
 ## FAQ

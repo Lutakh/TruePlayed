@@ -135,7 +135,8 @@ local PANEL_BACKDROP = {
 }
 local BTN_BACKDROP = { bgFile = C.TEX_WHITE, edgeFile = C.TEX_WHITE, edgeSize = 1 }
 
-local EXCLUDE_LABEL = { afk = "MENU_EXCLUDE_AFK", inn = "MENU_EXCLUDE_INN", city = "MENU_EXCLUDE_CITY" }
+local EXCLUDE_LABEL = { afk = "MENU_EXCLUDE_AFK", inn = "MENU_EXCLUDE_INN", city = "MENU_EXCLUDE_CITY",
+                        prof = "MENU_EXCLUDE_PROF", dead = "MENU_EXCLUDE_DEAD" }
 local TEXT_COLOR_PATH = "widget.textColor"
 local XP_COLOR_PATH = "widget.xpColor"
 local RESTED_COLOR_PATH = "widget.restedColor"
@@ -1145,6 +1146,8 @@ local function Build()
   AddCheckbox(L.MENU_EXCLUDE_AFK, "exclude.afk")
   AddCheckbox(L.MENU_EXCLUDE_INN, "exclude.inn")
   AddCheckbox(L.MENU_EXCLUDE_CITY, "exclude.city")
+  AddCheckbox(L.MENU_EXCLUDE_PROF, "exclude.prof")
+  AddCheckbox(L.MENU_EXCLUDE_DEAD, "exclude.dead")
   AddNote(L.OPT_EXCLUSIONS_HELP)
   AddNote(L.OPT_CITY_HELP)
 
@@ -1440,6 +1443,8 @@ function Options.BuildContextMenu(owner, root)
   root:CreateCheckbox(L.MENU_EXCLUDE_AFK, IsSettingOn, ToggleSettingPath, "exclude.afk")
   root:CreateCheckbox(L.MENU_EXCLUDE_INN, IsSettingOn, ToggleSettingPath, "exclude.inn")
   root:CreateCheckbox(L.MENU_EXCLUDE_CITY, IsSettingOn, ToggleSettingPath, "exclude.city")
+  root:CreateCheckbox(L.MENU_EXCLUDE_PROF, IsSettingOn, ToggleSettingPath, "exclude.prof")
+  root:CreateCheckbox(L.MENU_EXCLUDE_DEAD, IsSettingOn, ToggleSettingPath, "exclude.dead")
   if root.CreateDivider then root:CreateDivider() end
   local themeMenu = root:CreateButton(L.MENU_THEME)
   local themes = ThemeChoices()

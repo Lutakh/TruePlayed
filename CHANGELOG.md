@@ -7,6 +7,38 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+No new file in this version: a `/reload` after updating is enough.
+
+### In short
+
+- **Exclude professions time and time dead**, like AFK, inn or city time: two new
+  checkboxes (options and the bar's right-click menu), `/tpl prof` and `/tpl dead`.
+
+### Added
+
+- **Two new exclusions**: "Exclude profession time" (gathering, fishing, first aid,
+  crafting, disenchanting, lockpicking) and "Exclude time dead or as a ghost" (from your
+  death until you are back on your feet, the ghost run included). As the other
+  exclusions, they only change what is shown: the totals, the level times, the zones, the
+  sessions, the XP, reputation and PvP rates per hour, the time to level and the Levels
+  tab's bars leave that time out, and switching the option off gives every number back.
+  While you are dead or crafting with its exclusion on, the timers pause and the tooltip
+  says so ("Timer paused: time dead excluded"). Also in the chat: `/tpl prof [on|off]`
+  and `/tpl dead [on|off]`.
+
+### Changed
+
+- The Deaths figure of the Levels tab, the Deaths card of a level's sheet, the Dead and
+  Professions columns and the tooltip's breakdown keep showing all of that time when it
+  is excluded (like the AFK column). In the Levels tab, the Dead or Professions filter of
+  an excluded activity reads "Excluded in the options".
+- With many exclusions, the tooltip's title and Played line, the statistics window's
+  header and a level's Played card name the first ones and count the others
+  ("excl. AFK · inn +3"); the options and `/tpl played` keep the full list.
+- The rates per hour already measured are kept: on the first login after the update, each
+  rate with professions or dead time excluded starts from the rate you had without that
+  exclusion, and parts from it as you play.
+
 ## [1.3.0] - 2026-10-19
 
 No new file in this version: a `/reload` after updating is enough.

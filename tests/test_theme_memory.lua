@@ -95,6 +95,13 @@
 -- 1676.4). They raised both after-login budgets by 35 KB, to 1605 / 1735: the measure +
 -- 20.1 / 25.2 KB, the margin kept above. The 5.4 budgets rose by the same 35 KB (not
 -- measured: no 5.4 here).
+-- The professions and dead exclusions (1.4.0: the mask on 5 bits, 32 masks instead of 8:
+-- 24 more C.INCLUDED rows of 17 keys, 24 more entries in each rate EMA list, the XP's,
+-- the reputation's and the two PvP ones; 10 more strings in every locale): measured in
+-- the full suite 1619.2 (actuel) on 5.5, i.e. 34.3 KB more than HEAD (1584.9); alone
+-- (lua tests/run.lua theme_memory) 1894.1 against 1859.5, 34.6 KB more. They raised both
+-- after-login budgets by 35 KB, to 1640 / 1770 (the actuel margin: 20.8 KB). The 5.4
+-- budgets rose by the same 35 KB (not measured: no 5.4 here).
 local Stub, T = ...
 
 local KEYS = { "futuriste", "actuel", "heroic", "pixel", "warrior", "paladin", "hunter", "rogue",
@@ -108,12 +115,12 @@ local BUDGET = {
   ["Lua 5.5"] = {
     compiled = { futuriste = 38, actuel = 9, heroic = 33, pixel = 26, warrior = 30, paladin = 31, hunter = 38,
                  rogue = 34, priest = 33, shaman = 28, mage = 33, warlock = 40, druid = 32 },
-    engine = 125, loginActuel = 1605, loginFuturiste = 1735,
+    engine = 125, loginActuel = 1640, loginFuturiste = 1770,
   },
   ["Lua 5.4"] = {
     compiled = { futuriste = 43, actuel = 10, heroic = 37, pixel = 30, warrior = 34, paladin = 35, hunter = 42,
                  rogue = 38, priest = 37, shaman = 31, mage = 37, warlock = 44, druid = 36 },
-    engine = 128, loginActuel = 1705, loginFuturiste = 1845,
+    engine = 128, loginActuel = 1740, loginFuturiste = 1880,
   },
 }
 local SOURCES_KB = 80          -- NEXT-LOT M3: the resident theme sources, in total

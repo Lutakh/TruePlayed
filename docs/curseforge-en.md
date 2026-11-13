@@ -122,7 +122,7 @@ English, Français, Deutsch, Español, Italiano, Português, Русский, 한
 | `/tpl theme` | Themes |
 | `/tpl minimap` | Minimap button on / off |
 | `/tpl mini` | Mini display on / off |
-| `/tpl afk` `inn` `city` | Leave that time out, or count it again |
+| `/tpl afk` `inn` `city` `prof` `dead` | Leave that time out, or count it again |
 | `/tpl help` | Every command |
 
 ## FAQ
