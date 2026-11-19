@@ -7,6 +7,8 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-19
+
 **New files in this version (`Rested.lua`, `Announce.lua`): quit and restart the game after
 updating (a `/reload` is not enough).**
 
