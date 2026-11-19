@@ -221,6 +221,10 @@ local FILES = {
   "test_level_chart", "test_level_detail",
   -- the professions and dead exclusions (1.4.0)
   "test_exclusions",
+  -- the rested XP cap (Well Rested) and the "rested XP full" alert
+  "test_rested",
+  -- the level-up message in the guild chat
+  "test_announce",
 }
 
 local passed, failed, skipped = 0, 0, 0

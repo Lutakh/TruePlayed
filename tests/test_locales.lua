@@ -47,7 +47,7 @@ local SAME_OK = {
   DECIMAL_SEP = true, THOUSANDS_SEP = true, DATE_FMT = true, TIME_FMT = true, DUR_LT_1M = true, ETA_LT_1M = true,
   DUR_H = true, DUR_M = true, DUR_LONG_M = true, DUR_LONG_HM = true,
   TOKEN_FPS = true, PFX_SERVER_FMT = true, PFX_AFK_FMT = true, PFX_ZONE_FMT = true, PFX_INST_SESSION_FMT = true,
-  PFX_PLAYED_FMT = true, PFX_INST_TOTAL_FMT = true, PFX_SESSION_FMT = true, XP_BARE_FMT = true, STALL_MARK = true,
+  PFX_PLAYED_FMT = true, PFX_INST_TOTAL_FMT = true, PFX_SESSION_FMT = true, XP_BARE_FMT = true, STALL_MARK = true, REST_OLD_MARK = true,
   TT_XP = true, TT_RESTED_FMT = true, TT_SERVER_AGE_FMT = true, BD_PART_FMT = true, BD_PVP = true, BD_AFK = true,
   MASK_AFK = true, MASK_MORE_FMT = true, TT_AFK = true, TT_NET_FMT = true, INST_ROW_FMT = true, KIND_PVP = true, COL_AFK = true,
   COL_XP = true, COL_XPH = true, COL_INST = true, COL_ZONE = true, COL_CHARS = true,
@@ -83,6 +83,9 @@ local SAME_OK = {
   LV_F_INST = true, LV_PART_FMT = true, LV_LT_FMT = true,
   -- its detail sheet (LevelDetail): "<gained> / <size> XP" (numbers and the game's word)
   LD_XP_FMT = true,
+  -- the rested XP alert (Rested.lua): "<name> (<level>)" (punctuation only); the Legacy
+  -- perk's name, which the Italian game keeps in English ("Well Rested")
+  TT_REST_ALT_FMT = true, WELL_RESTED = true,
 }
 for name in pairs(NAMES) do SAME_OK[name] = true end
 

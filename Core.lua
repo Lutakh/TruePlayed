@@ -76,6 +76,28 @@ C.REST_BONUS          = 1.0    -- rested bonus = 100 % of base mob XP (verify in
 C.REST_DRAIN          = 2.0    -- rest pool drops 2 per point of base mob XP (verify)
 C.RECENT_LEVELS       = 5
 
+-- rested XP cap and gain (Rested.lua). The pool holds at most REST_CAP of the level's XP
+-- (150 %: Forever characters saved at exactly 1.5 x UnitXPMax); it grows by REST_GAIN of
+-- the level's XP every REST_GAIN_SECS in an inn or a capital, logged in or out, and by
+-- REST_GAIN_OUT of that logged out anywhere else. WoW Forever's Legacy perk Well Rested
+-- (Adventure tree, node 110301, spell 1225478, 5 ranks) speeds the gain up and raises the
+-- cap by 4 % per rank (game data 1.60.1.70938: the TraitDefinitionEffectPoints curves of
+-- its effects read 4 / 8 / 12 / 16 / 20): the cap multiplied, as the perk's text says
+-- ("the cap is increased by 12 %": 150 % x 1.12 = 168 % at rank 3, 180 % at rank 5).
+-- REST_ALERT_DAYS: a character whose last logout is older leaves the "rested XP full"
+-- alert and the alts' section of the tooltip (the record of a deleted character stays in
+-- the saved data). REST_ALTS_ROWS: the most rows of that section (past it, the first ones
+-- and "+N more").
+C.REST_CAP            = 1.5
+C.REST_GAIN           = 0.05
+C.REST_GAIN_SECS      = 28800
+C.REST_GAIN_OUT       = 0.25
+C.WELL_RESTED         = { tree = 1188, node = 110301, spell = 1225478, ranks = 5, step = 0.04 }
+C.REST_ALERT_DAYS     = 90
+C.REST_ALTS_ROWS      = 10
+C.TEX_REST_ALERT      = "Interface\\Icons\\Spell_Nature_Sleep"   -- the bar's alert icon (game file)
+C.REST_ALERT_SIZE     = 14     -- px (the widget's scale applies)
+
 -- time without XP (R1): past XP_STALL counted non-AFK seconds since the last XP gain the
 -- character is "stalled": its time no longer feeds the EMA (frozen, neither decays nor
 -- grows) and goes to life.xs / levels[L].xs, which the rate fallbacks leave out. Any XP
@@ -359,6 +381,10 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
     pvp = "off",                            -- PvP strip under the bar: C.PVP_STRIPS (Pvp.lua)
     pvpAuto = false,                        -- the main track shows PvP while in a battleground
                                             -- (a temporary override: widget.main is not written)
+    restAlert = false,                      -- an icon on the bar while a character's rested XP is
+                                            -- full, this one or another (Rested.lua), named in the tooltip
+    restAlts = false,                       -- the tooltip's "Alts' rested XP" section: every other
+                                            -- character's rested XP against its cap (Rested.Alts)
   },
   -- PvP (Pvp.lua): sound + popup when the honor reaches its cap (after combat)
   pvp = { capAlert = true },
@@ -383,6 +409,8 @@ C.DEFAULTS = {                              -- account-wide settings (requiremen
   language = "auto",                        -- a C.LANGUAGES value, applied at the next UI load
   -- automatic reload (AutoReload.lua): in a capital or an inn, and / or every `minutes`
   autoReload = { rest = false, timer = false, minutes = 30 },
+  -- the level-up message in the guild chat (Announce.lua): the time spent at the level left
+  guild = { levelUp = false },
   rateTau = 3600,                           -- 5400 | 3600 | 1200
   requestPlayedAtLogin = true,              -- one visible /played at login if none arrives within 10 s
   hidePlayedMsg = false,                    -- EXPERIMENTAL, default OFF (5.13)
@@ -1367,6 +1395,23 @@ function Core.RepairChar(char)
   end
   local snap = char.xpSnap
   if snap and not (IsNum(snap.level) and IsNum(snap.xp) and IsNum(snap.max)) then char.xpSnap = nil end
+  -- rested = { r, m, l, at, inn, k }: the rested XP at the last logout (Rested.lua): the
+  -- pool, the level's XP, the level, when (time()), logged out in an inn or a capital
+  -- (true or nil), the Well Rested rank (a whole number from 1, no top: a later build may
+  -- add ranks; nil: none); false: logged out at the max level, XP disabled or a server
+  -- cap (nothing to watch). Dropped unless the first four are numbers in range; a bad inn
+  -- or k is dropped alone.
+  local rs = char.rested
+  if rs ~= nil and rs ~= false then
+    if type(rs) ~= "table" or not (IsNum(rs.r) and rs.r >= 0 and IsNum(rs.m) and rs.m > 0
+        and IsNum(rs.l) and rs.l >= 1 and IsNum(rs.at)) then
+      char.rested = nil
+    else
+      if rs.inn ~= nil and rs.inn ~= true then rs.inn = nil end
+      local k = rs.k
+      if k ~= nil and not (IsNum(k) and k >= 1 and k % 1 == 0) then rs.k = nil end
+    end
+  end
   -- prior = { xph, at, v }: pre-install XP/h estimate (optional, Tracker 5.11); v = 2 when
   -- computed from the completed levels only (any other v is dropped: recomputed)
   local prior = char.prior
@@ -1457,6 +1502,8 @@ DefineSetting("widget.rep", "bool")
 DefineSetting("widget.main", "enum", { values = SetOf(C.MAIN_MODES) })
 DefineSetting("widget.pvp", "enum", { values = SetOf(C.PVP_STRIPS) })
 DefineSetting("widget.pvpAuto", "bool")
+DefineSetting("widget.restAlert", "bool")
+DefineSetting("widget.restAlts", "bool")
 DefineSetting("pvp.capAlert", "bool")
 DefineSetting("widget.shadow", "bool")
 DefineSetting("widget.qualityColors", "bool")
@@ -1501,6 +1548,7 @@ DefineSetting("rateTau", "choice", { values = { [5400] = true, [3600] = true, [1
 DefineSetting("autoReload.rest", "bool")
 DefineSetting("autoReload.timer", "bool")
 DefineSetting("autoReload.minutes", "num", { min = 10, max = 120, step = 5 })
+DefineSetting("guild.levelUp", "bool")
 DefineSetting("requestPlayedAtLogin", "bool")
 DefineSetting("hidePlayedMsg", "bool")
 DefineSetting("debug", "bool")

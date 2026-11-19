@@ -50,6 +50,25 @@ ns.Options = Options
 -- file (RepOptions.lua), added under its title.
 Options.HelpLines = {}
 
+-- The rested XP alert's "?" (Rested.lua): what it shows, how another character's rested XP
+-- is estimated, who is left out, and that "Hide at max level" hides the icon with the bar.
+Options.HelpLines.restAlert = function(tt, add)
+  add(tt, L.OPT_REST_ALERT_HELP)
+  add(tt, format(L.OPT_REST_ALERT_HOW_FMT, C.REST_ALERT_DAYS))
+  add(tt, format(L.OPT_REST_ALERT_MAX_FMT, L.OPT_HIDE_MAX))
+end
+
+-- The alts' section's "?" (Tooltip.lua, Rested.Alts): what it lists.
+-- The guild message's: what it says, and the message itself in TruePlayed's language.
+Options.HelpLines.guildLevelUp = function(tt, add)
+  add(tt, L.OPT_GUILD_LEVELUP_HELP)
+  if ns.Announce then add(tt, format(L.OPT_GUILD_LEVELUP_EX_FMT, ns.Announce.Text(42, 41, 11520))) end
+end
+
+Options.HelpLines.restAlts = function(tt, add)
+  add(tt, L.OPT_REST_ALTS_HELP)
+end
+
 ---------------------------------------------------------------------------
 -- Whitelisted globals, defined at file load (SPEC 2.2, 7.10, 7.12)
 ---------------------------------------------------------------------------
@@ -1178,6 +1197,8 @@ local function Build()
   AddCheckbox(L.OPT_LOCK, "widget.locked")
   AddCheckbox(L.OPT_COMBAT_HIDE, "widget.combatHide")
   AddCheckbox(L.OPT_FADE, "widget.fade")
+  AddHelp(AddCheckbox(L.OPT_REST_ALERT, "widget.restAlert"), "restAlert")
+  AddHelp(AddCheckbox(L.OPT_REST_ALTS, "widget.restAlts"), "restAlts")
   AddCheckbox(L.OPT_HIDE_MAX, "widget.hideAtMax")
   AddLanguage()
 
@@ -1245,6 +1266,10 @@ local function Build()
 
   -- 3b. Automatic reload (help icons, interval)
   BuildAutoReloadSection()
+
+  -- 3c. Guild: the level-up message (Announce.lua)
+  AddHeader(L.OPT_GUILD)
+  AddHelp(AddCheckbox(L.OPT_GUILD_LEVELUP, "guild.levelUp"), "guildLevelUp")
 
   -- 4. Cities
   AddHeader(L.OPT_CITIES)

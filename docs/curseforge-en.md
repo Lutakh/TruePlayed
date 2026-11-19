@@ -26,7 +26,8 @@ the addon zip. See `docs/PUBLISHING-fr.md` for where each text goes.
   time per zone, instance time, dungeon time, raid time, death time, professions time,
   mobs to kill, reputation, reputation per hour, time to next standing, honor, honor per
   hour, honor cap, PvP, PvP rank, rank points, rank points per hour, battlegrounds, world
-  PvP, honorable kills, FPS graph, themes, class themes.
+  PvP, honorable kills, FPS graph, themes, class themes, rested XP cap, Well Rested, alts,
+  guild, ding.
 - **Issues / source**: https://github.com/Lutakh/TruePlayed
 
 Everything below the line is the **Description** (Markdown editor). The images are the
@@ -61,6 +62,15 @@ Per level. Per zone. Per instance. Per character, or your whole account.
 
 Reputation per hour. Honor per hour. Rank points per hour. Time to your next standing and
 to your next PvP rank.
+
+### Rested, to the last drop.
+
+Your rested XP cap, Well Rested included, for each character. An icon when one of them is
+full, and all your alts in the tooltip: "Gwen (12) · 120/168% · full in 2d 20h".
+
+### Ding!
+
+Tick one box and your guild hears of each level: "Ding 42! Level 41 » 42 in 3h 12m".
 
 ![13 themes. One click.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/themes.png)
 

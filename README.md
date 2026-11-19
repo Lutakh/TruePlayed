@@ -75,6 +75,21 @@ records every played second, knows what you were doing, and lets you decide what
   rested (the game's blue in the Classic theme), with a lighter part up to where your
   rested XP ends, and the tooltip shows "Rested: 11,600 XP (50%)". Both bar colours can
   be changed (see below).
+- **Rested XP cap**: the tooltip shows the most rested XP the character can bank ("Rested
+  cap: 12,768 XP (168%)", "· full" once reached): 150% of the level, raised by WoW
+  Forever's Legacy perk Well Rested (4% per rank, read from each character's Legacy tree).
+  An optional alert (off by default: options, "Alert when rested XP is full") puts an icon
+  on the bar while the rested XP of this character or of one of your other characters is
+  full, and names them in the tooltip; another character's rested XP is estimated from
+  its last logout (5% of its level every 8 hours in an inn or a capital, a quarter of that
+  elsewhere, faster with Well Rested). With "Hide at max level", the bar and its icon stay
+  hidden at max level. Another option, off by default ("Show your alts' rested XP in the
+  tooltip"), lists your other characters in the tooltip, fullest first, each with its
+  rested XP over its own cap ("120/168%", in % of its level) and the time until it is
+  full.
+- **Level-ups in guild chat** (optional, off by default: options, "Announce level-ups in
+  guild chat"): at each level-up, your guild reads the play time of the level you left,
+  your exclusions applied, in TruePlayed's language: "Ding 42! Level 41 » 42 in 3h 12m".
 - **Time per level**, as a histogram of your journey (the Levels tab of the statistics
   window): one bar per level ("Level 19 » 20" is the time it took from 19 to 20),
   stacked by activity (world, world PvP, dungeons, raids, battlegrounds, flight,
@@ -773,6 +788,25 @@ monstres à tuer (d'après la moyenne de vos 10 derniers monstres tués, en tena
 repos), le temps par
 niveau, par zone et en instance (« Instances les plus jouées » dans l'onglet Zones), les
 moyennes par niveau, le temps de session et le /played du serveur.
+
+**Plafond du repos** : l'infobulle indique le repos maximal que le personnage peut
+accumuler (« Plafond du repos : 12 768 XP (168 %) », « · plein » une fois atteint) :
+150 % du niveau, augmenté par le bonus d'héritage Bien reposé de WoW Forever (4 % par rang,
+lu dans l'arbre d'héritage de chaque personnage). Une alerte facultative (désactivée par
+défaut : options, « Alerte quand le repos est plein ») affiche une icône sur la barre dès
+que le repos de ce personnage ou d'un de vos autres personnages est plein, et les nomme
+dans l'infobulle ; le repos d'un autre personnage est estimé d'après sa dernière
+déconnexion (5 % de son niveau toutes les 8 heures dans une auberge ou une capitale,
+quatre fois moins ailleurs, plus vite avec Bien reposé). Avec « Masquer au niveau max », la
+barre et son icône restent masquées au niveau maximum. Une autre option, désactivée par
+défaut (« Afficher le repos des rerolls dans l'infobulle »), liste vos autres personnages
+dans l'infobulle, du plus reposé au moins reposé, chacun avec son repos sur son propre
+plafond (« 120/168 % », en pourcentage de son niveau) et le temps avant qu'il soit plein.
+
+**Passages de niveau en guilde** (facultatif, désactivé par défaut : options, « Annoncer
+les passages de niveau en guilde ») : à chaque passage de niveau, votre guilde reçoit le
+temps de jeu du niveau quitté, vos exclusions appliquées, dans la langue de TruePlayed :
+« Ding 42 ! Niveau 41 » 42 en 3 h 12 min ».
 
 Vous pouvez exclure le temps AFK, en auberge, en ville, aux métiers ou mort à tout
 moment (clic droit sur la barre, options, ou `/tpl afk`, `/tpl inn`, `/tpl city`,

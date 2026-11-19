@@ -135,6 +135,19 @@ read_globals = {
   -- the player's side in a match (the winner is compared with it) and the PvP season's
   -- number (a lower season total without a new season is a transient read)
   "GetBattlefieldArenaFaction", "GetCurrentArenaSeason",
+  -- the rested XP cap (Rested.lua): the Legacy perk Well Rested's rank, read from the
+  -- character's Legacy talent config (WoW Forever; guarded, may be nil), at the first ask
+  -- after a trait event or a loading screen, and at the logout
+  "C_Traits",
+  -- the level-up message in the guild chat (Announce.lua, guild.levelUp; guarded): in a
+  -- guild or not, and the older clients' message function (C_ChatInfo's: below)
+  "IsInGuild", "SendChatMessage",
+}
+
+-- Announce.lua alone reads C_ChatInfo: its SendChatMessage, the guild message (WoW Forever
+-- has it there). Never its InChatMessagingLockdown (SPEC 5.4, tests/lint51.lua).
+files["Announce.lua"] = {
+  read_globals = { "C_ChatInfo" },
 }
 
 -- Themes.lua alone reads the chunk loaders: it compiles the theme source texts in an empty

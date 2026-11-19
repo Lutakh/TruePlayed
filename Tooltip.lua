@@ -39,6 +39,13 @@
 -- A frozen rate (status "stalled": no XP gained for a while) is shown dimmed with
 -- L.STALL_MARK, and a note says for how much counted play no XP came. A detected server
 -- level cap replaces the XP block with the cap line and says tracking resumes by itself.
+-- The XP block's first part ends with the rested XP cap (Rested.lua: 150 % of the level,
+-- raised by WoW Forever's Legacy perk Well Rested; "full" once the pool reaches it; with
+-- Shift, a note says what the perk adds). While widget.restAlert is on, a line under the
+-- title names the characters whose rested XP is full (the bar's icon). While
+-- widget.restAlts is on, a section of its own ends the level's block: every other
+-- character's rested XP against its cap and the time until it is full (FillAlts,
+-- Rested.Alts: the one part of Fill that reads other characters' records).
 --
 -- Themes (SPEC-themes 4): the colours come from a palette (role -> rgba), the classic
 -- one (Themes.CLASSIC_TT) unless the caller passes another. ShowFor picks the targets:
@@ -58,7 +65,7 @@
 -- battlegrounds; Pvp.lua's numbers). The PvP rank titles are the game's
 -- (Tooltip.PvpRankTitle).
 local ADDON, ns = ...
-local L, C, Fmt = ns.L, ns.C, ns.Fmt
+local L, C, Fmt, Util = ns.L, ns.C, ns.Fmt, ns.Util
 
 local type, time, rawget = type, time, rawget
 local format, floor = string.format, math.floor
@@ -218,6 +225,51 @@ local function FillCap(tt, ctx)
   WrapNote(tt, L.TT_CAP_RESUME)
 end
 
+-- The alts' section (widget.restAlts, Rested.Alts): its title, then a row per other
+-- character, fullest first: "Name (level)" and its pool over its cap, both in % of its
+-- level, with the time until it is full ("63/168% · full in 3d 02h"; "168/168% · full"
+-- in the rested colour once it is); an older save's cap (its Well Rested rank not known)
+-- marked, with a note; past C.REST_ALTS_ROWS, the first ones and "+N more"; "none" when
+-- there is nobody.
+local function FillAlts(tt)
+  local R = ns.Rested
+  local s = ns.settings
+  local w = type(s) == "table" and s.widget or nil
+  if not (R and type(w) == "table" and w.restAlts == true) then return end
+  local now = time()
+  local n = R.Alts(now)
+  Sep(tt, "block")
+  Section(tt, L.TT_SECTION_ALTS)
+  if n == 0 then
+    Note(tt, L.TT_REST_ALTS_NONE)
+    return
+  end
+  local shown = n
+  if shown > C.REST_ALTS_ROWS then shown = C.REST_ALTS_ROWS - 1 end
+  local older = false
+  for i = 1, shown do
+    local char, level, _, fullAt, rest, cap, old = R.Alt(i)
+    local name = format(L.TT_REST_ALT_FMT, Util.CharName(char), floor(level))
+    -- the cap rounded (150 x 1.12 is 168.00000000000003); the pool floored, so that it
+    -- shows the cap once full only (the epsilon: 0.29 x 100 is 28.999...)
+    local top = floor(cap * 100 + 0.5)
+    local pct = top
+    if fullAt > now then pct = floor(rest * 100 + 1e-9) end
+    local text = format(L.PERCENT_FMT, format("%d/%d", pct, top))
+    if old then
+      text = text .. L.REST_OLD_MARK
+      older = true
+    end
+    if fullAt <= now then
+      Double(tt, "pair", name, format(L.TT_REST_FULL_FMT, text), P.label, P.rested)
+    else
+      Pair(tt, name, format(L.TT_REST_ALTS_ROW_FMT, text, Dur(fullAt - now)))
+    end
+  end
+  if n > shown then Note(tt, format(L.TT_REST_ALTS_MORE_FMT, n - shown)) end
+  if older then Note(tt, format(L.TT_REST_ALTS_OLD_FMT, L.REST_OLD_MARK, R.PerkName())) end
+end
+
 -- No rate yet: how much counted play (under the current exclusions) is still needed.
 local function NoRateText(ctx)
   local left = ctx.warmupLeft or 0
@@ -326,6 +378,23 @@ local function FillXP(tt, ctx, char, session, mask, detailed)
       -- "Rested: 11,600 XP (50%)", like the game's XP bar
       Double(tt, "pair", L.TT_RESTED,
         format(L.TT_RESTED_FMT, Fmt.Number(ctx.rested), Fmt.Percent(ctx.rested / ctx.max, 0)), P.label, P.rested)
+    end
+    -- the rested XP cap (Rested.lua): 150 % of the level, more with Well Rested; "full"
+    -- (in the rested colour) once the pool reaches it; with Shift, what the perk adds
+    local R = ns.Rested
+    if R and ctx.max > 0 then
+      local rank, ranks = R.Rank()
+      local cap, frac = R.Cap(ctx.max, rank)
+      local v = format(L.TT_RESTED_FMT, Fmt.Number(cap), Fmt.Percent(frac, 0))
+      if R.IsFull(ctx.rested, cap) then
+        Double(tt, "pair", L.TT_REST_CAP, format(L.TT_REST_FULL_FMT, v), P.label, P.rested)
+      else
+        Pair(tt, L.TT_REST_CAP, v)
+      end
+      if detailed and rank > 0 then
+        Note(tt, format(L.TT_REST_CAP_PERK_FMT, Fmt.Percent(C.REST_CAP, 0),
+          Fmt.Percent(C.WELL_RESTED.step * rank, 0), R.PerkName(), rank, ranks))
+      end
     end
   else
     PairDim(tt, format(L.TT_LEVEL_FMT, level, level + 1), L.DOTS)
@@ -803,9 +872,13 @@ local function FillBody(tt, detailed, hint, part)
     else
       Line(tt, "title", L.ADDON_TITLE, P.title)
     end
-    -- 2. pause line, 3. read-only line
+    -- 2. pause line, 3. read-only line, 3b. whose rested XP is full (Rested.lua, while
+    -- widget.restAlert is on: the bar's icon), in the rested colour
     if ctx.paused then Line(tt, "alert", format(L.TT_PAUSED_FMT, PauseLabel(ctx.pauseReason)), P.pause) end
     if ns.readOnly then Line(tt, "alert", L.TT_READONLY, P.pause) end
+    local R = ns.Rested
+    local full = R and R.FullText()
+    if full then Line(tt, "alert", format(L.TT_REST_ALERT_FMT, full), P.rested, true) end
     Sep(tt, "header")
   end
   if type(char) ~= "table" or not ctx.hasChar then
@@ -867,6 +940,8 @@ local function FillBody(tt, detailed, hint, part)
     Sep(tt, "block")
     if not ctx.isMax then FillXPRow(tt, lb) end
     FillEstMost(tt, FillBreakdown(tt, lb, levelBreakdown, L.TT_BREAKDOWN_LEVEL), levelGross)
+    -- 4b. the other characters' rested XP (widget.restAlts, off by default)
+    FillAlts(tt)
   end
 
   -- 5. the whole character (Shift): its title, played (filtered) with its pre-install

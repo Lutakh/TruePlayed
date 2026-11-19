@@ -1135,12 +1135,14 @@ configuration) and `.b` (right).
   |---|---|---|
   | title line (+ exclusions) | `title` | `title` / `mode` |
   | pause, read-only, cap lines | `alert` | `pause` |
+  | rested XP full line (Rested.lua, widget.restAlert) | `alert` | `rested` |
+  | alts' rested XP: a full character's row (widget.restAlts; the others are `Pair`s) | `pair` | `label` / `rested` |
   | `Pair` | `pair` | `label` / `value` |
   | `PairDim` | `pair` | `label` / `dim` |
   | `Note` | `note` | `dim` |
   | `WrapNote` | `wrap` | `dim` |
   | `Header` | `header` | `header` |
-  | `Section` (title of the "current level" and "character total" sections) | `section` | `header` |
+  | `Section` (title of the "current level", "alts' rested XP" and "character total" sections) | `section` | `header` |
   | max-level line | `line` | `value` |
   | breakdown label alone (TP target, no gauge row) | `line` | `label` |
   | breakdown label alone (GameTooltip with a `bar`; right text `" "`) | `pair` | `label` / `value` |

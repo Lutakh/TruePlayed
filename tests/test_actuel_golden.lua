@@ -430,9 +430,11 @@ end
 -- blocks have a breakdown bar, a breakdown's label is alone on its line (its right text a
 -- space: the bar goes over it) and every part is on the continuation rows, as many parts
 -- a row as the baseline's: its label line and first continuation row make the baseline's
--- first line (label, first parts, same colours). Every other line must be the
--- baseline's: the scenarios play one level in one zone, so the level's zone time is the
--- character's.
+-- first line (label, first parts, same colours). The "Rested cap" row (Rested.lua: the
+-- rested XP cap, added after the baseline) is taken out too; its Well Rested note (Shift,
+-- a rank above 0) and the "rested XP full" line (widget.restAlert, off) never show here: no
+-- C_Traits in the stubs, the option left off. Every other line must be the baseline's: the
+-- scenarios play one level in one zone, so the level's zone time is the character's.
 local function IsBlank(line) return line ~= nil and line:find('^" " | "nil" | ') ~= nil end
 local function IsCont(line) return line ~= nil and LeftOf(line) == " " and not IsBlank(line) end
 local BAR_LABEL = '^"Total breakdown" | " " | 0%.6000,0%.6000,0%.6000,1%.0000,1%.0000,1%.0000$'
@@ -462,7 +464,8 @@ local function TwoSections(stages)
           skip[i + 1] = true
         elseif left == "Total breakdown" then
           out[#out + 1] = line                  -- not the bar layout: left as it is (a difference)
-        elseif not skip[i] and left ~= "Current level" and left ~= "Character total" then
+        elseif not skip[i] and left ~= "Current level" and left ~= "Character total"
+            and left ~= "Rested cap" then
           out[#out + 1] = line
         end
       end

@@ -50,7 +50,8 @@
 --   right-aligned 10 px in), made by the stub (not counted in Stub.created). Geometry: a
 --   frame clamped to the screen (SetClampedToScreen; every GameTooltip is) has its rect
 --   plus its SetClampRectInsets moved inside UIParent by GetRect and the other getters,
---   and the frames anchored to it follow (the game's behaviour).
+--   and the frames anchored to it follow (the game's behaviour). SetHitRectInsets is kept
+--   for GetHitRectInsets (no hit testing).
 local Stub = {}
 
 local unpack = unpack or table.unpack
@@ -513,6 +514,12 @@ function Methods:SetClampRectInsets(l, r, t, b)
 end
 function Methods:GetClampRectInsets()
   return self._clampL or 0, self._clampR or 0, self._clampT or 0, self._clampB or 0
+end
+function Methods:SetHitRectInsets(l, r, t, b)
+  self._hitL, self._hitR, self._hitT, self._hitB = l or 0, r or 0, t or 0, b or 0
+end
+function Methods:GetHitRectInsets()
+  return self._hitL or 0, self._hitR or 0, self._hitT or 0, self._hitB or 0
 end
 function Methods:StartMoving() self._moving = true end
 function Methods:StopMovingOrSizing() self._moving = false end

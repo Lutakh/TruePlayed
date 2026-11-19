@@ -3,6 +3,79 @@
 Une petite fiche pour votre premier essai, dans l'ordre. Comptez une heure de jeu normal.
 Notez ce qui vous surprend : il n'y a pas de mauvaise remarque.
 
+## À vérifier (1.5.0, publiée le 19/11/2026) : le plafond du repos, l'alerte de repos plein, le repos des rerolls et l'annonce en guilde
+
+Cette mise à jour ajoute deux fichiers (`Rested.lua`, `Announce.lua`) : après l'avoir
+recopiée, **quittez et relancez le jeu** (un `/reload` ne suffit pas).
+
+- [ ] **L'annonce en guilde, désactivée par défaut** : options (Échap > Options > AddOns >
+  TruePlayed), nouvelle section « Guilde » : « Annoncer les passages de niveau en guilde »,
+  avec un « ? » qui montre le message tel qu'il partira, dans la langue choisie dans
+  TruePlayed (« Ding 42! Level 41 » 42 in 3h 12m » en anglais).
+- [ ] **Au passage de niveau** : cochez-la, passez un niveau : le canal de guilde reçoit
+  « Ding <niveau> ! Niveau <précédent> » <niveau> en <durée> », la durée étant celle de
+  l'onglet Niveaux pour le niveau quitté (vos exclusions appliquées). Un seul message.
+- [ ] **Rien sinon** : option décochée, hors guilde, ou pour le niveau où vous étiez à
+  l'installation de TruePlayed (son temps est incomplet), aucun message.
+
+- [ ] **Le plafond dans l'infobulle** : dans le bloc d'XP, sous « Reposé » (sous
+  « Restant » s'il n'y a pas de repos), une ligne « Plafond du repos ». Avec Bien reposé
+  3/5 au niveau 41 : « 160 944 XP (168 %) » (95 800 × 1,5 × 1,12) ; sans le bonus,
+  150 % du niveau.
+- [ ] **Avec Maj** : sous le plafond, « 150 % du niveau, augmenté de 12 % (Bien reposé
+  3/5) ». Rien sur un personnage sans le bonus.
+- [ ] **Un autre personnage** : le plafond suit son propre rang de Bien reposé (les
+  bonus d'héritage sont achetés par personnage).
+- [ ] **Le point à confirmer** : le jour où un personnage qui a Bien reposé a son repos au
+  maximum, la ligne « Reposé » doit indiquer le pourcentage du plafond (168 % au rang 3,
+  174 % au rang 4) et « Plafond du repos » se termine par « · plein ». Si le repos
+  s'arrête à 162 % au rang 3 (166 % au rang 4), le bonus s'ajoute au lieu de multiplier :
+  le signaler.
+- [ ] **L'alerte, désactivée par défaut** : aucune icône sur la barre. Dans les options
+  (Échap > Options > AddOns > TruePlayed), au-dessus de « Masquer au niveau max » :
+  « Alerte quand le repos est plein » puis « Afficher le repos des rerolls dans
+  l'infobulle », chacune avec son « ? ».
+- [ ] **L'alerte cochée, un reroll plein** : un reroll qui a eu le temps de remplir son
+  repos depuis sa dernière déconnexion (environ 10 jours dans une auberge ou une
+  capitale, 40 jours ailleurs) fait apparaître une petite icône « sommeil » dans le coin
+  en haut à droite de la barre, et l'infobulle dit sous son titre « Repos plein : Prénom
+  Nom (niveau) ». Un reroll du même royaume pas encore reconnecté depuis la mise à jour
+  est estimé d'après la dernière sauvegarde de TruePlayed, sans son rang de Bien reposé.
+- [ ] **Les personnages de la bêta** (royaumes « Classic Beta PvE / PvP ») n'apparaissent
+  plus dans « Repos plein ».
+- [ ] **La barre contre le bord de l'écran** : si la barre touche le haut ou la droite de
+  l'écran, cocher l'alerte la décale de quelques pixels pour que l'icône reste entière.
+  Survoler l'icône affiche l'infobulle.
+- [ ] **Le personnage en cours** : repos plein (« Plafond du repos … · plein ») : l'icône
+  et « Repos plein : ce personnage ». Tuez un monstre : le repos baisse et l'icône part
+  (si aucun reroll n'est plein).
+- [ ] **Décochez l'alerte** : l'icône et la ligne disparaissent aussitôt.
+- [ ] **Le repos des rerolls, désactivé par défaut** : rien de nouveau dans l'infobulle.
+  Cochez « Afficher le repos des rerolls dans l'infobulle » : après le bloc du niveau en
+  cours, une section « Repos des rerolls » liste vos autres personnages du plus reposé au
+  moins reposé, « Prénom (niveau) » à gauche, et à droite son repos sur son plafond, en
+  pourcentage de son niveau : « 120/168 % · plein dans 2 j 20 h », ou « 168/168 % ·
+  plein » une fois plein. Le plafond suit le rang de Bien reposé de chaque reroll (150 %
+  sans le bonus, 168 % au rang 3). Les mêmes personnages que pour l'alerte (ni ceux de la
+  bêta, ni ceux au niveau max), que l'alerte soit cochée ou non ; au-delà de dix, les neuf
+  premiers et « +N autres ». Décochez : la section disparaît.
+- [ ] **Un reroll pas encore joué depuis cette version** : son plafond est suivi d'une
+  astérisque (« 16/150 %* ») et une note en fin de section dit « * Pas joué depuis cette
+  version : rang de Bien reposé inconnu ». Connectez-le puis déconnectez-le : l'astérisque
+  et la note disparaissent, avec son vrai plafond.
+- [ ] **Le rang de Bien reposé gardé à la déconnexion** : jouez votre personnage principal
+  avec cette version (survolez la barre : « Plafond du repos » doit indiquer votre rang,
+  174 % au rang 4), déconnectez-le, puis passez sur un reroll : dans « Repos des
+  rerolls », le principal a le même plafond. Si la ligne « Plafond du repos » du principal
+  reste à 150 % alors qu'il a le bonus, le signaler.
+- [ ] **Un reroll déconnecté dans une capitale ou une auberge** : reconnectez-le, puis
+  déconnectez-le sur place une fois avec cette version. De retour sur un autre
+  personnage, son repos avance au rythme d'une zone de repos (5 % de son niveau toutes
+  les 8 heures), pas quatre fois moins vite. Le jeu répond « hors zone de repos » pendant
+  la déconnexion : TruePlayed garde désormais l'état vu en jouant. Les rerolls déconnectés
+  avec une version précédente de ce test restent estimés trop lentement tant qu'ils ne
+  sont pas repassés.
+
 ## Vérifié le 13/11/2026 (1.4.0) : exclure le temps aux métiers et le temps passé mort
 
 Cette mise à jour n'ajoute aucun fichier : après l'avoir recopiée, un `/reload` suffit.

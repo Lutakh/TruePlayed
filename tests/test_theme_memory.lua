@@ -102,6 +102,13 @@
 -- (lua tests/run.lua theme_memory) 1894.1 against 1859.5, 34.6 KB more. They raised both
 -- after-login budgets by 35 KB, to 1640 / 1770 (the actuel margin: 20.8 KB). The 5.4
 -- budgets rose by the same 35 KB (not measured: no 5.4 here).
+-- The rested XP cap and the "rested XP full" alert (Rested.lua, its tooltip rows, the
+-- bar's icon, the option; 10 more strings in every locale): measured in the full suite
+-- 1644.5 (actuel) and 1769.4 (futuriste) on 5.5, i.e. 25.3 and 25.3 KB more than HEAD
+-- measured the same way (1619.2 / 1744.1); alone (lua tests/run.lua theme_memory) 1922.4
+-- against 1894.1, 28.3 KB more. They raised both after-login budgets by 30 KB,
+-- to 1670 / 1800 (margins 25.5 / 30.6 KB). The 5.4 budgets rose by the same 30 KB (not
+-- measured: no 5.4 here).
 local Stub, T = ...
 
 local KEYS = { "futuriste", "actuel", "heroic", "pixel", "warrior", "paladin", "hunter", "rogue",
@@ -115,12 +122,12 @@ local BUDGET = {
   ["Lua 5.5"] = {
     compiled = { futuriste = 38, actuel = 9, heroic = 33, pixel = 26, warrior = 30, paladin = 31, hunter = 38,
                  rogue = 34, priest = 33, shaman = 28, mage = 33, warlock = 40, druid = 32 },
-    engine = 125, loginActuel = 1640, loginFuturiste = 1770,
+    engine = 125, loginActuel = 1670, loginFuturiste = 1800,
   },
   ["Lua 5.4"] = {
     compiled = { futuriste = 43, actuel = 10, heroic = 37, pixel = 30, warrior = 34, paladin = 35, hunter = 42,
                  rogue = 38, priest = 37, shaman = 31, mage = 37, warlock = 44, druid = 36 },
-    engine = 128, loginActuel = 1740, loginFuturiste = 1880,
+    engine = 128, loginActuel = 1770, loginFuturiste = 1910,
   },
 }
 local SOURCES_KB = 80          -- NEXT-LOT M3: the resident theme sources, in total

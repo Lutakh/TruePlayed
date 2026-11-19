@@ -136,6 +136,13 @@ local READ_OK = Set({
   -- the player's side in a match (the winner is compared with it) and the PvP season's
   -- number (a lower season total without a new season is a transient read)
   "GetBattlefieldArenaFaction", "GetCurrentArenaSeason",
+  -- the rested XP cap (Rested.lua): the Legacy perk Well Rested's rank, read from the
+  -- character's Legacy talent config (WoW Forever; guarded, may be nil), at the first ask
+  -- after a trait event or a loading screen, and at the logout
+  "C_Traits",
+  -- the level-up message in the guild chat (Announce.lua, guild.levelUp; guarded): in a
+  -- guild or not, and the older clients' message function (C_ChatInfo's: READ_OK_IN)
+  "IsInGuild", "SendChatMessage",
   -- Lua standard library
   "assert", "error", "getmetatable", "ipairs", "next", "pairs", "pcall", "rawequal",
   "rawget", "rawset", "select", "setmetatable", "tonumber", "tostring", "type", "unpack",
@@ -148,10 +155,12 @@ for k in pairs(WRITE_OK) do READ_OK[k] = true end
 -- 5.2+, design/NEXT-LOT.md M3). A read from any other file is reported.
 -- Tooltip.lua reads _G for the client's own line texts of its GameTooltips
 -- ("<name>TextLeft<i>", looked up once per line), to line up the two blocks' breakdown
--- lines side by side in the native themes.
+-- lines side by side in the native themes. Announce.lua reads C_ChatInfo for its
+-- SendChatMessage (the guild message; never InChatMessagingLockdown, SPEC 5.4).
 local READ_OK_IN = {
   loadstring = "Themes.lua", setfenv = "Themes.lua", load = "Themes.lua",
   _G = "Tooltip.lua",
+  C_ChatInfo = "Announce.lua",
 }
 
 ---------------------------------------------------------------------------

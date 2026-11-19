@@ -87,7 +87,12 @@ local Themes, Skin = ns.Themes, ns.BarSkin
 --     bar while it shows PvP. Hovering the PvP strip (its part of the band under the
 --     track; its own region in the PvP mode) or the main track in the PvP mode shows the
 --     PvP detailed tooltip (Tooltip.ShowFor(.., "pvp")). Redrawn on PVP_CHANGED (a new
---     layout when what shows changes).
+--     layout when what shows changes);
+--   * rested XP full (Rested.lua, widget.restAlert, off by default): an icon
+--     (C.TEX_REST_ALERT, C.REST_ALERT_SIZE px) centred on the frame's top right corner,
+--     above the texts, while Rested.Count() > 0 (this character's rested XP or another's
+--     is full; the tooltip names them). Shown or hidden on RESTED_ALERT and on the option's
+--     change only: no layout, nothing on TICK.
 
 local math_floor, math_min, math_max = math.floor, math.min, math.max
 local type, tonumber = type, tonumber
@@ -167,6 +172,7 @@ local markOn = {}                -- [i] pause mark drawn
 local hit, hitWant, hitOn = {}, {}, {}   -- [i] graph hover region over an FPS / latency slot
 local tex = {}                   -- named textures (BarSkin's layers + tex.veil)
 local bl, brx, sepFS, marker, hint
+local restIcon                   -- rested XP full (widget.restAlert): the corner icon
 local allTexts = {}              -- every visible FontString (outline, shadow)
 -- split themes (SPEC-themes 2.5): level label (bl) + level value (blv), XP label (xpl) +
 -- XP value (brx); blv / xpl are created at the first split build
@@ -1782,6 +1788,27 @@ ApplyHit = function(i)
   end
 end
 
+-- The rested XP alert's icon: shown while the option is on and a character's rested XP is
+-- full (Rested.lua counts nobody while the option is off). Centred on the frame's top right
+-- corner, half of it outside: while the option is on, the frame's clamp rect takes that
+-- half in (a bar against the top or right edge of the screen keeps the whole icon on it;
+-- set with the option, not with the icon, so the bar never moves when the icon comes and
+-- goes), and while the icon shows, the hit rect too (hovering it shows the tooltip that
+-- names them). Called on RESTED_ALERT and the option's change only.
+local REST_ICON_OUT = C.REST_ALERT_SIZE / 2
+local function ApplyRestAlert()
+  if not restIcon then return end
+  local R = ns.Rested
+  local w = Widget()
+  local on = w ~= nil and w.restAlert == true
+  local show = on and R ~= nil and R.Count() > 0
+  local out = on and REST_ICON_OUT or 0
+  frame:SetClampRectInsets(0, out, out, 0)
+  out = show and REST_ICON_OUT or 0
+  frame:SetHitRectInsets(0, -out, -out, 0)
+  if show then restIcon:Show() else restIcon:Hide() end
+end
+
 ---------------------------------------------------------------------------
 -- Creation (lazy: only when the widget has to be shown)
 ---------------------------------------------------------------------------
@@ -1828,6 +1855,15 @@ local function CreateWidget()
   allTexts[#allTexts + 1] = marker
   allTexts[#allTexts + 1] = hint
 
+  -- rested XP full (widget.restAlert): the icon on the top right corner, over the texts
+  -- (OVERLAY 0) and under the veil (OVERLAY 7: one sublevel each, a fixed order)
+  restIcon = frame:CreateTexture(nil, "OVERLAY", nil, 6)
+  restIcon:SetTexture(C.TEX_REST_ALERT)
+  restIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)     -- the icon without its border
+  restIcon:SetSize(C.REST_ALERT_SIZE, C.REST_ALERT_SIZE)
+  restIcon:SetPoint("CENTER", frame, "TOPRIGHT", 0, 0)
+  restIcon:Hide()
+
   frame:SetScript("OnEnter", OnEnter)
   frame:SetScript("OnLeave", OnLeave)
   frame:SetScript("OnMouseDown", OnMouseDown)
@@ -1840,7 +1876,7 @@ local function CreateWidget()
   -- first split theme.
   local panel = {}
   frame.tp = { slots = slotFS, marks = slotMark, bl = bl, brx = brx, sep = sepFS, marker = marker,
-               hint = hint, tex = tex, panel = panel, hits = hit }
+               hint = hint, tex = tex, panel = panel, hits = hit, restIcon = restIcon }
   -- text measuring (never seen: alpha 0); measuring a slot that the layout hides would
   -- otherwise depend on the width a hidden FontString reports. BarSkin keeps one per
   -- font and size of the theme's texts.
@@ -1852,6 +1888,7 @@ local function CreateWidget()
   end)
 
   Bar.ApplyLayout()
+  ApplyRestAlert()
 end
 
 ---------------------------------------------------------------------------
@@ -2019,6 +2056,10 @@ local function OnSettingsChanged(_, path)
     if frame then Bar.ApplyLayout() end
     return
   end
+  if path == "widget.restAlert" then   -- Rested.lua's RESTED_ALERT follows when the count moves
+    ApplyRestAlert()
+    return
+  end
   if not frame then return end
   if path == "theme" or (type(path) == "string" and (path:find("widget.xpColor", 1, true) == 1
       or path:find("widget.restedColor", 1, true) == 1)) then
@@ -2059,6 +2100,7 @@ function Bar.Init()
   ns.RegisterMessage("THEME_CHANGED", Bar, OnThemeChanged)
   ns.RegisterMessage("REP_CHANGED", Bar, rep.OnChanged)
   ns.RegisterMessage("PVP_CHANGED", Bar, rep.OnChanged)
+  ns.RegisterMessage("RESTED_ALERT", Bar, ApplyRestAlert)
   UpdateVisibility()
 end
 

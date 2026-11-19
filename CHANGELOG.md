@@ -7,6 +7,55 @@ Each version section becomes the release notes shown on CurseForge.
 
 ## [Unreleased]
 
+**New files in this version (`Rested.lua`, `Announce.lua`): quit and restart the game after
+updating (a `/reload` is not enough).**
+
+### In short
+
+- **Your rested XP cap** in the tooltip: 150% of the level, more with WoW Forever's Legacy
+  perk Well Rested (168% at rank 3/5), read for each character.
+- **Optional alert when rested XP is full**, this character's or one of your other
+  characters': an icon on the bar, their names in the tooltip (off by default).
+- **Optional: your alts' rested XP** in the tooltip, each over its own cap (Well Rested
+  included), with the time until it is full (off by default).
+- **Optional: your level-ups in guild chat**, with the play time of the level: "Ding 42!
+  Level 41 » 42 in 3h 12m" (off by default).
+
+### Added
+
+- **Rested XP cap** in the bar's tooltip, under "Rested": the most rested XP this character
+  can bank, e.g. "12,768 XP (168%)". It is 150% of the level's XP, raised by WoW Forever's
+  Legacy perk **Well Rested** (4% per rank, 180% at 5/5) when the character has it:
+  TruePlayed reads the perk's rank from the character's Legacy tree, so each character
+  gets its own cap. "· full" once your rested XP reaches it; with Shift, a note says what
+  the perk adds ("150% of the level, raised by 12% (Well Rested 3/5)").
+- **"Alert when rested XP is full"** (options, above "Hide at max level"; off by default):
+  a small icon at the top right corner of the bar while the rested XP of this character
+  or of one of your other characters is full, and a line at the top of the tooltip naming
+  them ("Rested XP full: this character · Alta (12)"). Another character's rested XP is
+  estimated from what it had at its last logout: 5% of its level every 8 hours in an inn
+  or a capital, a quarter of that elsewhere, faster with Well Rested. A character of the
+  realm you play on that has not logged in since this version is estimated from
+  TruePlayed's last save (without its Well Rested rank); a character of another realm
+  counts once it has logged out with this version, so the records of a closed realm, such
+  as the beta's, never do. Characters at the max level, with XP disabled or not played for
+  90 days are left out. With "Hide at max level", the bar and its icon stay hidden at max
+  level.
+- **"Show your alts' rested XP in the tooltip"** (options, right under the alert; off by
+  default): an "Alts' rested XP" section in the bar's tooltip, after the current level,
+  lists your other characters, fullest first, each with its rested XP over its cap, both
+  in % of its level, and the time until it is full ("Gwen (12): 120/168% · full in 2d
+  20h", "Alta (12): 150/150% · full"), so that the caps show who has Well Rested. A
+  character not played since this version is marked with an asterisk: its Well Rested
+  rank is not known yet (150% until then). The same characters and the same estimate as
+  the alert, which does not need to be on; ten rows at most ("+3 more").
+- **"Announce level-ups in guild chat"** (options, new Guild section; off by default): at
+  each level-up, TruePlayed sends to your guild chat the play time spent at the level you
+  left, as the Levels tab counts it (your exclusions applied, not named in the message),
+  in TruePlayed's language: "Ding 42! Level 41 » 42 in 3h 12m". Nothing outside a guild,
+  nor for the level you were at when you installed TruePlayed (its time is not
+  complete). The option's "?" shows the message as it will be sent.
+
 ## [1.4.0] - 2026-11-13
 
 No new file in this version: a `/reload` after updating is enough.

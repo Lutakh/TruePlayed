@@ -43,6 +43,8 @@ Format.lua
 Stats.lua
 Tracker.lua
 Activity.lua
+Rested.lua
+Announce.lua
 Reputation.lua
 Pvp.lua
 Played.lua

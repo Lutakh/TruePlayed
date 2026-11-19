@@ -1698,3 +1698,150 @@ levels 1 and 2, a partial level 3, a rebuilt level 4) and fixed:
 - Tests: test_level_chart (the legend cases rewritten, plus a literal EN check "Level 1
   » 15: X" against the sheet of 14 » 15), test_window_cols (the Total of 11 » 12),
   test_locales' strip width (1 » 59 and 10 » 59).
+
+## Part AA: the rested XP cap, the "rested XP full" alert and the alts' rested XP (user requests, 2026-11-16)
+
+- **Request**: show the rested XP cap, 150% of the level (to check), raised by WoW
+  Forever's Legacy perk Well Rested by the rank each character owns (the author: 3/5,
+  "+12% gain and limit"). Then: an alert on the bar when one of the characters (an alt or
+  this one) has its rested XP full, an option off by default.
+- **Checked**: the base cap is 150% (two saved characters exactly at 1.5 x their level's
+  XP: 34,800 / 23,200 and 600 / 400). Well Rested: spell 1225478, Adventure Legacy tree
+  1188, node 110301 (entry 136855, definition 141618), 5 ranks of 4% (game data of
+  1.60.1.70938, wago.tools product `wowf`). The rank: `C_Traits.GetConfigIDByTreeID(1188)`
+  then `GetNodeInfo(config, 110301).activeRank` (the method of other Forever addons). Assumed,
+  to confirm in game (docs/TEST-EN-JEU-fr.md): the perk multiplies the cap, 150% x 1.12 =
+  168% at rank 3 (180% at 5/5, as the guides say), rather than adding to it (162%).
+- **Rested.lua** (new file, after Activity.lua in both TOCs; its header has the details):
+  the rank (cached; read again after the trait events and loading screens; a missing
+  config reads 0 and is not cached; a moved node is found again by its spell), `Cap`,
+  `IsFull` (within 0.1%), the estimate of another character's pool from `char.rested`
+  (saved at each logout below the max level: r, m, l, at, inn, k; repaired by Core; else
+  the older `xpSnap` and `last.key`), the alert's list (allocation-free records, rebuilt on
+  XP_CHANGED, LEVEL_UP, the trait events, DB_SWAPPED, CHAR_RESET and when the next
+  character fills up or leaves the 90-day window: one compare per TICK), `RESTED_ALERT`.
+- **Tooltip**: a "Rested cap" pair under "Rested" ("12,768 XP (168%)"; "· full" in the
+  rested colour once reached); with Shift and a rank, the note "150% of the level, raised
+  by 12% (Well Rested 3/5)" (the game's name of the perk, else `L.WELL_RESTED`); while the
+  option is on, "Rested XP full: this character · Alta (12)" in section 2 (role `alert`,
+  colour `rested`; SPEC-themes' table).
+- **Bar**: `widget.restAlert` shows a 14 px Spell_Nature_Sleep icon centred on the bar's
+  top right corner while the list is not empty (OVERLAY 6: over the texts, under the
+  veil). Half of it is outside the frame: while the option is on, the frame's clamp rect
+  takes that half in (0, 7, 7, 0: a bar against the top or right edge keeps the whole
+  icon on the screen, and never moves when the icon comes and goes); while the icon
+  shows, the hit rect too (0, -7, -7, 0: hovering it shows the tooltip).
+- **Options**: the checkbox and its "?" help above "Hide at max level", the alts'
+  checkbox (below) between them (test_language wants the language controls right after
+  "Hide at max level"); the help's third line says that "Hide at max level" hides the
+  icon with the bar.
+- **Locales**: 11 keys in the 11 files; `TT_REST_ALT_FMT` ("%s (%d)") and `WELL_RESTED`
+  (the Italian client's own name is the English one) may equal the English text
+  (test_locales' SAME_OK).
+- **Tests**: test_rested (16 tests: the cap with and without the trait API, the rank's
+  cache and events, the note, "full", the logout save, the repair, the estimate, the
+  alert for this character and the others, its limits, an allocation check).
+  test_actuel_golden: the "Rested cap" row is taken out of the current stages, an
+  intended addition like the two-section lines (no C_Traits in the stubs, the option
+  off: the note and the alert line never show there). test_tooltip_theme: block 1 is one
+  row taller, so the pair fixture adds 24 rows (was 25) and the stack's "above" owner is
+  at -470 (was -450) to keep both cases on the screen. test_theme_memory: both
+  after-login budgets +30 KB, to 1670 / 1800 (measured +25.3 KB in the full suite).
+- **Review (2026-11-16)**, fixed: (1) a character logged out at the max level, with XP
+  disabled or at a server cap had its `char.rested` removed, so the Tracker's xpSnap of
+  the same logout came back as an older save and could raise the alert: it is now
+  `false` (Core keeps it), and the xpSnap fallback is not used for a record whose level
+  is another or that has a server cap at that level; (2) a newer version's data
+  (read-only, not repaired) with a `char.rested` out of range made a Lua error in the
+  list: every save is checked when read (finite numbers in range); (3) the read-only
+  logout test could not fail (the detached copy): it checks the copy too; (4) the repair
+  dropped a rank above 5 (a later build may add ranks): any whole number from 1 is kept;
+  (5) a config whose tree's data was not in yet cached rank 0: FindPerk says whether some
+  node answered with its own ID (else read again); (6) the icon: clamp and hit rects as
+  above, a sublevel of its own, the help line on "Hide at max level". 13 mutations of
+  these fixes, all caught by test_rested (19 tests).
+- **In-game report (2026-11-16)**: "Rested XP full" named three characters of the Forever
+  beta's realms ("Classic Beta PvE / PvP", gone since October; the saved data began
+  there), counted from their xpSnap. The older-save fallback is now used for a character
+  of the current character's realm only (`Saved(char, out, realm)`); another realm's
+  character counts once logged out with this version (its `char.rested`), which a closed
+  realm's never is. On the author's saved data: the 9 beta records out, the 4 alts of the
+  live realm estimated. Test: "an older save counts for a character of this realm only".
+- **Alts' rested XP (user request, 2026-11-16)**: "the state of the rested bonus on all
+  the alts against their cap", as an option; the author chose the bar's tooltip (over the
+  statistics window and a chat command). `widget.restAlts` (bool, off by default; its
+  checkbox and "?" right under the alert's) adds a section after the current level's
+  block (both views; block 1 of ShowFor's pair): `Sep` "block", the title "Alts' rested
+  XP" (`Section`), then one row per other character from `Rested.Alts(now)`: the alert's
+  filters (a usable save, below the max level, within the 90 days, not this character),
+  sorted by share of the cap, descending, then key (the full ones are all 1, so in key
+  order), in allocation-free arrays read with `Rested.Alt(i)`. A row: "Cael (20)" |
+  "90% · full in 3d 23h" (the share floored to the percent: 100% only once full);
+  "100% · full" in the rested colour once full (SPEC-themes' table); "No other character
+  to show" when none; past `C.REST_ALTS_ROWS` (10) rows, the first nine and "+N more".
+  Computed when the tooltip fills, nothing per tick. Locales: 6 more keys (17 in all in
+  this part). Tests: "alts: …" (two), the option's checkbox, help and order included.
+- **In-game data (2026-11-16)**: the author's three alts logged out in a capital were saved
+  with `inn` nil (their Tracker key said "c"): WoW Forever's `IsResting()` answers false
+  at PLAYER_LOGOUT, so their pools were estimated four times too slowly. Rested keeps the
+  state seen while playing: `IsResting()` read at login, PLAYER_UPDATE_RESTING and
+  PLAYER_ENTERING_WORLD, not from PLAYER_LEAVING_WORLD on (the game may clear it while
+  leaving); the logout saves the live answer or that one. A save made before the fix
+  stays until the character logs out again. Test: "logout: the rest area is the one seen
+  while playing". Mutation check of the section, the option and this cache: 15
+  mutations, all caught by test_rested (23 tests).
+- **The cap in the alts' rows (user request, 2026-11-17)**: "see the cap too, 63/160% for
+  instance: it shows the alts with another cap". A row's value is the pool over the cap,
+  both in % of the level, through `PERCENT_FMT` ("120/168% · full in 2d 20h", "63/168 %"
+  in French): the cap rounded (`Rested.CapFrac(k)`: 1.5 x 1.2 is 1.7999999999999998),
+  the pool floored (the cap only once full), the cap for a full one ("150/150% · full",
+  even at 99.95 %). `Rested.Alts` keeps the pool and the cap in levels and whether the
+  save is an older one (`Saved`'s `old`: the xpSnap fallback, whose Well Rested rank is
+  not known and counts 0); such a row's value ends with `REST_OLD_MARK` ("*") and the
+  section ends with the note `TT_REST_ALTS_OLD_FMT` ("* Not played since this version:
+  Well Rested rank unknown", the game's name of the perk). Still sorted by share of the
+  cap. Locales: 2 more keys, `REST_OLD_MARK` in SAME_OK; the option's help says "over its
+  cap". Tests: the rows with ranks 3 and 5 and an older save, the cleared rows. 11
+  mutations, all caught.
+- **Saved data (2026-11-17)**: the author's main, with Well Rested, was saved with `k` nil
+  at a logout (its four alts, logged out later, with 4): the tree was not readable when
+  the logout asked (the cache cleared by a trait event or a loading screen, the read at
+  PLAYER_LOGOUT failing), and a failed read counted as rank 0. `Rested.Rank` now answers
+  the last rank read this session while the tree cannot be read (third value: read or
+  not; the tooltip's cap does not drop to 150% meanwhile), and the logout keeps the last
+  save's rank when none was read this session (a character without any Legacy perk has
+  neither: none). A rank read as 0 (the perk gone) still saves none. Test: "logout: a
+  rank the tree does not give at the logout keeps the last one read". 5 mutations, one
+  equivalent (the `read` check, implied by `lastRank`: dropped).
+
+## Part AB: the level-up message in the guild chat (user request, 2026-11-17)
+
+- **Request**: an option, off by default, that sends to the guild chat at a level-up the
+  time it took from the previous level, with the exclusions the player chose, in the
+  language chosen in TruePlayed. The author picked the message among three: the "Ding"
+  one, without naming the exclusions: "Ding 42! Level 41 » 42 in 3h 12m".
+- **Announce.lua** (new file, after Rested.lua in both TOCs): on the Tracker's LEVEL_UP
+  (sent once the level left is closed: its time final), when `guild.levelUp` is on, not
+  read-only, `IsInGuild()` answers true and the level left is complete (not `partial`:
+  begun before the install; not `rec`: rebuilt from the server): `Stats.Sum(level,
+  ns.GetMask())`, the Levels tab's time of a completed level, through
+  `L.GUILD_DING_FMT` ("Ding %d! Level %d » %d in %s": level reached, level left, level
+  reached, `Fmt.DurationLong`) to `SendChatMessage(text, "GUILD")` (`C_ChatInfo`'s on
+  the clients that moved it there; pcall). Several levels reported together (the
+  Tracker reads UnitLevel): one message, "Level 12 » 14"; else one each. Its language:
+  `ns.L`, TruePlayed's (the Language option), whatever the client's.
+- **Options**: a "Guild" section after "Automatic reload": the checkbox and its "?" (what
+  it sends; "For example: " and `Announce.Text(42, 41, 11520)`, the message as sent).
+  Setting `guild = { levelUp = false }` (`DefineSetting("guild.levelUp", "bool")`).
+- **Globals**: `IsInGuild` and `SendChatMessage` (guarded) in the allowlists (.luacheckrc,
+  check_globals, lint51). `C_ChatInfo` was forbidden as a whole (SPEC 5.4: its
+  `InChatMessagingLockdown` covers every dungeon map); WoW Forever's addons send through
+  `C_ChatInfo.SendChatMessage` (the global may be missing there), so Announce.lua alone
+  may read it (lint51's LOADERS_OK, check_globals' READ_OK_IN, a luacheck `files` entry)
+  and the name `InChatMessagingLockdown` is now forbidden anywhere in addon code
+  (lint51's FORBIDDEN_NAMES).
+- **Locales**: 5 keys in the 11 files (the section, the label, its help, the example, the
+  message).
+- **Tests**: test_announce (5 tests: off by default, the message, the partial level, the
+  exclusions, a double level-up, outside a guild, read-only with a complete level, the
+  language, the option and its help). 9 mutations, all caught.

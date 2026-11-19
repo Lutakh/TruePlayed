@@ -26,8 +26,10 @@
 --   * globals: reads outside the SPEC 2.3 allowlist, writes outside the SPEC 2.2 whitelist
 --     (a missing `local` is the classic addon bug), os/io/print/load/setfenv...;
 --   * "OnUpdate" scripts, forbidden templates, C_Timer.NewTicker outside Core.lua.
--- One explicit exception: Themes.lua reads loadstring, setfenv and load (LOADERS_OK below),
--- to compile the theme source texts in an empty environment (design/NEXT-LOT.md M3).
+-- Two explicit exceptions (LOADERS_OK below): Themes.lua reads loadstring, setfenv and load,
+-- to compile the theme source texts in an empty environment (design/NEXT-LOT.md M3);
+-- Announce.lua reads C_ChatInfo for its SendChatMessage (the guild message, design/NEXT-LOT.md
+-- part AB). C_ChatInfo.InChatMessagingLockdown stays forbidden everywhere (SPEC 5.4).
 --
 -- A finding on a line that carries the comment `lint51-ignore` is suppressed.
 
@@ -135,6 +137,12 @@ local ADDON_BANNED = {
 -- with an environment on 5.2+, the offline tests).
 local LOADERS_OK = {
   ["Themes.lua"] = { loadstring = true, setfenv = true, load = true },
+  ["Announce.lua"] = { C_ChatInfo = true },
+}
+
+-- Names forbidden wherever they appear in addon code (a field of an allowed table too).
+local FORBIDDEN_NAMES = {
+  InChatMessagingLockdown = "C_ChatInfo.InChatMessagingLockdown is forbidden: chat lockdown covers every dungeon map (SPEC 5.4)",
 }
 
 local FORBIDDEN_WOW = {
@@ -221,6 +229,13 @@ for _, name in ipairs({
   -- the player's side in a match (the winner is compared with it) and the PvP season's
   -- number (a lower season total without a new season is a transient read)
   "GetBattlefieldArenaFaction", "GetCurrentArenaSeason",
+  -- the rested XP cap (Rested.lua): the Legacy perk Well Rested's rank, read from the
+  -- character's Legacy talent config (WoW Forever; guarded, may be nil), at the first ask
+  -- after a trait event or a loading screen, and at the logout
+  "C_Traits",
+  -- the level-up message in the guild chat (Announce.lua, guild.levelUp; guarded): in a
+  -- guild or not, and the older clients' message function (C_ChatInfo's: LOADERS_OK)
+  "IsInGuild", "SendChatMessage",
 }) do
   ALLOWED_READ[name] = true
 end
@@ -1033,6 +1048,7 @@ local function analyze(T, isAddon, report, tickers, rel)
         i = i + 1
       end
     elseif t == "name" then
+      if isAddon and FORBIDDEN_NAMES[v] then report(lin[i], FORBIDDEN_NAMES[v]) end
       handleName(i)
       i = i + 1
     elseif t == "op" then

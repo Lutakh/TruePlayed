@@ -897,7 +897,8 @@ T.test("pair: whichever block makes the pair's top or bottom, the box is placed 
       if part == 1 then for i = 1, pad1 do tt:AddLine("pad " .. i) end end
       return more, row
     end
-    for _, case in ipairs({ { pad1 = 25, pad2 = 0, what = "block 1 ends lower" },
+    -- pad1: as many rows as fit under the owner (24 since block 1's "Rested cap" row)
+    for _, case in ipairs({ { pad1 = 24, pad2 = 0, what = "block 1 ends lower" },
                             { pad1 = 0, pad2 = 15, what = "block 2 starts higher" } }) do
       pad1, pad2 = case.pad1, case.pad2
       for _, y in ipairs({ 350, -350 }) do
@@ -1023,7 +1024,7 @@ T.test("stack: a screen too narrow for the pair: block 2 under block 1, same wid
     local Tooltip = ns.Tooltip
     ScreenWidth(600)
     -- owners where the whole stack fits on the screen (the next test: where it does not)
-    for _, case in ipairs({ { y = 500, below = true }, { y = -450, below = false } }) do
+    for _, case in ipairs({ { y = 500, below = true }, { y = -470, below = false } }) do
       local where = theme .. (case.below and " below" or " above")
       local owner = Owner(case.y)
       Stub.SetShift(false)

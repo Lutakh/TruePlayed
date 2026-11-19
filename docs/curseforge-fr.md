@@ -29,7 +29,8 @@ inclus dans le zip de l'addon. Le guide `docs/PUBLISHING-fr.md` indique où va c
   donjons, raids, temps mort, temps de métiers, monstres à tuer, réputation, réputation
   par heure, temps avant le rang de réputation suivant, honneur, honneur par heure,
   plafond d'honneur, JcJ, rang JcJ, points de rang, points de rang par heure, champs de
-  bataille, JcJ sauvage, victoires honorables, graphique FPS, thèmes, thèmes de classe.
+  bataille, JcJ sauvage, victoires honorables, graphique FPS, thèmes, thèmes de classe,
+  plafond de repos, Bien reposé, rerolls, guilde, ding.
 - **Signalements / code source** : https://github.com/Lutakh/TruePlayed
 
 Tout ce qui suit le trait est la **description** (Markdown), traduction de la description
@@ -55,6 +56,17 @@ Par niveau. Par zone. Par instance. Par personnage, ou pour tout le compte.
 
 Réputation par heure. Honneur par heure. Points de rang par heure. Temps avant votre
 prochain rang de réputation et avant votre prochain rang JcJ.
+
+### Le repos, jusqu'à la dernière goutte.
+
+Votre plafond de repos, Bien reposé compris, pour chaque personnage. Une icône quand l'un
+d'eux est plein, et tous vos rerolls dans l'infobulle : « Gwen (12) · 120/168 % · plein
+dans 2 j 20 h ».
+
+### Ding !
+
+Cochez une case et votre guilde apprend chaque niveau : « Ding 42 ! Niveau 41 » 42 en
+3 h 12 min ».
 
 ![13 thèmes. Un clic.](https://raw.githubusercontent.com/Lutakh/TruePlayed/main/media-src/curseforge/page/themes.png)
 
